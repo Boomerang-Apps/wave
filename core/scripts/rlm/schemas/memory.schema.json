@@ -1,0 +1,109 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://wave-framework.io/schemas/memory.schema.json",
+    "title": "WAVE Agent Memory",
+    "description": "Schema for agent memory persistence in RLM-enhanced WAVE framework",
+    "type": "object",
+    "required": ["agent", "wave", "created_at", "updated_at", "decisions", "constraints", "patterns_used"],
+    "properties": {
+        "agent": {
+            "type": "string",
+            "description": "Agent identifier (fe-dev, be-dev, qa, dev-fix, etc.)",
+            "enum": ["fe-dev", "be-dev", "qa", "dev-fix", "cto", "pm", "merge"]
+        },
+        "wave": {
+            "type": "integer",
+            "description": "Wave number (any positive integer)",
+            "minimum": 1
+        },
+        "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when memory was created"
+        },
+        "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp when memory was last updated"
+        },
+        "decisions": {
+            "type": "array",
+            "description": "List of decisions made by the agent",
+            "items": {
+                "type": "object",
+                "required": ["id", "timestamp", "decision", "reason"],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "pattern": "^DEC-[0-9]{3}$",
+                        "description": "Decision identifier (DEC-001, DEC-002, etc.)"
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "When the decision was made"
+                    },
+                    "decision": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "The decision made"
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Reasoning behind the decision"
+                    }
+                }
+            }
+        },
+        "constraints": {
+            "type": "array",
+            "description": "List of active constraints for this agent/wave",
+            "items": {
+                "type": "string",
+                "minLength": 1
+            }
+        },
+        "patterns_used": {
+            "type": "array",
+            "description": "Code patterns referenced or used by the agent",
+            "items": {
+                "type": "object",
+                "required": ["name", "file", "added_at"],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Pattern name or description"
+                    },
+                    "file": {
+                        "type": "string",
+                        "description": "File path where pattern is defined/used"
+                    },
+                    "added_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "When the pattern was added to memory"
+                    }
+                }
+            }
+        },
+        "context_hashes": {
+            "type": "array",
+            "description": "History of context hashes seen by this agent",
+            "items": {
+                "type": "object",
+                "required": ["hash", "timestamp"],
+                "properties": {
+                    "hash": {
+                        "type": "string",
+                        "description": "Context hash value"
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "When this hash was recorded"
+                    }
+                }
+            }
+        }
+    }
+}

@@ -261,8 +261,10 @@ update_rlm_variable() {
 
     log_info "Updating RLM variable (P)..."
 
-    # Ensure .claude directory exists
+    # Ensure .claude and agent-memory directories exist
     mkdir -p "${PROJECT_ROOT}/.claude"
+    mkdir -p "${PROJECT_ROOT}/.claude/agent-memory"
+    mkdir -p "${PROJECT_ROOT}/.claude/rlm-snapshots"
 
     if "$RLM_DIR/load-project-variable.sh" \
         --project "$PROJECT_ROOT" \
