@@ -264,7 +264,7 @@ $(get_worktree_status "$PROJECT_ROOT" | awk '{printf "        %s,\n", $0}' | sed
         "search": "search(P, 'pattern')",
         "list_files": "list_files(P, '*.test.ts')",
         "get_story": "get_story(P, 'STORY-ID')",
-        "get_signal": "get_signal(P, 'wave3-gate3')"
+        "get_signal": "get_signal(P, 'wave\${N}-gate3')"
     }
 }
 EOF

@@ -195,7 +195,7 @@ def get_signal(P: Dict[str, Any], signal_pattern: str) -> Optional[Dict[str, Any
 
     Args:
         P: The project variable
-        signal_pattern: Pattern to match (e.g., "wave3-gate3", "gate4-approved")
+        signal_pattern: Pattern to match (e.g., "waveN-gate3", "gate4-approved")
 
     Returns:
         Signal content as dict, or None if not found
@@ -328,7 +328,7 @@ peek(P, 'path/to/file.ts')     - View file contents
 search(P, 'pattern')           - Search across files
 list_files(P, '*.test.ts')     - List files by pattern
 get_story(P, 'STORY-ID')       - Get story definition
-get_signal(P, 'wave3-gate3')   - Get signal file
+get_signal(P, 'waveN-gate3')   - Get signal file
 get_memory(P, 'fe-dev')        - Get agent memory
 save_decision(P, 'fe-dev', 'decision', 'reason')  - Save decision
 """
