@@ -1,0 +1,361 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wave.framework/ai-story-schema-v4.json",
+  "title": "WAVE AI Story Schema V4",
+  "description": "Schema for AI Stories in the WAVE Framework",
+  "type": "object",
+  "required": ["id", "title", "domain", "objective", "acceptance_criteria", "files", "safety"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "oneOf": [
+        {
+          "pattern": "^[A-Z]+-[A-Z]+-[0-9]{3}$",
+          "description": "Domain format: AUTH-FE-001"
+        },
+        {
+          "pattern": "^WAVE[0-9]+-[A-Z]+-[0-9]+$",
+          "description": "Wave format: WAVE1-FE-001"
+        }
+      ]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 100,
+      "pattern": "^(Create|Add|Update|Fix|Remove|Implement|Configure|Enable|Disable|Refactor|Migrate|Build|Setup|Initialize|Delete|Modify)",
+      "description": "Action-oriented title starting with verb"
+    },
+    "domain": {
+      "type": "string",
+      "enum": [
+        "auth",
+        "client",
+        "pilot",
+        "project",
+        "proposal",
+        "messaging",
+        "payment",
+        "deliverables",
+        "admin",
+        "layout",
+        "general",
+        "public"
+      ],
+      "description": "Business domain for ownership"
+    },
+    "technical_domain": {
+      "type": "string",
+      "enum": ["frontend", "backend", "database", "infrastructure", "testing", "documentation"],
+      "description": "Technical domain for agent routing"
+    },
+    "agent": {
+      "type": "string",
+      "pattern": "^[a-z]+-[a-z]+-[0-9]+$|^[a-z]+-[a-z]+-[a-z]+$",
+      "description": "Agent ID: domain-type-role or fe-dev-1",
+      "examples": ["fe-dev-1", "be-dev-2", "qa", "auth-fe-dev"]
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["P0-Critical", "P1-High", "P2-Medium", "P3-Low"],
+      "default": "P2-Medium"
+    },
+    "complexity": {
+      "type": "string",
+      "enum": ["S", "M", "L", "XL"],
+      "description": "S(1-2h), M(2-4h), L(4-8h), XL(8+h)"
+    },
+    "estimate_hours": {
+      "type": "number",
+      "minimum": 0.5,
+      "maximum": 40
+    },
+    "objective": {
+      "type": "object",
+      "required": ["as_a", "i_want", "so_that"],
+      "properties": {
+        "as_a": {
+          "type": "string",
+          "minLength": 5,
+          "description": "User persona"
+        },
+        "i_want": {
+          "type": "string",
+          "minLength": 10,
+          "description": "Desired capability"
+        },
+        "so_that": {
+          "type": "string",
+          "minLength": 10,
+          "description": "Business benefit"
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "in_scope": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Explicitly included items"
+        },
+        "out_of_scope": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Explicitly excluded items"
+        },
+        "definitions": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Term glossary"
+        }
+      }
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["id", "description"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^AC-[0-9]+$"
+          },
+          "title": { "type": "string" },
+          "ears_pattern": {
+            "type": "string",
+            "enum": ["ubiquitous", "event-driven", "state-driven", "unwanted", "complex"]
+          },
+          "given": { "type": "string" },
+          "when": { "type": "string" },
+          "then": { "type": "string" },
+          "threshold": {
+            "type": "string",
+            "description": "Measurable value (ms, %, count)"
+          },
+          "description": { "type": "string" },
+          "implementation_file": { "type": "string" },
+          "implementation_function": { "type": "string" },
+          "test_file": { "type": "string" },
+          "test_function": { "type": "string" },
+          "verified": { "type": "boolean", "default": false },
+          "coverage": { "type": "number", "minimum": 0, "maximum": 100 }
+        }
+      }
+    },
+    "files": {
+      "type": "object",
+      "required": ["forbidden"],
+      "properties": {
+        "create": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Files to create"
+        },
+        "modify": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Files to modify"
+        },
+        "forbidden": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" },
+          "description": "Files agent must NOT touch"
+        }
+      }
+    },
+    "api_contract": {
+      "type": "object",
+      "properties": {
+        "endpoint": {
+          "type": "string",
+          "pattern": "^(GET|POST|PUT|PATCH|DELETE) /",
+          "description": "HTTP method and path"
+        },
+        "request": {
+          "type": "object",
+          "properties": {
+            "type_name": { "type": "string" },
+            "fields": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "type": { "type": "string" },
+                  "required": { "type": "boolean" },
+                  "validation": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "response": {
+          "type": "object",
+          "properties": {
+            "success_type": { "type": "string" },
+            "error_codes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "code": { "type": "string" },
+                  "status": { "type": "integer" },
+                  "message": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tests": {
+      "type": "object",
+      "required": ["commands"],
+      "properties": {
+        "commands": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" },
+          "description": "Test execution commands"
+        },
+        "coverage_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 80
+        },
+        "unit_tests": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Unit test descriptions"
+        },
+        "integration_tests": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Integration test descriptions"
+        }
+      }
+    },
+    "dependencies": {
+      "type": "object",
+      "properties": {
+        "stories": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Story IDs that must complete first"
+        },
+        "contracts": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Contract names required"
+        },
+        "infrastructure": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Infrastructure requirements"
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "required": ["stop_conditions"],
+      "properties": {
+        "max_iterations": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 50,
+          "default": 25
+        },
+        "token_budget": {
+          "type": "integer",
+          "minimum": 10000,
+          "maximum": 500000,
+          "default": 200000
+        },
+        "timeout_minutes": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 480,
+          "default": 120
+        },
+        "stop_conditions": {
+          "type": "array",
+          "minItems": 3,
+          "items": { "type": "string" }
+        },
+        "escalation_triggers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "dal_level": {
+          "type": "string",
+          "enum": ["A", "B", "C", "D", "E"],
+          "description": "Design Assurance Level (DO-178C)"
+        },
+        "requires_human_approval": {
+          "type": "boolean",
+          "default": false
+        },
+        "approval_reason": {
+          "type": "string"
+        }
+      }
+    },
+    "implementation_hints": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Guidance for implementing agent"
+    },
+    "rollback_plan": {
+      "type": "object",
+      "properties": {
+        "git_strategy": { "type": "string" },
+        "database_rollback": { "type": "string" },
+        "recovery_steps": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "definition_of_done": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Checklist for completion"
+    },
+    "traceability": {
+      "type": "object",
+      "properties": {
+        "requirement_source": { "type": "string" },
+        "parent_requirement": { "type": "string" },
+        "verification_method": {
+          "type": "string",
+          "enum": ["test", "inspection", "analysis", "demonstration"]
+        },
+        "verification_status": {
+          "type": "string",
+          "enum": ["not_started", "in_progress", "passed", "failed"]
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["backlog", "ready", "in_progress", "review", "done", "blocked"]
+    },
+    "gate": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 7
+    },
+    "wave": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2,
+      "description": "WAVE assignment (1 or 2)"
+    },
+    "actual_hours": { "type": "number" },
+    "actual_tokens": { "type": "integer" },
+    "actual_cost": { "type": "number" }
+  }
+}

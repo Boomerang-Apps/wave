@@ -1,0 +1,234 @@
+version: '3.8'
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# WAVE DOCKER COMPOSE TEMPLATE - 7 AGENTS
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# PROJECT: {{PROJECT_NAME}}
+#
+# AGENTS (7):
+#   1. CTO      - Architecture decisions (Opus 4.5)
+#   2. PM       - Orchestration (Opus 4.5)
+#   3. QA       - Validation (Haiku 4)
+#   4. FE-Dev-1 - Frontend Wave 1 (Sonnet 4)
+#   5. FE-Dev-2 - Frontend Wave 2 (Sonnet 4)
+#   6. BE-Dev-1 - Backend Wave 1 (Sonnet 4)
+#   7. BE-Dev-2 - Backend Wave 2 (Sonnet 4)
+#
+# WORKTREE MAPPING:
+#   fe-dev-1 → ./worktrees/fe-dev-1:/workspace
+#   fe-dev-2 → ./worktrees/fe-dev-2:/workspace
+#   be-dev-1 → ./worktrees/be-dev-1:/workspace
+#   be-dev-2 → ./worktrees/be-dev-2:/workspace
+#   qa       → ./worktrees/qa:/workspace
+#
+# USAGE:
+#   1. First run: ./scripts/setup-worktrees.sh
+#   2. Start: docker compose up
+#   3. Retry: WAVE=1 docker compose --profile retry run dev-fix
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+
+services:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # LEADERSHIP AGENTS (Opus 4.5)
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  cto:
+    image: anthropic/claude-code:latest
+    container_name: {{PROJECT_NAME}}-cto
+    profiles:
+      - leadership
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL_CTO:-claude-opus-4-5-20251101}
+      - AGENT_TYPE=cto
+      - AGENT_NAME=cto
+    volumes:
+      - ./:/workspace:rw
+      - ./CLAUDE.md:/workspace/CLAUDE.md:ro
+      - ./.claude:/workspace/.claude:rw
+    working_dir: /workspace
+    command: ["--dangerously-skip-permissions", "-p", "You are the CTO. Review architecture and handle escalations. Read CLAUDE.md first."]
+    networks:
+      - wave-network
+
+  pm:
+    image: anthropic/claude-code:latest
+    container_name: {{PROJECT_NAME}}-pm
+    profiles:
+      - leadership
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL_PM:-claude-opus-4-5-20251101}
+      - AGENT_TYPE=pm
+      - AGENT_NAME=pm
+    volumes:
+      - ./:/workspace:rw
+      - ./CLAUDE.md:/workspace/CLAUDE.md:ro
+      - ./.claude:/workspace/.claude:rw
+    working_dir: /workspace
+    command: ["--dangerously-skip-permissions", "-p", "You are the PM. Assign stories to waves and agents. Read CLAUDE.md first."]
+    networks:
+      - wave-network
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # WAVE 1 DEVELOPMENT AGENTS (Sonnet 4)
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  fe-dev-1:
+    image: anthropic/claude-code:latest
+    container_name: {{PROJECT_NAME}}-fe-dev-1
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL_DEV:-claude-sonnet-4-20250514}
+      - WAVE=1
+      - AGENT_TYPE=fe-dev
+      - AGENT_NAME=fe-dev-1
+    volumes:
+      - ./worktrees/fe-dev-1:/workspace:rw
+      - ./CLAUDE.md:/workspace/CLAUDE.md:ro
+      - ./.claude:/workspace/.claude:rw
+    working_dir: /workspace
+    command: ["--dangerously-skip-permissions", "-p", "You are FE-Dev-1. Execute Wave 1 frontend stories. Read CLAUDE.md first."]
+    networks:
+      - wave-network
+
+  be-dev-1:
+    image: anthropic/claude-code:latest
+    container_name: {{PROJECT_NAME}}-be-dev-1
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL_DEV:-claude-sonnet-4-20250514}
+      - WAVE=1
+      - AGENT_TYPE=be-dev
+      - AGENT_NAME=be-dev-1
+    volumes:
+      - ./worktrees/be-dev-1:/workspace:rw
+      - ./CLAUDE.md:/workspace/CLAUDE.md:ro
+      - ./.claude:/workspace/.claude:rw
+    working_dir: /workspace
+    command: ["--dangerously-skip-permissions", "-p", "You are BE-Dev-1. Execute Wave 1 backend stories. Read CLAUDE.md first."]
+    networks:
+      - wave-network
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # WAVE 2 DEVELOPMENT AGENTS (Sonnet 4)
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  fe-dev-2:
+    image: anthropic/claude-code:latest
+    container_name: {{PROJECT_NAME}}-fe-dev-2
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL_DEV:-claude-sonnet-4-20250514}
+      - WAVE=2
+      - AGENT_TYPE=fe-dev
+      - AGENT_NAME=fe-dev-2
+    volumes:
+      - ./worktrees/fe-dev-2:/workspace:rw
+      - ./CLAUDE.md:/workspace/CLAUDE.md:ro
+      - ./.claude:/workspace/.claude:rw
+    working_dir: /workspace
+    command: ["--dangerously-skip-permissions", "-p", "You are FE-Dev-2. Execute Wave 2 frontend stories. Read CLAUDE.md first."]
+    networks:
+      - wave-network
+
+  be-dev-2:
+    image: anthropic/claude-code:latest
+    container_name: {{PROJECT_NAME}}-be-dev-2
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL_DEV:-claude-sonnet-4-20250514}
+      - WAVE=2
+      - AGENT_TYPE=be-dev
+      - AGENT_NAME=be-dev-2
+    volumes:
+      - ./worktrees/be-dev-2:/workspace:rw
+      - ./CLAUDE.md:/workspace/CLAUDE.md:ro
+      - ./.claude:/workspace/.claude:rw
+    working_dir: /workspace
+    command: ["--dangerously-skip-permissions", "-p", "You are BE-Dev-2. Execute Wave 2 backend stories. Read CLAUDE.md first."]
+    networks:
+      - wave-network
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # QA AGENT (Haiku 4)
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  qa:
+    image: anthropic/claude-code:latest
+    container_name: {{PROJECT_NAME}}-qa
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL_QA:-claude-haiku-4-20251001}
+      - WAVE=${WAVE:-1}
+      - AGENT_TYPE=qa
+      - AGENT_NAME=qa
+    volumes:
+      - ./worktrees/qa:/workspace:rw
+      - ./CLAUDE.md:/workspace/CLAUDE.md:ro
+      - ./.claude:/workspace/.claude:rw
+    working_dir: /workspace
+    command: ["--dangerously-skip-permissions", "-p", "You are the QA agent. Validate code and create approval or rejection signal. Read CLAUDE.md first."]
+    depends_on:
+      - fe-dev-1
+      - be-dev-1
+    networks:
+      - wave-network
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # DEV-FIX AGENT (Retry Profile - Sonnet 4)
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  dev-fix:
+    image: anthropic/claude-code:latest
+    container_name: {{PROJECT_NAME}}-dev-fix
+    profiles:
+      - retry
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL_DEV:-claude-sonnet-4-20250514}
+      - WAVE=${WAVE:-1}
+      - AGENT_TYPE=dev-fix
+      - AGENT_NAME=dev-fix
+    volumes:
+      - ./worktrees/dev-fix:/workspace:rw
+      - ./CLAUDE.md:/workspace/CLAUDE.md:ro
+      - ./.claude:/workspace/.claude:rw
+    working_dir: /workspace
+    command: >
+      --dangerously-skip-permissions -p
+      "You are the Dev Fix agent (Gate 4.5).
+
+      1. Read signal-wave${WAVE}-gate4-rejected.json for issues
+      2. Fix ALL issues listed
+      3. Run: {{PACKAGE_MANAGER}} build && {{PACKAGE_MANAGER}} typecheck && {{PACKAGE_MANAGER}} test
+      4. Create signal-wave${WAVE}-gate4.5-fixed.json when done
+
+      Follow CLAUDE.md protocol exactly."
+    networks:
+      - wave-network
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # MONITORING - DOZZLE (Container Log Viewer)
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: {{PROJECT_NAME}}-dozzle
+    ports:
+      - "${DOZZLE_PORT:-8080}:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - DOZZLE_LEVEL=info
+      - DOZZLE_TAILSIZE=300
+      - DOZZLE_FILTER=name={{PROJECT_NAME}}*
+    restart: unless-stopped
+    networks:
+      - wave-network
+
+networks:
+  wave-network:
+    driver: bridge

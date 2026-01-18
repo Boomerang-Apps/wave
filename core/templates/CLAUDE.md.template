@@ -1,0 +1,204 @@
+# CLAUDE.md - Agent Safety Instructions
+
+**Version:** WAVE 1.0
+**Project:** {{PROJECT_NAME}}
+**Purpose:** Safety protocol and agent instructions for multi-agent development
+
+---
+
+## CRITICAL SAFETY RULES
+
+### NEVER Do These (Forbidden Operations)
+1. **NEVER** delete production data or drop database tables
+2. **NEVER** commit directly to `main` branch
+3. **NEVER** expose secrets, API keys, or credentials in code
+4. **NEVER** disable security features or authentication
+5. **NEVER** make changes outside your assigned scope
+6. **NEVER** ignore failing tests - fix them first
+7. **NEVER** skip the signal file creation step
+
+### ALWAYS Do These
+1. **ALWAYS** work only in your assigned worktree
+2. **ALWAYS** create signal files when completing gates
+3. **ALWAYS** run tests before marking work complete
+4. **ALWAYS** follow the gate protocol exactly
+5. **ALWAYS** check for EMERGENCY-STOP file before proceeding
+6. **ALWAYS** include token usage in signal files
+
+---
+
+## EMERGENCY STOP
+
+Before ANY action, check:
+```bash
+if [ -f "/workspace/.claude/EMERGENCY-STOP" ]; then
+    echo "EMERGENCY STOP ACTIVE - Halting immediately"
+    exit 1
+fi
+```
+
+If this file exists, **STOP ALL WORK IMMEDIATELY**.
+
+---
+
+## WORKTREE ISOLATION
+
+You are working in an isolated Git worktree. Your changes will NOT affect other agents.
+
+| Agent | Worktree | Branch |
+|-------|----------|--------|
+| fe-dev | `/workspace` (worktrees/fe-dev) | feature/fe-dev |
+| be-dev | `/workspace` (worktrees/be-dev) | feature/be-dev |
+| qa | `/workspace` (worktrees/qa) | feature/qa |
+| dev-fix | `/workspace` (worktrees/dev-fix) | feature/dev-fix |
+
+**Commit to your feature branch only.** Never commit to main.
+
+---
+
+## GATE PROTOCOL
+
+### Gate Progression
+```
+Gate 0: Story Assignment
+Gate 1: Planning
+Gate 2: Development (fe-dev, be-dev)
+Gate 3: Development Complete
+Gate 4: QA Validation
+Gate 4.5: Dev Fix (if rejected)
+Gate 5: Code Review
+Gate 6: Merge Preparation
+Gate 7: Final Approval
+```
+
+### Signal File Location
+All signals go to: `/workspace/.claude/`
+
+---
+
+## QA REJECTION PROTOCOL
+
+When you are the QA agent and find issues that require rejection:
+
+### 1. Run All Validations First
+```bash
+{{PACKAGE_MANAGER}} install
+{{PACKAGE_MANAGER}} build          # Must exit 0
+{{PACKAGE_MANAGER}} typecheck      # Must have 0 errors
+{{PACKAGE_MANAGER}} lint           # Must have 0 errors
+{{PACKAGE_MANAGER}} test --coverage # Must pass with >=80% coverage
+```
+
+### 2. Rejection Thresholds
+**REJECT if ANY of these are true:**
+- Build fails (exit code != 0)
+- TypeScript errors > 0
+- ESLint errors > 0
+- Any test fails
+- Coverage < 80%
+- Any HIGH severity issue exists
+- Security vulnerability found
+
+### 3. Create Rejection Signal
+Save to: `/workspace/.claude/signal-wave[N]-gate4-rejected.json`
+
+```json
+{
+    "wave": [WAVE_NUMBER],
+    "gate": 4,
+    "decision": "REJECTED",
+    "rejection_count": [READ FROM PREVIOUS + 1, OR 1 IF FIRST],
+    "max_retries": 3,
+    "validations": {
+        "build": {"status": "PASS|FAIL", "exit_code": N},
+        "typecheck": {"status": "PASS|FAIL", "errors": N},
+        "lint": {"status": "PASS|FAIL", "errors": N},
+        "test": {"status": "PASS|FAIL", "passed": N, "failed": N, "coverage": N}
+    },
+    "issues": [
+        {
+            "id": "QA-001",
+            "severity": "HIGH|MEDIUM|LOW",
+            "category": "test_failure|typescript|lint|coverage|security|logic",
+            "file": "path/to/file.ts",
+            "line": 45,
+            "description": "Clear description",
+            "suggested_fix": "How to fix it"
+        }
+    ],
+    "return_to_gate": 2,
+    "token_usage": {
+        "input_tokens": N,
+        "output_tokens": N,
+        "total_tokens": N,
+        "estimated_cost_usd": N.NN,
+        "model": "claude-sonnet-4-20250514"
+    },
+    "agent": "[YOUR_AGENT_NAME]",
+    "timestamp": "[ISO_TIMESTAMP]"
+}
+```
+
+### 4. Create Approval Signal (When Passing)
+Save to: `/workspace/.claude/signal-wave[N]-gate4-approved.json`
+
+---
+
+## DEV-FIX AGENT PROTOCOL
+
+If you are the dev-fix agent (Gate 4.5):
+
+1. **Read the rejection signal:**
+   ```bash
+   cat /workspace/.claude/signal-wave${WAVE}-gate4-rejected.json
+   ```
+
+2. **Fix each issue in the `issues` array**
+
+3. **Run all validations to verify fixes**
+
+4. **Create fixed signal:**
+   Save to: `/workspace/.claude/signal-wave${WAVE}-gate4.5-fixed.json`
+
+---
+
+## TOKEN COST TRACKING
+
+**ALL agents MUST include token usage in every signal file.**
+
+### Required Fields
+```json
+"token_usage": {
+    "input_tokens": [YOUR_INPUT_TOKENS],
+    "output_tokens": [YOUR_OUTPUT_TOKENS],
+    "total_tokens": [INPUT + OUTPUT],
+    "estimated_cost_usd": [CALCULATED_COST],
+    "model": "claude-sonnet-4-20250514"
+}
+```
+
+### Cost Calculation (Sonnet 4)
+```
+cost = (input_tokens * 3.00 / 1,000,000) + (output_tokens * 15.00 / 1,000,000)
+```
+
+### Budget Limits
+- **Wave Budget:** ~${{WAVE_BUDGET}} per wave
+- **Story Budget:** ~${{STORY_BUDGET}} per story
+
+---
+
+## COMPLETION CHECKLIST
+
+Before signaling completion:
+- [ ] All assigned tasks completed
+- [ ] Tests pass locally
+- [ ] No TypeScript errors
+- [ ] No ESLint errors
+- [ ] Signal file created in correct location
+- [ ] **Token usage included in signal**
+- [ ] Checked for EMERGENCY-STOP file
+
+---
+
+*WAVE Framework | {{PROJECT_NAME}} | Generated {{TIMESTAMP}}*

@@ -1,0 +1,59 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# WAVE FRAMEWORK - Agent Dockerfile
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Creates a Docker image for WAVE agents with:
+# - Non-root user (REQUIRED for --dangerously-skip-permissions)
+# - Claude Code CLI pre-installed
+# - Git configured for agent commits
+# - Proper workspace structure
+#
+# Protocol References:
+# - Non-root user requirement (root is blocked from skip-permissions)
+# - Workspace isolation for each agent
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+
+FROM node:20-slim
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y \
+    curl \
+    git \
+    jq \
+    bc \
+    && rm -rf /var/lib/apt/lists/*
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Create non-root user (REQUIRED)
+# Root user is BLOCKED from using --dangerously-skip-permissions
+# ─────────────────────────────────────────────────────────────────────────────
+RUN useradd -m -s /bin/bash waveagent && \
+    mkdir -p /workspace/.claude && \
+    mkdir -p /workspace/code && \
+    mkdir -p /workspace/scripts && \
+    mkdir -p /workspace/stories && \
+    mkdir -p /workspace/worktrees && \
+    chown -R waveagent:waveagent /workspace
+
+# Install Claude Code CLI globally
+RUN npm install -g @anthropic-ai/claude-code
+
+# Configure git for waveagent
+RUN su - waveagent -c "git config --global user.email 'wave-agent@automation.local'" && \
+    su - waveagent -c "git config --global user.name 'WAVE Agent'" && \
+    su - waveagent -c "git config --global init.defaultBranch main"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Switch to non-root user
+# ─────────────────────────────────────────────────────────────────────────────
+USER waveagent
+WORKDIR /workspace
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD [ "claude", "--version" ] || exit 1
+
+# Default command (will be overridden by docker-compose)
+CMD ["bash"]
