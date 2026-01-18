@@ -345,11 +345,107 @@ When creating a new agent from this template:
 □ Add to docker-compose.yml
 □ Create worktree branch
 □ Test in isolation
+□ Configure RLM memory settings
 ```
 
 ---
 
-**Template Version:** 1.0.0
-**Last Updated:** 2026-01-16
+## RLM Context Query Interface
 
-*WAVE Framework | Agent Template | For use with WAVE 1.0.0+*
+Use the RLM (Recursive Language Model) system to efficiently query project context without filling your prompt with file contents.
+
+### Query the P Variable
+```bash
+# Load the P variable
+source .claude/P.json
+
+# Or use the query interface directly
+./core/scripts/rlm/query-variable.py --p-file .claude/P.json
+```
+
+### Available Query Functions
+```python
+# Peek at file contents (loads only when needed)
+peek(P, 'path/to/file.ts')
+
+# Search for patterns across codebase
+search(P, 'pattern')
+search(P, 'interface.*Props')
+
+# List files matching pattern
+list_files(P, '*.test.ts')
+list_files(P, 'src/**/*.tsx')
+
+# Get story details
+get_story(P, 'WAVE[N]-[DOMAIN]-001')
+
+# Get signal information
+get_signal(P, 'wave[N]-gate[G]')
+
+# Get agent memory
+get_memory(P, '[AGENT_ID]', [WAVE])
+```
+
+### Memory Persistence
+
+Save important decisions to survive context resets:
+```bash
+# Save a decision
+./core/scripts/rlm/memory-manager.sh save \
+    --project . --wave $WAVE --agent [AGENT_ID] \
+    --decision "Description of decision made"
+
+# Add a constraint discovered during work
+./core/scripts/rlm/memory-manager.sh add-constraint \
+    --project . --wave $WAVE --agent [AGENT_ID] \
+    --constraint "Constraint description"
+
+# Add a pattern discovered in codebase
+./core/scripts/rlm/memory-manager.sh add-pattern \
+    --project . --wave $WAVE --agent [AGENT_ID] \
+    --pattern "Pattern description"
+
+# Load previous memory (on context reset)
+./core/scripts/rlm/memory-manager.sh load \
+    --project . --wave $WAVE --agent [AGENT_ID]
+
+# Get summary of all memory
+./core/scripts/rlm/memory-manager.sh summary \
+    --project . --wave $WAVE --agent [AGENT_ID]
+```
+
+### Sub-LLM Delegation
+
+Delegate focused tasks to cheaper models for cost optimization:
+```bash
+# Delegate a focused task to Haiku
+./core/scripts/rlm/sub-llm-dispatch.py \
+    --task "Extract all function names" \
+    --context path/to/file.ts \
+    --model haiku
+
+# Use P variable for context
+./core/scripts/rlm/sub-llm-dispatch.py \
+    --task "Find authentication patterns" \
+    --p-file .claude/P.json \
+    --query "src/auth/" \
+    --model haiku
+
+# Batch multiple tasks
+./core/scripts/rlm/sub-llm-dispatch.py \
+    --batch tasks.json \
+    --model haiku
+```
+
+### Benefits
+- **80%+ token reduction** - Query only what you need
+- **No context rot** - Fresh state each query
+- **Recovery on reset** - Memory persists across sessions
+- **Cost optimization** - Delegate simple tasks to cheaper models
+
+---
+
+**Template Version:** 1.1.0 (RLM)
+**Last Updated:** 2026-01-18
+
+*WAVE Framework | Agent Template | For use with WAVE 1.0.0+ / RLM V12.2*

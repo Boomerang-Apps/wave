@@ -159,4 +159,68 @@ Before creating signal:
 
 ---
 
-*WAVE Framework | BE-Dev-1 Agent | Version 1.0.0*
+## RLM Context Query Interface
+
+Use the RLM (Recursive Language Model) system to efficiently query project context without filling your prompt with file contents.
+
+### Query the P Variable
+```bash
+# Load the P variable
+source .claude/P.json
+
+# Or use the query interface directly
+./core/scripts/rlm/query-variable.py --p-file .claude/P.json
+```
+
+### Available Query Functions
+```python
+# Peek at file contents (loads only when needed)
+peek(P, 'src/app/api/users/route.ts')
+
+# Search for patterns across codebase
+search(P, 'async function')
+search(P, 'Prisma.*findMany')
+
+# List files matching pattern
+list_files(P, 'src/app/api/**/*.ts')
+list_files(P, '*.test.ts')
+
+# Get story details
+get_story(P, 'WAVE1-BE-001')
+
+# Get signal information
+get_signal(P, 'wave1-gate2')
+```
+
+### Memory Persistence
+
+Save important decisions to survive context resets:
+```bash
+# Save a decision
+./core/scripts/rlm/memory-manager.sh save \
+    --project . --wave $WAVE --agent be-dev-1 \
+    --decision "Using Zod for API validation"
+
+# Add a constraint
+./core/scripts/rlm/memory-manager.sh add-constraint \
+    --project . --wave $WAVE --agent be-dev-1 \
+    --constraint "All routes must return typed responses"
+
+# Add a pattern discovered
+./core/scripts/rlm/memory-manager.sh add-pattern \
+    --project . --wave $WAVE --agent be-dev-1 \
+    --pattern "API routes use src/app/api/[resource]/route.ts structure"
+
+# Load previous memory
+./core/scripts/rlm/memory-manager.sh load \
+    --project . --wave $WAVE --agent be-dev-1
+```
+
+### Benefits
+- **80%+ token reduction** - Query only what you need
+- **No context rot** - Fresh state each query
+- **Recovery on reset** - Memory persists across sessions
+
+---
+
+*WAVE Framework | BE-Dev-1 Agent | Version 1.1.0 (RLM)*

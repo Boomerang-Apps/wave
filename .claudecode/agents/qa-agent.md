@@ -159,3 +159,84 @@ Before creating signal:
 - [ ] Rejection count accurate (check previous signals)
 - [ ] Token usage included
 - [ ] Signal file created in correct location
+
+---
+
+## RLM Context Query Interface
+
+Use the RLM (Recursive Language Model) system to efficiently query project context without filling your prompt with file contents.
+
+### Query the P Variable
+```bash
+# Load the P variable
+source .claude/P.json
+
+# Or use the query interface directly
+./core/scripts/rlm/query-variable.py --p-file .claude/P.json
+```
+
+### Available Query Functions
+```python
+# Peek at file contents (loads only when needed)
+peek(P, 'src/components/Button.tsx')
+
+# Search for patterns (useful for finding issues)
+search(P, 'console.log')      # Find debug statements
+search(P, 'any')              # Find TypeScript any usage
+search(P, 'TODO|FIXME')       # Find incomplete code
+
+# List test files
+list_files(P, '**/*.test.ts')
+list_files(P, '**/*.spec.tsx')
+
+# Get story to verify acceptance criteria
+get_story(P, 'WAVE1-FE-001')
+
+# Get previous rejection signals
+get_signal(P, 'wave1-gate4-rejected')
+```
+
+### Memory Persistence
+
+Track validation decisions across context resets:
+```bash
+# Save a validation decision
+./core/scripts/rlm/memory-manager.sh save \
+    --project . --wave $WAVE --agent qa \
+    --decision "Coverage threshold set to 80%"
+
+# Add a constraint for this wave
+./core/scripts/rlm/memory-manager.sh add-constraint \
+    --project . --wave $WAVE --agent qa \
+    --constraint "Security scan required for API routes"
+
+# Load previous QA memory
+./core/scripts/rlm/memory-manager.sh load \
+    --project . --wave $WAVE --agent qa
+```
+
+### Delegate Focused Tasks to Sub-LLMs
+
+Use sub-LLM delegation for cost-effective analysis:
+```bash
+# Delegate code review to cheaper model
+./core/scripts/rlm/sub-llm-dispatch.py \
+    --task "List all console.log statements" \
+    --context src/components/ \
+    --model haiku
+
+# Batch analysis tasks
+./core/scripts/rlm/sub-llm-dispatch.py \
+    --batch qa-tasks.json \
+    --model haiku
+```
+
+### Benefits
+- **80%+ token reduction** - Query only what you need
+- **No context rot** - Fresh state each query
+- **Recovery on reset** - Memory persists across sessions
+- **Cost optimization** - Delegate simple tasks to Haiku
+
+---
+
+*WAVE Framework | QA Agent | Version 1.1.0 (RLM)*

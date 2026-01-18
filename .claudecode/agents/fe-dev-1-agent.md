@@ -129,4 +129,63 @@ Before creating signal:
 
 ---
 
-*WAVE Framework | FE-Dev-1 Agent | Version 1.0.0*
+## RLM Context Query Interface
+
+Use the RLM (Recursive Language Model) system to efficiently query project context without filling your prompt with file contents.
+
+### Query the P Variable
+```bash
+# Load the P variable
+source .claude/P.json
+
+# Or use the query interface directly
+./core/scripts/rlm/query-variable.py --p-file .claude/P.json
+```
+
+### Available Query Functions
+```python
+# Peek at file contents (loads only when needed)
+peek(P, 'src/components/Header.tsx')
+
+# Search for patterns across codebase
+search(P, 'useState')
+search(P, 'interface.*Props')
+
+# List files matching pattern
+list_files(P, '*.test.tsx')
+list_files(P, 'src/components/**/*.tsx')
+
+# Get story details
+get_story(P, 'WAVE1-FE-001')
+
+# Get signal information
+get_signal(P, 'wave1-gate2')
+```
+
+### Memory Persistence
+
+Save important decisions to survive context resets:
+```bash
+# Save a decision
+./core/scripts/rlm/memory-manager.sh save \
+    --project . --wave $WAVE --agent fe-dev-1 \
+    --decision "Using React Query for data fetching"
+
+# Add a constraint
+./core/scripts/rlm/memory-manager.sh add-constraint \
+    --project . --wave $WAVE --agent fe-dev-1 \
+    --constraint "No inline styles - use Tailwind only"
+
+# Load previous memory
+./core/scripts/rlm/memory-manager.sh load \
+    --project . --wave $WAVE --agent fe-dev-1
+```
+
+### Benefits
+- **80%+ token reduction** - Query only what you need
+- **No context rot** - Fresh state each query
+- **Recovery on reset** - Memory persists across sessions
+
+---
+
+*WAVE Framework | FE-Dev-1 Agent | Version 1.1.0 (RLM)*
