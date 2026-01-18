@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════════════════════
-# WAVE MERGE WATCHER V12.0 - PROJECT-AGNOSTIC
+# WAVE MERGE WATCHER V12.1 - PROJECT-AGNOSTIC WITH RLM INTEGRATION
 # ═══════════════════════════════════════════════════════════════════════════════
 # Enhanced merge watcher with:
 # - Dynamic wave support (--wave flag or WAVE env var)
@@ -8,6 +8,13 @@
 # - Worktree sync before QA
 # - Comprehensive Slack notifications
 # - Token tracking integration
+# - RLM (Recursive Language Model) integration for context management
+#
+# RLM FEATURES:
+# - Generates P variable (project state) for agent queries
+# - Updates P after worktree sync (codebase changed)
+# - Snapshots P at wave completion for recovery
+# - Tracks context hashes for change detection
 #
 # USAGE:
 #   ./merge-watcher-v12.sh --project /path/to/project --wave 4
@@ -24,7 +31,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WAVE_ROOT="${WAVE_ROOT:-$(dirname $(dirname "$SCRIPT_DIR"))}"
 
 show_usage() {
-    echo "WAVE Merge Watcher V12.0"
+    echo "WAVE Merge Watcher V12.1 (with RLM)"
     echo ""
     echo "Usage: $0 --project <path> [options]"
     echo ""
@@ -35,17 +42,25 @@ show_usage() {
     echo "  -w, --wave <number>     Wave number to watch (default: 1, or WAVE env var)"
     echo "  -t, --type <type>       Wave type: FE_ONLY, BE_ONLY, FULL (auto-detected if not set)"
     echo "  -i, --interval <secs>   Poll interval in seconds (default: 10)"
+    echo "  --no-rlm                Disable RLM (Recursive Language Model) integration"
     echo "  -h, --help              Show this help message"
+    echo ""
+    echo "RLM Integration:"
+    echo "  When enabled (default), merge-watcher generates a P variable containing"
+    echo "  project state that agents can query without loading full context."
+    echo "  P variable is stored at: <project>/.claude/P.json"
     echo ""
     echo "Examples:"
     echo "  $0 --project /path/to/my-app --wave 3"
     echo "  $0 -p /path/to/my-app -w 4 -t FE_ONLY"
+    echo "  $0 -p /path/to/my-app -w 3 --no-rlm"
     echo ""
     echo "Environment variables (can override flags):"
     echo "  WAVE           Wave number"
     echo "  WAVE_TYPE      Wave type (FE_ONLY, BE_ONLY, FULL)"
     echo "  POLL_INTERVAL  Poll interval in seconds"
     echo "  MAX_RETRIES    Maximum QA retry attempts"
+    echo "  RLM_ENABLED    Set to 'false' to disable RLM"
 }
 
 PROJECT_ROOT=""
@@ -53,6 +68,7 @@ WAVE="${WAVE:-1}"
 WAVE_TYPE="${WAVE_TYPE:-}"
 POLL_INTERVAL="${POLL_INTERVAL:-10}"
 MAX_RETRIES="${MAX_RETRIES:-3}"
+RLM_CLI_DISABLED=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -71,6 +87,10 @@ while [[ $# -gt 0 ]]; do
         -i|--interval)
             POLL_INTERVAL="$2"
             shift 2
+            ;;
+        --no-rlm)
+            RLM_CLI_DISABLED=true
+            shift
             ;;
         -h|--help)
             show_usage
@@ -208,18 +228,121 @@ log_error() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+# RLM (RECURSIVE LANGUAGE MODEL) INTEGRATION
+# ─────────────────────────────────────────────────────────────────────────────
+# RLM enables agents to query project state as external variable P
+# instead of loading full codebase into context.
+# Based on MIT CSAIL research (arXiv:2512.24601)
+
+RLM_DIR="$SCRIPT_DIR/rlm"
+
+# Determine RLM status (priority: CLI flag > env var > auto-detect)
+if [ "$RLM_CLI_DISABLED" = "true" ]; then
+    RLM_ENABLED=false
+elif [ "${RLM_ENABLED:-}" = "false" ]; then
+    RLM_ENABLED=false
+else
+    RLM_ENABLED=true
+fi
+
+# Check if RLM scripts exist
+if [ "$RLM_ENABLED" = "true" ] && [ ! -f "$RLM_DIR/load-project-variable.sh" ]; then
+    log_warn "RLM scripts not found at $RLM_DIR - RLM features disabled"
+    RLM_ENABLED=false
+fi
+
+# Generate/update the P variable for this project
+update_rlm_variable() {
+    if [ "$RLM_ENABLED" != "true" ]; then
+        return 0
+    fi
+
+    local output_file="${PROJECT_ROOT}/.claude/P.json"
+
+    log_info "Updating RLM variable (P)..."
+
+    # Ensure .claude directory exists
+    mkdir -p "${PROJECT_ROOT}/.claude"
+
+    if "$RLM_DIR/load-project-variable.sh" \
+        --project "$PROJECT_ROOT" \
+        --wave "$WAVE" \
+        --output "$output_file" 2>/dev/null; then
+        log_success "RLM variable updated: $output_file"
+        return 0
+    else
+        log_warn "Failed to update RLM variable"
+        return 1
+    fi
+}
+
+# Snapshot P variable at checkpoints (for recovery)
+snapshot_rlm_variable() {
+    if [ "$RLM_ENABLED" != "true" ]; then
+        return 0
+    fi
+
+    local checkpoint_name="$1"
+    local source_file="${PROJECT_ROOT}/.claude/P.json"
+    local snapshot_dir="${PROJECT_ROOT}/.claude/rlm-snapshots"
+    local snapshot_file="${snapshot_dir}/P-wave${WAVE}-${checkpoint_name}-$(date +%Y%m%d-%H%M%S).json"
+
+    if [ ! -f "$source_file" ]; then
+        log_warn "No P.json to snapshot"
+        return 1
+    fi
+
+    mkdir -p "$snapshot_dir"
+    cp "$source_file" "$snapshot_file"
+    log_info "RLM snapshot created: $(basename "$snapshot_file")"
+    return 0
+}
+
+# Get context hash for signal files
+get_context_hash() {
+    if [ "$RLM_ENABLED" != "true" ]; then
+        echo "rlm-disabled"
+        return
+    fi
+
+    local p_file="${PROJECT_ROOT}/.claude/P.json"
+
+    if [ -f "$p_file" ]; then
+        # Extract context_hash from P.json
+        local hash=$(grep -o '"context_hash"[[:space:]]*:[[:space:]]*"[^"]*"' "$p_file" 2>/dev/null | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+        if [ -n "$hash" ]; then
+            echo "$hash"
+            return
+        fi
+    fi
+
+    # Fallback: generate quick hash from key directories
+    local hash=""
+    for dir in src lib app components stories; do
+        if [ -d "${PROJECT_ROOT}/${dir}" ]; then
+            local dir_hash=$(find "${PROJECT_ROOT}/${dir}" -type f -exec stat -f '%m' {} \; 2>/dev/null | sort | md5 | head -c 8)
+            hash="${hash}${dir}:${dir_hash},"
+        fi
+    done
+    echo "${hash%,}"
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # HEADER
 # ─────────────────────────────────────────────────────────────────────────────
 
 echo ""
 echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
-echo -e "${CYAN} MERGE WATCHER V12.0 - WITH WORKTREE SYNC${NC}"
+echo -e "${CYAN} MERGE WATCHER V12.1 - WITH WORKTREE SYNC + RLM${NC}"
 echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
 echo ""
+echo -e "  ${BLUE}Project:${NC}        $(basename "$PROJECT_ROOT")"
 echo -e "  ${BLUE}Wave:${NC}           $WAVE"
+echo -e "  ${BLUE}Wave Type:${NC}      $WAVE_TYPE"
 echo -e "  ${BLUE}Signal Dir:${NC}     $PROJECT_ROOT/$SIGNAL_DIR"
 echo -e "  ${BLUE}Poll Interval:${NC}  ${POLL_INTERVAL}s"
 echo -e "  ${BLUE}Max Retries:${NC}    $MAX_RETRIES"
+echo -e "  ${BLUE}RLM Enabled:${NC}    $RLM_ENABLED"
 echo ""
 echo -e "${CYAN}───────────────────────────────────────────────────────────────${NC}"
 
@@ -236,6 +359,14 @@ case "$WAVE_TYPE" in
     *)       REQUIRED_SIGNALS="gate3-fe-complete + gate3-be-complete" ;;
 esac
 log_info "Required signals: $REQUIRED_SIGNALS"
+
+# Initialize RLM variable at startup
+if [ "$RLM_ENABLED" = "true" ]; then
+    log_info "RLM integration enabled"
+    update_rlm_variable
+    CONTEXT_HASH=$(get_context_hash)
+    log_info "Initial context hash: $CONTEXT_HASH"
+fi
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SIGNAL CHECKING FUNCTIONS
@@ -354,6 +485,14 @@ sync_worktrees() {
         slack_worktree_sync "$WAVE" "SUCCESS" "FE+BE merged to main, QA updated"
     fi
 
+    # RLM: Update P variable after sync (codebase has changed)
+    if [ "$RLM_ENABLED" = "true" ]; then
+        log_info "Updating RLM variable after worktree sync..."
+        update_rlm_variable
+        CONTEXT_HASH=$(get_context_hash)
+        log_info "Post-sync context hash: $CONTEXT_HASH"
+    fi
+
     log_success "Worktree synchronization complete!"
 }
 
@@ -412,6 +551,13 @@ handle_qa_approved() {
         slack_wave_complete "$WAVE" "$STORY_COUNT" "N/A" "N/A" "N/A"
     fi
 
+    # RLM: Snapshot P variable at wave completion (for recovery/history)
+    if [ "$RLM_ENABLED" = "true" ]; then
+        log_info "Creating RLM snapshot at wave completion..."
+        snapshot_rlm_variable "complete"
+        log_info "Final context hash: $(get_context_hash)"
+    fi
+
     log_success "Wave $WAVE complete!"
     exit 0
 }
@@ -445,14 +591,22 @@ handle_qa_rejected() {
     # Archive rejection and prepare for retry
     mv "$rejection_file" "$SIGNAL_DIR/archive/rejection-wave${WAVE}-attempt${RETRY_COUNT}-$(date +%Y%m%d-%H%M%S).json" 2>/dev/null || true
 
-    # Create retry signal
+    # Create retry signal (with context hash for RLM tracking)
+    local retry_context_hash=""
+    if [ "$RLM_ENABLED" = "true" ]; then
+        retry_context_hash=$(get_context_hash)
+        # Update RLM variable before retry
+        update_rlm_variable
+    fi
+
     cat > "$SIGNAL_DIR/signal-wave${WAVE}-gate4.5-retry.json" <<EOF
 {
   "signal": "gate4.5-retry",
   "wave": $WAVE,
   "attempt": $RETRY_COUNT,
   "max_retries": $MAX_RETRIES,
-  "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+  "context_hash": "${retry_context_hash:-unknown}"
 }
 EOF
 
