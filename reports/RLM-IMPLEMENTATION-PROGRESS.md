@@ -10,12 +10,12 @@
 Phase 1: Foundation     [████████████████████] 100% COMPLETE
 Phase 2: Integration    [████████████████████] 100% COMPLETE
 Phase 3: Memory         [████████████████████] 100% COMPLETE
-Phase 4: Recovery       [░░░░░░░░░░░░░░░░░░░░]   0% PENDING
+Phase 4: Recovery       [████████████████████] 100% COMPLETE
 Phase 5: Sub-LLM        [░░░░░░░░░░░░░░░░░░░░]   0% PENDING
 Phase 6: Agent Update   [░░░░░░░░░░░░░░░░░░░░]   0% PENDING
 Phase 7: Testing        [░░░░░░░░░░░░░░░░░░░░]   0% PENDING
 ─────────────────────────────────────────────────────────────
-TOTAL                   [████████████░░░░░░░░]  43% (3/7 phases)
+TOTAL                   [████████████████░░░░]  57% (4/7 phases)
 ```
 
 ---
@@ -48,14 +48,14 @@ TOTAL                   [████████████░░░░░░�
 | 3.4 | Implement load_memory() in bash | ✅ DONE | Part of memory-manager.sh |
 | 3.5 | Add memory dir creation to merge-watcher | ✅ DONE | `.claude/agent-memory/` |
 
-### Phase 4: Snapshot/Recovery (PENDING)
+### Phase 4: Snapshot/Recovery (COMPLETE)
 | # | Task | Status | File |
 |---|------|--------|------|
-| 4.1 | Create snapshot-variable.sh | ⬜ TODO | `core/scripts/rlm/snapshot-variable.sh` |
-| 4.2 | Create restore-variable.sh | ⬜ TODO | `core/scripts/rlm/restore-variable.sh` |
-| 4.3 | Implement checkpoint naming | ⬜ TODO | `P-wave${N}-${checkpoint}-*.json` |
-| 4.4 | Add restore on sync failure | ⬜ TODO | In merge-watcher sync_worktrees() |
-| 4.5 | Implement snapshot cleanup | ⬜ TODO | Keep last N snapshots |
+| 4.1 | Create snapshot-variable.sh | ✅ DONE | `core/scripts/rlm/snapshot-variable.sh` |
+| 4.2 | Create restore-variable.sh | ✅ DONE | `core/scripts/rlm/restore-variable.sh` |
+| 4.3 | Implement checkpoint naming | ✅ DONE | `P-wave${N}-${checkpoint}-*.json` |
+| 4.4 | Add restore on sync failure | ✅ DONE | `restore_rlm_from_snapshot()` in merge-watcher |
+| 4.5 | Implement snapshot cleanup | ✅ DONE | `--cleanup --keep N` flag |
 
 ### Phase 5: Sub-LLM Delegation (PENDING)
 | # | Task | Status | File |
@@ -90,12 +90,12 @@ TOTAL                   [████████████░░░░░░�
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  NEXT: Phase 4.1 - Create snapshot-variable.sh              │
+│  NEXT: Phase 5.1 - Create sub-llm-dispatch.py               │
 │                                                             │
 │  This script will:                                          │
-│  - Create named snapshots of P variable                     │
-│  - Enable recovery from failed syncs                        │
-│  - Support checkpoint naming (pre-qa, post-sync, etc.)      │
+│  - Delegate focused tasks to sub-LLMs                       │
+│  - Support model selection (haiku for cheaper tasks)        │
+│  - Extract answers via FINAL() protocol                     │
 └─────────────────────────────────────────────────────────────┘
 ```
 

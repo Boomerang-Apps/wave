@@ -420,6 +420,17 @@ check_emergency_stop() {
 sync_worktrees() {
     log_info "Starting worktree synchronization..."
 
+    # RLM: Create snapshot before sync (for recovery if sync fails)
+    if [ "$RLM_ENABLED" = "true" ]; then
+        log_info "Creating pre-sync RLM snapshot..."
+        if [ -f "$RLM_DIR/snapshot-variable.sh" ]; then
+            "$RLM_DIR/snapshot-variable.sh" \
+                --project "$PROJECT_ROOT" \
+                --wave "$WAVE" \
+                --checkpoint pre-sync 2>/dev/null || log_warn "Failed to create pre-sync snapshot"
+        fi
+    fi
+
     # 1. Commit FE-Dev changes
     log_info "Committing FE-Dev changes..."
     if [ -d "worktrees/fe-dev" ]; then
@@ -493,9 +504,42 @@ sync_worktrees() {
         update_rlm_variable
         CONTEXT_HASH=$(get_context_hash)
         log_info "Post-sync context hash: $CONTEXT_HASH"
+
+        # Create post-sync snapshot
+        if [ -f "$RLM_DIR/snapshot-variable.sh" ]; then
+            "$RLM_DIR/snapshot-variable.sh" \
+                --project "$PROJECT_ROOT" \
+                --wave "$WAVE" \
+                --checkpoint post-sync 2>/dev/null || log_warn "Failed to create post-sync snapshot"
+        fi
     fi
 
     log_success "Worktree synchronization complete!"
+}
+
+# Restore P variable from pre-sync snapshot (called on sync failure)
+restore_rlm_from_snapshot() {
+    if [ "$RLM_ENABLED" != "true" ]; then
+        return 0
+    fi
+
+    log_warn "Attempting to restore P variable from pre-sync snapshot..."
+
+    if [ -f "$RLM_DIR/restore-variable.sh" ]; then
+        if "$RLM_DIR/restore-variable.sh" \
+            --project "$PROJECT_ROOT" \
+            --wave "$WAVE" \
+            --checkpoint pre-sync 2>/dev/null; then
+            log_success "P variable restored from pre-sync snapshot"
+            return 0
+        else
+            log_error "Failed to restore P variable from snapshot"
+            return 1
+        fi
+    else
+        log_warn "restore-variable.sh not found"
+        return 1
+    fi
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
