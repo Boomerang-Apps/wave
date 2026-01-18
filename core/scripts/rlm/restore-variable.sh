@@ -12,7 +12,7 @@
 #   ./restore-variable.sh --project /path --wave $N --checkpoint pre-sync
 #
 #   # Restore from specific file
-#   ./restore-variable.sh --project /path --wave $N --file P-wave3-pre-sync-20260118-153000.json
+#   ./restore-variable.sh --project /path --wave $N --file P-waveN-pre-sync-20260118-153000.json
 #
 #   # Dry run (show what would be restored)
 #   ./restore-variable.sh --project /path --wave $N --latest --dry-run
