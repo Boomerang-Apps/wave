@@ -214,19 +214,15 @@ validate_story() {
     # CHECK 6: Objective structure (as_a, i_want, so_that)
     # ─────────────────────────────────────────────────────────────────────────
     if jq -e '.objective' "$story_file" >/dev/null 2>&1; then
-        local has_as_a=$(jq -e '.objective.as_a' "$story_file" 2>/dev/null && echo "yes" || echo "no")
-        local has_i_want=$(jq -e '.objective.i_want' "$story_file" 2>/dev/null && echo "yes" || echo "no")
-        local has_so_that=$(jq -e '.objective.so_that' "$story_file" 2>/dev/null && echo "yes" || echo "no")
-
-        if [ "$has_as_a" != "yes" ]; then
+        if ! jq -e '.objective.as_a' "$story_file" >/dev/null 2>&1; then
             errors+=("Missing objective.as_a")
             [ "$verbose" = "true" ] && log_fail "Missing objective.as_a"
         fi
-        if [ "$has_i_want" != "yes" ]; then
+        if ! jq -e '.objective.i_want' "$story_file" >/dev/null 2>&1; then
             errors+=("Missing objective.i_want")
             [ "$verbose" = "true" ] && log_fail "Missing objective.i_want"
         fi
-        if [ "$has_so_that" != "yes" ]; then
+        if ! jq -e '.objective.so_that' "$story_file" >/dev/null 2>&1; then
             errors+=("Missing objective.so_that")
             [ "$verbose" = "true" ] && log_fail "Missing objective.so_that"
         fi
