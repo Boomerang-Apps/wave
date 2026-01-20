@@ -1,6 +1,6 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════════════════════
-# WAVE MERGE WATCHER V12.1 - PROJECT-AGNOSTIC WITH RLM INTEGRATION
+# WAVE MERGE WATCHER V12.2 - WITH RLM + BUILDING BLOCK ENFORCEMENT
 # ═══════════════════════════════════════════════════════════════════════════════
 # Enhanced merge watcher with:
 # - Dynamic wave support (--wave flag or WAVE env var)
@@ -9,6 +9,7 @@
 # - Comprehensive Slack notifications
 # - Token tracking integration
 # - RLM (Recursive Language Model) integration for context management
+# - Building Block Validation System (hard enforcement with locks)
 #
 # RLM FEATURES:
 # - Generates P variable (project state) for agent queries
@@ -16,9 +17,17 @@
 # - Snapshots P at wave completion for recovery
 # - Tracks context hashes for change detection
 #
+# BUILDING BLOCKS:
+# - Phase 0 (Stories) lock required before starting
+# - Phase 2 (Smoke Test) lock required before development signals
+# - Phase 3 (Dev Complete) lock required before worktree sync
+# - Phase 4 (QA/Merge) lock required before final merge
+# - Drift detection auto-invalidates downstream locks
+#
 # USAGE:
 #   ./merge-watcher-v12.sh --project /path/to/project --wave 4
 #   ./merge-watcher-v12.sh -p /path/to/project -w 4
+#   ./merge-watcher-v12.sh -p /path/to/project -w 4 --no-building-blocks
 #
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -31,7 +40,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WAVE_ROOT="${WAVE_ROOT:-$(dirname $(dirname "$SCRIPT_DIR"))}"
 
 show_usage() {
-    echo "WAVE Merge Watcher V12.1 (with RLM)"
+    echo "WAVE Merge Watcher V12.2 (with RLM + Building Blocks)"
     echo ""
     echo "Usage: $0 --project <path> [options]"
     echo ""
@@ -43,6 +52,7 @@ show_usage() {
     echo "  -t, --type <type>       Wave type: FE_ONLY, BE_ONLY, FULL (auto-detected if not set)"
     echo "  -i, --interval <secs>   Poll interval in seconds (default: 10)"
     echo "  --no-rlm                Disable RLM (Recursive Language Model) integration"
+    echo "  --no-building-blocks    Disable Building Block enforcement (not recommended)"
     echo "  -h, --help              Show this help message"
     echo ""
     echo "RLM Integration:"
@@ -50,17 +60,26 @@ show_usage() {
     echo "  project state that agents can query without loading full context."
     echo "  P variable is stored at: <project>/.claude/P.json"
     echo ""
+    echo "Building Block Enforcement:"
+    echo "  When enabled (default), merge-watcher requires phase locks to proceed:"
+    echo "  - Phase 0 (Stories) must pass before watching signals"
+    echo "  - Phase 2 (Smoke Test) must pass before development"
+    echo "  - Phase 3 (Dev Complete) must pass before worktree sync"
+    echo "  - Phase 4 (QA/Merge) must pass before final merge"
+    echo ""
     echo "Examples:"
     echo "  $0 --project /path/to/my-app --wave 3"
     echo "  $0 -p /path/to/my-app -w 4 -t FE_ONLY"
     echo "  $0 -p /path/to/my-app -w 3 --no-rlm"
+    echo "  $0 -p /path/to/my-app -w 3 --no-building-blocks"
     echo ""
     echo "Environment variables (can override flags):"
-    echo "  WAVE           Wave number"
-    echo "  WAVE_TYPE      Wave type (FE_ONLY, BE_ONLY, FULL)"
-    echo "  POLL_INTERVAL  Poll interval in seconds"
-    echo "  MAX_RETRIES    Maximum QA retry attempts"
-    echo "  RLM_ENABLED    Set to 'false' to disable RLM"
+    echo "  WAVE                   Wave number"
+    echo "  WAVE_TYPE              Wave type (FE_ONLY, BE_ONLY, FULL)"
+    echo "  POLL_INTERVAL          Poll interval in seconds"
+    echo "  MAX_RETRIES            Maximum QA retry attempts"
+    echo "  RLM_ENABLED            Set to 'false' to disable RLM"
+    echo "  BUILDING_BLOCKS_ENABLED Set to 'false' to disable Building Blocks"
 }
 
 PROJECT_ROOT=""
@@ -69,6 +88,7 @@ WAVE_TYPE="${WAVE_TYPE:-}"
 POLL_INTERVAL="${POLL_INTERVAL:-10}"
 MAX_RETRIES="${MAX_RETRIES:-3}"
 RLM_CLI_DISABLED=false
+BUILDING_BLOCKS_CLI_DISABLED=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -90,6 +110,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --no-rlm)
             RLM_CLI_DISABLED=true
+            shift
+            ;;
+        --no-building-blocks)
+            BUILDING_BLOCKS_CLI_DISABLED=true
             shift
             ;;
         -h|--help)
@@ -330,21 +354,143 @@ get_context_hash() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+# BUILDING BLOCKS INTEGRATION (Hard Enforcement)
+# ─────────────────────────────────────────────────────────────────────────────
+# Building Blocks provide phase-gate validation with lock files and drift detection.
+# Each phase must pass before proceeding to the next.
+
+BUILDING_BLOCKS_DIR="$SCRIPT_DIR/building-blocks"
+
+# Determine Building Blocks status (priority: CLI flag > env var > auto-detect)
+if [ "$BUILDING_BLOCKS_CLI_DISABLED" = "true" ]; then
+    BUILDING_BLOCKS_ENABLED=false
+elif [ "${BUILDING_BLOCKS_ENABLED:-}" = "false" ]; then
+    BUILDING_BLOCKS_ENABLED=false
+else
+    BUILDING_BLOCKS_ENABLED=true
+fi
+
+# Check if Building Blocks scripts exist
+if [ "$BUILDING_BLOCKS_ENABLED" = "true" ] && [ ! -f "$BUILDING_BLOCKS_DIR/lock-manager.sh" ]; then
+    log_warn "Building Blocks scripts not found at $BUILDING_BLOCKS_DIR - enforcement disabled"
+    BUILDING_BLOCKS_ENABLED=false
+fi
+
+# Validate a specific phase lock
+validate_phase_lock() {
+    local phase=$1
+    local silent=${2:-false}
+
+    if [ "$BUILDING_BLOCKS_ENABLED" != "true" ]; then
+        return 0  # Skip validation if disabled
+    fi
+
+    if "$BUILDING_BLOCKS_DIR/lock-manager.sh" validate \
+        --project "$PROJECT_ROOT" \
+        --wave "$WAVE" \
+        --phase "$phase" >/dev/null 2>&1; then
+        return 0
+    else
+        if [ "$silent" != "true" ]; then
+            local phase_names=("Stories" "Environment" "Smoke Test" "Development" "QA/Merge")
+            log_error "Phase $phase (${phase_names[$phase]}) lock is INVALID or MISSING"
+            log_error "Run: ./building-blocks/phase${phase}-validator.sh --project $PROJECT_ROOT --wave $WAVE"
+        fi
+        return 1
+    fi
+}
+
+# Check for drift and report
+check_building_block_drift() {
+    if [ "$BUILDING_BLOCKS_ENABLED" != "true" ]; then
+        return 0
+    fi
+
+    log_info "Checking for drift..."
+    if "$BUILDING_BLOCKS_DIR/drift-detector.sh" check \
+        --project "$PROJECT_ROOT" \
+        --wave "$WAVE" >/dev/null 2>&1; then
+        log_success "No drift detected"
+        return 0
+    else
+        log_warn "Drift detected - some locks may be invalid"
+        return 1
+    fi
+}
+
+# Run a phase validator and create lock
+run_phase_validator() {
+    local phase=$1
+
+    if [ "$BUILDING_BLOCKS_ENABLED" != "true" ]; then
+        return 0
+    fi
+
+    local validator="$BUILDING_BLOCKS_DIR/phase${phase}-validator.sh"
+    if [ -x "$validator" ]; then
+        log_info "Running Phase $phase validator..."
+        if "$validator" --project "$PROJECT_ROOT" --wave "$WAVE"; then
+            log_success "Phase $phase validation PASSED"
+            return 0
+        else
+            log_error "Phase $phase validation FAILED"
+            return 1
+        fi
+    else
+        log_warn "Phase $phase validator not found: $validator"
+        return 0  # Don't block if validator doesn't exist
+    fi
+}
+
+# Enforce all prerequisite phases
+enforce_prerequisites() {
+    if [ "$BUILDING_BLOCKS_ENABLED" != "true" ]; then
+        return 0
+    fi
+
+    log_info "Enforcing Building Block prerequisites..."
+
+    # Phase 0: Stories must be validated
+    if ! validate_phase_lock 0 "true"; then
+        log_warn "Phase 0 (Stories) lock not found - running validator..."
+        if ! run_phase_validator 0; then
+            log_error "Cannot proceed - Phase 0 (Stories) validation failed"
+            log_error "Fix story issues and re-run"
+            return 1
+        fi
+    else
+        log_success "Phase 0 (Stories) lock valid"
+    fi
+
+    # Phase 2: Smoke Test should pass (warn if not, don't block)
+    if ! validate_phase_lock 2 "true"; then
+        log_warn "Phase 2 (Smoke Test) lock not found"
+        log_warn "Development may proceed but smoke test should be validated"
+        log_warn "Run: ./building-blocks/phase2-validator.sh --project $PROJECT_ROOT --wave $WAVE"
+    else
+        log_success "Phase 2 (Smoke Test) lock valid"
+    fi
+
+    return 0
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # HEADER
 # ─────────────────────────────────────────────────────────────────────────────
 
 echo ""
 echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
-echo -e "${CYAN} MERGE WATCHER V12.1 - WITH WORKTREE SYNC + RLM${NC}"
+echo -e "${CYAN} MERGE WATCHER V12.2 - WITH RLM + BUILDING BLOCKS${NC}"
 echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
 echo ""
-echo -e "  ${BLUE}Project:${NC}        $(basename "$PROJECT_ROOT")"
-echo -e "  ${BLUE}Wave:${NC}           $WAVE"
-echo -e "  ${BLUE}Wave Type:${NC}      $WAVE_TYPE"
-echo -e "  ${BLUE}Signal Dir:${NC}     $PROJECT_ROOT/$SIGNAL_DIR"
-echo -e "  ${BLUE}Poll Interval:${NC}  ${POLL_INTERVAL}s"
-echo -e "  ${BLUE}Max Retries:${NC}    $MAX_RETRIES"
-echo -e "  ${BLUE}RLM Enabled:${NC}    $RLM_ENABLED"
+echo -e "  ${BLUE}Project:${NC}            $(basename "$PROJECT_ROOT")"
+echo -e "  ${BLUE}Wave:${NC}               $WAVE"
+echo -e "  ${BLUE}Wave Type:${NC}          $WAVE_TYPE"
+echo -e "  ${BLUE}Signal Dir:${NC}         $PROJECT_ROOT/$SIGNAL_DIR"
+echo -e "  ${BLUE}Poll Interval:${NC}      ${POLL_INTERVAL}s"
+echo -e "  ${BLUE}Max Retries:${NC}        $MAX_RETRIES"
+echo -e "  ${BLUE}RLM Enabled:${NC}        $RLM_ENABLED"
+echo -e "  ${BLUE}Building Blocks:${NC}    $BUILDING_BLOCKS_ENABLED"
 echo ""
 echo -e "${CYAN}───────────────────────────────────────────────────────────────${NC}"
 
@@ -368,6 +514,27 @@ if [ "$RLM_ENABLED" = "true" ]; then
     update_rlm_variable
     CONTEXT_HASH=$(get_context_hash)
     log_info "Initial context hash: $CONTEXT_HASH"
+fi
+
+# Enforce Building Block prerequisites at startup
+if [ "$BUILDING_BLOCKS_ENABLED" = "true" ]; then
+    log_info "Building Blocks enforcement enabled"
+
+    # Check for drift first
+    check_building_block_drift
+
+    # Enforce prerequisites (Phase 0 required, Phase 2 recommended)
+    if ! enforce_prerequisites; then
+        log_error "Building Block prerequisites not met - cannot start"
+        log_error "Fix the issues above and restart merge-watcher"
+        exit 1
+    fi
+
+    # Show current lock status
+    log_info "Current lock status:"
+    "$BUILDING_BLOCKS_DIR/lock-manager.sh" status \
+        --project "$PROJECT_ROOT" \
+        --wave "$WAVE" 2>/dev/null || true
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -554,6 +721,24 @@ handle_gate3_complete() {
         slack_gate_transition "$WAVE" "3" "3.5" "COMPLETE"
     fi
 
+    # BUILDING BLOCKS: Validate Phase 3 before sync
+    if [ "$BUILDING_BLOCKS_ENABLED" = "true" ]; then
+        log_info "Validating Phase 3 (Development Complete)..."
+
+        # Run Phase 3 validator (checks signals, git status, escalations)
+        if ! run_phase_validator 3; then
+            log_error "Phase 3 validation FAILED - cannot sync worktrees"
+            log_error "Ensure all completion signals are valid and no escalations pending"
+            return 1
+        fi
+
+        # Verify lock was created
+        if ! validate_phase_lock 3; then
+            log_error "Phase 3 lock not created - sync blocked"
+            return 1
+        fi
+    fi
+
     # CRITICAL: Sync worktrees before QA
     log_info "Starting worktree sync (Gate 3.5)..."
     sync_worktrees
@@ -563,6 +748,26 @@ handle_gate3_complete() {
 
 handle_qa_approved() {
     log_success "QA Approved! Wave $WAVE passed validation"
+
+    # BUILDING BLOCKS: Validate Phase 4 before final merge
+    if [ "$BUILDING_BLOCKS_ENABLED" = "true" ]; then
+        log_info "Validating Phase 4 (QA/Merge)..."
+
+        # Run Phase 4 validator (checks QA approval, tests, escalations)
+        if ! run_phase_validator 4; then
+            log_error "Phase 4 validation FAILED - cannot merge"
+            log_error "Ensure QA approval signal is valid and all tests pass"
+            return 1
+        fi
+
+        # Verify lock was created
+        if ! validate_phase_lock 4; then
+            log_error "Phase 4 lock not created - merge blocked"
+            return 1
+        fi
+
+        log_success "All Building Block phases PASSED - merge approved"
+    fi
 
     # Send notification
     if type slack_qa_approved &>/dev/null; then
@@ -602,6 +807,14 @@ handle_qa_approved() {
         log_info "Creating RLM snapshot at wave completion..."
         snapshot_rlm_variable "complete"
         log_info "Final context hash: $(get_context_hash)"
+    fi
+
+    # BUILDING BLOCKS: Final lock status
+    if [ "$BUILDING_BLOCKS_ENABLED" = "true" ]; then
+        log_info "Final Building Block status:"
+        "$BUILDING_BLOCKS_DIR/lock-manager.sh" status \
+            --project "$PROJECT_ROOT" \
+            --wave "$WAVE" 2>/dev/null || true
     fi
 
     log_success "Wave $WAVE complete!"
