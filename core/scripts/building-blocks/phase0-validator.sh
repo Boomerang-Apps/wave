@@ -2,27 +2,40 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 # WAVE BUILDING BLOCKS: PHASE 0 VALIDATOR (Stories)
 # ═══════════════════════════════════════════════════════════════════════════════
-# Validates that AI Stories are properly created before any work begins.
+# Validates that AI Stories conform to Schema V4 before any work begins.
 # Creates PHASE0 lock file upon successful validation.
+#
+# SCHEMA V4 ENFORCEMENT (HARD):
+#   Required fields: id, title, domain, objective, acceptance_criteria, files, safety
 #
 # VALIDATION CHECKS:
 #   1. Story directory exists
 #   2. At least 1 story file for the wave
 #   3. All story files are valid JSON
-#   4. Required fields present (id, title, domain, acceptance_criteria)
-#   5. Story IDs are unique
-#   6. Acceptance criteria are defined
+#   4. Schema V4 required fields present
+#   5. ID format matches pattern (WAVE#-XX-### or XXX-XX-###)
+#   6. Title starts with action verb
+#   7. Objective has as_a/i_want/so_that
+#   8. Acceptance criteria has minimum 3 items with AC-### IDs
+#   9. Files section includes forbidden list
+#  10. Safety section includes stop_conditions
+#  11. Story IDs are unique
 #
 # USAGE:
 #   ./phase0-validator.sh --project <path> --wave <N>
 #   ./phase0-validator.sh --project <path> --wave <N> --dry-run
+#   ./phase0-validator.sh --project <path> --wave <N> --lenient  # Skip strict validation
 #
 # ═══════════════════════════════════════════════════════════════════════════════
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPT_VERSION="1.0.0"
+WAVE_ROOT="${WAVE_ROOT:-$(dirname $(dirname $(dirname "$SCRIPT_DIR")))}"
+SCRIPT_VERSION="2.0.0"
+
+# Schema file location
+SCHEMA_FILE="$WAVE_ROOT/.claudecode/stories/ai-story-schema-v4.json"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # COLORS
@@ -53,7 +66,8 @@ show_usage() {
     cat << 'EOF'
 WAVE Building Blocks: Phase 0 Validator (Stories)
 
-Validates AI Stories before development begins.
+Validates AI Stories against Schema V4 before development begins.
+HARD ENFORCEMENT: Stories must conform to Schema V4 structure.
 
 Usage: phase0-validator.sh [options]
 
@@ -65,26 +79,49 @@ Optional:
   --dry-run               Check without creating lock file
   --verbose               Show detailed validation output
   --allow-empty           Allow wave with no stories (for testing)
+  --lenient               Downgrade schema errors to warnings (not recommended)
+
+Schema V4 Required Fields:
+  - id                    Story ID (WAVE#-XX-### or XXX-XX-###)
+  - title                 Action-oriented title (Create, Add, Update, etc.)
+  - domain                Business domain (auth, client, payment, etc.)
+  - objective             User story (as_a, i_want, so_that)
+  - acceptance_criteria   At least 3 items with AC-### IDs
+  - files                 Including files.forbidden list
+  - safety                Including safety.stop_conditions (min 3)
 
 Exit Codes:
   0  - All checks passed, lock created
   1  - Validation failed
 
 Examples:
-  # Validate wave 3 stories
+  # Validate wave 3 stories (strict)
   ./phase0-validator.sh -p /path/to/project -w 3
 
-  # Dry run (no lock created)
-  ./phase0-validator.sh -p /path/to/project -w 3 --dry-run
+  # Verbose output
+  ./phase0-validator.sh -p /path/to/project -w 3 --verbose
+
+  # Lenient mode (warnings only)
+  ./phase0-validator.sh -p /path/to/project -w 3 --lenient
 
 EOF
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# REQUIRED STORY FIELDS
+# SCHEMA V4 REQUIRED FIELDS (HARD ENFORCEMENT)
 # ─────────────────────────────────────────────────────────────────────────────
-# Note: 'domain' or 'agent' field indicates the responsible team
-REQUIRED_FIELDS=("id" "title")
+# Top-level required fields
+REQUIRED_FIELDS=("id" "title" "domain" "objective" "acceptance_criteria" "files" "safety")
+
+# Valid action verbs for title
+VALID_TITLE_VERBS="^(Create|Add|Update|Fix|Remove|Implement|Configure|Enable|Disable|Refactor|Migrate|Build|Setup|Initialize|Delete|Modify|Connect|Integrate)"
+
+# Valid domains from schema
+VALID_DOMAINS="auth|client|pilot|project|proposal|messaging|payment|deliverables|admin|layout|general|public"
+
+# ID patterns (either format accepted)
+ID_PATTERN_WAVE="^WAVE[0-9]+-[A-Z]+-[0-9]+$"
+ID_PATTERN_DOMAIN="^[A-Z]+-[A-Z]+-[0-9]{3}$"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # FIND STORY FILES
@@ -105,14 +142,18 @@ find_story_files() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# VALIDATE SINGLE STORY
+# VALIDATE SINGLE STORY (SCHEMA V4 HARD ENFORCEMENT)
 # ─────────────────────────────────────────────────────────────────────────────
 validate_story() {
     local story_file=$1
     local verbose=$2
+    local lenient=$3
     local errors=()
+    local warnings=()
 
-    # Check 1: Valid JSON
+    # ─────────────────────────────────────────────────────────────────────────
+    # CHECK 1: Valid JSON
+    # ─────────────────────────────────────────────────────────────────────────
     if ! jq empty "$story_file" 2>/dev/null; then
         errors+=("Invalid JSON syntax")
         [ "$verbose" = "true" ] && log_fail "Invalid JSON: $story_file"
@@ -120,46 +161,160 @@ validate_story() {
         return 1
     fi
 
-    # Check 2: Required fields
+    # ─────────────────────────────────────────────────────────────────────────
+    # CHECK 2: Required top-level fields
+    # ─────────────────────────────────────────────────────────────────────────
     for field in "${REQUIRED_FIELDS[@]}"; do
         if ! jq -e ".$field" "$story_file" >/dev/null 2>&1; then
-            errors+=("Missing field: $field")
-            [ "$verbose" = "true" ] && log_fail "Missing '$field' in $story_file"
+            errors+=("Missing required field: $field")
+            [ "$verbose" = "true" ] && log_fail "Missing '$field'"
         fi
     done
 
-    # Check 3: Acceptance criteria (can be in different formats)
-    local has_ac=false
-    if jq -e '.acceptance_criteria' "$story_file" >/dev/null 2>&1; then
-        has_ac=true
-    elif jq -e '.acceptanceCriteria' "$story_file" >/dev/null 2>&1; then
-        has_ac=true
-    elif jq -e '.ac' "$story_file" >/dev/null 2>&1; then
-        has_ac=true
-    fi
-
-    if [ "$has_ac" = "false" ]; then
-        errors+=("Missing acceptance_criteria")
-        [ "$verbose" = "true" ] && log_fail "Missing acceptance criteria in $story_file"
-    fi
-
-    # Check 4: ID format (should match wave)
+    # ─────────────────────────────────────────────────────────────────────────
+    # CHECK 3: ID format validation
+    # ─────────────────────────────────────────────────────────────────────────
     local story_id=$(jq -r '.id // ""' "$story_file")
     if [ -z "$story_id" ]; then
         errors+=("Empty story ID")
+    elif [[ ! "$story_id" =~ $ID_PATTERN_WAVE ]] && [[ ! "$story_id" =~ $ID_PATTERN_DOMAIN ]]; then
+        errors+=("Invalid ID format: '$story_id' (expected WAVE#-XX-### or XXX-XX-###)")
+        [ "$verbose" = "true" ] && log_fail "ID '$story_id' doesn't match pattern"
     fi
 
-    # Check 5: Domain/Agent must be valid (accepts either field name)
-    local domain=$(jq -r '.domain // .agent // ""' "$story_file")
-    case "$domain" in
-        frontend|backend|fullstack|qa|devops|fe-dev|be-dev|"")
-            # Valid domains/agents
-            ;;
-        *)
-            # Allow other domains but warn
-            [ "$verbose" = "true" ] && log_warn "Non-standard domain/agent '$domain' in $story_file"
-            ;;
-    esac
+    # ─────────────────────────────────────────────────────────────────────────
+    # CHECK 4: Title format (must start with action verb)
+    # ─────────────────────────────────────────────────────────────────────────
+    local title=$(jq -r '.title // ""' "$story_file")
+    if [ -n "$title" ]; then
+        if [[ ! "$title" =~ $VALID_TITLE_VERBS ]]; then
+            errors+=("Title must start with action verb (Create, Add, Update, Fix, etc.)")
+            [ "$verbose" = "true" ] && log_fail "Title '$title' doesn't start with action verb"
+        fi
+        local title_len=${#title}
+        if [ "$title_len" -lt 10 ]; then
+            errors+=("Title too short (min 10 chars, got $title_len)")
+        elif [ "$title_len" -gt 100 ]; then
+            errors+=("Title too long (max 100 chars, got $title_len)")
+        fi
+    fi
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # CHECK 5: Domain validation
+    # ─────────────────────────────────────────────────────────────────────────
+    local domain=$(jq -r '.domain // ""' "$story_file")
+    if [ -n "$domain" ]; then
+        if [[ ! "$domain" =~ ^($VALID_DOMAINS)$ ]]; then
+            warnings+=("Non-standard domain: '$domain'")
+            [ "$verbose" = "true" ] && log_warn "Domain '$domain' not in standard list"
+        fi
+    fi
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # CHECK 6: Objective structure (as_a, i_want, so_that)
+    # ─────────────────────────────────────────────────────────────────────────
+    if jq -e '.objective' "$story_file" >/dev/null 2>&1; then
+        local has_as_a=$(jq -e '.objective.as_a' "$story_file" 2>/dev/null && echo "yes" || echo "no")
+        local has_i_want=$(jq -e '.objective.i_want' "$story_file" 2>/dev/null && echo "yes" || echo "no")
+        local has_so_that=$(jq -e '.objective.so_that' "$story_file" 2>/dev/null && echo "yes" || echo "no")
+
+        if [ "$has_as_a" != "yes" ]; then
+            errors+=("Missing objective.as_a")
+            [ "$verbose" = "true" ] && log_fail "Missing objective.as_a"
+        fi
+        if [ "$has_i_want" != "yes" ]; then
+            errors+=("Missing objective.i_want")
+            [ "$verbose" = "true" ] && log_fail "Missing objective.i_want"
+        fi
+        if [ "$has_so_that" != "yes" ]; then
+            errors+=("Missing objective.so_that")
+            [ "$verbose" = "true" ] && log_fail "Missing objective.so_that"
+        fi
+    fi
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # CHECK 7: Acceptance criteria (minimum 3, with AC-### IDs)
+    # ─────────────────────────────────────────────────────────────────────────
+    if jq -e '.acceptance_criteria' "$story_file" >/dev/null 2>&1; then
+        local ac_count=$(jq '.acceptance_criteria | length' "$story_file" 2>/dev/null || echo 0)
+        if [ "$ac_count" -lt 3 ]; then
+            errors+=("Acceptance criteria must have at least 3 items (found $ac_count)")
+            [ "$verbose" = "true" ] && log_fail "Only $ac_count acceptance criteria (min 3)"
+        fi
+
+        # Check if AC items are objects (Schema V4) or strings (legacy)
+        local first_ac_type=$(jq -r '.acceptance_criteria[0] | type' "$story_file" 2>/dev/null || echo "unknown")
+
+        if [ "$first_ac_type" = "object" ]; then
+            # Schema V4 format: objects with id/description
+            local ac_with_id=$(jq '[.acceptance_criteria[] | select(type == "object" and .id != null and .description != null)] | length' "$story_file" 2>/dev/null || echo 0)
+            if [ "$ac_with_id" -lt "$ac_count" ]; then
+                errors+=("Each acceptance_criteria must have 'id' and 'description' fields")
+                [ "$verbose" = "true" ] && log_fail "Some acceptance criteria missing id/description"
+            fi
+
+            # Validate AC ID format (AC-###)
+            local invalid_ac_ids=$(jq -r '.acceptance_criteria[] | select(type == "object") | .id // "missing" | select(test("^AC-[0-9]+$") | not)' "$story_file" 2>/dev/null | head -3)
+            if [ -n "$invalid_ac_ids" ]; then
+                errors+=("Acceptance criteria IDs must match AC-### format")
+                [ "$verbose" = "true" ] && log_fail "Invalid AC IDs found"
+            fi
+        elif [ "$first_ac_type" = "string" ]; then
+            # Legacy format: array of strings - not Schema V4 compliant
+            errors+=("Acceptance criteria must be objects with 'id' and 'description' (found strings)")
+            [ "$verbose" = "true" ] && log_fail "AC items are strings, not objects (Schema V4 requires objects)"
+        fi
+    fi
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # CHECK 8: Files section (must have forbidden list)
+    # ─────────────────────────────────────────────────────────────────────────
+    if jq -e '.files' "$story_file" >/dev/null 2>&1; then
+        if ! jq -e '.files.forbidden' "$story_file" >/dev/null 2>&1; then
+            errors+=("Missing files.forbidden (required for safety)")
+            [ "$verbose" = "true" ] && log_fail "Missing files.forbidden"
+        else
+            local forbidden_count=$(jq '.files.forbidden | length' "$story_file")
+            if [ "$forbidden_count" -lt 1 ]; then
+                errors+=("files.forbidden must have at least 1 entry")
+                [ "$verbose" = "true" ] && log_fail "files.forbidden is empty"
+            fi
+        fi
+    fi
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # CHECK 9: Safety section (must have stop_conditions)
+    # ─────────────────────────────────────────────────────────────────────────
+    if jq -e '.safety' "$story_file" >/dev/null 2>&1; then
+        if ! jq -e '.safety.stop_conditions' "$story_file" >/dev/null 2>&1; then
+            errors+=("Missing safety.stop_conditions")
+            [ "$verbose" = "true" ] && log_fail "Missing safety.stop_conditions"
+        else
+            local stop_count=$(jq '.safety.stop_conditions | length' "$story_file")
+            if [ "$stop_count" -lt 3 ]; then
+                errors+=("safety.stop_conditions must have at least 3 entries (found $stop_count)")
+                [ "$verbose" = "true" ] && log_fail "Only $stop_count stop conditions (min 3)"
+            fi
+        fi
+    fi
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # RESULT
+    # ─────────────────────────────────────────────────────────────────────────
+    # In lenient mode, convert errors to warnings
+    if [ "$lenient" = "true" ]; then
+        for err in "${errors[@]}"; do
+            warnings+=("$err")
+        done
+        errors=()
+    fi
+
+    # Show warnings
+    if [ "$verbose" = "true" ] && [ ${#warnings[@]} -gt 0 ]; then
+        for warn in "${warnings[@]}"; do
+            log_warn "$warn"
+        done
+    fi
 
     if [ ${#errors[@]} -gt 0 ]; then
         echo "${errors[*]}"
@@ -177,6 +332,7 @@ run_validation() {
     local wave=$2
     local verbose=$3
     local allow_empty=$4
+    local lenient=$5
 
     local all_passed=true
     local checks_json="{}"
@@ -188,6 +344,13 @@ run_validation() {
     echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
     echo -e "${CYAN} PHASE 0 VALIDATION: STORIES (Wave $wave)${NC}"
     echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    echo -e "  ${BOLD}Schema:${NC}  V4 (Hard Enforcement)"
+    if [ "$lenient" = "true" ]; then
+        echo -e "  ${YELLOW}${BOLD}Mode:${NC}    ${YELLOW}LENIENT (errors → warnings)${NC}"
+    else
+        echo -e "  ${BOLD}Mode:${NC}    STRICT (all checks enforced)"
+    fi
     echo ""
 
     cd "$project_root"
@@ -236,7 +399,7 @@ run_validation() {
             [ -z "$story_file" ] && continue
 
             local filename=$(basename "$story_file")
-            local errors=$(validate_story "$story_file" "$verbose")
+            local errors=$(validate_story "$story_file" "$verbose" "$lenient")
 
             if [ -z "$errors" ]; then
                 log_pass "$filename"
@@ -312,6 +475,7 @@ WAVE=""
 DRY_RUN=false
 VERBOSE=false
 ALLOW_EMPTY=false
+LENIENT=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -333,6 +497,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --allow-empty)
             ALLOW_EMPTY=true
+            shift
+            ;;
+        --lenient)
+            LENIENT=true
             shift
             ;;
         -h|--help)
@@ -370,7 +538,7 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────
 # RUN VALIDATION
 # ─────────────────────────────────────────────────────────────────────────────
-checks_result=$(run_validation "$PROJECT_ROOT" "$WAVE" "$VERBOSE" "$ALLOW_EMPTY")
+checks_result=$(run_validation "$PROJECT_ROOT" "$WAVE" "$VERBOSE" "$ALLOW_EMPTY" "$LENIENT")
 validation_exit_code=$?
 
 # Extract JSON from output (line with JSON_OUTPUT: prefix)
