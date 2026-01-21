@@ -3,9 +3,10 @@
 # WAVE BUILDING BLOCKS: PHASE ORCHESTRATOR
 # ═══════════════════════════════════════════════════════════════════════════════
 # Master orchestrator that runs phase validators in sequence and enforces
-# the building block workflow.
+# the building block workflow with circuit breaker protection.
 #
 # PHASES:
+#  -1 - Pre-Validation (pre-validate.sh) - Zero Error Launch Protocol (Gate -1)
 #   0 - Pre-Flight     (pre-flight.sh) - Stories, Gap Analysis, Wave Planning, Green Light
 #   1 - Infrastructure (phase1-validator.sh) - 10 Ping tests (Slack, Docker, APIs, etc.)
 #   2 - Smoke Test     (phase2-validator.sh) - Build, Lint, Test, TypeCheck
@@ -22,6 +23,7 @@
 #   - Each phase MUST pass before proceeding
 #   - Lock files track completed phases
 #   - Drift detection invalidates downstream locks
+#   - Circuit breaker halts on repeated failures
 #   - NO WARNINGS - only PASS or FAIL
 #
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -47,6 +49,7 @@ NC='\033[0m'
 # PHASE DEFINITIONS
 # ─────────────────────────────────────────────────────────────────────────────
 declare -A PHASE_NAMES=(
+    [-1]="Pre-Validation"
     [0]="Pre-Flight"
     [1]="Infrastructure"
     [2]="Smoke Test"
@@ -55,6 +58,7 @@ declare -A PHASE_NAMES=(
 )
 
 declare -A PHASE_VALIDATORS=(
+    [-1]="pre-validate.sh"
     [0]="../pre-flight.sh"
     [1]="phase1-validator.sh"
     [2]="phase2-validator.sh"
@@ -62,8 +66,8 @@ declare -A PHASE_VALIDATORS=(
     [4]="phase4-validator.sh"
 )
 
-# Active phases (all phases)
-ACTIVE_PHASES=(0 1 2 3 4)
+# Active phases (Gate -1 through Phase 4)
+ACTIVE_PHASES=(-1 0 1 2 3 4)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # LOGGING
@@ -81,7 +85,15 @@ show_usage() {
     cat << 'EOF'
 WAVE Building Blocks: Phase Orchestrator
 
-Master orchestrator that runs phase validators in sequence.
+Master orchestrator that runs phase validators in sequence with circuit breaker protection.
+
+PHASES:
+  -1  Pre-Validation  (Gate -1) - Zero Error Launch Protocol
+   0  Pre-Flight      (Phase 0) - Stories, Gap Analysis, Wave Planning
+   1  Infrastructure  (Phase 1) - 10 Ping Tests (Slack, Docker, APIs)
+   2  Smoke Test      (Phase 2) - Build, Lint, Test, TypeCheck
+   3  Development     (Phase 3) - Agent completion signals
+   4  QA/Merge        (Phase 4) - QA approval, merge to main
 
 Usage: phase-orchestrator.sh [options]
 
@@ -90,11 +102,11 @@ Required Options:
   -w, --wave <number>     Wave number to validate
 
 Run Mode Options (pick one):
-  --run-all               Run all phases (0 → 1 → 2 → 3 → 4)
-  --up-to <phase>         Run phases up to and including <phase>
+  --run-all               Run all phases (-1 → 0 → 1 → 2 → 3 → 4)
+  --up-to <phase>         Run phases from -1 up to and including <phase>
   --from <phase>          Run from <phase> to phase 4
-  --phase <phase>         Run only specific phase
-  --status                Show current lock status only
+  --phase <phase>         Run only specific phase (use -1 for Pre-Validation)
+  --status                Show current lock and circuit breaker status
 
 Optional:
   --dry-run               Check without creating lock files
@@ -106,23 +118,23 @@ Optional:
 
 Exit Codes:
   0  - All requested phases passed
-  1  - One or more phases failed
+  1  - One or more phases failed (or circuit breaker tripped)
   2  - Invalid arguments or configuration
 
 Examples:
-  # Run all phases for wave 3
+  # Run all phases for wave 3 (includes Gate -1 Pre-Validation)
   ./phase-orchestrator.sh -p /path/to/project -w 3 --run-all
 
-  # Run phases 0 and 2 only
-  ./phase-orchestrator.sh -p /path/to/project -w 3 --up-to 2
+  # Run only Gate -1 Pre-Validation
+  ./phase-orchestrator.sh -p /path/to/project -w 3 --phase -1
 
-  # Run from phase 2 onwards (assumes 0 is done)
+  # Run phases up to Infrastructure (Gate -1, Phase 0, Phase 1)
+  ./phase-orchestrator.sh -p /path/to/project -w 3 --up-to 1
+
+  # Run from phase 2 onwards (assumes -1, 0, 1 done)
   ./phase-orchestrator.sh -p /path/to/project -w 3 --from 2
 
-  # Run only phase 0
-  ./phase-orchestrator.sh -p /path/to/project -w 3 --phase 0
-
-  # Check status
+  # Check status (includes circuit breaker)
   ./phase-orchestrator.sh -p /path/to/project -w 3 --status
 
   # Force re-run all phases
@@ -149,6 +161,23 @@ print_banner() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+# CHECK CIRCUIT BREAKER
+# ─────────────────────────────────────────────────────────────────────────────
+check_circuit_breaker() {
+    local project_root=$1
+    local wave=$2
+
+    local circuit_breaker="$SCRIPT_DIR/circuit-breaker.sh"
+    if [ -x "$circuit_breaker" ]; then
+        if ! "$circuit_breaker" check --project "$project_root" --wave "$wave" 2>/dev/null; then
+            log_error "CIRCUIT BREAKER TRIPPED - Halting orchestration"
+            return 1
+        fi
+    fi
+    return 0
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # RUN SINGLE PHASE
 # ─────────────────────────────────────────────────────────────────────────────
 run_phase() {
@@ -166,6 +195,11 @@ run_phase() {
     echo -e "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${MAGENTA}  PHASE $phase: $phase_name${NC}"
     echo -e "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+    # Check circuit breaker before each phase
+    if ! check_circuit_breaker "$project_root" "$wave"; then
+        return 1
+    fi
 
     if [ -z "$validator" ]; then
         log_warn "Phase $phase ($phase_name) - SKIPPED (no validator)"
@@ -407,13 +441,17 @@ fi
 case $RUN_MODE in
     status)
         "$SCRIPT_DIR/lock-manager.sh" status --project "$PROJECT_ROOT" --wave "$WAVE"
+        # Also show circuit breaker status
+        "$SCRIPT_DIR/circuit-breaker.sh" status --project "$PROJECT_ROOT" --wave "$WAVE" 2>/dev/null || true
         exit 0
         ;;
     all)
-        run_phases "$PROJECT_ROOT" "$WAVE" 0 4 "$DRY_RUN" "$VERBOSE" "$EXTRA_ARGS"
+        # Run all phases from Gate -1 (Pre-Validation) through Phase 4
+        run_phases "$PROJECT_ROOT" "$WAVE" -1 4 "$DRY_RUN" "$VERBOSE" "$EXTRA_ARGS"
         ;;
     up-to)
-        run_phases "$PROJECT_ROOT" "$WAVE" 0 "$TARGET_PHASE" "$DRY_RUN" "$VERBOSE" "$EXTRA_ARGS"
+        # Start from Gate -1 (Pre-Validation) through the target phase
+        run_phases "$PROJECT_ROOT" "$WAVE" -1 "$TARGET_PHASE" "$DRY_RUN" "$VERBOSE" "$EXTRA_ARGS"
         ;;
     from)
         run_phases "$PROJECT_ROOT" "$WAVE" "$TARGET_PHASE" 4 "$DRY_RUN" "$VERBOSE" "$EXTRA_ARGS"
