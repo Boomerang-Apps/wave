@@ -6,11 +6,11 @@
 # the building block workflow.
 #
 # PHASES:
-#   0 - Stories      (phase0-validator.sh)
-#   1 - Environment  (SKIPPED for now)
-#   2 - Smoke Test   (phase2-validator.sh)
-#   3 - Development  (phase3-validator.sh)
-#   4 - QA/Merge     (phase4-validator.sh)
+#   0 - Pre-Flight     (pre-flight.sh) - Stories, Gap Analysis, Wave Planning, Green Light
+#   1 - Infrastructure (phase1-validator.sh) - 10 Ping tests (Slack, Docker, APIs, etc.)
+#   2 - Smoke Test     (phase2-validator.sh) - Build, Lint, Test, TypeCheck
+#   3 - Development    (phase3-validator.sh) - Agent completion signals
+#   4 - QA/Merge       (phase4-validator.sh) - QA approval, merge to main
 #
 # USAGE:
 #   ./phase-orchestrator.sh --project <path> --wave <N> --run-all
@@ -47,23 +47,23 @@ NC='\033[0m'
 # PHASE DEFINITIONS
 # ─────────────────────────────────────────────────────────────────────────────
 declare -A PHASE_NAMES=(
-    [0]="Stories"
-    [1]="Environment"
+    [0]="Pre-Flight"
+    [1]="Infrastructure"
     [2]="Smoke Test"
     [3]="Development"
     [4]="QA/Merge"
 )
 
 declare -A PHASE_VALIDATORS=(
-    [0]="phase0-validator.sh"
-    [1]=""  # Skipped for now
+    [0]="../pre-flight.sh"
+    [1]="phase1-validator.sh"
     [2]="phase2-validator.sh"
     [3]="phase3-validator.sh"
     [4]="phase4-validator.sh"
 )
 
-# Active phases (skipping phase 1)
-ACTIVE_PHASES=(0 2 3 4)
+# Active phases (all phases)
+ACTIVE_PHASES=(0 1 2 3 4)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # LOGGING
@@ -90,7 +90,7 @@ Required Options:
   -w, --wave <number>     Wave number to validate
 
 Run Mode Options (pick one):
-  --run-all               Run all phases (0 → 2 → 3 → 4)
+  --run-all               Run all phases (0 → 1 → 2 → 3 → 4)
   --up-to <phase>         Run phases up to and including <phase>
   --from <phase>          Run from <phase> to phase 4
   --phase <phase>         Run only specific phase
