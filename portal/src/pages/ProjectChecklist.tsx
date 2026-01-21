@@ -436,7 +436,7 @@ export function ProjectChecklist() {
                 if (supabaseConnected && project) {
                   (async () => {
                     try {
-                      await supabase
+                      const { error } = await supabase
                         .from('maf_analysis_reports')
                         .upsert({
                           project_id: project.id,
@@ -446,9 +446,16 @@ export function ProjectChecklist() {
                           total_gaps: transformedReport.summary.total_gaps,
                           created_at: transformedReport.timestamp,
                         }, { onConflict: 'project_id,report_type' })
-                      console.log('Analysis saved to database')
+
+                      if (error) {
+                        console.error('Database save error:', error)
+                        alert(`Failed to save analysis to database: ${error.message}\n\nMake sure maf_analysis_reports table exists in Supabase.`)
+                      } else {
+                        console.log('Analysis saved to database (SOURCE OF TRUTH)')
+                      }
                     } catch (err) {
                       console.error('Error saving analysis:', err)
+                      alert('Failed to save analysis - check console for details')
                     }
                   })()
                 }
@@ -649,7 +656,7 @@ export function ProjectChecklist() {
       setStoriesCount(newCount || 0)
     } catch (error) {
       console.error('Sync error:', error)
-      setSyncMessage('Sync failed - is the analysis server running?')
+      setSyncMessage('Sync failed - run "npm run server" locally')
     } finally {
       setSyncingStories(false)
     }
