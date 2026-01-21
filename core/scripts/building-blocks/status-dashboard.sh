@@ -963,63 +963,84 @@ render_html() {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WAVE Status Dashboard - ${project_name} Wave ${WAVE_NUMBER}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #1a1a2e;
-            --card-bg: #16213e;
-            --border-color: #0f3460;
-            --text-color: #eee;
-            --text-muted: #888;
-            --pass-color: #00d26a;
-            --fail-color: #ff6b6b;
-            --blocked-color: #feca57;
-            --pending-color: #576574;
-            --drift-color: #ff9f43;
+            --background: #ffffff;
+            --foreground: #0a0a0a;
+            --card: #ffffff;
+            --card-foreground: #0a0a0a;
+            --border: #e5e5e5;
+            --muted: #f5f5f5;
+            --muted-foreground: #737373;
+            --accent: #f5f5f5;
+            --success: #22c55e;
+            --success-bg: #dcfce7;
+            --destructive: #ef4444;
+            --destructive-bg: #fee2e2;
+            --warning: #f59e0b;
+            --warning-bg: #fef3c7;
+            --pending: #a3a3a3;
+            --pending-bg: #f5f5f5;
+            --radius: 8px;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-            background: var(--bg-color);
-            color: var(--text-color);
-            padding: 20px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--background);
+            color: var(--foreground);
+            padding: 24px;
             min-height: 100vh;
+            line-height: 1.5;
         }
 
         .dashboard {
-            max-width: 900px;
+            max-width: 1200px;
             margin: 0 auto;
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 24px;
-            text-align: center;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 24px;
+            margin-bottom: 32px;
         }
 
         .header h1 {
-            font-size: 24px;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--foreground);
             margin-bottom: 8px;
         }
 
         .header .meta {
             display: flex;
-            justify-content: center;
             gap: 24px;
-            margin-top: 12px;
             font-size: 14px;
-            opacity: 0.9;
+            color: var(--muted-foreground);
+        }
+
+        .header .meta strong {
+            color: var(--foreground);
+            font-weight: 600;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
         }
 
         .phase-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            margin-bottom: 16px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
             overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
 
         .phase-header {
@@ -1027,133 +1048,166 @@ render_html() {
             justify-content: space-between;
             align-items: center;
             padding: 16px 20px;
-            border-bottom: 1px solid var(--border-color);
+            background: var(--muted);
+            border-bottom: 1px solid var(--border);
         }
 
         .phase-title {
-            font-weight: bold;
+            font-weight: 600;
             font-size: 14px;
+            color: var(--foreground);
         }
 
         .phase-status {
-            padding: 4px 12px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .status-pass { background: var(--pass-color); color: #000; }
-        .status-fail { background: var(--fail-color); color: #fff; }
-        .status-blocked { background: var(--blocked-color); color: #000; }
-        .status-pending { background: var(--pending-color); color: #fff; }
-        .status-drift { background: var(--drift-color); color: #000; }
+        .status-pass { background: var(--success-bg); color: #166534; }
+        .status-fail { background: var(--destructive-bg); color: #991b1b; }
+        .status-blocked { background: var(--warning-bg); color: #92400e; }
+        .status-pending { background: var(--pending-bg); color: #525252; }
+        .status-drift { background: var(--warning-bg); color: #92400e; }
 
         .checks-list {
-            padding: 12px 20px;
+            padding: 0;
         }
 
         .check-item {
             display: flex;
             align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.15s;
         }
 
         .check-item:last-child {
             border-bottom: none;
         }
 
+        .check-item:hover {
+            background: var(--muted);
+        }
+
         .check-icon {
-            width: 24px;
-            height: 24px;
+            width: 20px;
+            height: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
             margin-right: 12px;
             font-size: 14px;
+            font-weight: 600;
+            border-radius: 50%;
         }
 
-        .check-icon.pass { color: var(--pass-color); }
-        .check-icon.fail { color: var(--fail-color); }
-        .check-icon.blocked { color: var(--blocked-color); }
-        .check-icon.pending { color: var(--pending-color); }
+        .check-icon.pass { background: var(--success-bg); color: #166534; }
+        .check-icon.fail { background: var(--destructive-bg); color: #991b1b; }
+        .check-icon.blocked { background: var(--warning-bg); color: #92400e; }
+        .check-icon.pending { background: var(--pending-bg); color: #525252; }
+        .check-icon.warn { background: var(--warning-bg); color: #92400e; }
 
         .check-label {
             flex: 1;
             font-size: 13px;
+            color: var(--foreground);
         }
 
         .overall-status {
-            background: var(--card-bg);
-            border: 2px solid var(--border-color);
-            border-radius: 12px;
-            padding: 24px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 32px;
             text-align: center;
-            margin-top: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
 
         .overall-status h2 {
-            font-size: 18px;
-            margin-bottom: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--muted-foreground);
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .overall-badge {
             display: inline-block;
-            padding: 12px 32px;
-            border-radius: 8px;
+            padding: 16px 48px;
+            border-radius: var(--radius);
             font-size: 18px;
-            font-weight: bold;
+            font-weight: 700;
         }
 
-        .ready-yes { background: var(--pass-color); color: #000; }
-        .ready-no { background: var(--fail-color); color: #fff; }
+        .ready-yes { background: var(--success); color: #fff; }
+        .ready-no { background: var(--destructive); color: #fff; }
 
         .blocked-info {
-            margin-top: 12px;
+            margin-top: 16px;
             font-size: 14px;
-            color: var(--text-muted);
+            color: var(--muted-foreground);
         }
 
         .circuit-breaker {
             display: flex;
             justify-content: center;
-            gap: 24px;
-            margin-top: 16px;
-            font-size: 13px;
+            gap: 32px;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
         }
 
         .cb-item {
             display: flex;
             align-items: center;
             gap: 8px;
+            font-size: 13px;
+            color: var(--muted-foreground);
         }
 
         .cb-dot {
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
         }
 
-        .cb-dot.ok { background: var(--pass-color); }
-        .cb-dot.alert { background: var(--fail-color); }
+        .cb-dot.ok { background: var(--success); }
+        .cb-dot.alert { background: var(--destructive); }
 
         .timestamp {
             text-align: center;
-            margin-top: 24px;
+            margin-top: 32px;
             font-size: 12px;
-            color: var(--text-muted);
+            color: var(--muted-foreground);
+        }
+
+        .section-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--muted-foreground);
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
         }
     </style>
 </head>
 <body>
     <div class="dashboard">
         <div class="header">
-            <h1>WAVE PRE-LAUNCH STATUS DASHBOARD</h1>
+            <h1>WAVE Pre-Launch Status Dashboard</h1>
             <div class="meta">
-                <span>PROJECT: <strong>${project_name}</strong></span>
-                <span>WAVE: <strong>${WAVE_NUMBER}</strong></span>
+                <span>Project: <strong>${project_name}</strong></span>
+                <span>Wave: <strong>${WAVE_NUMBER}</strong></span>
+                <span>Updated: <strong>$(date '+%H:%M:%S')</strong></span>
             </div>
         </div>
+        <div class="grid">
 EOF
 
     # Gate -1
@@ -1215,6 +1269,8 @@ EOF
     [ "${CHECK_RESULTS["emergency_stop"]}" = "CLEAR" ] && es_class="ok" || es_class="alert"
 
     cat << EOF
+        </div><!-- end grid -->
+
         <div class="overall-status">
             <h2>LAUNCH STATUS</h2>
             <div class="overall-badge ${ready_class}">
@@ -1237,6 +1293,19 @@ EOF
             Generated: ${timestamp} | Dashboard v${SCRIPT_VERSION}
         </div>
     </div>
+
+    <script>
+        // Toggle details expansion
+        document.querySelectorAll('.check-item[data-details]').forEach(item => {
+            item.style.cursor = 'pointer';
+            item.addEventListener('click', function() {
+                const details = this.querySelector('.check-details');
+                if (details) {
+                    details.style.display = details.style.display === 'none' ? 'block' : 'none';
+                }
+            });
+        });
+    </script>
 </body>
 </html>
 EOF
@@ -1256,11 +1325,17 @@ render_html_phase() {
         *)       status_class="status-pending" ;;
     esac
 
+    local current_time
+    current_time=$(date '+%H:%M:%S')
+
     cat << EOF
         <div class="phase-card">
             <div class="phase-header">
                 <span class="phase-title">${title}</span>
-                <span class="phase-status ${status_class}">${status}</span>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 11px; color: var(--muted-foreground);">${current_time}</span>
+                    <span class="phase-status ${status_class}">${status}</span>
+                </div>
             </div>
             <div class="checks-list">
 EOF
@@ -1269,18 +1344,28 @@ EOF
         local label="${check%%|*}"
         local check_status="${check#*|}"
 
-        local icon_class icon_char
+        local icon_class icon_char status_text
         case "$check_status" in
-            PASS|GO)  icon_class="pass"; icon_char="✓" ;;
-            FAIL)     icon_class="fail"; icon_char="✗" ;;
-            BLOCKED)  icon_class="blocked"; icon_char="⊘" ;;
-            *)        icon_class="pending"; icon_char="○" ;;
+            PASS|GO)  icon_class="pass"; icon_char="✓"; status_text="Passed" ;;
+            FAIL)     icon_class="fail"; icon_char="✗"; status_text="Failed" ;;
+            WARN)     icon_class="warn"; icon_char="!"; status_text="Warning" ;;
+            BLOCKED)  icon_class="blocked"; icon_char="⊘"; status_text="Blocked" ;;
+            *)        icon_class="pending"; icon_char="○"; status_text="Pending" ;;
         esac
 
+        local has_details=""
+        local details_html=""
+        if [ "$check_status" = "FAIL" ] || [ "$check_status" = "WARN" ]; then
+            has_details="data-details=\"true\""
+            details_html="<div class=\"check-details\" style=\"display:none; margin-top:8px; padding:8px 12px; background:var(--muted); border-radius:4px; font-size:12px; color:var(--muted-foreground);\">Check failed. Run validator for detailed error logs.</div>"
+        fi
+
         cat << EOF
-                <div class="check-item">
+                <div class="check-item" ${has_details}>
                     <span class="check-icon ${icon_class}">${icon_char}</span>
                     <span class="check-label">${label}</span>
+                    <span style="font-size:11px; color:var(--muted-foreground); margin-left:auto;">${status_text}</span>
+                    ${details_html}
                 </div>
 EOF
     done
