@@ -237,6 +237,8 @@ export function ProjectChecklist() {
   const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString())
   const [supabaseConnected, setSupabaseConnected] = useState(false)
   const [storiesCount, setStoriesCount] = useState(0)
+  const [syncingStories, setSyncingStories] = useState(false)
+  const [syncMessage, setSyncMessage] = useState<string | null>(null)
   const [folderExpanded, setFolderExpanded] = useState(false)
   const [showWaveInfo, setShowWaveInfo] = useState(false)
 
@@ -582,6 +584,76 @@ export function ProjectChecklist() {
   }, [])
 
   const copyPath = (path: string) => navigator.clipboard.writeText(path)
+
+  // Sync stories from JSON files to Supabase database
+  const syncStories = async () => {
+    if (!project || !supabaseConnected) {
+      setSyncMessage('Supabase not connected')
+      return
+    }
+
+    setSyncingStories(true)
+    setSyncMessage(null)
+
+    try {
+      // Fetch stories from file system via API
+      const response = await fetch('http://localhost:3001/api/sync-stories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectPath: project.root_path }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch stories from server')
+      }
+
+      const { stories, count } = await response.json()
+
+      if (count === 0) {
+        setSyncMessage('No stories found in project files')
+        return
+      }
+
+      // Upsert stories to Supabase
+      let synced = 0
+      let errors = 0
+
+      for (const story of stories) {
+        const { error } = await supabase
+          .from('maf_stories')
+          .upsert({
+            story_id: story.story_id,
+            wave_number: story.wave_number,
+            title: story.title,
+            status: story.status,
+            gate: story.gate,
+            agent_type: story.agent_type,
+            pipeline_id: project.id, // Link to project
+          }, { onConflict: 'story_id' })
+
+        if (error) {
+          console.error('Error syncing story:', story.story_id, error)
+          errors++
+        } else {
+          synced++
+        }
+      }
+
+      setSyncMessage(`Synced ${synced} stories${errors > 0 ? ` (${errors} errors)` : ''}`)
+
+      // Refresh stories count
+      const { count: newCount } = await supabase
+        .from('maf_stories')
+        .select('*', { count: 'exact', head: true })
+
+      setStoriesCount(newCount || 0)
+    } catch (error) {
+      console.error('Sync error:', error)
+      setSyncMessage('Sync failed - is the analysis server running?')
+    } finally {
+      setSyncingStories(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -1085,22 +1157,45 @@ export function ProjectChecklist() {
               <div className="flex items-center justify-between p-5 border-b border-border">
                 <div className="flex items-center gap-4">
                   <span className="text-sm font-medium text-muted-foreground">WAVES</span>
-                  <span className="font-semibold">{storiesCount > 0 ? `${storiesCount} AI Stories Found` : 'No AI Stories Found'}</span>
-                  <span className="text-muted-foreground text-sm">Connect to Supabase and create AI Stories to begin validation</span>
+                  <span className="font-semibold">{storiesCount > 0 ? `${storiesCount} AI Stories in Database` : 'No AI Stories in Database'}</span>
+                  {analysisReport?.ai_stories?.stories_found && analysisReport.ai_stories.stories_found > storiesCount && (
+                    <span className="text-amber-600 text-sm">({analysisReport.ai_stories.stories_found} in files - click Sync)</span>
+                  )}
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground">2026-01-21 {lastUpdate}</span>
-                  <StatusBadge status="blocked" />
+                  {syncMessage && (
+                    <span className={`text-xs ${syncMessage.includes('error') || syncMessage.includes('failed') ? 'text-red-500' : 'text-green-600'}`}>
+                      {syncMessage}
+                    </span>
+                  )}
+                  <button
+                    onClick={syncStories}
+                    disabled={syncingStories || !supabaseConnected}
+                    className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                  >
+                    {syncingStories ? (
+                      <>
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                        Syncing...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        Sync Stories
+                      </>
+                    )}
+                  </button>
+                  <StatusBadge status={storiesCount > 0 ? 'pass' : 'blocked'} />
                 </div>
               </div>
 
               {storiesCount === 0 && (
                 <div className="p-6">
-                  <p className="text-center text-muted-foreground mb-4">To get started:</p>
+                  <p className="text-center text-muted-foreground mb-4">To sync stories from JSON files to database:</p>
                   <ol className="list-decimal list-inside space-y-2 text-sm max-w-lg mx-auto">
-                    <li>Configure Supabase credentials in <code className="bg-zinc-100 px-1.5 py-0.5 rounded font-mono text-xs">.env</code></li>
-                    <li>Create AI Stories in the <code className="bg-zinc-100 px-1.5 py-0.5 rounded font-mono text-xs">maf_stories</code> table</li>
-                    <li>Assign stories to a wave (set wave_number field)</li>
+                    <li>Run Analysis to detect stories in <code className="bg-zinc-100 px-1.5 py-0.5 rounded font-mono text-xs">stories/wave{'{N}'}/*.json</code></li>
+                    <li>Click <strong>Sync Stories</strong> to import them to the database</li>
+                    <li>Stories will be stored in <code className="bg-zinc-100 px-1.5 py-0.5 rounded font-mono text-xs">maf_stories</code> table</li>
                   </ol>
                 </div>
               )}

@@ -1092,6 +1092,72 @@ function calculateReadinessScore(report) {
   return Math.round(score);
 }
 
+// Sync stories from JSON files to response (for client to sync to Supabase)
+app.post('/api/sync-stories', async (req, res) => {
+  const { projectPath } = req.body;
+
+  if (!projectPath) {
+    return res.status(400).json({ error: 'projectPath is required' });
+  }
+
+  if (!exists(projectPath)) {
+    return res.status(404).json({ error: 'Project path does not exist' });
+  }
+
+  try {
+    const storiesDir = path.join(projectPath, 'stories');
+    const stories = [];
+
+    if (!exists(storiesDir)) {
+      return res.json({ stories: [], message: 'No stories directory found' });
+    }
+
+    const waves = listDir(storiesDir).filter(d => d.startsWith('wave'));
+
+    waves.forEach(wave => {
+      const waveNumber = parseInt(wave.replace('wave', '')) || 1;
+      const wavePath = path.join(storiesDir, wave);
+      const storyFiles = listDir(wavePath).filter(f => f.endsWith('.json'));
+
+      storyFiles.forEach(file => {
+        const storyPath = path.join(wavePath, file);
+        const story = readJSON(storyPath);
+
+        if (story && story.id) {
+          stories.push({
+            story_id: story.id,
+            wave_number: story.wave || waveNumber,
+            title: story.title || 'Untitled',
+            status: story.status || 'pending',
+            gate: story.gate || 0,
+            agent_type: story.agent || null,
+            // Include full story data for reference
+            metadata: {
+              priority: story.priority,
+              story_points: story.story_points,
+              description: story.description,
+              acceptance_criteria: story.acceptance_criteria,
+              domain: story.domain,
+              dependencies: story.dependencies,
+              files_to_modify: story.files_to_modify,
+              files_to_create: story.files_to_create,
+            }
+          });
+        }
+      });
+    });
+
+    res.json({
+      stories,
+      count: stories.length,
+      message: `Found ${stories.length} stories to sync`
+    });
+  } catch (error) {
+    console.error('Sync stories error:', error);
+    res.status(500).json({ error: 'Failed to read stories', details: error.message });
+  }
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -1101,5 +1167,6 @@ app.get('/api/health', (req, res) => {
 app.listen(PORT, () => {
   console.log(`\n🚀 WAVE Portal Analysis Server running on http://localhost:${PORT}`);
   console.log(`   POST /api/analyze - Analyze a project`);
+  console.log(`   POST /api/sync-stories - Sync stories from JSON to database`);
   console.log(`   GET /api/health - Health check\n`);
 });
