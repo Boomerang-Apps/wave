@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { cn, getGateName, formatRelativeTime, getStatusColor } from '../lib/utils'
 import type { Story } from '../types/database'
-import { Search, Filter, ChevronDown } from 'lucide-react'
+import { Search } from 'lucide-react'
 
 export function Stories() {
   const [stories, setStories] = useState<Story[]>([])

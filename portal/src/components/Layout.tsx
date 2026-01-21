@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   FolderKanban,
@@ -29,7 +29,6 @@ interface Project {
 
 export function Layout({ children }: LayoutProps) {
   const location = useLocation()
-  const navigate = useNavigate()
   const [projectsExpanded, setProjectsExpanded] = useState(true)
   const [projects, setProjects] = useState<Project[]>([])
   const [supabaseConnected, setSupabaseConnected] = useState(false)

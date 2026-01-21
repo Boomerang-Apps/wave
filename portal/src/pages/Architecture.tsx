@@ -5,17 +5,9 @@ import {
   GitBranch,
   Layers,
   Radio,
-  Database,
-  Zap,
   Target,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
   ArrowRight,
-  Users,
-  Lock,
   FileJson,
-  RefreshCw,
   Brain,
 } from 'lucide-react'
 import { cn } from '../lib/utils'

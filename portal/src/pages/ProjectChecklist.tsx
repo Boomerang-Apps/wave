@@ -432,18 +432,23 @@ export function ProjectChecklist() {
 
                 // Store to Supabase immediately when result is received
                 if (supabaseConnected && project) {
-                  supabase
-                    .from('maf_analysis_reports')
-                    .upsert({
-                      project_id: project.id,
-                      report_type: 'gap_analysis',
-                      report_data: transformedReport,
-                      readiness_score: transformedReport.summary.readiness_score,
-                      total_gaps: transformedReport.summary.total_gaps,
-                      created_at: transformedReport.timestamp,
-                    }, { onConflict: 'project_id,report_type' })
-                    .then(() => console.log('Analysis saved to database'))
-                    .catch((err) => console.error('Error saving analysis:', err))
+                  (async () => {
+                    try {
+                      await supabase
+                        .from('maf_analysis_reports')
+                        .upsert({
+                          project_id: project.id,
+                          report_type: 'gap_analysis',
+                          report_data: transformedReport,
+                          readiness_score: transformedReport.summary.readiness_score,
+                          total_gaps: transformedReport.summary.total_gaps,
+                          created_at: transformedReport.timestamp,
+                        }, { onConflict: 'project_id,report_type' })
+                      console.log('Analysis saved to database')
+                    } catch (err) {
+                      console.error('Error saving analysis:', err)
+                    }
+                  })()
                 }
               } else if (data.step) {
                 // Update step status

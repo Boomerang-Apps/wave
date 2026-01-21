@@ -169,7 +169,7 @@ export function Projects() {
   const handleCreateProject = async () => {
     if (!newProjectName || !newProjectPath) return
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('maf_projects')
       .insert({
         name: newProjectName,

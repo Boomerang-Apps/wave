@@ -4,9 +4,7 @@ import {
   FolderKanban,
   Waves,
   ScrollText,
-  Activity,
   CheckCircle2,
-  Clock,
   AlertTriangle,
   ArrowRight,
   Plus

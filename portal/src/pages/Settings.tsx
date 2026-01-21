@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Save, Database, Key, Bell } from 'lucide-react'
+import { Save, Database, Bell } from 'lucide-react'
 import { isSupabaseConfigured } from '../lib/supabase'
 
 export function Settings() {
