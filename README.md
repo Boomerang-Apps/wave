@@ -35,42 +35,101 @@ WAVE is a **project-agnostic** autonomous multi-agent orchestration framework. I
 
 ## Quick Start
 
-### 1. Initialize Your Project
+### 1. Setup Environment
 
 ```bash
-# From WAVE directory
+cd /path/to/WAVE
+cp .env.example .env
+# Edit .env and add your ANTHROPIC_API_KEY
+```
+
+### 2. Initialize Your Project
+
+```bash
 ./core/templates/project-setup.sh /path/to/your-project
-
-# With options
-./core/templates/project-setup.sh /path/to/your-project \
-    --project-name "MyApp" \
-    --package-manager npm
 ```
 
-### 2. Add Your API Key
+### 3. Run WAVE
 
 ```bash
-cd /path/to/your-project
-# Edit .env and add ANTHROPIC_API_KEY
+./wave-start.sh --project /path/to/your-project --wave 1 --fe-only
 ```
 
-### 3. Create AI Stories
+That's it! Open **http://localhost:9080** to see Dozzle logs.
+
+---
+
+## Docker Setup
+
+WAVE runs agents in isolated Docker containers with Dozzle for log monitoring.
+
+### Prerequisites
+
+- Docker Desktop running
+- Anthropic API Key
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `docker-compose.yml` | Container definitions |
+| `Dockerfile.agent` | Non-root Claude CLI image |
+| `wave-start.sh` | One-command launcher |
+| `entrypoint-agent.sh` | Agent startup script |
+| `.env` | Environment variables (create from .env.example) |
+
+### One-Command Launch
 
 ```bash
-# Create story files in stories/ directory
-cp stories/STORY-TEMPLATE.json stories/STORY-001.json
-# Edit the story with your requirements
+# FE-only wave
+./wave-start.sh --project /path/to/project --wave 3 --fe-only
+
+# Both FE and BE agents
+./wave-start.sh --project /path/to/project --wave 2
+
+# With QA agent
+./wave-start.sh --project /path/to/project --wave 1 --with-qa
+
+# Stop all containers
+./wave-start.sh --stop
+
+# Check status
+./wave-start.sh --status
 ```
 
-### 4. Run WAVE
+### Manual Docker Commands
 
 ```bash
-# Option A: Docker Compose
-docker compose up
+# Set environment
+export PROJECT_PATH=/path/to/project
+export WAVE_NUMBER=3
 
-# Option B: Orchestrator Script
-./wave-orchestrator.sh --project /path/to/your-project
+# Start services
+docker compose up -d dozzle merge-watcher
+docker compose --profile agents up -d fe-dev
+
+# View logs
+docker compose logs -f fe-dev
+
+# Stop all
+docker compose down
 ```
+
+### Services
+
+| Container | Purpose | Port |
+|-----------|---------|------|
+| `wave-dozzle` | Log viewer dashboard | 9080 |
+| `wave-merge-watcher` | Signal detection & sync | - |
+| `wave-fe-dev` | Frontend agent | - |
+| `wave-be-dev` | Backend agent | - |
+| `wave-qa` | QA agent | - |
+
+### Dozzle Dashboard
+
+Access at **http://localhost:9080** to view real-time container logs.
+
+![Dozzle](https://github.com/amir20/dozzle/raw/master/.github/demo.gif)
 
 ---
 
@@ -200,6 +259,11 @@ Phase-gate validation system with **hard enforcement** - NO WARNINGS, only PASS 
 
 ```
 WAVE/
+├── docker-compose.yml        # Container definitions
+├── Dockerfile.agent          # Agent container image
+├── wave-start.sh             # One-command launcher
+├── entrypoint-agent.sh       # Agent startup script
+├── .env.example              # Environment template
 ├── .claudecode/              # Framework rules
 │   ├── agents/               # Agent role definitions
 │   ├── safety/               # Safety policies
@@ -208,21 +272,17 @@ WAVE/
 ├── core/
 │   ├── scripts/              # Orchestration scripts
 │   │   ├── merge-watcher-v12.sh    # Main orchestrator (V12.2)
-│   │   ├── wave-orchestrator.sh
 │   │   ├── building-blocks/        # Phase validation (V2.0)
 │   │   │   ├── phase-orchestrator.sh
 │   │   │   ├── lock-manager.sh
 │   │   │   ├── drift-detector.sh
 │   │   │   └── phase[0-4]-validator.sh
-│   │   ├── rlm/                    # RLM integration (V2.0)
-│   │   │   ├── generate-p-variable.sh
-│   │   │   ├── update-p-variable.sh
-│   │   │   ├── snapshot-p-variable.sh
-│   │   │   └── restore-p-variable.sh
-│   │   └── ...
+│   │   └── rlm/                    # RLM integration (V2.0)
+│   │       ├── generate-p-variable.sh
+│   │       ├── update-p-variable.sh
+│   │       ├── snapshot-p-variable.sh
+│   │       └── restore-p-variable.sh
 │   └── templates/            # Project templates
-├── reports/                  # Generated reports
-├── portal/                   # WAVE Portal (coming soon)
 ├── docs/                     # Documentation
 └── README.md                 # This file
 ```
