@@ -1,0 +1,32 @@
+# WAVE Agent Container
+# Provides isolated environment for Claude Code agents
+
+FROM node:20-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    jq \
+    bash \
+    sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for Claude CLI
+RUN useradd -m -s /bin/bash wave && \
+    echo "wave ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# Install pnpm and Claude CLI globally
+RUN npm install -g pnpm @anthropic-ai/claude-code
+
+# Create working directory and set permissions
+RUN mkdir -p /project && chown wave:wave /project
+
+# Switch to non-root user
+USER wave
+
+# Set working directory
+WORKDIR /project
+
+# Default command (overridden by docker-compose)
+CMD ["bash"]

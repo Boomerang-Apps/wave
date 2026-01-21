@@ -1,0 +1,126 @@
+# WAVE Multi-Agent Docker Compose
+# Usage: ./wave-start.sh --project /path/to/project --wave 3
+
+# Load environment from .env file automatically
+
+services:
+  # ─────────────────────────────────────────────────────────────
+  # MERGE WATCHER - Control Tower
+  # ─────────────────────────────────────────────────────────────
+  merge-watcher:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: wave-merge-watcher
+    environment:
+      - WAVE_ROLE=merge-watcher
+      - WAVE_NUMBER=${WAVE_NUMBER:-1}
+      - PROJECT_PATH=/project
+    volumes:
+      - ${PROJECT_PATH}:/project
+      - ./core/scripts:/scripts:ro
+      - ~/.claude:/root/.claude:ro
+    working_dir: /project
+    command: /scripts/merge-watcher-v12.sh --wave ${WAVE_NUMBER:-1} --project /project
+    networks:
+      - wave-network
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────────────────────
+  # FE-DEV Agent
+  # ─────────────────────────────────────────────────────────────
+  fe-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: wave-fe-dev
+    environment:
+      - WAVE_ROLE=fe-dev
+      - WAVE_NUMBER=${WAVE_NUMBER:-1}
+      - PROJECT_PATH=/project
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      - ${PROJECT_PATH}:/project
+      - ./core/scripts:/scripts:ro
+      - ./entrypoint-agent.sh:/entrypoint.sh:ro
+      - ~/.claude:/home/wave/.claude
+    working_dir: /project
+    command: /entrypoint.sh
+    networks:
+      - wave-network
+    depends_on:
+      - merge-watcher
+    profiles:
+      - agents
+
+  # ─────────────────────────────────────────────────────────────
+  # BE-DEV Agent
+  # ─────────────────────────────────────────────────────────────
+  be-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: wave-be-dev
+    environment:
+      - WAVE_ROLE=be-dev
+      - WAVE_NUMBER=${WAVE_NUMBER:-1}
+      - PROJECT_PATH=/project
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      - ${PROJECT_PATH}:/project
+      - ./core/scripts:/scripts:ro
+      - ./entrypoint-agent.sh:/entrypoint.sh:ro
+      - ~/.claude:/home/wave/.claude
+    working_dir: /project
+    command: /entrypoint.sh
+    networks:
+      - wave-network
+    depends_on:
+      - merge-watcher
+    profiles:
+      - agents
+
+  # ─────────────────────────────────────────────────────────────
+  # QA Agent
+  # ─────────────────────────────────────────────────────────────
+  qa:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: wave-qa
+    environment:
+      - WAVE_ROLE=qa
+      - WAVE_NUMBER=${WAVE_NUMBER:-1}
+      - PROJECT_PATH=/project
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      - ${PROJECT_PATH}:/project
+      - ./core/scripts:/scripts:ro
+      - ./entrypoint-agent.sh:/entrypoint.sh:ro
+      - ~/.claude:/home/wave/.claude
+    working_dir: /project
+    command: /entrypoint.sh
+    networks:
+      - wave-network
+    depends_on:
+      - merge-watcher
+    profiles:
+      - qa
+
+  # ─────────────────────────────────────────────────────────────
+  # DOZZLE - Log Viewer Dashboard
+  # ─────────────────────────────────────────────────────────────
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: wave-dozzle
+    ports:
+      - "9080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - wave-network
+    restart: unless-stopped
+
+networks:
+  wave-network:
+    driver: bridge
