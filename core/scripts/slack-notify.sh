@@ -14,7 +14,7 @@
 #   gate_complete <gate> <wave> <status>
 #   qa_result <wave> <status> <tests_passed> <coverage>
 #   wave_complete <wave> <stories> <duration> <wave_cost>
-#   pipeline_complete <duration> <total_cost> <stories_count> <wave1_cost> <wave2_cost>
+#   pipeline_complete <duration> <total_cost> <stories_count> [<wave_num> <wave_cost>]...
 #   error <message>
 #   retry <wave> <attempt> <max>
 #   escalation <wave> <reason>
@@ -239,22 +239,38 @@ case "$1" in
         ;;
 
     pipeline_complete)
+        # Usage: pipeline_complete <duration> <total_cost> <stories> <wave_number> <wave_cost>
+        # Can pass multiple waves as pairs: <wave_num1> <cost1> <wave_num2> <cost2> ...
         DURATION="$2"
         TOTAL_COST="$3"
         STORIES="$4"
-        WAVE1_COST="$5"
-        WAVE2_COST="$6"
+        shift 4
+
+        # Build wave cost fields dynamically
+        WAVE_FIELDS=""
+        while [ $# -ge 2 ]; do
+            WAVE_NUM="$1"
+            WAVE_COST="$2"
+            shift 2
+            if [ -n "$WAVE_FIELDS" ]; then
+                WAVE_FIELDS="$WAVE_FIELDS,"
+            fi
+            WAVE_FIELDS="$WAVE_FIELDS{\"type\": \"mrkdwn\", \"text\": \"*Wave $WAVE_NUM:*\\n\$$WAVE_COST\"}"
+        done
+
+        # Add total cost field
+        if [ -n "$WAVE_FIELDS" ]; then
+            WAVE_FIELDS="$WAVE_FIELDS,"
+        fi
+        WAVE_FIELDS="$WAVE_FIELDS{\"type\": \"mrkdwn\", \"text\": \"*Total Cost:*\\n\$$TOTAL_COST\"}"
+
         send_blocks '[
             {"type": "header", "text": {"type": "plain_text", "text": "Pipeline Complete!", "emoji": true}},
             {"type": "divider"},
             {"type": "section", "text": {"type": "mrkdwn", "text": "*Stories Completed:* '"$STORIES"'\n*Total Duration:* '"$DURATION"'"}},
             {"type": "divider"},
             {"type": "section", "text": {"type": "mrkdwn", "text": "*Cost Summary*"}},
-            {"type": "section", "fields": [
-                {"type": "mrkdwn", "text": "*Wave 1:*\n$'"$WAVE1_COST"'"},
-                {"type": "mrkdwn", "text": "*Wave 2:*\n$'"$WAVE2_COST"'"},
-                {"type": "mrkdwn", "text": "*Total Cost:*\n$'"$TOTAL_COST"'"}
-            ]},
+            {"type": "section", "fields": ['"$WAVE_FIELDS"']},
             {"type": "divider"}
         ]'
         ;;
@@ -437,7 +453,7 @@ case "$1" in
         # Usage: preflight_waves <status> <total_waves> <wave_breakdown> <estimated_cost>
         STATUS="${2:-PASS}"
         TOTAL_WAVES="${3:-1}"
-        BREAKDOWN="${4:-Wave 1: 5 stories}"
+        BREAKDOWN="${4:-No breakdown available}"
         EST_COST="${5:-2.00}"
 
         if [ "$STATUS" = "PASS" ]; then
@@ -513,7 +529,7 @@ case "$1" in
         echo "  gate_complete    <gate> <wave> <status>"
         echo "  qa_result        <wave> <status> <tests_passed> <coverage>"
         echo "  wave_complete    <wave> <stories> <duration> <wave_cost>"
-        echo "  pipeline_complete <duration> <total_cost> <stories_count> <wave1_cost> <wave2_cost>"
+        echo "  pipeline_complete <duration> <total_cost> <stories_count> [<wave_num> <wave_cost>]..."
         echo "  error            <message>"
         echo "  retry            <wave> <attempt> <max>"
         echo "  escalation       <wave> <reason>"
