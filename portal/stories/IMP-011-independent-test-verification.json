@@ -1,0 +1,105 @@
+{
+  "id": "IMP-011",
+  "title": "Independent test verification - Don't trust agent output",
+  "domain": "reliability",
+  "agent": "qa-1",
+  "priority": "high",
+  "risk": "high",
+  "status": "completed",
+  "wave": null,
+  "description": "Implement independent verification of test results. Validators re-run tests themselves rather than trusting agent-reported results. Compare actual test output with agent claims, fail validation on mismatch.",
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "Validator executes tests independently",
+      "threshold": "Run npm test --json or equivalent, capture raw output",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "Compare agent results with actual results",
+      "threshold": "agent.passed vs actual.passed, fail if mismatch > 0",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "Store raw test output as artifact",
+      "threshold": "Save JSON output to validation artifacts directory",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "Detect test skip flags",
+      "threshold": "Block --passWithNoTests, --testPathIgnorePatterns abuse",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "Hash verification of test output",
+      "threshold": "Compare hash of test output file if provided",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "Report detailed mismatch information",
+      "threshold": "Log which tests passed/failed differently",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/utils/test-verifier.js",
+      "portal/server/__tests__/test-verifier.test.js"
+    ],
+    "modify": [],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Agent claims pass but tests actually fail",
+      "Test skip flags used without detection",
+      "Validation bypassed"
+    ],
+    "escalation_triggers": [
+      "Multiple result mismatches",
+      "Empty test suites in strict mode"
+    ]
+  },
+
+  "dependencies": [],
+
+  "validation_sources": [
+    {
+      "name": "ITEA IV&V Testbed",
+      "url": "https://itea.org/journals/volume-46-1/innovation-independent-automated-verification-and-validation-testbed/",
+      "requirement": "Independent automated verification without human intervention"
+    },
+    {
+      "name": "TestPros IV&V Testing",
+      "url": "https://testpros.com/independent-verification-and-validation/ivv-testing/",
+      "requirement": "Objective 3rd party review, financially/managerially/technically distinct"
+    },
+    {
+      "name": "TestGrid CI/CD Automation",
+      "url": "https://testgrid.io/blog/ci-cd-test-automation/",
+      "requirement": "Self-testing builds remove reliance on manual verification"
+    }
+  ],
+
+  "implementation_hints": [
+    "Use child_process.spawn to run npm test",
+    "Parse JSON reporter output for structured results",
+    "Create hash of test output for integrity verification",
+    "Check for forbidden flags in test command",
+    "Store artifacts in .claude/validation-artifacts/"
+  ],
+
+  "created_at": "2026-01-24T01:00:00Z",
+  "score": 100
+}

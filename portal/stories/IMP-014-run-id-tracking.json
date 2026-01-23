@@ -1,0 +1,99 @@
+{
+  "id": "IMP-014",
+  "title": "Global run_id and sequence tracking",
+  "domain": "traceability",
+  "agent": "be-dev-1",
+  "priority": "high",
+  "risk": "medium",
+  "status": "completed",
+  "wave": null,
+  "description": "Implement global run_id generation and sequence tracking for end-to-end execution tracing. Run ID format: run_YYYYMMDD_HHMMSS_w{wave}. Sequence numbers per agent for ordering. Combines IMP-014, IMP-001, IMP-002.",
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "Generate unique run_id at wave start",
+      "threshold": "Format: run_YYYYMMDD_HHMMSS_w{N}",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "Propagate run_id to all signals",
+      "threshold": "Every signal includes run_id field",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "Track sequence numbers per agent/source",
+      "threshold": "Monotonically increasing sequence per source",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "Detect out-of-order signals",
+      "threshold": "Log warning when sequence decreases",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "Create run manifest file",
+      "threshold": ".claude/runs/run_XXX/manifest.json with metadata",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "Support run query: show everything from run X",
+      "threshold": "List all signals and events for a run_id",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/utils/run-tracker.js",
+      "portal/server/__tests__/run-tracker.test.js"
+    ],
+    "modify": [],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Run ID not unique",
+      "Signals missing run_id",
+      "Sequence numbers corrupted"
+    ],
+    "escalation_triggers": [
+      "Multiple out-of-order signals",
+      "Run manifest missing"
+    ]
+  },
+
+  "dependencies": ["IMP-005"],
+
+  "validation_sources": [
+    {
+      "name": "Gunnar Morling - Idempotency Keys",
+      "url": "https://www.morling.dev/blog/on-idempotency-keys/",
+      "requirement": "Monotonically increasing sequence for ordering"
+    },
+    {
+      "name": "Distributed Tracing Best Practices",
+      "url": "https://opentelemetry.io/docs/concepts/signals/traces/",
+      "requirement": "Trace ID propagation for end-to-end visibility"
+    }
+  ],
+
+  "implementation_hints": [
+    "Use Date.now() + wave number for unique run_id",
+    "Store run state in .claude/runs/",
+    "Sequence per (run_id, source) pair",
+    "Include wave, started_at, agents in manifest"
+  ],
+
+  "created_at": "2026-01-24T01:05:00Z",
+  "score": 100
+}
