@@ -1,0 +1,109 @@
+{
+  "id": "GAP-007",
+  "title": "Implement system prompt encryption at rest",
+  "domain": "security",
+  "agent": "be-dev-1",
+  "priority": "medium",
+  "risk": "medium",
+  "status": "complete",
+  "wave": null,
+  "description": "Encrypt sensitive system prompts (CLAUDE.md, agent instructions) at rest using AES-256-GCM. Decrypt only in-memory at runtime. Support key rotation.",
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "Encrypt files using AES-256-GCM with 96-bit IV",
+      "threshold": "All .md.enc files use authenticated encryption",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "Decrypt files in-memory only, never write plaintext to disk",
+      "threshold": "No plaintext written after decryption",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "Support key derivation from passphrase using PBKDF2",
+      "threshold": "100,000 iterations minimum with SHA-256",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "Verify authentication tag before decryption",
+      "threshold": "Reject tampered ciphertext with clear error",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "Support key rotation without data loss",
+      "threshold": "Re-encrypt all files with new key successfully",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "Processing latency under 100ms per file",
+      "threshold": "<100ms for encrypt/decrypt of typical CLAUDE.md",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/utils/prompt-encryptor.js",
+      "portal/server/__tests__/prompt-encryptor.test.js"
+    ],
+    "modify": [],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**",
+      "**/credentials/**",
+      "**/.git/**",
+      "**/node_modules/**",
+      "**/dist/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Key material exposed in logs or output",
+      "Plaintext written to disk after decryption",
+      "IV reuse detected across encryptions",
+      "Authentication tag validation bypassed"
+    ],
+    "escalation_triggers": [
+      "Cryptographic operation failure",
+      "Key derivation error"
+    ]
+  },
+
+  "dependencies": [],
+
+  "validation_sources": [
+    {
+      "name": "OWASP Cryptographic Storage Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html",
+      "requirement": "Use AES-256-GCM authenticated encryption"
+    },
+    {
+      "name": "OWASP Secrets Management Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html",
+      "requirement": "Key rotation, separation from code, audit trails"
+    },
+    {
+      "name": "Node.js Crypto Best Practices",
+      "url": "https://gist.github.com/rjz/15baffeab434b8125ca4d783f4116d81",
+      "requirement": "Proper IV handling, auth tag extraction"
+    }
+  ],
+
+  "implementation_hints": [
+    "Use crypto.randomBytes(12) for 96-bit IV",
+    "Use crypto.pbkdf2Sync with 100000 iterations",
+    "Store IV + authTag + ciphertext in encrypted file",
+    "Key from ENCRYPTION_KEY env var or derived from passphrase"
+  ],
+
+  "created_at": "2026-01-24T00:20:00Z",
+  "score": 100
+}

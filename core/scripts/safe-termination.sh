@@ -243,20 +243,71 @@ stop_docker_container() {
     local container="$1"
     local force="${2:-false}"
 
-    if docker ps -q -f name="${container}" 2>/dev/null | grep -q .; then
-        if [ "${force}" = "true" ]; then
-            log_info "Force stopping container: ${container}"
-            docker kill "${container}" 2>/dev/null || true
-        else
-            log_info "Gracefully stopping container: ${container}"
-            docker stop -t 30 "${container}" 2>/dev/null || {
-                log_warn "Graceful stop failed, forcing: ${container}"
-                docker kill "${container}" 2>/dev/null || true
-            }
-        fi
-        log_success "Container stopped: ${container}"
+    # Find containers by name (direct match or wave-prefixed)
+    local container_ids=""
+    container_ids=$(docker ps -q -f name="${container}" 2>/dev/null || true)
+
+    # Also check for wave-prefixed containers (e.g., wave-fe-dev-1)
+    if [ -z "${container_ids}" ]; then
+        container_ids=$(docker ps -q -f name="wave-${container}" 2>/dev/null || true)
+    fi
+
+    # Also check by label (for containers started via docker-compose)
+    if [ -z "${container_ids}" ]; then
+        container_ids=$(docker ps -q -f label="wave.agent=${container}" 2>/dev/null || true)
+    fi
+
+    if [ -n "${container_ids}" ]; then
+        for cid in ${container_ids}; do
+            local cname=$(docker inspect --format '{{.Name}}' "${cid}" 2>/dev/null | sed 's/^\///')
+            if [ "${force}" = "true" ]; then
+                log_info "Force stopping container: ${cname}"
+                docker kill "${cid}" 2>/dev/null || true
+            else
+                log_info "Gracefully stopping container: ${cname}"
+                docker stop -t 30 "${cid}" 2>/dev/null || {
+                    log_warn "Graceful stop failed, forcing: ${cname}"
+                    docker kill "${cid}" 2>/dev/null || true
+                }
+            fi
+            log_success "Container stopped: ${cname}"
+        done
     else
         log_info "Container not running: ${container}"
+    fi
+}
+
+# Stop all WAVE containers (by label)
+stop_all_wave_containers() {
+    local force="${1:-false}"
+
+    log_info "Finding all WAVE containers..."
+    local container_ids=$(docker ps -q -f label="wave.agent" 2>/dev/null || true)
+
+    if [ -n "${container_ids}" ]; then
+        for cid in ${container_ids}; do
+            local cname=$(docker inspect --format '{{.Name}}' "${cid}" 2>/dev/null | sed 's/^\///')
+            local agent=$(docker inspect --format '{{index .Config.Labels "wave.agent"}}' "${cid}" 2>/dev/null || echo "unknown")
+            add_affected_agent "${agent}"
+
+            if [ "${force}" = "true" ]; then
+                docker kill "${cid}" 2>/dev/null || true
+            else
+                docker stop -t 30 "${cid}" 2>/dev/null || docker kill "${cid}" 2>/dev/null || true
+            fi
+            log_success "Stopped: ${cname} (${agent})"
+        done
+    fi
+
+    # Also stop via docker-compose if config exists
+    local compose_file="${SCRIPT_DIR}/../docker/docker-compose.agents.yml"
+    if [ -f "${compose_file}" ]; then
+        log_info "Stopping docker-compose agents..."
+        if [ "${force}" = "true" ]; then
+            docker-compose -f "${compose_file}" kill 2>/dev/null || true
+        else
+            docker-compose -f "${compose_file}" down 2>/dev/null || true
+        fi
     fi
 }
 

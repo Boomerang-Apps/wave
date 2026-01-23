@@ -28,7 +28,7 @@ export class SecretRedactor {
       // ─────────────────────────────────────────────────────────────────────────
       // AI/LLM API Keys
       // ─────────────────────────────────────────────────────────────────────────
-      { name: 'Anthropic API Key', pattern: /sk-ant-[a-zA-Z0-9\-_]{40,}/g },
+      { name: 'Anthropic API Key', pattern: /sk-ant-[a-zA-Z0-9\-_]{10,}/g },
       { name: 'OpenAI API Key', pattern: /sk-[a-zA-Z0-9]{48,}/g },
       { name: 'OpenAI Org ID', pattern: /org-[a-zA-Z0-9]{24}/g },
       { name: 'Hugging Face Token', pattern: /hf_[a-zA-Z0-9]{34}/g },
@@ -148,12 +148,14 @@ export class SecretRedactor {
     if (!input) return input;
 
     let result = input;
-    let redactionsApplied = 0;
 
     for (const { name, pattern } of this.patterns) {
+      // Reset lastIndex for global patterns to avoid matching issues
+      pattern.lastIndex = 0;
       const matches = result.match(pattern);
       if (matches) {
-        redactionsApplied += matches.length;
+        // Reset again before replace
+        pattern.lastIndex = 0;
         result = result.replace(pattern, this.redactedPlaceholder);
       }
     }

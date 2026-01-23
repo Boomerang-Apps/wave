@@ -318,4 +318,143 @@ FE-Dev/BE-Dev Agents
 
 ---
 
+## DORA Metrics Event Signal
+
+**File:** `.claude/metrics/dora.jsonl`
+**Created by:** Orchestrator / Portal Server
+**Purpose:** Track the four key DORA metrics for delivery performance
+
+### Event Types
+
+| Event | Metric | Description |
+|-------|--------|-------------|
+| `deployment` | Deployment Frequency | Story deployed to production |
+| `commit_to_deploy` | Lead Time | Time from first commit to deploy |
+| `failure` | Change Failure Rate | Failed deployment or rollback |
+| `recovery` | MTTR | Failure resolved |
+
+### Deployment Event
+
+```json
+{
+    "type": "deployment",
+    "wave": 1,
+    "story_id": "STORY-001",
+    "commit_sha": "abc123def",
+    "environment": "production",
+    "success": true,
+    "timestamp": "2026-01-16T12:00:00Z"
+}
+```
+
+### Lead Time Event
+
+```json
+{
+    "type": "commit_to_deploy",
+    "wave": 1,
+    "story_id": "STORY-001",
+    "first_commit_at": "2026-01-16T09:00:00Z",
+    "deployed_at": "2026-01-16T12:00:00Z",
+    "lead_time_seconds": 10800,
+    "gates_traversed": [0, 1, 2, 3, 4, 5, 6, 7],
+    "retries": 1,
+    "timestamp": "2026-01-16T12:00:00Z"
+}
+```
+
+### Failure Event
+
+```json
+{
+    "type": "failure",
+    "wave": 1,
+    "story_id": "STORY-001",
+    "failure_type": "deployment_failed",
+    "gate": 7,
+    "error": "Build failed after merge",
+    "rollback_required": true,
+    "started_at": "2026-01-16T12:00:00Z",
+    "timestamp": "2026-01-16T12:05:00Z"
+}
+```
+
+### Recovery Event
+
+```json
+{
+    "type": "recovery",
+    "wave": 1,
+    "story_id": "STORY-001",
+    "failure_id": "failure-12345",
+    "failed_at": "2026-01-16T12:05:00Z",
+    "recovered_at": "2026-01-16T12:30:00Z",
+    "mttr_seconds": 1500,
+    "resolution": "Hotfix deployed",
+    "timestamp": "2026-01-16T12:30:00Z"
+}
+```
+
+### DORA Metrics Calculation
+
+The four key metrics are calculated as follows:
+
+| Metric | Calculation | Elite Benchmark |
+|--------|-------------|-----------------|
+| **Deployment Frequency** | deployments per day | Multiple per day |
+| **Lead Time for Changes** | avg(deployed_at - first_commit_at) | < 1 hour |
+| **Mean Time to Recovery** | avg(recovered_at - failed_at) | < 1 hour |
+| **Change Failure Rate** | failures / total_deployments | < 5% |
+
+### Weekly Summary
+
+**File:** `.claude/metrics/dora-summary-YYYY-WW.json`
+
+```json
+{
+    "period": "2026-W03",
+    "start_date": "2026-01-13",
+    "end_date": "2026-01-19",
+    "metrics": {
+        "deployment_frequency": {
+            "total_deployments": 8,
+            "per_day": 1.14,
+            "rating": "high"
+        },
+        "lead_time_seconds": {
+            "avg": 7200,
+            "median": 5400,
+            "p95": 14400,
+            "rating": "high"
+        },
+        "mttr_seconds": {
+            "avg": 1800,
+            "median": 1200,
+            "incidents": 2,
+            "rating": "elite"
+        },
+        "change_failure_rate": {
+            "failures": 1,
+            "total": 8,
+            "rate": 0.125,
+            "rating": "high"
+        }
+    },
+    "waves_completed": [1, 2],
+    "stories_deployed": ["STORY-001", "STORY-002", "STORY-003"],
+    "generated_at": "2026-01-19T23:59:00Z"
+}
+```
+
+### DORA Rating Scale
+
+| Metric | Elite | High | Medium | Low |
+|--------|-------|------|--------|-----|
+| Deployment Freq | Multiple/day | Daily-Weekly | Weekly-Monthly | Monthly+ |
+| Lead Time | < 1 hour | 1 day - 1 week | 1 week - 1 month | 1 month+ |
+| MTTR | < 1 hour | < 1 day | < 1 week | 1 week+ |
+| Change Failure | < 5% | 5-10% | 10-15% | > 15% |
+
+---
+
 *WAVE Framework Signal Schemas | Version 1.0.0*

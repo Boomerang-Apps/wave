@@ -7,6 +7,9 @@ import { validateInfrastructure } from './validate-infrastructure.js';
 import dotenv from 'dotenv';
 import { getSlackNotifier } from './slack-notifier.js';
 import { SLACK_EVENT_TYPES, createSlackEvent } from './slack-events.js';
+import { promptInjectionDetector } from './utils/prompt-injection-detector.js';
+import { DORAMetricsTracker } from './utils/dora-metrics.js';
+import { AgentRateLimiter } from './utils/rate-limiter.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -212,6 +215,53 @@ const MAX_BUFFER_SIZE = 1000;
 
 // Audit log function - logs to file and optionally to Supabase
 async function logAudit(event) {
+  // ── Prompt Injection Detection (GAP-001) ──────────────────────────────────
+  // Scan event content for potential prompt injection attempts
+  const textsToScan = [
+    event.action,
+    typeof event.details === 'string' ? event.details : JSON.stringify(event.details || {}),
+    event.metadata?.message,
+    event.metadata?.content
+  ].filter(Boolean);
+
+  let injectionDetected = false;
+  let injectionSeverity = null;
+  const injectionTags = [];
+
+  for (const text of textsToScan) {
+    const result = promptInjectionDetector.analyze(text);
+    if (!result.safe) {
+      injectionDetected = true;
+      if (!injectionSeverity ||
+          (result.severity === 'critical') ||
+          (result.severity === 'high' && injectionSeverity !== 'critical')) {
+        injectionSeverity = result.severity;
+      }
+      for (const detection of result.detections) {
+        const tag = `injection:${detection.category}`;
+        if (!injectionTags.includes(tag)) {
+          injectionTags.push(tag);
+        }
+      }
+    }
+  }
+
+  // Merge injection findings with event properties
+  if (injectionDetected) {
+    event.requiresReview = true;
+    event.safetyTags = [...(event.safetyTags || []), ...injectionTags];
+    if (injectionSeverity === 'critical' || injectionSeverity === 'high') {
+      event.severity = event.severity === 'critical' ? 'critical' :
+                       (injectionSeverity === 'critical' ? 'critical' : 'warning');
+    }
+    console.warn('[INJECTION ALERT] Potential prompt injection detected in audit event:', {
+      action: event.action,
+      severity: injectionSeverity,
+      tags: injectionTags
+    });
+  }
+  // ── End Injection Detection ───────────────────────────────────────────────
+
   const auditEntry = {
     id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     project_id: event.projectId || null,
@@ -2152,6 +2202,32 @@ app.get('/api/agents/activity', (req, res) => {
         const content = JSON.parse(fs.readFileSync(`${claudePath}/${file}`, 'utf8'));
         const agent = content.agent || file.match(/signal-([a-z-]+)/)?.[1] || 'system';
 
+        // GAP-001: Scan signal content for prompt injection
+        const signalAnalysis = promptInjectionDetector.analyzeSignal(content);
+        let injectionWarning = null;
+        if (!signalAnalysis.safe) {
+          injectionWarning = {
+            severity: signalAnalysis.severity,
+            detections: signalAnalysis.detections.length,
+            tags: signalAnalysis.detections.map(d => d.category)
+          };
+          // Log the detection
+          logAudit({
+            eventType: 'security_alert',
+            category: 'injection_detection',
+            severity: signalAnalysis.severity === 'critical' ? 'critical' : 'warning',
+            actorType: 'system',
+            actorId: 'injection-detector',
+            action: `Potential injection detected in signal file: ${file}`,
+            resourceType: 'signal',
+            resourceId: file,
+            details: signalAnalysis,
+            projectPath,
+            safetyTags: signalAnalysis.detections.map(d => `injection:${d.category}`),
+            requiresReview: true
+          });
+        }
+
         let action = 'Signal created';
         if (file.includes('assignment')) action = 'Agent assigned stories';
         else if (file.includes('STOP')) action = 'Agent stopped';
@@ -2164,7 +2240,8 @@ app.get('/api/agents/activity', (req, res) => {
           timestamp: content.timestamp || content.assigned_at || content.stopped_at || stat.mtime.toISOString(),
           agent,
           action,
-          details: content
+          details: content,
+          injectionWarning // GAP-001: Include injection detection result
         });
       } catch (err) {
         // Skip invalid files
@@ -5956,6 +6033,390 @@ app.get('/api/budgets/check', (req, res) => {
       }
     });
 
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DORA METRICS ENDPOINTS (GAP-002)
+// Track the four key DevOps performance metrics
+// Source: https://dora.dev/guides/dora-metrics-four-keys/
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// GET /api/dora/metrics - Get DORA metrics for a date range
+app.get('/api/dora/metrics', (req, res) => {
+  const { projectPath, startDate, endDate, period } = req.query;
+
+  if (!projectPath) {
+    return res.status(400).json({ success: false, error: 'Project path required' });
+  }
+
+  try {
+    const tracker = new DORAMetricsTracker(projectPath);
+
+    // If period is 'week', calculate for current week
+    if (period === 'week') {
+      const summary = tracker.generateWeeklySummary(0);
+      return res.json({ success: true, metrics: summary });
+    }
+
+    // If period is 'last-week', calculate for last week
+    if (period === 'last-week') {
+      const summary = tracker.generateWeeklySummary(1);
+      return res.json({ success: true, metrics: summary });
+    }
+
+    // Default: use provided date range or last 30 days
+    const end = endDate ? new Date(endDate) : new Date();
+    const start = startDate ? new Date(startDate) : new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const metrics = tracker.calculateMetrics(start.toISOString(), end.toISOString());
+    const overall = tracker.getOverallRating(metrics.metrics);
+
+    res.json({
+      success: true,
+      metrics: {
+        ...metrics,
+        overall_rating: overall
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/dora/deployment - Record a deployment event
+app.post('/api/dora/deployment', (req, res) => {
+  const { projectPath, wave, storyId, commitSha, environment, success } = req.body;
+
+  if (!projectPath) {
+    return res.status(400).json({ success: false, error: 'Project path required' });
+  }
+
+  try {
+    const tracker = new DORAMetricsTracker(projectPath);
+    const event = tracker.recordDeployment({
+      wave,
+      storyId,
+      commitSha,
+      environment: environment || 'production',
+      success: success !== false
+    });
+
+    // Log audit event
+    logAudit({
+      eventType: 'dora_deployment',
+      category: 'metrics',
+      severity: success !== false ? 'info' : 'warning',
+      actorType: 'system',
+      actorId: 'dora-tracker',
+      action: success !== false ? 'Deployment recorded' : 'Failed deployment recorded',
+      resourceType: 'story',
+      resourceId: storyId,
+      projectPath,
+      waveNumber: wave,
+      details: event
+    });
+
+    res.json({ success: true, event });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/dora/lead-time - Record lead time for a deployment
+app.post('/api/dora/lead-time', (req, res) => {
+  const { projectPath, wave, storyId, firstCommitAt, deployedAt, gatesTraversed, retries } = req.body;
+
+  if (!projectPath || !firstCommitAt) {
+    return res.status(400).json({ success: false, error: 'Project path and firstCommitAt required' });
+  }
+
+  try {
+    const tracker = new DORAMetricsTracker(projectPath);
+    const event = tracker.recordLeadTime({
+      wave,
+      storyId,
+      firstCommitAt,
+      deployedAt: deployedAt || new Date().toISOString(),
+      gatesTraversed: gatesTraversed || [],
+      retries: retries || 0
+    });
+
+    res.json({ success: true, event });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/dora/failure - Record a failure event
+app.post('/api/dora/failure', (req, res) => {
+  const { projectPath, wave, storyId, failureType, gate, error, rollbackRequired } = req.body;
+
+  if (!projectPath) {
+    return res.status(400).json({ success: false, error: 'Project path required' });
+  }
+
+  try {
+    const tracker = new DORAMetricsTracker(projectPath);
+    const event = tracker.recordFailure({
+      wave,
+      storyId,
+      failureType,
+      gate,
+      error,
+      rollbackRequired
+    });
+
+    // Log audit event
+    logAudit({
+      eventType: 'dora_failure',
+      category: 'metrics',
+      severity: 'warning',
+      actorType: 'system',
+      actorId: 'dora-tracker',
+      action: 'Failure recorded for MTTR tracking',
+      resourceType: 'story',
+      resourceId: storyId,
+      projectPath,
+      waveNumber: wave,
+      gateNumber: gate,
+      details: event
+    });
+
+    res.json({ success: true, event });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/dora/recovery - Record a recovery event
+app.post('/api/dora/recovery', (req, res) => {
+  const { projectPath, wave, storyId, failureId, failedAt, recoveredAt, resolution } = req.body;
+
+  if (!projectPath || !failedAt) {
+    return res.status(400).json({ success: false, error: 'Project path and failedAt required' });
+  }
+
+  try {
+    const tracker = new DORAMetricsTracker(projectPath);
+    const event = tracker.recordRecovery({
+      wave,
+      storyId,
+      failureId,
+      failedAt,
+      recoveredAt: recoveredAt || new Date().toISOString(),
+      resolution
+    });
+
+    // Log audit event
+    logAudit({
+      eventType: 'dora_recovery',
+      category: 'metrics',
+      severity: 'info',
+      actorType: 'system',
+      actorId: 'dora-tracker',
+      action: `Recovery recorded - MTTR: ${event.mttr_seconds}s`,
+      resourceType: 'story',
+      resourceId: storyId,
+      projectPath,
+      waveNumber: wave,
+      details: event
+    });
+
+    res.json({ success: true, event });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/dora/events - Get raw DORA events
+app.get('/api/dora/events', (req, res) => {
+  const { projectPath, startDate, endDate, limit } = req.query;
+
+  if (!projectPath) {
+    return res.status(400).json({ success: false, error: 'Project path required' });
+  }
+
+  try {
+    const tracker = new DORAMetricsTracker(projectPath);
+    let events = tracker.readEvents();
+
+    // Filter by date range if provided
+    if (startDate || endDate) {
+      const start = startDate ? new Date(startDate) : new Date(0);
+      const end = endDate ? new Date(endDate) : new Date();
+      events = events.filter(e => {
+        const ts = new Date(e.timestamp);
+        return ts >= start && ts <= end;
+      });
+    }
+
+    // Sort by timestamp descending
+    events.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    // Apply limit
+    if (limit) {
+      events = events.slice(0, parseInt(limit));
+    }
+
+    res.json({ success: true, events, count: events.length });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PER-AGENT RATE LIMITING ENDPOINTS (GAP-004)
+// Enforces rate limits to prevent runaway workloads
+// Source: https://www.truefoundry.com/blog/llm-cost-tracking-solution
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Rate limiter instances per project
+const rateLimiters = new Map();
+
+function getRateLimiter(projectPath) {
+  if (!rateLimiters.has(projectPath)) {
+    rateLimiters.set(projectPath, new AgentRateLimiter({ projectPath }));
+  }
+  return rateLimiters.get(projectPath);
+}
+
+// GET /api/rate-limits - Get rate limit configuration and usage
+app.get('/api/rate-limits', (req, res) => {
+  const { projectPath, agent } = req.query;
+
+  if (!projectPath) {
+    return res.status(400).json({ success: false, error: 'Project path required' });
+  }
+
+  try {
+    const limiter = getRateLimiter(projectPath);
+
+    if (agent) {
+      const usage = limiter.getUsage(agent);
+      res.set(limiter.getHeaders(agent));
+      return res.json({ success: true, usage });
+    }
+
+    const allUsage = limiter.getAllUsage();
+    res.json({
+      success: true,
+      agents: allUsage,
+      count: Object.keys(allUsage).length
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/rate-limits/check - Check if a request would be allowed
+app.post('/api/rate-limits/check', (req, res) => {
+  const { projectPath, agent, estimatedTokens } = req.body;
+
+  if (!projectPath || !agent) {
+    return res.status(400).json({ success: false, error: 'Project path and agent required' });
+  }
+
+  try {
+    const limiter = getRateLimiter(projectPath);
+    const check = limiter.checkLimit(agent, estimatedTokens || 0);
+
+    res.set(limiter.getHeaders(agent));
+
+    if (!check.allowed) {
+      // Return 429 if rate limited
+      return res.status(429).json({
+        success: false,
+        allowed: false,
+        ...check
+      });
+    }
+
+    res.json({
+      success: true,
+      allowed: true,
+      ...check
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/rate-limits/record - Record a completed request
+app.post('/api/rate-limits/record', (req, res) => {
+  const { projectPath, agent, tokensUsed } = req.body;
+
+  if (!projectPath || !agent) {
+    return res.status(400).json({ success: false, error: 'Project path and agent required' });
+  }
+
+  try {
+    const limiter = getRateLimiter(projectPath);
+    const result = limiter.recordRequest(agent, tokensUsed || 0);
+
+    res.set(limiter.getHeaders(agent));
+    res.json({ success: true, ...result });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// PUT /api/rate-limits/config - Update rate limits for an agent type
+app.put('/api/rate-limits/config', (req, res) => {
+  const { projectPath, agentType, limits } = req.body;
+
+  if (!projectPath || !agentType || !limits) {
+    return res.status(400).json({ success: false, error: 'Project path, agentType, and limits required' });
+  }
+
+  try {
+    const limiter = getRateLimiter(projectPath);
+    limiter.updateLimits(agentType, limits);
+
+    // Log audit event
+    logAudit({
+      eventType: 'config_update',
+      category: 'rate_limits',
+      severity: 'info',
+      actorType: 'user',
+      actorId: 'portal',
+      action: `Updated rate limits for ${agentType}`,
+      resourceType: 'rate_limits',
+      resourceId: agentType,
+      projectPath,
+      details: { agentType, limits }
+    });
+
+    res.json({
+      success: true,
+      message: `Rate limits updated for ${agentType}`,
+      limits: limiter.getLimits(agentType)
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/rate-limits/reset - Reset usage for an agent or all agents
+app.post('/api/rate-limits/reset', (req, res) => {
+  const { projectPath, agent } = req.body;
+
+  if (!projectPath) {
+    return res.status(400).json({ success: false, error: 'Project path required' });
+  }
+
+  try {
+    const limiter = getRateLimiter(projectPath);
+
+    if (agent) {
+      limiter.resetAgent(agent);
+      res.json({ success: true, message: `Rate limits reset for ${agent}` });
+    } else {
+      limiter.resetAll();
+      res.json({ success: true, message: 'All rate limits reset' });
+    }
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }

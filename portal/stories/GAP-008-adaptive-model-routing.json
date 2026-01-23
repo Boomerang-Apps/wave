@@ -1,0 +1,127 @@
+{
+  "id": "GAP-008",
+  "title": "Implement adaptive model routing for cost optimization",
+  "domain": "optimization",
+  "agent": "be-dev-1",
+  "priority": "low",
+  "risk": "low",
+  "status": "complete",
+  "wave": null,
+  "description": "Route tasks to optimal Claude model (Haiku/Sonnet/Opus) based on complexity classification. Use rule-based pattern matching with complexity scoring to achieve 30%+ cost reduction while maintaining quality.",
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "Classify task complexity into three tiers",
+      "threshold": "Accurately classify simple/medium/complex tasks with 85%+ accuracy",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "Route simple tasks to Haiku model",
+      "threshold": "Tasks like extraction, classification, simple edits routed to haiku",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "Route complex tasks to Opus model",
+      "threshold": "Tasks requiring architecture, planning, multi-step reasoning routed to opus",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "Default balanced tasks to Sonnet model",
+      "threshold": "General coding, features, refactoring routed to sonnet",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "Track routing decisions and cost savings",
+      "threshold": "Log model selections with estimated cost savings",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "Support manual model override",
+      "threshold": "Allow explicit model selection bypassing router",
+      "testable": true
+    },
+    {
+      "id": "AC7",
+      "description": "Classification latency under 10ms",
+      "threshold": "<10ms for complexity classification (rule-based)",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/utils/model-router.js",
+      "portal/server/__tests__/model-router.test.js"
+    ],
+    "modify": [],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**",
+      "**/credentials/**",
+      "**/.git/**",
+      "**/node_modules/**",
+      "**/dist/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Router always selects cheapest model regardless of complexity",
+      "Quality degradation detected in routed tasks",
+      "Classification takes >100ms consistently"
+    ],
+    "escalation_triggers": [
+      "Cost savings not materializing after 100+ routed tasks",
+      "User complaints about response quality"
+    ]
+  },
+
+  "dependencies": [],
+
+  "validation_sources": [
+    {
+      "name": "RouteLLM Framework (ICLR 2025)",
+      "url": "https://arxiv.org/html/2406.18665v4",
+      "requirement": "Intelligent routing achieves 2-3x cost savings while maintaining 95% quality"
+    },
+    {
+      "name": "Claude Router GitHub",
+      "url": "https://github.com/0xrdan/claude-router",
+      "requirement": "Hybrid rule-based + LLM classification, coding-task specific patterns"
+    },
+    {
+      "name": "Anthropic Model Selection Guide",
+      "url": "https://platform.claude.com/docs/en/about-claude/models/choosing-a-model",
+      "requirement": "Haiku for extraction/routing, Sonnet for balanced, Opus for complex reasoning"
+    },
+    {
+      "name": "Anthropic Ticket Routing Guide",
+      "url": "https://platform.claude.com/docs/en/about-claude/use-case-guides/ticket-routing",
+      "requirement": "Haiku ideal for routing, hierarchical classification for many classes"
+    }
+  ],
+
+  "implementation_hints": [
+    "Use rule-based pattern matching for zero-latency classification",
+    "Complexity indicators: reasoning keywords, tool count, context length, domain",
+    "Simple: extraction, classification, formatting, typos, config",
+    "Medium: features, refactoring, tests, debugging, general coding",
+    "Complex: architecture, planning, multi-step, agents, security analysis",
+    "Track actual vs predicted complexity for model improvement"
+  ],
+
+  "model_pricing": {
+    "haiku": { "input_per_1m": 0.25, "output_per_1m": 1.25, "tier": "simple" },
+    "sonnet": { "input_per_1m": 3.00, "output_per_1m": 15.00, "tier": "medium" },
+    "opus": { "input_per_1m": 15.00, "output_per_1m": 75.00, "tier": "complex" }
+  },
+
+  "created_at": "2026-01-24T00:30:00Z",
+  "score": 100
+}
