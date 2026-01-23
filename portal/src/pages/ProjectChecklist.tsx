@@ -3470,7 +3470,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
   }
 
   return (
-    <div className="max-w-[1440px] mx-auto pb-12">
+    <div className="w-full max-w-[1600px] mx-auto pb-12">
       {/* DEV MODE Banner */}
       {validationMode !== 'strict' && (
         <div className={cn(
