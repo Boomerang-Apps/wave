@@ -1,0 +1,183 @@
+{
+  "id": "GAP-002",
+  "title": "Apply Security Middleware to All Routes",
+  "domain": "security",
+  "agent": "be-dev-1",
+  "priority": "blocker",
+  "risk": "critical",
+  "status": "completed",
+  "wave": null,
+  "description": "The security-middleware.js (747 LOC) exists but is NOT applied to any routes. Security headers, input sanitization, CSRF protection, and rate limiting are all implemented but unused. This gap exposes the Portal to OWASP Top 10 vulnerabilities including XSS, clickjacking, and injection attacks.",
+
+  "gate0_research": {
+    "sources": [
+      {
+        "name": "OWASP Secure Headers Project",
+        "url": "https://owasp.org/www-project-secure-headers/",
+        "key_findings": [
+          "HTTP response headers can restrict browsers from running into preventable vulnerabilities",
+          "CSP mitigates XSS and data injection attacks",
+          "X-Frame-Options prevents clickjacking",
+          "HSTS forces HTTPS connections"
+        ]
+      },
+      {
+        "name": "Helmet.js Documentation",
+        "url": "https://helmetjs.github.io/",
+        "key_findings": [
+          "Sets 13 security-related HTTP response headers",
+          "Removes X-Powered-By to prevent fingerprinting",
+          "Configure CSP based on application needs",
+          "Keep Helmet updated for latest security standards"
+        ]
+      },
+      {
+        "name": "Express.js Security Best Practices",
+        "url": "https://expressjs.com/en/advanced/best-practice-security.html",
+        "key_findings": [
+          "Use Helmet middleware in production",
+          "Filter and sanitize user input",
+          "Use parameterized queries for SQL",
+          "Set secure cookie options (secure, httpOnly)"
+        ]
+      }
+    ],
+    "compliance_requirements": [
+      "All responses include security headers (CSP, X-Frame-Options, etc.)",
+      "Input sanitization active on all POST/PUT endpoints",
+      "CSRF protection enabled for state-changing requests",
+      "Request body size limits enforced to prevent DoS",
+      "X-Powered-By header removed"
+    ]
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "Security headers applied to all responses",
+      "threshold": "CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy present",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "X-Powered-By header removed",
+      "threshold": "No X-Powered-By in any response",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "HSTS enabled for HTTPS connections",
+      "threshold": "Strict-Transport-Security header present on HTTPS",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "Input sanitization on all endpoints accepting body",
+      "threshold": "HTML entities escaped, null bytes removed, path traversal blocked",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "Request body size limits enforced",
+      "threshold": "413 returned for requests exceeding 10MB",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "Rate limiting active globally",
+      "threshold": "429 returned when global rate limit exceeded",
+      "testable": true
+    },
+    {
+      "id": "AC7",
+      "description": "OWASP compliance report available",
+      "threshold": "generateOWASPReport() returns status of all protections",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/__tests__/security-middleware-integration.test.js"
+    ],
+    "modify": [
+      "portal/server/index.js"
+    ],
+    "existing": [
+      "portal/server/security-middleware.js"
+    ],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Security headers missing from responses",
+      "XSS vectors not sanitized",
+      "Body size limits not enforced"
+    ],
+    "escalation_triggers": [
+      "Security middleware application fails",
+      "Regression in existing functionality"
+    ]
+  },
+
+  "dependencies": ["GAP-001"],
+
+  "validation_sources": [
+    {
+      "name": "OWASP Secure Headers Project",
+      "url": "https://owasp.org/www-project-secure-headers/",
+      "requirement": "Apply security headers to all HTTP responses"
+    },
+    {
+      "name": "Helmet.js",
+      "url": "https://helmetjs.github.io/",
+      "requirement": "Use security middleware to set headers automatically"
+    },
+    {
+      "name": "Express.js Security",
+      "url": "https://expressjs.com/en/advanced/best-practice-security.html",
+      "requirement": "Follow production security best practices"
+    }
+  ],
+
+  "implementation_hints": [
+    "Import securityMiddleware from './security-middleware.js'",
+    "Apply with app.use(securityMiddleware()) early in middleware chain",
+    "Apply BEFORE any route handlers",
+    "Test with curl -I to verify headers",
+    "Existing 747 LOC implementation just needs to be wired up"
+  ],
+
+  "test_plan": {
+    "unit_tests": [
+      "securityHeaders sets X-Content-Type-Options",
+      "securityHeaders sets X-Frame-Options",
+      "securityHeaders sets CSP",
+      "securityHeaders removes X-Powered-By",
+      "sanitize.html escapes entities",
+      "sanitize.path blocks traversal",
+      "rateLimit returns 429 on exceed"
+    ],
+    "integration_tests": [
+      "GET /api/health includes security headers",
+      "POST /api/agents includes security headers",
+      "Large body returns 413",
+      "Rate limit headers present",
+      "OWASP report endpoint works"
+    ],
+    "security_tests": [
+      "XSS payload sanitized",
+      "Path traversal blocked",
+      "Server not fingerprinted"
+    ]
+  },
+
+  "created_at": "2026-01-24T02:45:00Z",
+  "completed_at": "2026-01-24T02:50:00Z",
+  "tests_passed": 49,
+  "score": 100
+}

@@ -10,6 +10,7 @@ import { SLACK_EVENT_TYPES, createSlackEvent } from './slack-events.js';
 import { promptInjectionDetector } from './utils/prompt-injection-detector.js';
 import { DORAMetricsTracker } from './utils/dora-metrics.js';
 import { AgentRateLimiter } from './utils/rate-limiter.js';
+import { securityMiddleware, generateOWASPReport } from './security-middleware.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -153,6 +154,29 @@ const PORT = 3000;
 
 app.use(cors());
 app.use(express.json());
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECURITY MIDDLEWARE (GAP-002)
+// Apply OWASP security headers, rate limiting, and input sanitization
+// Sources: OWASP Secure Headers Project, Helmet.js, Express.js Security
+// ═══════════════════════════════════════════════════════════════════════════════
+const securityMiddlewares = securityMiddleware({
+  headers: {
+    contentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' wss: ws: https:; frame-ancestors 'self'"
+  },
+  rateLimit: {
+    windowMs: 60000,
+    maxRequests: 200  // Higher limit for Portal API
+  },
+  maxBodySize: 10 * 1024 * 1024 // 10MB
+});
+securityMiddlewares.forEach(m => app.use(m));
+
+// OWASP compliance report endpoint
+app.get('/api/security/owasp-report', (req, res) => {
+  const report = generateOWASPReport();
+  res.json(report);
+});
 
 // Store for analysis steps (for step-by-step progress)
 const analysisSteps = new Map();

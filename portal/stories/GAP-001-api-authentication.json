@@ -1,0 +1,191 @@
+{
+  "id": "GAP-001",
+  "title": "Implement Portal API Authentication",
+  "domain": "security",
+  "agent": "be-dev-1",
+  "priority": "blocker",
+  "risk": "critical",
+  "status": "completed",
+  "wave": null,
+  "description": "Implement API key authentication for all Portal API endpoints. Currently, anyone with network access can trigger agents, read audit logs, and modify budgets. This is a CRITICAL security gap that must be fixed before testing. All API endpoints must require valid API key authentication.",
+
+  "gate0_research": {
+    "sources": [
+      {
+        "name": "OWASP A07:2021 - Identification and Authentication Failures",
+        "url": "https://owasp.org/Top10/2021/A07_2021-Identification_and_Authentication_Failures/",
+        "key_findings": [
+          "Limit or gradually delay failed login attempts to prevent brute force",
+          "Log all failures and alert administrators when attacks detected",
+          "Use server-side, secure session manager with high entropy session IDs",
+          "Ensure consistent messaging to prevent account enumeration"
+        ]
+      },
+      {
+        "name": "NIST SP 800-63B - Digital Identity Guidelines",
+        "url": "https://pages.nist.gov/800-63-3/sp800-63b.html",
+        "key_findings": [
+          "API keys should be stored securely with hashing",
+          "Implement rate limiting on authentication endpoints",
+          "Use cryptographically secure random generation for keys",
+          "Keys should have defined lifecycle (creation, rotation, revocation)"
+        ]
+      },
+      {
+        "name": "Express.js Security Best Practices",
+        "url": "https://expressjs.com/en/advanced/best-practice-security.html",
+        "key_findings": [
+          "Use middleware for authentication to apply consistently",
+          "Validate API keys in authorization header",
+          "Return appropriate HTTP status codes (401, 403)",
+          "Do not leak information in error messages"
+        ]
+      }
+    ],
+    "compliance_requirements": [
+      "All API endpoints must require authentication",
+      "Invalid/missing API key returns 401 Unauthorized",
+      "Rate limiting per API key to prevent abuse",
+      "All authentication attempts logged to audit trail",
+      "API keys can be revoked without restart"
+    ]
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "All /api/* endpoints require valid API key in Authorization header",
+      "threshold": "401 returned for missing or invalid key on all endpoints",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "Valid API key format: 'Bearer <key>' or 'x-api-key: <key>'",
+      "threshold": "Both header formats accepted, case-insensitive",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "Rate limiting per API key enforced",
+      "threshold": "Max 100 requests/minute per key, 429 returned when exceeded",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "API keys can be revoked at runtime",
+      "threshold": "Revoked key immediately rejected, no restart required",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "All authentication attempts logged to audit trail",
+      "threshold": "Log includes: timestamp, key_id (not full key), IP, endpoint, success/failure",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "API key hashed in storage (not plaintext)",
+      "threshold": "Keys stored with SHA-256 hash, salt per key",
+      "testable": true
+    },
+    {
+      "id": "AC7",
+      "description": "Health endpoint excluded from authentication",
+      "threshold": "/api/health accessible without API key for monitoring",
+      "testable": true
+    },
+    {
+      "id": "AC8",
+      "description": "Response headers do not leak authentication details",
+      "threshold": "No X-Powered-By, no detailed error messages on failure",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/middleware/auth.js",
+      "portal/server/__tests__/auth.test.js"
+    ],
+    "modify": [
+      "portal/server/index.js"
+    ],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Authentication bypass possible",
+      "API key leaked in logs or responses",
+      "Rate limiting not enforced"
+    ],
+    "escalation_triggers": [
+      "Endpoints accessible without authentication",
+      "Key storage in plaintext"
+    ]
+  },
+
+  "dependencies": [],
+
+  "validation_sources": [
+    {
+      "name": "OWASP A07:2021 Identification and Authentication Failures",
+      "url": "https://owasp.org/Top10/2021/A07_2021-Identification_and_Authentication_Failures/",
+      "requirement": "Rate limit failed attempts, log failures, use secure session management"
+    },
+    {
+      "name": "NIST SP 800-63B Digital Identity Guidelines",
+      "url": "https://pages.nist.gov/800-63-3/sp800-63b.html",
+      "requirement": "Store secrets hashed, implement key lifecycle, use cryptographically secure generation"
+    },
+    {
+      "name": "Express.js Security Best Practices",
+      "url": "https://expressjs.com/en/advanced/best-practice-security.html",
+      "requirement": "Use helmet, validate input, rate limit, proper error handling"
+    }
+  ],
+
+  "implementation_hints": [
+    "Create middleware that extracts API key from Authorization header or x-api-key",
+    "Use SHA-256 to hash API keys before comparison",
+    "Store key metadata in memory (can be loaded from env or config)",
+    "Apply rate limiting per hashed key ID",
+    "Exclude /api/health from authentication for monitoring",
+    "Log auth attempts to existing audit system",
+    "Return 401 with minimal error message"
+  ],
+
+  "test_plan": {
+    "unit_tests": [
+      "extractApiKey - extracts from Bearer token",
+      "extractApiKey - extracts from x-api-key header",
+      "extractApiKey - returns null for missing key",
+      "hashApiKey - returns consistent hash",
+      "validateApiKey - accepts valid key",
+      "validateApiKey - rejects invalid key",
+      "validateApiKey - rejects revoked key"
+    ],
+    "integration_tests": [
+      "middleware returns 401 for missing key",
+      "middleware returns 401 for invalid key",
+      "middleware allows request with valid key",
+      "middleware rate limits per key",
+      "middleware logs auth attempts",
+      "/api/health bypasses auth",
+      "revoked key immediately rejected"
+    ],
+    "security_tests": [
+      "timing-safe comparison prevents timing attacks",
+      "key not logged in full",
+      "error messages do not leak details"
+    ]
+  },
+
+  "created_at": "2026-01-24T02:30:00Z",
+  "completed_at": "2026-01-24T02:40:00Z",
+  "tests_passed": 41,
+  "score": 100
+}

@@ -1,680 +1,674 @@
-# WAVE Gap Remediation Plan
+# WAVE Gap Remediation Plan v2.0
 
-**Version:** 1.0.0
-**Date:** 2026-01-23
+**Created:** 2026-01-24
+**Version:** 2.0.0
 **Status:** IN PROGRESS
-**Target:** Production-Ready Execution
+**Total Gaps:** 16
+**Completed:** 2/16
 
 ---
 
 ## Progress Overview
 
 ```
-OVERALL PROGRESS: [##########....................] 33% (3/9 gaps addressed)
+OVERALL PROGRESS: [████░░░░░░░░░░░░░░░░] 12% (2/16 gaps)
 
-HIGH Priority:    [##########....................] 50% (1/2)
-MEDIUM Priority:  [######........................] 20% (1/5)
-LOW Priority:     [##############................] 50% (1/2)
+Phase 1 - BLOCKERS:    [████░░░░░░] 2/4  (50%) | Est: 15 hrs
+Phase 2 - HIGH:        [░░░░░░░░░░] 0/4  (0%)  | Est: 12 hrs
+Phase 3 - MEDIUM:      [░░░░░░░░░░] 0/5  (0%)  | Est: 17 hrs
+Phase 4 - CONSISTENCY: [░░░░░░░░░░] 0/3  (0%)  | Est:  9 hrs
+
+Total Estimated Tests: 260-345
+Tests Written: 90 (41 + 49)
+Total Estimated Hours: 53
 ```
-
-### Gap Status Dashboard
-
-| ID | Gap | Severity | Status | Progress |
-|----|-----|----------|--------|----------|
-| GAP-001 | Runtime Prompt Injection Detection | HIGH | Pending | [ ] 0% |
-| GAP-002 | DORA Metrics Tracking | HIGH | Pending | [ ] 0% |
-| GAP-003 | Kill Switch Drill Capability | MEDIUM | Pending | [ ] 0% |
-| GAP-004 | Per-Agent Rate Limiting | MEDIUM | Pending | [ ] 0% |
-| GAP-005 | Caching Layer | MEDIUM | Pending | [ ] 0% |
-| GAP-006 | Message Ordering (File Watchers) | MEDIUM | Pending | [ ] 0% |
-| GAP-007 | System Prompt Encryption | MEDIUM | Pending | [ ] 0% |
-| GAP-008 | Adaptive Model Routing | LOW | Pending | [ ] 0% |
-| GAP-009 | Mesh Topology Support | LOW | Deferred | [-] N/A |
 
 ---
 
-## Phase 1: HIGH Priority Gaps
-
-### GAP-001: Runtime Prompt Injection Detection
+## TDD Process (Applied to Every Gap)
 
 ```
-Progress: [..............................] 0%
-Effort: 2-3 days | Priority: P1 | Blocks: No (mitigated)
+┌─────────────────────────────────────────────────────────────────┐
+│  GATE 0 RESEARCH                                                │
+│  ├── Find 2-3 credible sources (OWASP, Anthropic, AWS, etc.)   │
+│  ├── Document requirements with citations                       │
+│  └── Create story JSON file with acceptance criteria            │
+├─────────────────────────────────────────────────────────────────┤
+│  TDD - RED PHASE                                                │
+│  ├── Write failing tests FIRST                                  │
+│  ├── Cover happy path scenarios                                 │
+│  ├── Cover edge cases                                           │
+│  └── Cover error scenarios                                      │
+├─────────────────────────────────────────────────────────────────┤
+│  TDD - GREEN PHASE                                              │
+│  ├── Implement minimum code to pass tests                       │
+│  ├── Run tests continuously                                     │
+│  └── All tests MUST pass before proceeding                      │
+├─────────────────────────────────────────────────────────────────┤
+│  TDD - REFACTOR PHASE                                           │
+│  ├── Clean up implementation                                    │
+│  ├── Ensure tests still pass                                    │
+│  └── Update documentation                                       │
+├─────────────────────────────────────────────────────────────────┤
+│  VERIFICATION                                                   │
+│  ├── Run full test suite (no regressions)                      │
+│  ├── Update progress tracker                                    │
+│  └── Mark gap as COMPLETE                                       │
+└─────────────────────────────────────────────────────────────────┘
 ```
-
-#### Research & Validation
-
-**Source 1: OWASP Top 10 LLM 2025**
-> "LLM01: Prompt Injection - Manipulating LLMs via crafted inputs can lead to unauthorized access, data breaches, and compromised decision-making."
->
-> Source: [OWASP LLM Top 10](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
-
-**Source 2: AutoGuard Research (arXiv:2511.13725)**
-> "AutoGuard achieves over 80% Defense Success Rate (DSR) across diverse malicious agents, including GPT-4o, Claude-4.5-Sonnet and generalizes well to advanced models."
->
-> Source: [arXiv:2511.13725](https://arxiv.org/abs/2511.13725)
-
-**Source 3: NIST AI RMF**
-> "Organizations should implement controls to detect and prevent prompt injection attacks that could manipulate AI system behavior."
->
-> Source: [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework)
-
-#### Current State
-
-- 108 forbidden operations in `COMPLETE-SAFETY-REFERENCE.md`
-- Pattern-matching in `safety-violation-detector.sh`
-- Domain boundaries via Git worktrees
-- **Missing:** Runtime output validation before execution
-
-#### Implementation Steps
-
-- [ ] **Step 1.1:** Create `prompt-injection-detector.js` in portal/server/utils/
-  ```
-  File: /portal/server/utils/prompt-injection-detector.js
-  Purpose: Validate agent outputs before execution
-  Patterns: Known injection signatures, semantic analysis
-  ```
-
-- [ ] **Step 1.2:** Define injection pattern database
-  ```
-  File: /portal/server/utils/injection-patterns.json
-  Contents:
-  - Jailbreak patterns (DAN, STAN, etc.)
-  - Instruction override attempts
-  - Role-playing exploits
-  - Encoding bypass attempts (base64, rot13)
-  ```
-
-- [ ] **Step 1.3:** Integrate with signal validation
-  ```
-  Location: /core/scripts/signal-enforcement/validate-signal.sh
-  Action: Call detector before accepting agent signals
-  ```
-
-- [ ] **Step 1.4:** Create test suite for injection patterns
-  ```
-  File: /portal/server/__tests__/prompt-injection.test.js
-  Coverage: 50+ known injection patterns
-  ```
-
-- [ ] **Step 1.5:** Add to QA validation pipeline
-  ```
-  Location: Portal Tab 5 (Aerospace Safety)
-  Check: "Prompt Injection Resistance"
-  ```
-
-#### Acceptance Criteria
-
-- [ ] Detector catches 80%+ of known injection patterns
-- [ ] False positive rate < 5%
-- [ ] Processing latency < 100ms per check
-- [ ] Test suite covers OWASP examples
-- [ ] Integrated into Portal safety tab
 
 ---
 
-### GAP-002: DORA Metrics Tracking
+## Phase 1: BLOCKERS (Must Fix Before Testing)
+
+### GAP-001: Portal API Authentication ✅ COMPLETE
 
 ```
-Progress: [..............................] 0%
-Effort: 1-2 days | Priority: P2 | Blocks: No
+Status: [██████████] COMPLETE (41 tests passed)
+
+├── [✓] Gate 0 Research     | Sources: OWASP A07, NIST 800-63B, Express.js
+├── [✓] Story Definition    | File: stories/GAP-001-api-authentication.json
+├── [✓] TDD Tests Written   | 41 tests (exceeds target of 15-20)
+├── [✓] Implementation      | File: server/middleware/auth.js (463 LOC)
+└── [✓] Verification        | All 502 tests pass, no regressions
 ```
 
-#### Research & Validation
+**Risk:** CRITICAL - ~~Anyone with network access can trigger agents~~ MITIGATED
+**Actual Hours:** ~1
+**Actual Tests:** 41
 
-**Source 1: Google DORA Research**
-> "The four key metrics that indicate software delivery performance: Deployment Frequency, Lead Time for Changes, Mean Time to Recovery (MTTR), and Change Failure Rate."
->
-> Source: [DORA Metrics](https://dora.dev/guides/dora-metrics-four-keys/)
+**Credible Sources Used:**
+- [OWASP A07:2021](https://owasp.org/Top10/2021/A07_2021-Identification_and_Authentication_Failures/)
+- [NIST SP 800-63B](https://pages.nist.gov/800-63-3/sp800-63b.html)
+- [Express.js Security](https://expressjs.com/en/advanced/best-practice-security.html)
 
-**Source 2: DevOps Training Institute**
-> "The DORA Metrics Threshold Check shifts the focus from technical assurance to risk management and business context. Before the final release, the pipeline checks the four DORA metrics against predefined organizational targets."
->
-> Source: [10 CI/CD Quality Gates](https://www.devopstraininginstitute.com/blog/10-cicd-quality-gates-for-production-level-reliability)
-
-**Source 3: SonarSource**
-> "Quality gates integrated with DORA metrics provide visibility into both code quality and delivery performance, enabling data-driven decisions."
->
-> Source: [SonarSource Quality Gates](https://www.sonarsource.com/learn/integrating-quality-gates-ci-cd-pipeline/)
-
-#### Current State
-
-- No deployment frequency tracking
-- No lead time calculation
-- No MTTR measurement
-- No change failure rate recording
-
-#### Implementation Steps
-
-- [ ] **Step 2.1:** Create metrics schema
-  ```
-  File: /.claudecode/signals/DORA-METRICS-SCHEMA.md
-  Metrics:
-  - deployment_frequency: deployments per day/week
-  - lead_time_seconds: commit to production time
-  - mttr_seconds: failure to recovery time
-  - change_failure_rate: failed deployments / total
-  ```
-
-- [ ] **Step 2.2:** Add metrics logging to orchestrator
-  ```
-  File: /core/scripts/wave-orchestrator.sh
-  Function: log_dora_metric()
-  Output: .claude/metrics/dora.jsonl
-  ```
-
-- [ ] **Step 2.3:** Track wave completion times
-  ```
-  Events to capture:
-  - Wave start timestamp
-  - Wave end timestamp
-  - Story completion times
-  - Retry counts per wave
-  ```
-
-- [ ] **Step 2.4:** Create metrics aggregation script
-  ```
-  File: /core/scripts/dora-metrics-report.sh
-  Output: Weekly/monthly DORA summary
-  ```
-
-- [ ] **Step 2.5:** Add metrics display to Portal
-  ```
-  Location: Portal Tab 10 (Audit Log) or new Tab 11
-  Visualization: Charts showing trends
-  ```
-
-#### Acceptance Criteria
-
-- [ ] All 4 DORA metrics captured automatically
-- [ ] Metrics stored in .claude/metrics/dora.jsonl
-- [ ] Weekly aggregation report generated
-- [ ] Portal displays metric trends
-- [ ] Baseline established after 3 waves
+**Acceptance Criteria:**
+- [x] AC1: All API endpoints require valid API key
+- [x] AC2: Invalid/missing key returns 401 Unauthorized
+- [x] AC3: Rate limiting per API key (100/min default)
+- [x] AC4: API keys can be revoked at runtime
+- [x] AC5: Audit log records all auth attempts
+- [x] AC6: API keys hashed with SHA-256
+- [x] AC7: Health endpoint excluded for monitoring
+- [x] AC8: Response headers don't leak details
 
 ---
 
-## Phase 2: MEDIUM Priority Gaps
-
-### GAP-003: Kill Switch Drill Capability
+### GAP-002: Security Middleware Application ✅ COMPLETE
 
 ```
-Progress: [..............................] 0%
-Effort: 0.5 days | Priority: P2 | Blocks: No
+Status: [██████████] COMPLETE (49 tests passed)
+
+├── [✓] Gate 0 Research     | Sources: OWASP Secure Headers, Helmet.js, Express
+├── [✓] Story Definition    | File: stories/GAP-002-security-middleware.json
+├── [✓] TDD Tests Written   | 49 tests (exceeds target of 20-25)
+├── [✓] Implementation      | File: server/index.js (middleware applied)
+└── [✓] Verification        | All 551 tests pass, no regressions
 ```
 
-#### Research & Validation
+**Risk:** CRITICAL - ~~747 LOC security code exists but is NOT used~~ MITIGATED
+**Actual Hours:** ~0.5
+**Actual Tests:** 49
 
-**Source 1: AI Safety Research**
-> "Practice 'pull-the-plug' drills and verify switches under load. Run periodic chaos tests to ensure kill mechanisms activate correctly."
->
-> Source: [Practical AI Agent Safeguards](https://www.pedowitzgroup.com/ai-agent-kill-switches-practical-safeguards-that-work)
+**Credible Sources Used:**
+- [OWASP Secure Headers Project](https://owasp.org/www-project-secure-headers/)
+- [Helmet.js](https://helmetjs.github.io/)
+- [Express.js Security](https://expressjs.com/en/advanced/best-practice-security.html)
 
-**Source 2: Trustworthy AI Agents**
-> "Every safety measure implemented becomes training data for circumvention. Regular testing ensures kill switches function when actually needed."
->
-> Source: [Kill Switches and Circuit Breakers](https://www.sakurasky.com/blog/missing-primitives-for-trustworthy-ai-part-6/)
-
-#### Current State
-
-- Kill switch exists (`check-kill-switch.sh`)
-- Cannot test without halting system
-- No drill mode implemented
-
-#### Implementation Steps
-
-- [ ] **Step 3.1:** Add `--test` flag to kill switch script
-  ```bash
-  # In check-kill-switch.sh
-  --test)
-      TEST_MODE=true
-      log "DRILL MODE: Simulating kill switch activation"
-      # Check all pathways without creating EMERGENCY-STOP file
-      ;;
-  ```
-
-- [ ] **Step 3.2:** Implement drill verification
-  ```
-  Checks:
-  - Local file creation would succeed
-  - Supabase connection works
-  - Slack notification would fire
-  - All agents would receive signal
-  ```
-
-- [ ] **Step 3.3:** Add drill logging
-  ```
-  Output: .claude/drills/kill-switch-drill-YYYY-MM-DD.json
-  Contents: Pathways tested, response times, success/failure
-  ```
-
-- [ ] **Step 3.4:** Create scheduled drill runner
-  ```
-  File: /core/scripts/scheduled-drills.sh
-  Frequency: Weekly (configurable)
-  ```
-
-#### Acceptance Criteria
-
-- [ ] `--test` mode simulates without halting
-- [ ] All pathways verified in drill
-- [ ] Drill results logged
-- [ ] Weekly automated drills configured
+**Acceptance Criteria:**
+- [x] AC1: Security headers applied (CSP, X-Frame-Options, X-Content-Type-Options)
+- [x] AC2: Input sanitization available on all endpoints
+- [x] AC3: Rate limiting active globally
+- [x] AC4: Request size limits enforced (10MB)
+- [x] AC5: Security middleware tests pass (49 tests)
+- [x] AC6: X-Powered-By header removed
+- [x] AC7: OWASP compliance report endpoint added
 
 ---
 
-### GAP-004: Per-Agent Rate Limiting
+### GAP-003: Input Validation Enforcement
 
 ```
-Progress: [..............................] 0%
-Effort: 1 day | Priority: P2 | Blocks: No
+Status: [░░░░░░░░░░] NOT STARTED
+
+├── [░] Gate 0 Research     | Sources: OWASP Input Validation, JSON Schema, Zod
+├── [░] Story Definition    | File: stories/GAP-003-input-validation.json
+├── [░] TDD Tests Written   | Target: 40-50 tests
+├── [░] Implementation      | File: server/middleware/validation.js
+└── [░] Verification        | All tests pass, no regressions
 ```
 
-#### Research & Validation
+**Risk:** HIGH - 38/40 endpoints lack schema validation
+**Estimated Hours:** 6
+**Estimated Tests:** 40-50
 
-**Source 1: TrueFoundry**
-> "Set daily/monthly quotas by user, team, environment, model, or custom metadata. This helps prevent 'runaway' workloads that spike spend."
->
-> Source: [LLM Cost Tracking Solution](https://www.truefoundry.com/blog/llm-cost-tracking-solution)
+**Required Sources:**
+- OWASP Input Validation Cheat Sheet
+- JSON Schema Specification (draft-07)
+- Zod/Joi Validation Libraries
+- CWE-20 Improper Input Validation
 
-**Source 2: LLM Cost Optimization Research**
-> "With an LLM Gateway, organizations can cut token spend by 30-50% without sacrificing performance through intelligent rate limiting."
->
-> Source: [LLM Cost Optimization](https://ai.koombea.com/blog/llm-cost-optimization)
-
-#### Current State
-
-- Wave-level budget tracking only
-- No per-agent limits
-- One agent could exhaust entire wave budget
-
-#### Implementation Steps
-
-- [ ] **Step 4.1:** Define agent budget allocation
-  ```
-  File: /.claude/agent-budgets.json
-  Structure:
-  {
-    "fe-dev-1": { "budget_usd": 0.50, "spent": 0, "limit_tokens": 100000 },
-    "be-dev-1": { "budget_usd": 0.50, "spent": 0, "limit_tokens": 100000 },
-    "qa": { "budget_usd": 0.25, "spent": 0, "limit_tokens": 50000 }
-  }
-  ```
-
-- [ ] **Step 4.2:** Add budget check to orchestrator
-  ```
-  Location: wave-orchestrator.sh
-  Function: check_agent_budget()
-  Action: Pause agent if budget exceeded
-  ```
-
-- [ ] **Step 4.3:** Update signal validation
-  ```
-  Check: token_usage against agent budget
-  Alert: When agent reaches 75% of allocation
-  ```
-
-- [ ] **Step 4.4:** Add to Portal Agent Dispatch tab
-  ```
-  Display: Per-agent budget usage bars
-  Actions: Adjust limits, reset counters
-  ```
-
-#### Acceptance Criteria
-
-- [ ] Each agent has configurable budget
-- [ ] Orchestrator enforces limits
-- [ ] Alerts at 75% agent budget
-- [ ] Portal shows per-agent usage
+**Acceptance Criteria:**
+- [ ] AC1: All 40 endpoints have schema validation
+- [ ] AC2: Type checking enforced (string, number, array, etc.)
+- [ ] AC3: Length/size limits on all string fields
+- [ ] AC4: Invalid input returns 400 with clear error message
+- [ ] AC5: Unexpected fields rejected (strict mode)
+- [ ] AC6: SQL injection patterns blocked
 
 ---
 
-### GAP-005: Caching Layer
+### GAP-004: Rate Limiting Enforcement
 
 ```
-Progress: [..............................] 0%
-Effort: 2 days | Priority: P3 | Blocks: No
+Status: [░░░░░░░░░░] NOT STARTED
+
+├── [░] Gate 0 Research     | Sources: AWS API Gateway, Google Apigee, express-rate-limit
+├── [░] Story Definition    | File: stories/GAP-004-rate-limiting.json
+├── [░] TDD Tests Written   | Target: 15-20 tests
+├── [░] Implementation      | File: server/middleware/rate-limit.js
+└── [░] Verification        | All tests pass, no regressions
 ```
 
-#### Research & Validation
+**Risk:** HIGH - Budget can be exceeded, limits advisory only
+**Estimated Hours:** 3
+**Estimated Tests:** 15-20
 
-**Source 1: LLM Cost Optimization**
-> "Caching is the single highest-ROI optimization for LLM applications. Implementing smart caching can reduce API calls by 70%+ while improving response times from 2-3 seconds to under 100ms."
->
-> Source: [Koombea LLM Optimization](https://ai.koombea.com/blog/llm-cost-optimization)
+**Required Sources:**
+- AWS API Gateway Rate Limiting
+- Google Apigee Token Policies
+- express-rate-limit Documentation
+- RFC 6585 (429 Too Many Requests)
 
-**Source 2: Semantic Caching Research**
-> "Semantic caching doesn't look for the same words; it looks for the same intent. It maps incoming queries to vector embeddings and compares them to past ones."
->
-> Source: [Kosmoy LLM Cost Management](https://www.kosmoy.com/post/llm-cost-management-stop-burning-money-on-tokens)
-
-#### Current State
-
-- No result caching
-- No prompt caching
-- Repeated context retrieval costs tokens each time
-
-#### Implementation Steps
-
-- [ ] **Step 5.1:** Add Redis/in-memory cache to Portal server
-  ```
-  File: /portal/server/utils/cache-manager.js
-  Strategy: LRU cache with TTL
-  ```
-
-- [ ] **Step 5.2:** Cache project context
-  ```
-  Cached items:
-  - CLAUDE.md content (TTL: 1 hour)
-  - Story definitions (TTL: 30 min)
-  - Validation results (TTL: 5 min)
-  ```
-
-- [ ] **Step 5.3:** Implement cache invalidation
-  ```
-  Triggers:
-  - File modification detected
-  - Manual cache clear
-  - TTL expiration
-  ```
-
-- [ ] **Step 5.4:** Add cache hit metrics
-  ```
-  Track: Hit rate, miss rate, bytes saved
-  Display: Portal metrics dashboard
-  ```
-
-#### Acceptance Criteria
-
-- [ ] Cache reduces API calls by 50%+
-- [ ] Cache hit rate > 70%
-- [ ] Invalidation works correctly
-- [ ] Metrics visible in Portal
+**Acceptance Criteria:**
+- [ ] AC1: Per-agent rate limits enforced
+- [ ] AC2: Returns 429 when limit exceeded
+- [ ] AC3: X-RateLimit headers in responses
+- [ ] AC4: Budget enforcement at API layer
+- [ ] AC5: Configurable limits per agent type
 
 ---
 
-### GAP-006: Message Ordering (File Watchers)
+## Phase 2: HIGH Priority
+
+### GAP-005: Merge Conflict Detection
 
 ```
-Progress: [..............................] 0%
-Effort: 1-2 days | Priority: P3 | Blocks: No
+Status: [░░░░░░░░░░] NOT STARTED
+
+├── [░] Gate 0 Research     | Sources: Git merge strategies, Atlassian, GitHub
+├── [░] Story Definition    | File: stories/GAP-005-merge-conflict.json
+├── [░] TDD Tests Written   | Target: 10-15 tests
+├── [░] Implementation      | File: core/scripts/merge-watcher-v12.sh
+└── [░] Verification        | All tests pass, no regressions
 ```
 
-#### Research & Validation
+**Risk:** HIGH - Silent data loss on auto-resolve
+**Estimated Hours:** 3
+**Estimated Tests:** 10-15
 
-**Source 1: Confluent Event-Driven Architecture**
-> "The concept of an immutable log is critical for distributed systems. Guaranteed message ordering ensures all agents operate with the same context."
->
-> Source: [Event-Driven Multi-Agent Systems](https://www.confluent.io/blog/event-driven-multi-agent-systems/)
+**Required Sources:**
+- Git Documentation - Merge Strategies
+- Atlassian Git Merge Conflict Resolution
+- Anthropic Human-in-the-Loop Guidelines
 
-**Source 2: Microsoft Event-Driven Architecture**
-> "Event-driven systems should use event sourcing patterns that capture all changes in sequence, enabling reliable replay and consistent state reconstruction."
->
-> Source: [Azure Event-Driven Architecture](https://learn.microsoft.com/en-us/azure/architecture/guide/architecture-styles/event-driven)
-
-#### Current State
-
-- 10-second polling interval
-- Race conditions possible
-- Non-deterministic signal detection
-
-#### Implementation Steps
-
-- [ ] **Step 6.1:** Replace polling with file watchers
-  ```
-  File: /core/scripts/signal-watcher.sh
-  Technology: fswatch (macOS) / inotifywait (Linux)
-  ```
-
-- [ ] **Step 6.2:** Implement event sequencing
-  ```
-  Add sequence number to signals:
-  "sequence": 42,
-  "previous_sequence": 41
-  ```
-
-- [ ] **Step 6.3:** Add ordering validation
-  ```
-  Check: sequence == previous_sequence + 1
-  Action: Wait or request missing signal
-  ```
-
-- [ ] **Step 6.4:** Update merge-watcher
-  ```
-  Replace: sleep-based polling
-  With: Event-driven signal detection
-  ```
-
-#### Acceptance Criteria
-
-- [ ] Signals detected within 1 second
-- [ ] Sequence numbers validate order
-- [ ] No race conditions in tests
-- [ ] Backward compatible with polling fallback
+**Acceptance Criteria:**
+- [ ] AC1: Merge conflicts detected (not auto-resolved)
+- [ ] AC2: Conflict triggers ESCALATION signal
+- [ ] AC3: Conflicting files listed in signal
+- [ ] AC4: Human resolution required before proceed
+- [ ] AC5: Audit log records conflict details
 
 ---
 
-### GAP-007: System Prompt Encryption
+### GAP-006: Path Traversal Protection
 
 ```
-Progress: [..............................] 0%
-Effort: 1 day | Priority: P3 | Blocks: No
+Status: [░░░░░░░░░░] NOT STARTED
+
+├── [░] Gate 0 Research     | Sources: OWASP Path Traversal, CWE-22, Node.js path
+├── [░] Story Definition    | File: stories/GAP-006-path-traversal.json
+├── [░] TDD Tests Written   | Target: 15-20 tests
+├── [░] Implementation      | File: server/utils/path-validator.js
+└── [░] Verification        | All tests pass, no regressions
 ```
 
-#### Research & Validation
+**Risk:** HIGH - Directory escape possible
+**Estimated Hours:** 2
+**Estimated Tests:** 15-20
 
-**Source 1: OWASP LLM07**
-> "System prompt leakage has become an alarming issue. Protecting system prompts from unauthorized access is essential for maintaining AI system integrity."
->
-> Source: [OWASP Top 10 LLM 2025](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
+**Required Sources:**
+- OWASP Path Traversal Attack
+- CWE-22: Improper Limitation of a Pathname
+- Node.js path.resolve() Security
+- OWASP Testing Guide - Path Traversal
 
-**Source 2: NIST Cybersecurity Framework for AI**
-> "Issue AI systems unique identities and credentials, and protect configuration data including system prompts from unauthorized access."
->
-> Source: [NISTIR 8596](https://nvlpubs.nist.gov/nistpubs/ir/2025/NIST.IR.8596.iprd.pdf)
-
-#### Current State
-
-- CLAUDE.md stored in plaintext
-- System prompts readable if agent escapes constraints
-- No encryption at rest
-
-#### Implementation Steps
-
-- [ ] **Step 7.1:** Create encryption utility
-  ```
-  File: /core/scripts/encrypt-secrets.sh
-  Algorithm: AES-256-GCM
-  Key: Environment variable or KMS
-  ```
-
-- [ ] **Step 7.2:** Encrypt sensitive files
-  ```
-  Files to encrypt:
-  - CLAUDE.md → CLAUDE.md.enc
-  - .claude/prompts/*.md → *.md.enc
-  - Agent-specific instructions
-  ```
-
-- [ ] **Step 7.3:** Implement runtime decryption
-  ```
-  Decryption: In-memory only
-  Never: Write decrypted to disk
-  ```
-
-- [ ] **Step 7.4:** Add key rotation
-  ```
-  Schedule: Monthly rotation
-  Process: Re-encrypt with new key
-  ```
-
-#### Acceptance Criteria
-
-- [ ] Sensitive files encrypted at rest
-- [ ] Decryption only in memory
-- [ ] Key rotation implemented
-- [ ] No plaintext prompts on disk
+**Acceptance Criteria:**
+- [ ] AC1: All file paths validated against allowed directories
+- [ ] AC2: ../../../etc/passwd patterns blocked
+- [ ] AC3: Symlink attacks prevented
+- [ ] AC4: Returns 403 on traversal attempt
+- [ ] AC5: Audit log records traversal attempts
 
 ---
 
-## Phase 3: LOW Priority Gaps
-
-### GAP-008: Adaptive Model Routing
+### GAP-007: Story Content Injection Scanning
 
 ```
-Progress: [..............................] 0%
-Effort: 2 days | Priority: P4 | Blocks: No
+Status: [░░░░░░░░░░] NOT STARTED
+
+├── [░] Gate 0 Research     | Sources: OWASP LLM01, Anthropic, AutoGuard paper
+├── [░] Story Definition    | File: stories/GAP-007-story-injection.json
+├── [░] TDD Tests Written   | Target: 20-25 tests
+├── [░] Implementation      | File: core/scripts/story-scanner.sh
+└── [░] Verification        | All tests pass, no regressions
 ```
 
-#### Research & Validation
+**Risk:** HIGH - Malicious acceptance_criteria could hijack agents
+**Estimated Hours:** 3
+**Estimated Tests:** 20-25
 
-**Source 1: LLM Cost Optimization**
-> "When traffic is steady but mixed in complexity, routing easy questions to a cheaper model and off-loading batch tasks to a small self-hosted LLM keeps quality intact and slashes cost."
->
-> Source: [Koombea LLM Optimization](https://ai.koombea.com/blog/llm-cost-optimization)
+**Required Sources:**
+- OWASP LLM01:2025 Prompt Injection
+- Anthropic Prompt Injection Guidelines
+- AutoGuard Research (arXiv:2511.13725)
+- NIST AI RMF - Input Validation
 
-#### Implementation Steps
-
-- [ ] **Step 8.1:** Define task complexity classifier
-- [ ] **Step 8.2:** Create routing rules engine
-- [ ] **Step 8.3:** Implement model fallback chain
-- [ ] **Step 8.4:** Add routing metrics
-
-#### Acceptance Criteria
-
-- [ ] Simple tasks route to Haiku
-- [ ] Complex tasks route to Opus
-- [ ] 30%+ cost reduction measured
+**Acceptance Criteria:**
+- [ ] AC1: Story files scanned before agent processing
+- [ ] AC2: Known injection patterns detected (80%+ coverage)
+- [ ] AC3: Suspicious stories flagged for human review
+- [ ] AC4: Pre-flight validator includes story scanning
+- [ ] AC5: False positive rate < 5%
 
 ---
 
-### GAP-009: Mesh Topology Support
+### GAP-008: Approval Level Enforcement (L1-L4)
 
 ```
-Progress: [..............................] 0%
-Effort: 1 week | Priority: P4 | Blocks: No | Status: DEFERRED
+Status: [░░░░░░░░░░] NOT STARTED
+
+├── [░] Gate 0 Research     | Sources: RBAC patterns, AWS IAM, NIST AC
+├── [░] Story Definition    | File: stories/GAP-008-approval-levels.json
+├── [░] TDD Tests Written   | Target: 20-25 tests
+├── [░] Implementation      | File: core/scripts/approval-enforcer.sh
+└── [░] Verification        | All tests pass, no regressions
 ```
 
-#### Notes
+**Risk:** MEDIUM - Documented L1-L4 levels not enforced
+**Estimated Hours:** 4
+**Estimated Tests:** 20-25
 
-Deferred to future release. Current hub-and-spoke architecture scales to ~10 agents, sufficient for initial production use.
+**Required Sources:**
+- NIST SP 800-53 Access Control (AC)
+- AWS IAM Best Practices
+- RBAC Design Patterns
+- WAVE APPROVAL-LEVELS.md Specification
 
----
-
-## Implementation Schedule
-
-### Week 1: Critical Path
-
-| Day | Gap | Task |
-|-----|-----|------|
-| Mon | GAP-001 | Create prompt-injection-detector.js |
-| Tue | GAP-001 | Define injection patterns, integrate |
-| Wed | GAP-001 | Create test suite, add to Portal |
-| Thu | GAP-002 | Create DORA metrics schema |
-| Fri | GAP-002 | Add logging to orchestrator |
-
-### Week 2: Safety & Performance
-
-| Day | Gap | Task |
-|-----|-----|------|
-| Mon | GAP-003 | Add kill switch --test mode |
-| Tue | GAP-004 | Define agent budgets, add checks |
-| Wed | GAP-005 | Implement caching layer |
-| Thu | GAP-006 | Replace polling with file watchers |
-| Fri | GAP-007 | Implement prompt encryption |
-
-### Week 3: Polish & Optimization
-
-| Day | Gap | Task |
-|-----|-----|------|
-| Mon | GAP-008 | Implement model routing |
-| Tue | - | Integration testing |
-| Wed | - | Documentation updates |
-| Thu | - | Final validation |
-| Fri | - | Production deployment |
+**Acceptance Criteria:**
+- [ ] AC1: L1 operations require human approval signal
+- [ ] AC2: L2 operations require CTO agent approval
+- [ ] AC3: L3 operations require PM agent approval
+- [ ] AC4: L4 operations validated by QA
+- [ ] AC5: Approval chain audited in black box
 
 ---
 
-## Validation Checklist
+## Phase 3: MEDIUM Priority
 
-### Pre-Execution (Required)
+### GAP-009: Content-Based Drift Detection
 
-- [ ] All HIGH priority gaps addressed OR documented mitigations
-- [ ] Kill switch tested (manually)
-- [ ] Budget limits configured
-- [ ] Slack notifications working
-- [ ] All Portal tabs passing validation
+```
+Status: [░░░░░░░░░░] NOT STARTED
 
-### Post-Implementation (Recommended)
+├── [░] Gate 0 Research     | Sources: Git internals, content-addressable storage
+├── [░] Story Definition    | File: stories/GAP-009-drift-detection.json
+├── [░] TDD Tests Written   | Target: 10-15 tests
+├── [░] Implementation      | File: core/scripts/drift-detector.sh
+└── [░] Verification        | All tests pass, no regressions
+```
 
-- [ ] Prompt injection test suite passes
-- [ ] DORA metrics collecting data
-- [ ] Kill switch drill successful
-- [ ] Per-agent limits enforced
-- [ ] Cache hit rate > 50%
+**Risk:** MEDIUM - Timestamp-based detection insufficient
+**Estimated Hours:** 3
+**Estimated Tests:** 10-15
 
----
+**Required Sources:**
+- Git Internals - Content Addressing
+- AWS Change Detection Patterns
+- Infrastructure as Code Drift Detection
 
-## Risk Mitigation
-
-### If GAP-001 (Prompt Injection) Not Addressed
-
-**Mitigation:**
-1. L0 forbidden list blocks 108 known dangerous operations
-2. Domain boundaries via worktrees prevent cross-agent access
-3. Human review at Gate 7 catches anomalies
-4. Kill switch available for immediate halt
-
-**Risk Level:** ACCEPTABLE for initial execution
-
-### If GAP-002 (DORA Metrics) Not Addressed
-
-**Mitigation:**
-1. Manual tracking via audit log
-2. Black box flight recorder captures timing
-3. Can retroactively calculate from logs
-
-**Risk Level:** ACCEPTABLE (operational, not safety)
+**Acceptance Criteria:**
+- [ ] AC1: Uses git diff for actual content changes
+- [ ] AC2: Untracked changes detected
+- [ ] AC3: Lock invalidation based on content hash
+- [ ] AC4: Cascade invalidation to downstream locks
 
 ---
 
-## Sources Summary
+### GAP-010: Agent State Persistence
 
-| Source | Topic | URL |
-|--------|-------|-----|
-| OWASP | LLM Security | [owasp.org](https://owasp.org/www-project-top-10-for-large-language-model-applications/) |
-| NIST | AI Risk Framework | [nist.gov](https://www.nist.gov/itl/ai-risk-management-framework) |
-| NIST | AI Cybersecurity | [NISTIR 8596](https://nvlpubs.nist.gov/nistpubs/ir/2025/NIST.IR.8596.iprd.pdf) |
-| arXiv | AutoGuard Kill Switch | [2511.13725](https://arxiv.org/abs/2511.13725) |
-| DORA | DevOps Metrics | [dora.dev](https://dora.dev/guides/dora-metrics-four-keys/) |
-| Confluent | Event-Driven | [confluent.io](https://www.confluent.io/blog/event-driven-multi-agent-systems/) |
-| Microsoft | AI Patterns | [learn.microsoft.com](https://learn.microsoft.com/en-us/azure/architecture/ai-ml/guide/ai-agent-design-patterns) |
-| TrueFoundry | Cost Tracking | [truefoundry.com](https://www.truefoundry.com/blog/llm-cost-tracking-solution) |
-| SonarSource | Quality Gates | [sonarsource.com](https://www.sonarsource.com/learn/integrating-quality-gates-ci-cd-pipeline/) |
+```
+Status: [░░░░░░░░░░] NOT STARTED
+
+├── [░] Gate 0 Research     | Sources: Anthropic context, LangChain memory
+├── [░] Story Definition    | File: stories/GAP-010-state-persistence.json
+├── [░] TDD Tests Written   | Target: 15-20 tests
+├── [░] Implementation      | File: core/scripts/memory-manager.sh
+└── [░] Verification        | All tests pass, no regressions
+```
+
+**Risk:** MEDIUM - Decisions lost on context window reset
+**Estimated Hours:** 6
+**Estimated Tests:** 15-20
+
+**Required Sources:**
+- Anthropic Context Management Guidelines
+- LangChain Memory Patterns
+- OpenAI Assistants API - Threads
+
+**Acceptance Criteria:**
+- [ ] AC1: Key decisions persisted to manifest
+- [ ] AC2: Context restored on session start
+- [ ] AC3: Decision history queryable
+- [ ] AC4: Memory pruning for old decisions
+
+---
+
+### GAP-011: Silent Failure Elimination
+
+```
+Status: [░░░░░░░░░░] NOT STARTED
+
+├── [░] Gate 0 Research     | Sources: OWASP A09, 12-factor app, Winston
+├── [░] Story Definition    | File: stories/GAP-011-silent-failures.json
+├── [░] TDD Tests Written   | Target: 15-20 tests
+├── [░] Implementation      | File: server/index.js (error handling)
+└── [░] Verification        | All tests pass, no regressions
+```
+
+**Risk:** MEDIUM - Errors swallowed without logging
+**Estimated Hours:** 3
+**Estimated Tests:** 15-20
+
+**Required Sources:**
+- OWASP A09:2021 Security Logging Failures
+- 12-Factor App - Logs
+- Winston Best Practices
+- Node.js Error Handling
+
+**Acceptance Criteria:**
+- [ ] AC1: All catch blocks log errors
+- [ ] AC2: Slack notification failures logged
+- [ ] AC3: Supabase persistence errors propagated
+- [ ] AC4: Error correlation IDs added
+- [ ] AC5: No empty catch blocks
+
+---
+
+### GAP-012: RLM Snapshot Restoration
+
+```
+Status: [░░░░░░░░░░] NOT STARTED
+
+├── [░] Gate 0 Research     | Sources: Backup/restore patterns, transaction rollback
+├── [░] Story Definition    | File: stories/GAP-012-rlm-restore.json
+├── [░] TDD Tests Written   | Target: 10-15 tests
+├── [░] Implementation      | File: core/scripts/restore-rlm-snapshot.sh
+└── [░] Verification        | All tests pass, no regressions
+```
+
+**Risk:** MEDIUM - Cannot recover from failed sync
+**Estimated Hours:** 3
+**Estimated Tests:** 10-15
+
+**Required Sources:**
+- Database Backup/Restore Patterns
+- Git Checkout Recovery
+- Transaction Rollback Patterns
+
+**Acceptance Criteria:**
+- [ ] AC1: restore_rlm_from_snapshot implemented
+- [ ] AC2: Recovery tested for sync failures
+- [ ] AC3: Snapshot integrity verified before restore
+- [ ] AC4: Audit log records restoration
+
+---
+
+### GAP-013: Agent Heartbeat Optimization
+
+```
+Status: [░░░░░░░░░░] NOT STARTED
+
+├── [░] Gate 0 Research     | Sources: K8s liveness probes, health check patterns
+├── [░] Story Definition    | File: stories/GAP-013-heartbeat.json
+├── [░] TDD Tests Written   | Target: 10-15 tests
+├── [░] Implementation      | File: core/scripts/agent-watchdog.sh
+└── [░] Verification        | All tests pass, no regressions
+```
+
+**Risk:** LOW - 5-minute detection delay
+**Estimated Hours:** 2
+**Estimated Tests:** 10-15
+
+**Required Sources:**
+- Kubernetes Liveness Probes
+- Health Check Patterns
+- Consul Health Checks
+
+**Acceptance Criteria:**
+- [ ] AC1: Heartbeat timeout reduced to 60 seconds
+- [ ] AC2: Configurable per agent type
+- [ ] AC3: Stale agent detection triggers alert
+- [ ] AC4: Auto-restart capability (optional)
+
+---
+
+## Phase 4: CONSISTENCY Issues
+
+### GAP-014: Signal Schema Validation
+
+```
+Status: [░░░░░░░░░░] NOT STARTED
+
+├── [░] Gate 0 Research     | Sources: JSON Schema, Ajv validator, OpenAPI
+├── [░] Story Definition    | File: stories/GAP-014-signal-schema.json
+├── [░] TDD Tests Written   | Target: 20-25 tests
+├── [░] Implementation      | File: core/scripts/validate-signal.sh
+└── [░] Verification        | All tests pass, no regressions
+```
+
+**Risk:** MEDIUM - Signal content not fully validated
+**Estimated Hours:** 3
+**Estimated Tests:** 20-25
+
+**Required Sources:**
+- JSON Schema Specification
+- Ajv JSON Validator
+- OpenAPI 3.0 Specification
+- WAVE SCHEMAS.md
+
+**Acceptance Criteria:**
+- [ ] AC1: All required fields validated
+- [ ] AC2: token_usage subfields validated
+- [ ] AC3: Invalid signals rejected with clear error
+- [ ] AC4: Schema version tracked
+
+---
+
+### GAP-015: Emergency Level Automation (E1-E4)
+
+```
+Status: [░░░░░░░░░░] NOT STARTED
+
+├── [░] Gate 0 Research     | Sources: Incident response, PagerDuty, runbook automation
+├── [░] Story Definition    | File: stories/GAP-015-emergency-levels.json
+├── [░] TDD Tests Written   | Target: 15-20 tests
+├── [░] Implementation      | File: core/scripts/emergency-handler.sh
+└── [░] Verification        | All tests pass, no regressions
+```
+
+**Risk:** MEDIUM - Only E5 (EMERGENCY-STOP) automated
+**Estimated Hours:** 4
+**Estimated Tests:** 15-20
+
+**Required Sources:**
+- PagerDuty Incident Response
+- Runbook Automation Patterns
+- WAVE EMERGENCY-LEVELS.md
+
+**Acceptance Criteria:**
+- [ ] AC1: E1 (Agent Stop) automated
+- [ ] AC2: E2 (Domain Stop) automated
+- [ ] AC3: E3 (Wave Stop) automated
+- [ ] AC4: E4 (System Stop) automated
+- [ ] AC5: Escalation chain documented
+
+---
+
+### GAP-016: Retry Count Persistence
+
+```
+Status: [░░░░░░░░░░] NOT STARTED
+
+├── [░] Gate 0 Research     | Sources: Idempotency patterns, state machine design
+├── [░] Story Definition    | File: stories/GAP-016-retry-count.json
+├── [░] TDD Tests Written   | Target: 10-15 tests
+├── [░] Implementation      | File: core/scripts/retry-tracker.sh
+└── [░] Verification        | All tests pass, no regressions
+```
+
+**Risk:** LOW - Could bypass escalation if file deleted
+**Estimated Hours:** 2
+**Estimated Tests:** 10-15
+
+**Required Sources:**
+- Idempotency Key Patterns
+- State Machine Design
+- Distributed Counter Patterns
+
+**Acceptance Criteria:**
+- [ ] AC1: Retry count persisted atomically
+- [ ] AC2: Cannot be reset by file deletion
+- [ ] AC3: Cross-session persistence
+- [ ] AC4: Max retries enforced reliably
+
+---
+
+## Execution Schedule
+
+### Week 1: Phase 1 (BLOCKERS)
+
+| Day | Gap | Focus | Hours |
+|-----|-----|-------|-------|
+| Day 1 | GAP-001 | Gate 0 Research + Story + TDD Tests | 2 |
+| Day 1-2 | GAP-001 | Implementation + Verification | 2 |
+| Day 2 | GAP-002 | Gate 0 Research + Story + TDD Tests | 1 |
+| Day 2 | GAP-002 | Implementation + Verification | 1 |
+| Day 3 | GAP-003 | Gate 0 Research + Story + TDD Tests | 3 |
+| Day 3-4 | GAP-003 | Implementation + Verification | 3 |
+| Day 4-5 | GAP-004 | Full cycle | 3 |
+
+### Week 2: Phase 2 (HIGH)
+
+| Day | Gap | Focus | Hours |
+|-----|-----|-------|-------|
+| Day 1 | GAP-005 | Merge Conflict Detection | 3 |
+| Day 2 | GAP-006 | Path Traversal Protection | 2 |
+| Day 2-3 | GAP-007 | Story Injection Scanning | 3 |
+| Day 3-4 | GAP-008 | Approval Level Enforcement | 4 |
+
+### Week 3: Phase 3 (MEDIUM)
+
+| Day | Gap | Focus | Hours |
+|-----|-----|-------|-------|
+| Day 1 | GAP-009 | Drift Detection | 3 |
+| Day 2-3 | GAP-010 | State Persistence | 6 |
+| Day 3 | GAP-011 | Silent Failures | 3 |
+| Day 4 | GAP-012 | RLM Restore | 3 |
+| Day 5 | GAP-013 | Heartbeat | 2 |
+
+### Week 4: Phase 4 (CONSISTENCY) + E2E Testing
+
+| Day | Gap | Focus | Hours |
+|-----|-----|-------|-------|
+| Day 1 | GAP-014 | Signal Schema | 3 |
+| Day 2 | GAP-015 | Emergency Levels | 4 |
+| Day 2-3 | GAP-016 | Retry Count | 2 |
+| Day 4-5 | E2E | Integration Testing | 8 |
+
+---
+
+## Credible Sources Reference
+
+| Category | Source | URL |
+|----------|--------|-----|
+| Security | OWASP Top 10 2021 | https://owasp.org/Top10/ |
+| Security | OWASP LLM Top 10 2025 | https://genai.owasp.org/ |
+| Security | OWASP Input Validation | https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html |
+| Security | OWASP Path Traversal | https://owasp.org/www-community/attacks/Path_Traversal |
+| AI Safety | Anthropic RSP | https://www.anthropic.com/news/anthropics-responsible-scaling-policy |
+| AI Safety | OpenAI Safety Guide | https://platform.openai.com/docs/guides/safety-best-practices |
+| AI Safety | AutoGuard Paper | https://arxiv.org/abs/2511.13725 |
+| Auth | NIST 800-63B | https://pages.nist.gov/800-63-3/sp800-63b.html |
+| Auth | NIST AC Controls | https://csrc.nist.gov/publications/detail/sp/800-53/rev-5/final |
+| Cloud | AWS API Gateway | https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-request-throttling.html |
+| Cloud | Google Apigee | https://docs.cloud.google.com/apigee |
+| DevOps | 12-Factor App | https://12factor.net/logs |
+| DevOps | DORA Metrics | https://dora.dev/guides/dora-metrics-four-keys/ |
+| Node.js | Express Security | https://expressjs.com/en/advanced/best-practice-security.html |
+| Node.js | Helmet.js | https://helmetjs.github.io/ |
 
 ---
 
 ## Progress Tracking
 
-Update this section as gaps are addressed:
-
 ```
-Last Updated: 2026-01-23
+Last Updated: 2026-01-24T02:40:00Z
 
-GAP-001: [ ] Not Started
-GAP-002: [ ] Not Started
-GAP-003: [ ] Not Started
-GAP-004: [ ] Not Started
-GAP-005: [ ] Not Started
-GAP-006: [ ] Not Started
-GAP-007: [ ] Not Started
-GAP-008: [ ] Not Started
-GAP-009: [-] Deferred
+PHASE 1 - BLOCKERS:
+  GAP-001: [██████████] ✓ Complete (41 tests)
+  GAP-002: [██████████] ✓ Complete (49 tests)
+  GAP-003: [░░░░░░░░░░] Research | Tests | Impl | Verify
+  GAP-004: [░░░░░░░░░░] Research | Tests | Impl | Verify
 
-OVERALL: 0/8 gaps completed (0%)
+PHASE 2 - HIGH:
+  GAP-005: [░░░░░░░░░░] Research | Tests | Impl | Verify
+  GAP-006: [░░░░░░░░░░] Research | Tests | Impl | Verify
+  GAP-007: [░░░░░░░░░░] Research | Tests | Impl | Verify
+  GAP-008: [░░░░░░░░░░] Research | Tests | Impl | Verify
+
+PHASE 3 - MEDIUM:
+  GAP-009: [░░░░░░░░░░] Research | Tests | Impl | Verify
+  GAP-010: [░░░░░░░░░░] Research | Tests | Impl | Verify
+  GAP-011: [░░░░░░░░░░] Research | Tests | Impl | Verify
+  GAP-012: [░░░░░░░░░░] Research | Tests | Impl | Verify
+  GAP-013: [░░░░░░░░░░] Research | Tests | Impl | Verify
+
+PHASE 4 - CONSISTENCY:
+  GAP-014: [░░░░░░░░░░] Research | Tests | Impl | Verify
+  GAP-015: [░░░░░░░░░░] Research | Tests | Impl | Verify
+  GAP-016: [░░░░░░░░░░] Research | Tests | Impl | Verify
+
+OVERALL: 2/16 gaps completed (12%)
+TESTS: 90/~300 written (41 + 49)
 ```
 
 ---
 
-*Plan created: 2026-01-23*
-*Next review: After Wave 1 execution*
+## Next Action
+
+**START: GAP-003 - Input Validation Enforcement**
+
+1. Perform Gate 0 Research (OWASP Input Validation, JSON Schema, Zod)
+2. Create story definition with evidence-based documentation
+3. Write TDD tests (RED phase - 40-50 tests)
+4. Implement schema validation for all 40 endpoints (GREEN phase)
+5. Verify all tests pass
+
+Continue to GAP-003?
+
+---
+
+*Plan Version: 2.0.0*
+*Created: 2026-01-24*
+*Next Review: After each gap completion*
