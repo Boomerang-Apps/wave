@@ -944,7 +944,16 @@ export function ProjectChecklist() {
   const [validationError, setValidationError] = useState<string | null>(null)
 
   // Validation mode state (strict = production, dev = fast iteration, ci = automation)
-  const [validationMode, setValidationMode] = useState<'strict' | 'dev' | 'ci'>('strict')
+  // Validated: GitLab CI/CD best practices - persisted to localStorage
+  const [validationMode, setValidationMode] = useState<'strict' | 'dev' | 'ci'>(() => {
+    const saved = localStorage.getItem('wave_validation_mode')
+    return (saved as 'strict' | 'dev' | 'ci') || 'strict'
+  })
+
+  // Persist validation mode to localStorage
+  useEffect(() => {
+    localStorage.setItem('wave_validation_mode', validationMode)
+  }, [validationMode])
 
   // Configuration state
   const [configSaving, setConfigSaving] = useState(false)
@@ -3370,6 +3379,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
   }
 
   // Master Validation function
+  // Validated: Passes validation mode to backend per CI/CD best practices
   const runValidation = async (quick = false) => {
     if (!project?.root_path) return
     setValidating(true)
@@ -3380,7 +3390,8 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectPath: project.root_path,
-          quick
+          quick,
+          mode: validationMode // Pass validation mode to backend
         })
       })
       const data = await response.json()

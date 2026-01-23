@@ -37,12 +37,14 @@ set -o pipefail
 PROJECT_ROOT="${1:-.}"
 JSON_OUTPUT=false
 QUICK_MODE=false
-VALIDATION_MODE="strict"
+
+# Support WAVE_VALIDATION_MODE environment variable (validated: GitLab CI/CD pattern)
+VALIDATION_MODE="${WAVE_VALIDATION_MODE:-strict}"
 
 # Memory TTL in days (default: 7)
 MEMORY_TTL_DAYS="${MEMORY_TTL_DAYS:-7}"
 
-# Parse flags
+# Parse flags (CLI overrides environment variable)
 for arg in "$@"; do
     case $arg in
         --json) JSON_OUTPUT=true ;;
@@ -57,30 +59,104 @@ for arg in "$@"; do
     esac
 done
 
-# Mode-specific settings
-case $VALIDATION_MODE in
-    strict)
-        RUN_BEHAVIORAL_PROBES=true
-        RUN_BUILD_QA=true
-        RUN_DRIFT_CHECK=true
-        RUN_NETWORK_TESTS=true
-        GATE_BLOCKING=true
-        ;;
-    dev)
-        RUN_BEHAVIORAL_PROBES=false
-        RUN_BUILD_QA=true
-        RUN_DRIFT_CHECK=false
-        RUN_NETWORK_TESTS=false
-        GATE_BLOCKING=false
-        ;;
-    ci)
-        RUN_BEHAVIORAL_PROBES=true
-        RUN_BUILD_QA=true
-        RUN_DRIFT_CHECK=true
-        RUN_NETWORK_TESTS=true
-        GATE_BLOCKING=true
-        ;;
-esac
+# ─────────────────────────────────────────────────────────────────────────────
+# LOAD VALIDATION MODE SETTINGS FROM CONFIG FILE
+# Validated: Configuration-driven approach per CI/CD best practices
+# ─────────────────────────────────────────────────────────────────────────────
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_FILE="$SCRIPT_DIR/../config/validation-modes.json"
+
+# Function to load settings from config file
+load_mode_from_config() {
+    local mode="$1"
+
+    if [ -f "$CONFIG_FILE" ] && command -v jq &> /dev/null; then
+        # Load settings from config file using jq
+        local mode_exists
+        mode_exists=$(jq -r ".modes.$mode // empty" "$CONFIG_FILE")
+
+        if [ -n "$mode_exists" ]; then
+            RUN_BEHAVIORAL_PROBES=$(jq -r ".modes.$mode.settings.behavioral_probes // true" "$CONFIG_FILE")
+            RUN_BUILD_QA=$(jq -r ".modes.$mode.settings.build_qa // true" "$CONFIG_FILE")
+            RUN_DRIFT_CHECK=$(jq -r ".modes.$mode.settings.drift_check // true" "$CONFIG_FILE")
+            RUN_NETWORK_TESTS=$(jq -r ".modes.$mode.settings.network_tests // true" "$CONFIG_FILE")
+            GATE_BLOCKING=$(jq -r ".modes.$mode.settings.gate_blocking // true" "$CONFIG_FILE")
+            RUN_MEMORY_TTL_CHECK=$(jq -r ".modes.$mode.settings.memory_ttl_check // true" "$CONFIG_FILE")
+            RUN_SECURITY_AUDIT=$(jq -r ".modes.$mode.settings.security_audit // true" "$CONFIG_FILE")
+
+            # Load thresholds
+            MIN_PASS_RATE=$(jq -r ".modes.$mode.thresholds.min_pass_rate // 0.95" "$CONFIG_FILE")
+            MAX_WARNINGS=$(jq -r ".modes.$mode.thresholds.max_warnings // 5" "$CONFIG_FILE")
+            MAX_FAILED=$(jq -r ".modes.$mode.thresholds.max_failed // 0" "$CONFIG_FILE")
+            MEMORY_TTL_DAYS=$(jq -r ".modes.$mode.thresholds.memory_ttl_days // 7" "$CONFIG_FILE")
+            MEMORY_MAX_SIZE_KB=$(jq -r ".modes.$mode.thresholds.memory_max_size_kb // 10240" "$CONFIG_FILE")
+
+            # Check if mode is certified
+            MODE_CERTIFIED=$(jq -r ".modes.$mode.certified // false" "$CONFIG_FILE")
+
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Try to load from config file, fall back to hardcoded defaults
+if ! load_mode_from_config "$VALIDATION_MODE"; then
+    # Fallback: hardcoded mode settings if config file not available
+    case $VALIDATION_MODE in
+        strict)
+            RUN_BEHAVIORAL_PROBES=true
+            RUN_BUILD_QA=true
+            RUN_DRIFT_CHECK=true
+            RUN_NETWORK_TESTS=true
+            GATE_BLOCKING=true
+            RUN_MEMORY_TTL_CHECK=true
+            RUN_SECURITY_AUDIT=true
+            MIN_PASS_RATE=0.95
+            MAX_WARNINGS=5
+            MAX_FAILED=0
+            MEMORY_TTL_DAYS=7
+            MEMORY_MAX_SIZE_KB=10240
+            MODE_CERTIFIED=true
+            ;;
+        dev)
+            RUN_BEHAVIORAL_PROBES=false
+            RUN_BUILD_QA=true
+            RUN_DRIFT_CHECK=false
+            RUN_NETWORK_TESTS=false
+            GATE_BLOCKING=false
+            RUN_MEMORY_TTL_CHECK=true
+            RUN_SECURITY_AUDIT=false
+            MIN_PASS_RATE=0.70
+            MAX_WARNINGS=20
+            MAX_FAILED=5
+            MEMORY_TTL_DAYS=30
+            MEMORY_MAX_SIZE_KB=51200
+            MODE_CERTIFIED=false
+            ;;
+        ci)
+            RUN_BEHAVIORAL_PROBES=true
+            RUN_BUILD_QA=true
+            RUN_DRIFT_CHECK=true
+            RUN_NETWORK_TESTS=true
+            GATE_BLOCKING=true
+            RUN_MEMORY_TTL_CHECK=true
+            RUN_SECURITY_AUDIT=true
+            MIN_PASS_RATE=0.95
+            MAX_WARNINGS=5
+            MAX_FAILED=0
+            MEMORY_TTL_DAYS=7
+            MEMORY_MAX_SIZE_KB=10240
+            MODE_CERTIFIED=true
+            ;;
+    esac
+fi
+
+# Dev mode automatically enables quick mode
+if [ "$VALIDATION_MODE" = "dev" ]; then
+    QUICK_MODE=true
+fi
 
 # Resolve absolute path
 PROJECT_ROOT=$(cd "$PROJECT_ROOT" 2>/dev/null && pwd || echo "$PROJECT_ROOT")

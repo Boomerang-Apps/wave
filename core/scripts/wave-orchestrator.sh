@@ -32,22 +32,43 @@ WAVE_ROOT="${WAVE_ROOT:-$(dirname $(dirname "$SCRIPT_DIR"))}"
 show_usage() {
     echo "WAVE Orchestrator V1.0"
     echo ""
-    echo "Usage: $0 --project <path>"
+    echo "Usage: $0 --project <path> [options]"
     echo ""
     echo "Options:"
     echo "  -p, --project   Path to the project to orchestrate (required)"
+    echo "  -m, --mode      Validation mode: strict|dev|ci (default: from WAVE_VALIDATION_MODE or strict)"
     echo "  -h, --help      Show this help message"
     echo ""
+    echo "Validation Modes:"
+    echo "  strict  - Full validation for production (default)"
+    echo "  dev     - Fast iteration for development (reduced checks)"
+    echo "  ci      - CI/CD pipeline validation (automated)"
+    echo ""
+    echo "Environment Variables:"
+    echo "  WAVE_VALIDATION_MODE - Set default validation mode"
+    echo ""
     echo "Example:"
-    echo "  $0 --project /path/to/my-project"
+    echo "  $0 --project /path/to/my-project --mode strict"
+    echo "  WAVE_VALIDATION_MODE=dev $0 --project /path/to/my-project"
 }
 
 PROJECT_ROOT=""
+# Support WAVE_VALIDATION_MODE environment variable (validated: GitLab CI/CD pattern)
+VALIDATION_MODE="${WAVE_VALIDATION_MODE:-strict}"
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         -p|--project)
             PROJECT_ROOT="$2"
             shift 2
+            ;;
+        -m|--mode)
+            VALIDATION_MODE="$2"
+            shift 2
+            ;;
+        --mode=*)
+            VALIDATION_MODE="${1#*=}"
+            shift
             ;;
         -h|--help)
             show_usage
@@ -60,6 +81,15 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# Validate mode
+case $VALIDATION_MODE in
+    strict|dev|ci) ;;
+    *)
+        echo "Error: Invalid validation mode '$VALIDATION_MODE'. Valid modes: strict, dev, ci"
+        exit 1
+        ;;
+esac
 
 if [ -z "$PROJECT_ROOT" ]; then
     echo "Error: --project is required"
@@ -76,6 +106,64 @@ fi
 if [ -f "$PROJECT_ROOT/.env" ]; then
     source "$PROJECT_ROOT/.env"
 fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# VALIDATION MODE CONFIGURATION
+# Validated: Configuration-driven approach per CI/CD best practices
+# ─────────────────────────────────────────────────────────────────────────────
+
+CONFIG_FILE="$SCRIPT_DIR/../config/validation-modes.json"
+
+# Load mode settings from config file or use defaults
+load_validation_mode() {
+    local mode="$1"
+
+    if [ -f "$CONFIG_FILE" ] && command -v jq &> /dev/null; then
+        local mode_exists
+        mode_exists=$(jq -r ".modes.$mode // empty" "$CONFIG_FILE")
+
+        if [ -n "$mode_exists" ]; then
+            GATE_BLOCKING=$(jq -r ".modes.$mode.settings.gate_blocking // true" "$CONFIG_FILE")
+            MIN_PASS_RATE=$(jq -r ".modes.$mode.thresholds.min_pass_rate // 0.95" "$CONFIG_FILE")
+            MODE_CERTIFIED=$(jq -r ".modes.$mode.certified // false" "$CONFIG_FILE")
+            MODE_NAME=$(jq -r ".modes.$mode.name // \"$mode\"" "$CONFIG_FILE")
+            return 0
+        fi
+    fi
+
+    # Fallback defaults
+    case $mode in
+        strict)
+            GATE_BLOCKING=true
+            MIN_PASS_RATE=0.95
+            MODE_CERTIFIED=true
+            MODE_NAME="Strict Mode"
+            ;;
+        dev)
+            GATE_BLOCKING=false
+            MIN_PASS_RATE=0.70
+            MODE_CERTIFIED=false
+            MODE_NAME="Development Mode"
+            ;;
+        ci)
+            GATE_BLOCKING=true
+            MIN_PASS_RATE=0.95
+            MODE_CERTIFIED=true
+            MODE_NAME="CI/CD Mode"
+            ;;
+    esac
+}
+
+load_validation_mode "$VALIDATION_MODE"
+
+# Log mode selection
+echo "╔═══════════════════════════════════════════════════════════════════════════════╗"
+echo "║  WAVE Orchestrator - Validation Mode: $MODE_NAME"
+if [ "$MODE_CERTIFIED" = "false" ]; then
+    echo "║  ⚠️  WARNING: Non-certified mode - NOT FOR PRODUCTION"
+fi
+echo "╚═══════════════════════════════════════════════════════════════════════════════╝"
+echo ""
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIGURATION

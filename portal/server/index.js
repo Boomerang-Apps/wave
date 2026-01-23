@@ -3197,7 +3197,7 @@ app.get('/api/health', (req, res) => {
 // Runs the wave-validate-all.sh script for comprehensive validation
 
 app.post('/api/validate-all', async (req, res) => {
-  const { projectPath, quick = false } = req.body;
+  const { projectPath, quick = false, mode = 'strict' } = req.body;
 
   if (!projectPath) {
     return res.status(400).json({ error: 'projectPath is required' });
@@ -3205,6 +3205,15 @@ app.post('/api/validate-all', async (req, res) => {
 
   if (!exists(projectPath)) {
     return res.status(400).json({ error: 'Project path does not exist' });
+  }
+
+  // Validate mode parameter (validated: GitLab CI/CD pattern)
+  const validModes = ['strict', 'dev', 'ci'];
+  if (!validModes.includes(mode)) {
+    return res.status(400).json({
+      error: `Invalid validation mode: ${mode}`,
+      valid_modes: validModes
+    });
   }
 
   try {
@@ -3222,9 +3231,10 @@ app.post('/api/validate-all', async (req, res) => {
       });
     }
 
-    // Build command
+    // Build command with mode and quick flags
     const quickFlag = quick ? '--quick' : '';
-    const command = `bash "${scriptPath}" "${projectPath}" --json ${quickFlag}`;
+    const modeFlag = `--mode=${mode}`;
+    const command = `bash "${scriptPath}" "${projectPath}" --json ${modeFlag} ${quickFlag}`;
 
     // Run validation script
     const result = execSync(command, {

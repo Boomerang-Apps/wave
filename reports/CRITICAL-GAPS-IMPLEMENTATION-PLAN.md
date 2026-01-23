@@ -33,10 +33,10 @@ See `GATE0-RESEARCH-CRITICAL-GAPS.md` for full research documentation.
 ║                    CRITICAL GAPS IMPLEMENTATION PROGRESS                      ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
 ║                                                                              ║
-║  Overall Progress: [░░░░░░░░░░░░░░░░░░░░] 0% (0/6 gaps closed)              ║
+║  Overall Progress: [███░░░░░░░░░░░░░░░░░] 17% (1/6 gaps closed)             ║
 ║                                                                              ║
 ║  ┌─────────────────────────────────────────────────────────────────────────┐ ║
-║  │ Gap 1: Strict vs Dev Modes      [░░░░░░░░░░] 0%   ⬚ NOT STARTED        │ ║
+║  │ Gap 1: Strict vs Dev Modes      [██████████] 100% ✓ COMPLETE           │ ║
 ║  │ Gap 2: Slack Web API            [░░░░░░░░░░] 0%   ⬚ NOT STARTED        │ ║
 ║  │ Gap 3: Slack Retry + Backoff    [░░░░░░░░░░] 0%   ⬚ NOT STARTED        │ ║
 ║  │ Gap 4: Secret Redaction         [░░░░░░░░░░] 0%   ⬚ NOT STARTED        │ ║
@@ -63,7 +63,7 @@ Infrastructure exists (validation_mode field tracked in audit logs) but NO mode 
 ### Implementation Steps
 
 #### Step 1.1: Create Validation Modes Configuration
-**Status:** ⬚ NOT STARTED
+**Status:** ✓ COMPLETE (already existed)
 **File:** `/Volumes/SSD-01/Projects/WAVE/core/config/validation-modes.json`
 
 ```json
@@ -112,7 +112,7 @@ Infrastructure exists (validation_mode field tracked in audit logs) but NO mode 
 ---
 
 #### Step 1.2: Add CLI Mode Selection to Scripts
-**Status:** ⬚ NOT STARTED
+**Status:** ✓ COMPLETE
 **Files to Modify:**
 - `core/scripts/wave-orchestrator.sh`
 - `core/scripts/pre-flight-validator.sh`
@@ -169,7 +169,7 @@ load_validation_mode() {
 ---
 
 #### Step 1.3: Add Environment Variable Support
-**Status:** ⬚ NOT STARTED
+**Status:** ✓ COMPLETE
 **File:** `/Volumes/SSD-01/Projects/WAVE/portal/.env.example`
 
 **Add:**
@@ -188,7 +188,7 @@ WAVE_BUILD_QA_BLOCKING=true       # Make build QA a blocking gate
 ---
 
 #### Step 1.4: Add Portal UI Mode Selector
-**Status:** ⬚ NOT STARTED
+**Status:** ✓ COMPLETE (already existed, added localStorage persistence)
 **File:** `/Volumes/SSD-01/Projects/WAVE/portal/src/pages/ProjectChecklist.tsx`
 
 **Implementation:**
@@ -265,7 +265,7 @@ const [validationMode, setValidationMode] = useState<'strict' | 'dev' | 'ci'>('d
 ---
 
 #### Step 1.5: Add Non-Production Labeling
-**Status:** ⬚ NOT STARTED
+**Status:** ✓ COMPLETE (already existed)
 **File:** `/Volumes/SSD-01/Projects/WAVE/portal/src/pages/ProjectChecklist.tsx`
 
 **Implementation:**
