@@ -1,0 +1,107 @@
+{
+  "id": "IMP-009",
+  "title": "Implement automatic pipeline halt on budget exceeded",
+  "domain": "safety",
+  "agent": "be-dev-1",
+  "priority": "critical",
+  "risk": "high",
+  "status": "completed",
+  "wave": null,
+  "description": "Automatically halt all agent operations when budget is exceeded (100%). Create EMERGENCY-STOP file, notify via Slack with CRITICAL severity, and return 503 on subsequent API calls. This is a hard stop mechanism - no requests should proceed after budget exceeded.",
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "Create EMERGENCY-STOP file when budget >= 100%",
+      "threshold": "File created within 1 second of detection",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "Return 503 Service Unavailable on all API calls after budget exceeded",
+      "threshold": "All /api/* endpoints return 503 with budget_exceeded error",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "Send CRITICAL Slack notification on budget exceeded",
+      "threshold": "Notification sent with severity=critical, includes spent/budget amounts",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "Log budget exceeded event with full context",
+      "threshold": "Audit log entry with timestamp, agent, spent, budget, action taken",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "Prevent race conditions on concurrent budget checks",
+      "threshold": "Only one EMERGENCY-STOP file created even with concurrent requests",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "Support alert thresholds at 70%, 90%, 100%",
+      "threshold": "Different severity levels: warning(70%), critical(90%), exceeded(100%)",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/utils/budget-enforcer.js",
+      "portal/server/__tests__/budget-enforcer.test.js"
+    ],
+    "modify": [
+      "portal/server/index.js"
+    ],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Budget enforcement bypassed",
+      "EMERGENCY-STOP not created on exceeded",
+      "API calls succeed after budget exceeded"
+    ],
+    "escalation_triggers": [
+      "Budget exceeded without halt",
+      "Slack notification failed"
+    ]
+  },
+
+  "dependencies": [],
+
+  "validation_sources": [
+    {
+      "name": "Portkey Budget Limits Guide",
+      "url": "https://portkey.ai/blog/budget-limits-and-alerts-in-llm-apps/",
+      "requirement": "Block requests when budget exceeded, alert at 70%/90%/100%/120%"
+    },
+    {
+      "name": "LiteLLM Budget Enforcement",
+      "url": "https://docs.litellm.ai/docs/proxy/users",
+      "requirement": "Return budget_exceeded error, hard stop on max_budget"
+    },
+    {
+      "name": "TrueFoundry LLM Cost Control",
+      "url": "https://www.truefoundry.com/blog/llm-cost-tracking-solution",
+      "requirement": "Auto-block or redirect when budget exceeded, real-time monitoring"
+    }
+  ],
+
+  "implementation_hints": [
+    "Use file-based lock for EMERGENCY-STOP creation (prevent duplicates)",
+    "Middleware checks EMERGENCY-STOP before processing requests",
+    "Budget check runs BEFORE each API call, not after",
+    "Return 503 with Retry-After header when halted",
+    "Include budget reset mechanism for manual recovery"
+  ],
+
+  "created_at": "2026-01-24T00:40:00Z",
+  "score": 100
+}

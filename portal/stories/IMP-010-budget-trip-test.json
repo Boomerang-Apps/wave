@@ -1,0 +1,103 @@
+{
+  "id": "IMP-010",
+  "title": "Budget trip test - End-to-end budget enforcement verification",
+  "domain": "safety",
+  "agent": "qa-1",
+  "priority": "critical",
+  "risk": "high",
+  "status": "completed",
+  "wave": null,
+  "description": "Integration test that validates the complete budget enforcement pipeline. Sets a minimal budget, simulates spending that exceeds it, and verifies all safety mechanisms trigger correctly including EMERGENCY-STOP file creation, 503 responses, and notification callbacks. Measures latency from budget exceeded to full enforcement.",
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "Trip test triggers emergency stop within 5 seconds of budget exceeded",
+      "threshold": "End-to-end latency from spend→stop < 5000ms",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "Trip test verifies EMERGENCY-STOP file created",
+      "threshold": "File exists after budget exceeded simulation",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "Trip test verifies 503 responses returned",
+      "threshold": "Middleware returns 503 after EMERGENCY-STOP",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "Trip test logs detailed latency metrics",
+      "threshold": "Logs include: request→detect, detect→stop, stop→verified",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "Trip test supports configurable budget amount",
+      "threshold": "Can set custom budget for testing (e.g., $0.01)",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "Trip test cleans up after itself",
+      "threshold": "No leftover EMERGENCY-STOP files after test completion",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/__tests__/budget-trip.test.js"
+    ],
+    "modify": [],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Trip test does not detect budget exceeded",
+      "EMERGENCY-STOP not created during trip test"
+    ],
+    "escalation_triggers": [
+      "Trip test fails consistently",
+      "Latency exceeds 5 second threshold"
+    ]
+  },
+
+  "dependencies": ["IMP-009"],
+
+  "validation_sources": [
+    {
+      "name": "Langfuse LLM Testing Guide",
+      "url": "https://langfuse.com/blog/2025-10-21-testing-llm-applications",
+      "requirement": "Integration testing validates LLM components and system integration"
+    },
+    {
+      "name": "TrueFoundry LLM Cost Control",
+      "url": "https://www.truefoundry.com/blog/llm-cost-tracking-solution",
+      "requirement": "Budget caps with automated enforcement, auto-block when exceeded"
+    },
+    {
+      "name": "Gatling AI Load Testing",
+      "url": "https://gatling.io/use-cases/ai-llms",
+      "requirement": "Track token usage and calculate costs during tests"
+    }
+  ],
+
+  "implementation_hints": [
+    "Use tiny budget ($0.01) for fast testing",
+    "Measure latency at each stage: spend → detect → stop → verified",
+    "Run as integration test with real BudgetEnforcer instance",
+    "Clean up temp directories and EMERGENCY-STOP files",
+    "Include concurrent request simulation"
+  ],
+
+  "created_at": "2026-01-24T00:50:00Z",
+  "score": 100
+}

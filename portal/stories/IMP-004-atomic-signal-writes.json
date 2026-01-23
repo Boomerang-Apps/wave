@@ -1,0 +1,110 @@
+{
+  "id": "IMP-004",
+  "title": "Atomic signal writes - Reliable file operations",
+  "domain": "reliability",
+  "agent": "be-dev-1",
+  "priority": "critical",
+  "risk": "high",
+  "status": "completed",
+  "wave": null,
+  "description": "Implement atomic file writing for signal files to prevent data corruption from partial writes, race conditions, or power failures. Uses temp-file→fsync→rename pattern following industry best practices.",
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "Write to temporary file first",
+      "threshold": "Content written to .tmp file before final location",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "fsync before rename",
+      "threshold": "File descriptor synced to disk before rename operation",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "Atomic rename to final destination",
+      "threshold": "Uses rename() which is atomic on POSIX systems",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "No partial files on failure",
+      "threshold": "If write fails, no partial file exists at destination",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "Cleanup temp files on error",
+      "threshold": "Temp files removed if operation fails",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "Support for signal file format",
+      "threshold": "Works with JSON signal files, preserves structure",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/utils/atomic-writer.js",
+      "portal/server/__tests__/atomic-writer.test.js"
+    ],
+    "modify": [],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Partial files left at destination",
+      "Data corruption detected",
+      "fsync skipped on critical writes"
+    ],
+    "escalation_triggers": [
+      "Multiple write failures",
+      "Disk full conditions"
+    ]
+  },
+
+  "dependencies": [],
+
+  "validation_sources": [
+    {
+      "name": "npm write-file-atomic",
+      "url": "https://www.npmjs.com/package/write-file-atomic",
+      "requirement": "Write temp file, fsync, then rename"
+    },
+    {
+      "name": "atomically library",
+      "url": "https://github.com/fabiospampinato/atomically",
+      "requirement": "fsync after write, rename is atomic on POSIX"
+    },
+    {
+      "name": "LWN Atomic Writes",
+      "url": "https://lwn.net/Articles/789600/",
+      "requirement": "fsync() correctly or lose data"
+    },
+    {
+      "name": "Node.js fs documentation",
+      "url": "https://nodejs.org/api/fs.html",
+      "requirement": "No atomicity guarantees without explicit fsync"
+    }
+  ],
+
+  "implementation_hints": [
+    "Use crypto.randomUUID() for temp file suffix",
+    "Wrap in try/finally to ensure cleanup",
+    "fsync file descriptor, not path",
+    "Handle ENOENT for directory creation",
+    "Consider directory fsync for full durability"
+  ],
+
+  "created_at": "2026-01-24T00:55:00Z",
+  "score": 100
+}

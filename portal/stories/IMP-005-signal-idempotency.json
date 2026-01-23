@@ -1,0 +1,110 @@
+{
+  "id": "IMP-005",
+  "title": "Signal idempotency - Prevent duplicate processing",
+  "domain": "reliability",
+  "agent": "be-dev-1",
+  "priority": "critical",
+  "risk": "high",
+  "status": "completed",
+  "wave": null,
+  "description": "Implement idempotency for signal processing to prevent duplicate handling. Each signal gets a unique event_id (UUIDv7 or similar), and a deduplication store tracks processed IDs. Signals with already-processed IDs are safely skipped.",
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "Generate unique event_id for each signal",
+      "threshold": "UUIDv7 or UUID+timestamp for each signal",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "Detect duplicate signals before processing",
+      "threshold": "Check event_id against processed store before handling",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "Store processed signal IDs persistently",
+      "threshold": "IDs stored in JSON file with TTL for cleanup",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "Skip duplicate signals gracefully",
+      "threshold": "Return duplicate status without error, don't reprocess",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "Support sequence numbers for ordering",
+      "threshold": "Optional sequence field, reject out-of-order signals",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "TTL-based cleanup of old processed IDs",
+      "threshold": "Remove entries older than configurable TTL (default 24h)",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/utils/signal-deduplicator.js",
+      "portal/server/__tests__/signal-deduplicator.test.js"
+    ],
+    "modify": [],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Duplicate signals processed",
+      "Deduplication store corrupted",
+      "Legitimate signals rejected"
+    ],
+    "escalation_triggers": [
+      "High duplicate rate",
+      "Store file corruption"
+    ]
+  },
+
+  "dependencies": ["IMP-004"],
+
+  "validation_sources": [
+    {
+      "name": "Gunnar Morling - On Idempotency Keys",
+      "url": "https://www.morling.dev/blog/on-idempotency-keys/",
+      "requirement": "UUIDv7 with timestamp, consumer stores processed IDs"
+    },
+    {
+      "name": "Design Gurus - Idempotency 101",
+      "url": "https://www.designgurus.io/blog/idempotency-in-distributed-systems",
+      "requirement": "At-least-once delivery means duplicates happen, use deduplication store"
+    },
+    {
+      "name": "AlgoMaster - Idempotency in Distributed Systems",
+      "url": "https://blog.algomaster.io/p/idempotency-in-distributed-systems",
+      "requirement": "Client-generated UUID, server-side deduplication table with TTL"
+    },
+    {
+      "name": "Airbyte - Idempotency in Data Pipelines",
+      "url": "https://airbyte.com/data-engineering-resources/idempotency-in-data-pipelines",
+      "requirement": "Exactly-once is illusion, idempotency is practical path"
+    }
+  ],
+
+  "implementation_hints": [
+    "Use crypto.randomUUID() for event_id generation",
+    "Store processed IDs in .claude/processed-signals.json",
+    "Include timestamp with each stored ID for TTL",
+    "Clean up old entries on each check",
+    "Return { isDuplicate, eventId, firstSeenAt } for processed signals"
+  ],
+
+  "created_at": "2026-01-24T00:58:00Z",
+  "score": 100
+}
