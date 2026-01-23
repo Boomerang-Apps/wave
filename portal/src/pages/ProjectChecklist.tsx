@@ -5249,14 +5249,12 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                 <div className="relative">
                   <pre className="bg-gray-900 text-green-400 p-4 rounded-lg text-sm overflow-x-auto font-mono">
 {`# Start WAVE terminal session
-./core/scripts/wave-terminal.sh --project ${project?.root_path || '/path/to/project'} --wave 1
-
-# Or without auto-starting services:
-./core/scripts/wave-terminal.sh -p ${project?.root_path || '/path/to/project'} --no-watcher --no-portal`}
+/Volumes/SSD-01/Projects/WAVE/core/scripts/wave-terminal.sh \\
+  --project ${project?.root_path || '/path/to/project'} --wave 1`}
                   </pre>
                   <button
                     onClick={() => {
-                      const cmd = `./core/scripts/wave-terminal.sh --project ${project?.root_path || '/path/to/project'} --wave 1`;
+                      const cmd = `/Volumes/SSD-01/Projects/WAVE/core/scripts/wave-terminal.sh --project ${project?.root_path || '/path/to/project'} --wave 1`;
                       navigator.clipboard.writeText(cmd);
                     }}
                     className="absolute top-2 right-2 p-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-xs flex items-center gap-1"
