@@ -967,6 +967,92 @@ export function ProjectChecklist() {
   const [pingStatus, setPingStatus] = useState<Record<string, 'idle' | 'testing' | 'success' | 'error'>>({})
   const [pingMessage, setPingMessage] = useState<Record<string, string>>({})
 
+  // Slack notification testing state
+  const [slackTestStatus, setSlackTestStatus] = useState<Record<string, 'idle' | 'sending' | 'success' | 'error'>>({})
+  const [slackNotificationHistory, setSlackNotificationHistory] = useState<Array<{
+    id: string
+    type: string
+    timestamp: string
+    success: boolean
+    message?: string
+  }>>([])
+
+  // Send Slack test notification
+  const sendSlackTest = async (eventType: string, displayName: string) => {
+    setSlackTestStatus(prev => ({ ...prev, [eventType]: 'sending' }))
+
+    try {
+      const testData: Record<string, unknown> = {
+        project: project?.name || 'Test Project',
+        wave: 1,
+        agent: 'fe-dev-1',
+        storyId: 'TEST-001'
+      }
+
+      // Add event-specific data
+      switch (eventType) {
+        case 'story_start':
+          testData.details = { title: 'Test Story - Add login feature' }
+          break
+        case 'story_complete':
+          testData.details = { title: 'Test Story - Add login feature', duration: '3m 42s' }
+          testData.cost = 0.1234
+          testData.tokens = { input: 15000, output: 3500 }
+          break
+        case 'gate_complete':
+          testData.gate = 3
+          testData.details = { fromGate: 2, message: 'Development phase complete' }
+          break
+        case 'budget_warning':
+          testData.severity = 'warning'
+          testData.details = { percentage: 78, spent: 3.90, limit: 5.00, message: 'Budget threshold reached' }
+          break
+        case 'wave_complete':
+          testData.details = { storiesCompleted: 5, duration: '45m 23s', filesCreated: 12 }
+          testData.cost = 2.45
+          break
+        case 'escalation':
+          testData.severity = 'critical'
+          testData.details = { reason: 'Max retries exceeded for QA validation' }
+          break
+      }
+
+      const response = await fetch('http://localhost:3000/api/slack/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: eventType, data: testData })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setSlackTestStatus(prev => ({ ...prev, [eventType]: 'success' }))
+        setSlackNotificationHistory(prev => [{
+          id: Date.now().toString(),
+          type: displayName,
+          timestamp: new Date().toLocaleTimeString(),
+          success: true
+        }, ...prev.slice(0, 4)])
+      } else {
+        throw new Error(result.reason || 'Failed to send')
+      }
+    } catch (err) {
+      setSlackTestStatus(prev => ({ ...prev, [eventType]: 'error' }))
+      setSlackNotificationHistory(prev => [{
+        id: Date.now().toString(),
+        type: displayName,
+        timestamp: new Date().toLocaleTimeString(),
+        success: false,
+        message: err instanceof Error ? err.message : 'Unknown error'
+      }, ...prev.slice(0, 4)])
+    }
+
+    // Reset after 3 seconds
+    setTimeout(() => {
+      setSlackTestStatus(prev => ({ ...prev, [eventType]: 'idle' }))
+    }, 3000)
+  }
+
   // Test connection functions
   const testConnection = async (key: string) => {
     setPingStatus(prev => ({ ...prev, [key]: 'testing' }))
@@ -1036,15 +1122,15 @@ export function ProjectChecklist() {
           if (!url.startsWith('https://hooks.slack.com/')) {
             throw new Error('Invalid webhook URL format')
           }
-          // Actually send a test notification to Slack
-          const testResponse = await fetch('http://localhost:3000/api/test-slack', {
+          // Use the new Slack notifier API
+          const testResponse = await fetch('http://localhost:3000/api/slack/test', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ webhookUrl: url })
+            body: JSON.stringify({ message: 'Test from WAVE Portal configuration' })
           })
           const testResult = await testResponse.json()
           if (!testResult.success) {
-            throw new Error(testResult.error || 'Failed to send test notification')
+            throw new Error(testResult.reason || 'Failed to send test notification')
           }
           setPingStatus(prev => ({ ...prev, [key]: 'success' }))
           setPingMessage(prev => ({ ...prev, [key]: 'Test notification sent!' }))
@@ -6742,10 +6828,19 @@ WAVE_PROJECT_ROOT=${project?.root_path || ''}`
                   </h4>
                   <p className="text-sm text-muted-foreground mb-3">Simple ping to verify Slack webhook works</p>
                   <button
-                    disabled={!configValues.SLACK_WEBHOOK_URL}
-                    className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-200 disabled:text-zinc-400 text-white rounded-lg text-sm font-medium transition-colors"
+                    disabled={!configValues.SLACK_WEBHOOK_URL || slackTestStatus['ping'] === 'sending'}
+                    onClick={() => sendSlackTest('info', 'Ping Test')}
+                    className={cn(
+                      "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                      slackTestStatus['info'] === 'success' ? "bg-green-600 text-white" :
+                      slackTestStatus['info'] === 'error' ? "bg-red-600 text-white" :
+                      slackTestStatus['info'] === 'sending' ? "bg-blue-400 text-white" :
+                      "bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-200 disabled:text-zinc-400 text-white"
+                    )}
                   >
-                    Send Ping
+                    {slackTestStatus['info'] === 'sending' ? 'Sending...' :
+                     slackTestStatus['info'] === 'success' ? 'Sent!' :
+                     slackTestStatus['info'] === 'error' ? 'Failed' : 'Send Ping'}
                   </button>
                 </div>
 
@@ -6756,10 +6851,19 @@ WAVE_PROJECT_ROOT=${project?.root_path || ''}`
                   </h4>
                   <p className="text-sm text-muted-foreground mb-3">Notification when an agent starts a story</p>
                   <button
-                    disabled={!configValues.SLACK_WEBHOOK_URL}
-                    className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-zinc-200 disabled:text-zinc-400 text-white rounded-lg text-sm font-medium transition-colors"
+                    disabled={!configValues.SLACK_WEBHOOK_URL || slackTestStatus['story_start'] === 'sending'}
+                    onClick={() => sendSlackTest('story_start', 'Story Started')}
+                    className={cn(
+                      "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                      slackTestStatus['story_start'] === 'success' ? "bg-green-600 text-white" :
+                      slackTestStatus['story_start'] === 'error' ? "bg-red-600 text-white" :
+                      slackTestStatus['story_start'] === 'sending' ? "bg-green-400 text-white" :
+                      "bg-green-600 hover:bg-green-700 disabled:bg-zinc-200 disabled:text-zinc-400 text-white"
+                    )}
                   >
-                    Test Story Started
+                    {slackTestStatus['story_start'] === 'sending' ? 'Sending...' :
+                     slackTestStatus['story_start'] === 'success' ? 'Sent!' :
+                     slackTestStatus['story_start'] === 'error' ? 'Failed' : 'Test Story Started'}
                   </button>
                 </div>
 
@@ -6770,24 +6874,42 @@ WAVE_PROJECT_ROOT=${project?.root_path || ''}`
                   </h4>
                   <p className="text-sm text-muted-foreground mb-3">Notification with token count and cost</p>
                   <button
-                    disabled={!configValues.SLACK_WEBHOOK_URL}
-                    className="w-full px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-zinc-200 disabled:text-zinc-400 text-white rounded-lg text-sm font-medium transition-colors"
+                    disabled={!configValues.SLACK_WEBHOOK_URL || slackTestStatus['story_complete'] === 'sending'}
+                    onClick={() => sendSlackTest('story_complete', 'Story Complete')}
+                    className={cn(
+                      "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                      slackTestStatus['story_complete'] === 'success' ? "bg-green-600 text-white" :
+                      slackTestStatus['story_complete'] === 'error' ? "bg-red-600 text-white" :
+                      slackTestStatus['story_complete'] === 'sending' ? "bg-emerald-400 text-white" :
+                      "bg-emerald-600 hover:bg-emerald-700 disabled:bg-zinc-200 disabled:text-zinc-400 text-white"
+                    )}
                   >
-                    Test Story Completed
+                    {slackTestStatus['story_complete'] === 'sending' ? 'Sending...' :
+                     slackTestStatus['story_complete'] === 'success' ? 'Sent!' :
+                     slackTestStatus['story_complete'] === 'error' ? 'Failed' : 'Test Story Completed'}
                   </button>
                 </div>
 
                 <div className="p-4 border border-border rounded-xl">
                   <h4 className="font-medium mb-2 flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center text-xs">4</span>
-                    Error Alert
+                    Escalation Alert
                   </h4>
-                  <p className="text-sm text-muted-foreground mb-3">Error notification with details</p>
+                  <p className="text-sm text-muted-foreground mb-3">Critical escalation requiring attention</p>
                   <button
-                    disabled={!configValues.SLACK_WEBHOOK_URL}
-                    className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-zinc-200 disabled:text-zinc-400 text-white rounded-lg text-sm font-medium transition-colors"
+                    disabled={!configValues.SLACK_WEBHOOK_URL || slackTestStatus['escalation'] === 'sending'}
+                    onClick={() => sendSlackTest('escalation', 'Escalation')}
+                    className={cn(
+                      "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                      slackTestStatus['escalation'] === 'success' ? "bg-green-600 text-white" :
+                      slackTestStatus['escalation'] === 'error' ? "bg-red-600 text-white" :
+                      slackTestStatus['escalation'] === 'sending' ? "bg-red-400 text-white" :
+                      "bg-red-600 hover:bg-red-700 disabled:bg-zinc-200 disabled:text-zinc-400 text-white"
+                    )}
                   >
-                    Test Error Alert
+                    {slackTestStatus['escalation'] === 'sending' ? 'Sending...' :
+                     slackTestStatus['escalation'] === 'success' ? 'Sent!' :
+                     slackTestStatus['escalation'] === 'error' ? 'Failed' : 'Test Escalation'}
                   </button>
                 </div>
 
@@ -6798,10 +6920,19 @@ WAVE_PROJECT_ROOT=${project?.root_path || ''}`
                   </h4>
                   <p className="text-sm text-muted-foreground mb-3">End-of-wave summary with stats</p>
                   <button
-                    disabled={!configValues.SLACK_WEBHOOK_URL}
-                    className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-zinc-200 disabled:text-zinc-400 text-white rounded-lg text-sm font-medium transition-colors"
+                    disabled={!configValues.SLACK_WEBHOOK_URL || slackTestStatus['wave_complete'] === 'sending'}
+                    onClick={() => sendSlackTest('wave_complete', 'Wave Complete')}
+                    className={cn(
+                      "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                      slackTestStatus['wave_complete'] === 'success' ? "bg-green-600 text-white" :
+                      slackTestStatus['wave_complete'] === 'error' ? "bg-red-600 text-white" :
+                      slackTestStatus['wave_complete'] === 'sending' ? "bg-purple-400 text-white" :
+                      "bg-purple-600 hover:bg-purple-700 disabled:bg-zinc-200 disabled:text-zinc-400 text-white"
+                    )}
                   >
-                    Test Wave Summary
+                    {slackTestStatus['wave_complete'] === 'sending' ? 'Sending...' :
+                     slackTestStatus['wave_complete'] === 'success' ? 'Sent!' :
+                     slackTestStatus['wave_complete'] === 'error' ? 'Failed' : 'Test Wave Summary'}
                   </button>
                 </div>
 
@@ -6812,10 +6943,19 @@ WAVE_PROJECT_ROOT=${project?.root_path || ''}`
                   </h4>
                   <p className="text-sm text-muted-foreground mb-3">Gate validation passed notification</p>
                   <button
-                    disabled={!configValues.SLACK_WEBHOOK_URL}
-                    className="w-full px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-zinc-200 disabled:text-zinc-400 text-white rounded-lg text-sm font-medium transition-colors"
+                    disabled={!configValues.SLACK_WEBHOOK_URL || slackTestStatus['gate_complete'] === 'sending'}
+                    onClick={() => sendSlackTest('gate_complete', 'Gate Complete')}
+                    className={cn(
+                      "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                      slackTestStatus['gate_complete'] === 'success' ? "bg-green-600 text-white" :
+                      slackTestStatus['gate_complete'] === 'error' ? "bg-red-600 text-white" :
+                      slackTestStatus['gate_complete'] === 'sending' ? "bg-amber-400 text-white" :
+                      "bg-amber-600 hover:bg-amber-700 disabled:bg-zinc-200 disabled:text-zinc-400 text-white"
+                    )}
                   >
-                    Test Gate Passed
+                    {slackTestStatus['gate_complete'] === 'sending' ? 'Sending...' :
+                     slackTestStatus['gate_complete'] === 'success' ? 'Sent!' :
+                     slackTestStatus['gate_complete'] === 'error' ? 'Failed' : 'Test Gate Passed'}
                   </button>
                 </div>
               </div>
@@ -6885,16 +7025,48 @@ WAVE_PROJECT_ROOT=${project?.root_path || ''}`
                     <p className="text-sm text-muted-foreground">Last 5 sent notifications</p>
                   </div>
                 </div>
-                <button className="px-3 py-1.5 text-sm text-zinc-500 hover:text-zinc-700">
+                <button
+                  onClick={() => setSlackNotificationHistory([])}
+                  className="px-3 py-1.5 text-sm text-zinc-500 hover:text-zinc-700"
+                >
                   Clear History
                 </button>
               </div>
 
-              <div className="text-center py-8 text-muted-foreground">
-                <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">No notifications sent yet</p>
-                <p className="text-xs mt-1">Send a test notification to see it here</p>
-              </div>
+              {slackNotificationHistory.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No notifications sent yet</p>
+                  <p className="text-xs mt-1">Send a test notification to see it here</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {slackNotificationHistory.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={cn(
+                        "flex items-center justify-between p-3 rounded-lg",
+                        notification.success ? "bg-green-50" : "bg-red-50"
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        {notification.success ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-red-600" />
+                        )}
+                        <div>
+                          <p className="text-sm font-medium">{notification.type}</p>
+                          {notification.message && (
+                            <p className="text-xs text-red-600">{notification.message}</p>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-xs text-muted-foreground">{notification.timestamp}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         )}

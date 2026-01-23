@@ -5,9 +5,25 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { validateInfrastructure } from './validate-infrastructure.js';
 import dotenv from 'dotenv';
+import { getSlackNotifier } from './slack-notifier.js';
+import { SLACK_EVENT_TYPES, createSlackEvent } from './slack-events.js';
 
 // Load environment variables from .env file
 dotenv.config();
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SLACK NOTIFIER INITIALIZATION
+// ═══════════════════════════════════════════════════════════════════════════════
+const slackNotifier = getSlackNotifier({
+  webhookUrl: process.env.SLACK_WEBHOOK_URL,
+  projectName: process.env.PROJECT_NAME || 'Portal',
+  enabled: process.env.SLACK_ENABLED !== 'false',
+  channels: {
+    default: process.env.SLACK_CHANNEL_UPDATES || process.env.SLACK_WEBHOOK_URL,
+    alerts: process.env.SLACK_CHANNEL_ALERTS || process.env.SLACK_WEBHOOK_URL,
+    budget: process.env.SLACK_CHANNEL_BUDGET || process.env.SLACK_WEBHOOK_URL
+  }
+});
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -130,6 +146,11 @@ async function logAudit(event) {
   const logLevel = event.severity === 'error' || event.severity === 'critical' ? 'error' : 'log';
   console[logLevel](`[AUDIT] ${event.severity?.toUpperCase() || 'INFO'} - ${event.actorType}/${event.actorId}: ${event.action}`,
     event.resourceType ? `(${event.resourceType}:${event.resourceId})` : '');
+
+  // Send Slack notification for significant events (async, non-blocking)
+  if (event.notifySlack !== false && slackNotifier.enabled) {
+    notifySlackForAudit(auditEntry).catch(() => {});
+  }
 
   return auditEntry;
 }
@@ -5465,6 +5486,45 @@ app.post('/api/budgets/track', (req, res) => {
         message: `${agent} budget exceeded: $${agentSpent.toFixed(2)} / $${agentBudget.toFixed(2)}`,
         action: 'pause_agent'
       });
+    } else if (agentPercent >= budgetConfig.alert_thresholds?.critical * 100) {
+      alerts.push({
+        level: 'critical',
+        type: 'agent_budget_critical',
+        target: agent,
+        message: `${agent} budget critical (${agentPercent.toFixed(1)}%): $${agentSpent.toFixed(2)} / $${agentBudget.toFixed(2)}`
+      });
+    } else if (agentPercent >= budgetConfig.alert_thresholds?.warning * 100) {
+      alerts.push({
+        level: 'warning',
+        type: 'agent_budget_warning',
+        target: agent,
+        message: `${agent} budget warning (${agentPercent.toFixed(1)}%): $${agentSpent.toFixed(2)} / $${agentBudget.toFixed(2)}`
+      });
+    }
+
+    // Send Slack notifications for budget alerts
+    for (const alert of alerts) {
+      const slackEventType = alert.level === 'critical'
+        ? (alert.type.includes('exceeded') ? SLACK_EVENT_TYPES.BUDGET_EXCEEDED : SLACK_EVENT_TYPES.BUDGET_CRITICAL)
+        : SLACK_EVENT_TYPES.BUDGET_WARNING;
+
+      const slackEvent = createSlackEvent(slackEventType, {
+        project: path.basename(projectPath),
+        wave,
+        agent,
+        storyId,
+        severity: alert.level,
+        details: {
+          message: alert.message,
+          percentage: agentPercent,
+          spent: agentSpent,
+          limit: agentBudget,
+          alertType: alert.type
+        }
+      });
+
+      // Send asynchronously (don't wait)
+      slackNotifier.notify(slackEvent).catch(() => {});
     }
 
     return res.json({
@@ -5593,6 +5653,171 @@ app.get('/api/budgets/check', (req, res) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SLACK NOTIFICATION ENDPOINTS
+// Generic Slack integration for pipeline notifications
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Get Slack notifier status
+app.get('/api/slack/status', (req, res) => {
+  res.json({
+    success: true,
+    status: slackNotifier.getStatus()
+  });
+});
+
+// Test Slack connection
+app.post('/api/slack/test', async (req, res) => {
+  const { message } = req.body;
+
+  try {
+    const result = await slackNotifier.sendTest(message);
+    res.json({
+      success: result.success,
+      message: result.success ? 'Test message sent to Slack' : 'Failed to send test message',
+      reason: result.reason
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Send a Slack notification
+app.post('/api/slack/notify', async (req, res) => {
+  const { type, data } = req.body;
+
+  if (!type) {
+    return res.status(400).json({ success: false, error: 'Missing event type' });
+  }
+
+  try {
+    const event = createSlackEvent(type, data || {});
+    const result = await slackNotifier.notify(event);
+    res.json({
+      success: result.success,
+      event: event,
+      reason: result.reason
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Send custom blocks to Slack
+app.post('/api/slack/send', async (req, res) => {
+  const { blocks, text, channel } = req.body;
+
+  if (!blocks && !text) {
+    return res.status(400).json({ success: false, error: 'Missing blocks or text' });
+  }
+
+  try {
+    let result;
+    if (blocks) {
+      result = await slackNotifier.sendBlocks(blocks, channel || 'default');
+    } else {
+      result = await slackNotifier.sendText(text, channel || 'default');
+    }
+    res.json({
+      success: result.success,
+      reason: result.reason
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Get available event types
+app.get('/api/slack/event-types', (req, res) => {
+  res.json({
+    success: true,
+    eventTypes: SLACK_EVENT_TYPES
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SLACK NOTIFICATION HELPER
+// Determines which audit events should trigger Slack notifications
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Map audit events to Slack event types
+function mapAuditToSlackEvent(auditEntry) {
+  const eventType = auditEntry.event_type;
+  const action = auditEntry.action;
+  const severity = auditEntry.severity;
+
+  // Only notify for significant events
+  const notifiableEvents = {
+    // Agent events
+    'agent_action': {
+      'agent_started': SLACK_EVENT_TYPES.AGENT_START,
+      'agent_stopped': SLACK_EVENT_TYPES.AGENT_COMPLETE,
+      'agent_error': SLACK_EVENT_TYPES.AGENT_ERROR
+    },
+    // Validation events
+    'validation': {
+      'validation_pass': SLACK_EVENT_TYPES.VALIDATION_PASS,
+      'validation_fail': SLACK_EVENT_TYPES.VALIDATION_FAIL
+    },
+    // Safety events
+    'safety_event': {
+      'safety_violation': SLACK_EVENT_TYPES.SAFETY_VIOLATION,
+      'escalation': SLACK_EVENT_TYPES.ESCALATION
+    },
+    // Gate events
+    'gate_transition': {
+      'gate_entered': SLACK_EVENT_TYPES.GATE_ENTERED,
+      'gate_complete': SLACK_EVENT_TYPES.GATE_COMPLETE,
+      'gate_rejected': SLACK_EVENT_TYPES.GATE_REJECTED
+    }
+  };
+
+  const eventMapping = notifiableEvents[eventType];
+  if (eventMapping && eventMapping[action]) {
+    return {
+      type: eventMapping[action],
+      project: auditEntry.details?.projectName,
+      wave: auditEntry.wave_number,
+      gate: auditEntry.gate_number,
+      agent: auditEntry.actor_id,
+      storyId: auditEntry.resource_id,
+      severity: severity,
+      details: auditEntry.details,
+      cost: auditEntry.cost_usd,
+      tokens: auditEntry.token_input || auditEntry.token_output ? {
+        input: auditEntry.token_input || 0,
+        output: auditEntry.token_output || 0
+      } : null
+    };
+  }
+
+  // Also notify for critical/error severity regardless of event type
+  if (severity === 'critical' || severity === 'error') {
+    return {
+      type: SLACK_EVENT_TYPES.ERROR,
+      severity: 'critical',
+      details: {
+        message: `${eventType}: ${action}`,
+        ...auditEntry.details
+      }
+    };
+  }
+
+  return null;
+}
+
+// Hook: Send Slack notification for relevant audit events
+async function notifySlackForAudit(auditEntry) {
+  const slackEvent = mapAuditToSlackEvent(auditEntry);
+  if (slackEvent) {
+    try {
+      await slackNotifier.notify(slackEvent);
+    } catch (err) {
+      console.error('[Slack] Failed to send notification:', err.message);
+    }
+  }
+}
 
 // Start server
 app.listen(PORT, () => {
