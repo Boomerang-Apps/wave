@@ -42,6 +42,7 @@ import {
   Brain,
   History,
   TrendingUp,
+  MinusCircle,
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { cn } from '../lib/utils'
@@ -294,6 +295,11 @@ interface Story {
   assignedTo?: string
   acceptanceCriteria?: string[]
   estimatedHours?: number
+  // Risk classification fields (Phase 3.1)
+  risk?: 'low' | 'medium' | 'high' | 'critical'
+  approval_required?: 'L0' | 'L1' | 'L2' | 'L3' | 'L4' | 'L5'
+  safety_tags?: string[]
+  requires_review?: boolean
 }
 
 // Wave interface for execution plan
@@ -741,7 +747,7 @@ function ExecutionPlanTab({ project }: { project: Project | null }) {
                           <div className="flex items-center gap-3">
                             {getStoryStatusIcon(story.status)}
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-xs font-mono text-zinc-400">{story.id}</span>
                                 <span className={cn(
                                   "text-xs px-1.5 py-0.5 rounded font-medium",
@@ -749,6 +755,24 @@ function ExecutionPlanTab({ project }: { project: Project | null }) {
                                 )}>
                                   {getStoryStatusLabel(story.status).text}
                                 </span>
+                                {/* Risk Badge */}
+                                {story.risk && (
+                                  <span className={cn(
+                                    "text-xs px-1.5 py-0.5 rounded font-medium",
+                                    story.risk === 'critical' ? 'bg-red-100 text-red-700' :
+                                    story.risk === 'high' ? 'bg-orange-100 text-orange-700' :
+                                    story.risk === 'medium' ? 'bg-amber-100 text-amber-700' :
+                                    'bg-green-100 text-green-700'
+                                  )}>
+                                    {story.risk.toUpperCase()} RISK
+                                  </span>
+                                )}
+                                {/* Requires Review Badge */}
+                                {story.requires_review && (
+                                  <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-purple-100 text-purple-700">
+                                    REVIEW
+                                  </span>
+                                )}
                                 {story.assignedTo && (
                                   <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-600">
                                     {story.assignedTo}
@@ -785,6 +809,48 @@ function ExecutionPlanTab({ project }: { project: Project | null }) {
                                     </li>
                                   ))}
                                 </ul>
+                              </div>
+                            )}
+
+                            {/* Risk Classification Section */}
+                            {(story.risk || story.safety_tags?.length || story.approval_required) && (
+                              <div className="mb-3 p-2 rounded-lg bg-zinc-100 border border-zinc-200">
+                                <h6 className="text-xs font-medium text-zinc-400 uppercase mb-2">
+                                  Risk Classification
+                                </h6>
+                                <div className="flex flex-wrap gap-2">
+                                  {story.risk && (
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-xs text-zinc-500">Risk:</span>
+                                      <span className={cn(
+                                        "text-xs px-1.5 py-0.5 rounded font-medium",
+                                        story.risk === 'critical' ? 'bg-red-100 text-red-700' :
+                                        story.risk === 'high' ? 'bg-orange-100 text-orange-700' :
+                                        story.risk === 'medium' ? 'bg-amber-100 text-amber-700' :
+                                        'bg-green-100 text-green-700'
+                                      )}>
+                                        {story.risk.toUpperCase()}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {story.approval_required && (
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-xs text-zinc-500">Approval:</span>
+                                      <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-blue-100 text-blue-700">
+                                        {story.approval_required}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                                {story.safety_tags && story.safety_tags.length > 0 && (
+                                  <div className="mt-2 flex flex-wrap gap-1">
+                                    {story.safety_tags.map(tag => (
+                                      <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-600 border border-red-200">
+                                        {tag}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             )}
 
@@ -876,6 +942,9 @@ export function ProjectChecklist() {
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null)
   const [validating, setValidating] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
+
+  // Validation mode state (strict = production, dev = fast iteration, ci = automation)
+  const [validationMode, setValidationMode] = useState<'strict' | 'dev' | 'ci'>('strict')
 
   // Configuration state
   const [configSaving, setConfigSaving] = useState(false)
@@ -1007,6 +1076,167 @@ export function ProjectChecklist() {
   const [safetyChecks, setSafetyChecks] = useState<{ name: string, status: string, message: string }[]>([])
   const [safetyLastChecked, setSafetyLastChecked] = useState<string | null>(null)
   const [showSafetyModal, setShowSafetyModal] = useState(false)
+
+  // Behavioral Safety Probes state
+  const [behavioralProbes, setBehavioralProbes] = useState<{
+    probe_id: string
+    name: string
+    category: string
+    severity: string
+    status: string
+    message?: string
+  }[]>([])
+  const [behavioralProbeStatus, setBehavioralProbeStatus] = useState<'idle' | 'validating' | 'ready' | 'blocked'>('idle')
+  const [behavioralLastChecked, setBehavioralLastChecked] = useState<string | null>(null)
+  const [validatingBehavioral, setValidatingBehavioral] = useState(false)
+
+  // Build QA state
+  const [buildQaChecks, setBuildQaChecks] = useState<{
+    name: string
+    status: 'pass' | 'fail' | 'skipped' | 'pending'
+    command?: string
+    duration_ms?: number
+    output?: string
+    error?: string
+    reason?: string
+  }[]>([])
+  const [buildQaStatus, setBuildQaStatus] = useState<'idle' | 'validating' | 'ready' | 'blocked'>('idle')
+  const [buildQaLastChecked, setBuildQaLastChecked] = useState<string | null>(null)
+  const [validatingBuildQa, setValidatingBuildQa] = useState(false)
+  const [showBuildQaConfig, setShowBuildQaConfig] = useState(false)
+  const [buildQaThresholds, setBuildQaThresholds] = useState<{
+    typescript: { max_errors: number, max_warnings: number }
+    lint: { max_errors: number, max_warnings: number }
+    tests: { min_coverage_percent: number, require_passing: boolean }
+    security: { max_critical: number, max_high: number, audit_level: string }
+    quality_gates: {
+      block_on_typescript_errors: boolean
+      block_on_lint_errors: boolean
+      block_on_test_failures: boolean
+      block_on_security_critical: boolean
+      block_on_build_failure: boolean
+    }
+  } | null>(null)
+
+  // Audit Log state
+  interface AuditLogEntry {
+    id: string
+    event_type: string
+    event_category: string | null
+    severity: string
+    actor_type: string
+    actor_id: string
+    action: string
+    resource_type: string | null
+    resource_id: string | null
+    details: Record<string, unknown>
+    safety_tags: string[]
+    requires_review: boolean
+    created_at: string
+  }
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([])
+  const [auditLogsLoading, setAuditLogsLoading] = useState(false)
+  const [auditLogFilter, setAuditLogFilter] = useState<string>('all')
+  const [auditLogSummary, setAuditLogSummary] = useState<{
+    total_events: number
+    requires_review: number
+    by_event_type: Record<string, number>
+    by_severity: Record<string, number>
+  } | null>(null)
+
+  // Watchdog state
+  interface WatchdogStatus {
+    overall_status: 'healthy' | 'warning' | 'critical'
+    summary: { total_agents: number, healthy: number, stuck: number, slow: number, idle: number }
+    agents: Array<{
+      agent: string
+      status: string
+      heartbeat_age_seconds: number
+      is_stuck: boolean
+      alert_level: string
+    }>
+  }
+  const [watchdogStatus, setWatchdogStatus] = useState<WatchdogStatus | null>(null)
+  const [watchdogLoading, setWatchdogLoading] = useState(false)
+
+  // Safety Traceability state (Phase 3.2)
+  interface TraceabilityReport {
+    summary: {
+      total_stories: number
+      stories_with_risk_classification: number
+      stories_with_safety_tags: number
+      stories_requiring_review: number
+      critical_risk_stories: number
+      high_risk_stories: number
+      coverage_percent: number
+    }
+    risk_distribution: { critical: number, high: number, medium: number, low: number }
+    forbidden_operations: string[]
+    traceability_matrix: Array<{
+      story_id: string
+      title: string
+      wave: number
+      risk: string
+      safety_tags: string[]
+      requires_review: boolean
+    }>
+  }
+  const [traceabilityReport, setTraceabilityReport] = useState<TraceabilityReport | null>(null)
+  const [traceabilityLoading, setTraceabilityLoading] = useState(false)
+
+  // Token Budget Governance state (Phase 3.3)
+  interface BudgetAlert {
+    level: 'info' | 'warning' | 'critical'
+    type: string
+    target: string
+    message: string
+    action?: string
+    timestamp: string
+  }
+  interface BudgetStatus {
+    config: {
+      project_budget: number
+      wave_budget: number
+      agent_budgets: Record<string, number>
+      story_budget_default: number
+      alert_thresholds: {
+        warning: number
+        critical: number
+        auto_pause: number
+      }
+      anomaly_detection: {
+        enabled: boolean
+        spike_threshold: number
+        sustained_threshold: number
+        lookback_minutes: number
+      }
+    }
+    usage: {
+      total: number
+      by_wave: Record<string, number>
+      by_agent: Record<string, number>
+      by_story: Record<string, number>
+    }
+    status: {
+      project: {
+        budget: number
+        spent: number
+        percent: number
+        status: 'ok' | 'warning' | 'critical' | 'exceeded'
+      }
+      agents: Record<string, {
+        budget: number
+        spent: number
+        percent: number
+        status: 'ok' | 'warning' | 'critical' | 'exceeded'
+      }>
+    }
+    alerts: BudgetAlert[]
+  }
+  const [budgetStatus, setBudgetStatus] = useState<BudgetStatus | null>(null)
+  const [budgetLoading, setBudgetLoading] = useState(false)
+  const [showBudgetConfig, setShowBudgetConfig] = useState(false)
+
   const [showFoundationModal, setShowFoundationModal] = useState(false)
   const [showRlmModal, setShowRlmModal] = useState(false)
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -1510,6 +1740,48 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
   const [rlmChecks, setRlmChecks] = useState<{ category: string, name: string, status: string, message: string }[]>([])
   const [rlmLastChecked, setRlmLastChecked] = useState<string | null>(null)
 
+  // Drift detection state (Phase 1.3.5)
+  interface DriftResult {
+    agent: string
+    status: 'healthy' | 'drifted' | 'stale' | 'no_baseline'
+    drift_score: number | null
+    threshold: number
+    alert: boolean
+    baseline_date?: string
+    memory_drift?: {
+      baseline_size_kb: number
+      current_size_kb: number
+      size_growth_rate: number
+      baseline_decisions: number
+      current_decisions: number
+      decision_growth_rate: number
+    }
+    ttl_status?: {
+      exceeded: boolean
+      age_days: number
+      ttl_days: number
+    }
+  }
+  const [driftReport, setDriftReport] = useState<{
+    overall_status: string
+    summary: {
+      total_agents: number
+      healthy: number
+      drifted: number
+      stale: number
+      no_baseline: number
+      average_drift_score: number
+    }
+    recommendations: Array<{
+      priority: string
+      type: string
+      message: string
+      agents: string[]
+    }>
+    agents: DriftResult[]
+  } | null>(null)
+  const [driftLoading, setDriftLoading] = useState(false)
+
   const rlmTabStatus: CheckStatusType =
     rlmStatus === 'ready' ? 'pass' :
     rlmStatus === 'blocked' ? 'fail' :
@@ -1536,9 +1808,10 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
     { id: 'infrastructure', label: 'Infrastructure', shortLabel: '4', status: foundationTabStatus },
     { id: 'compliance-safety', label: 'Aerospace Safety', shortLabel: '5', status: safetyTabStatus },
     { id: 'rlm-protocol', label: 'RLM Protocol', shortLabel: '6', status: rlmTabStatus },
-    { id: 'build-qa', label: 'Build QA', shortLabel: '7', status: 'pending' as CheckStatusType },
+    { id: 'build-qa', label: 'Build QA', shortLabel: '7', status: (buildQaStatus === 'ready' ? 'pass' : buildQaStatus === 'blocked' ? 'fail' : buildQaStatus === 'validating' ? 'pending' : 'warn') as CheckStatusType },
     { id: 'notifications', label: 'Notifications', shortLabel: '8', status: 'pending' as CheckStatusType },
     { id: 'agent-dispatch', label: 'Agent Dispatch', shortLabel: '9', status: (agents.some(a => a.status === 'running') ? 'pass' : 'pending') as CheckStatusType },
+    { id: 'audit-log', label: 'Audit Log', shortLabel: '10', status: ((auditLogSummary?.requires_review || 0) > 0 ? 'warn' : 'pass') as CheckStatusType },
   ]
 
   const toggleShowKey = (key: string) => {
@@ -2270,6 +2543,167 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
     }
   }
 
+  // Validate Behavioral Safety Probes
+  const validateBehavioralProbes = async () => {
+    // Skip behavioral probes in dev mode
+    if (validationMode === 'dev') {
+      setBehavioralProbeStatus('idle')
+      setBehavioralProbes([])
+      return
+    }
+
+    setValidatingBehavioral(true)
+    setBehavioralProbeStatus('validating')
+    setBehavioralProbes([])
+
+    try {
+      const response = await fetch('http://localhost:3000/api/validate-behavioral', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectPath: project?.root_path,
+          mode: validationMode,
+          dryRun: true
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        const newStatus = result.overall_status === 'pass' || result.overall_status === 'validated'
+          ? 'ready'
+          : result.overall_status === 'pending' ? 'idle' : 'blocked'
+        setBehavioralProbeStatus(newStatus)
+        setBehavioralProbes(result.results || [])
+        setBehavioralLastChecked(new Date().toLocaleTimeString())
+
+        // Save to database
+        if (project?.id && isSupabaseConfigured()) {
+          const configWithBehavioral = {
+            ...configValues,
+            _behavioral_safety: {
+              status: newStatus,
+              probes: result.results || [],
+              summary: result.summary,
+              last_checked: new Date().toISOString()
+            }
+          }
+          await supabase
+            .from('wave_project_config')
+            .upsert({
+              project_id: project.id,
+              config: configWithBehavioral,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'project_id' })
+        }
+      } else {
+        setBehavioralProbeStatus('blocked')
+      }
+    } catch (error) {
+      console.error('Behavioral probe validation error:', error)
+      setBehavioralProbeStatus('blocked')
+    } finally {
+      setValidatingBehavioral(false)
+    }
+  }
+
+  // Validate Build QA
+  const validateBuildQa = async (quick = false) => {
+    setValidatingBuildQa(true)
+    setBuildQaStatus('validating')
+    setBuildQaChecks([])
+
+    try {
+      const response = await fetch('http://localhost:3000/api/validate-build-qa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectPath: project?.root_path,
+          quick,
+          mode: validationMode
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        const newStatus = result.overall_status === 'pass' ? 'ready' :
+                         result.overall_status === 'skipped' ? 'idle' : 'blocked'
+        setBuildQaStatus(newStatus)
+        setBuildQaChecks(result.checks || [])
+        setBuildQaLastChecked(new Date().toLocaleTimeString())
+
+        // Save to database
+        if (project?.id && isSupabaseConfigured()) {
+          const configWithBuildQa = {
+            ...configValues,
+            _build_qa: {
+              status: newStatus,
+              checks: result.checks || [],
+              summary: result.summary,
+              last_checked: new Date().toISOString()
+            }
+          }
+          await supabase
+            .from('wave_project_config')
+            .upsert({
+              project_id: project.id,
+              config: configWithBuildQa,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'project_id' })
+        }
+      } else {
+        setBuildQaStatus('blocked')
+      }
+    } catch (error) {
+      console.error('Build QA validation error:', error)
+      setBuildQaStatus('blocked')
+    } finally {
+      setValidatingBuildQa(false)
+    }
+  }
+
+  // Fetch Build QA thresholds
+  const fetchBuildQaThresholds = async () => {
+    if (!project?.root_path) return
+
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/build-qa/thresholds?projectPath=${encodeURIComponent(project.root_path)}`
+      )
+      const data = await response.json()
+
+      if (data.success) {
+        setBuildQaThresholds(data.thresholds)
+      }
+    } catch (error) {
+      console.error('Failed to fetch build QA thresholds:', error)
+    }
+  }
+
+  // Update Build QA thresholds
+  const updateBuildQaThresholds = async (updates: Partial<typeof buildQaThresholds>) => {
+    if (!project?.root_path || !buildQaThresholds) return
+
+    try {
+      const response = await fetch('http://localhost:3000/api/build-qa/thresholds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectPath: project.root_path,
+          thresholds: { ...buildQaThresholds, ...updates }
+        })
+      })
+      const data = await response.json()
+
+      if (data.success) {
+        setBuildQaThresholds(data.thresholds)
+      }
+    } catch (error) {
+      console.error('Failed to update build QA thresholds:', error)
+    }
+  }
+
   // RLM Protocol validation - real validation against codebase and scripts
   const validateRlm = async () => {
     setValidatingRlm(true)
@@ -2370,6 +2804,237 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
       setRlmStatus('blocked')
     } finally {
       setValidatingRlm(false)
+    }
+  }
+
+  // Fetch drift report (Phase 1.3.5)
+  const fetchDriftReport = async (regenerate = false) => {
+    if (!project?.root_path) return
+
+    setDriftLoading(true)
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/drift-report?projectPath=${encodeURIComponent(project.root_path)}&regenerate=${regenerate}`
+      )
+      const data = await response.json()
+
+      if (data.success) {
+        setDriftReport({
+          overall_status: data.overall_status,
+          summary: data.summary,
+          recommendations: data.recommendations || [],
+          agents: data.agents || []
+        })
+      }
+    } catch (error) {
+      console.error('Failed to fetch drift report:', error)
+    } finally {
+      setDriftLoading(false)
+    }
+  }
+
+  // Reset agent memory
+  const resetAgentMemory = async (agentType: string) => {
+    if (!project?.root_path) return
+
+    try {
+      const response = await fetch('http://localhost:3000/api/drift-report/reset-memory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectPath: project.root_path,
+          agentType
+        })
+      })
+      const data = await response.json()
+
+      if (data.success) {
+        await fetchDriftReport(true)
+      }
+    } catch (error) {
+      console.error('Failed to reset agent memory:', error)
+    }
+  }
+
+  // Generate baseline for agent
+  const generateAgentBaseline = async (agentType: string) => {
+    if (!project?.root_path) return
+
+    try {
+      const response = await fetch('http://localhost:3000/api/drift-report/generate-baseline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectPath: project.root_path,
+          agentType
+        })
+      })
+      const data = await response.json()
+
+      if (data.success) {
+        await fetchDriftReport(true)
+      }
+    } catch (error) {
+      console.error('Failed to generate baseline:', error)
+    }
+  }
+
+  // Fetch audit logs
+  const fetchAuditLogs = async () => {
+    if (!project?.root_path) return
+
+    setAuditLogsLoading(true)
+    try {
+      const response = await fetch(`http://localhost:3000/api/audit-log?projectPath=${encodeURIComponent(project.root_path)}&limit=50`)
+      const data = await response.json()
+
+      if (data.success) {
+        setAuditLogs(data.logs || [])
+      }
+
+      // Also fetch summary
+      const summaryResponse = await fetch(`http://localhost:3000/api/audit-log/summary?projectPath=${encodeURIComponent(project.root_path)}&hours=24`)
+      const summaryData = await summaryResponse.json()
+
+      if (summaryData.success) {
+        setAuditLogSummary({
+          total_events: summaryData.total_events,
+          requires_review: summaryData.requires_review,
+          by_event_type: summaryData.by_event_type,
+          by_severity: summaryData.by_severity
+        })
+      }
+    } catch (error) {
+      console.error('Failed to fetch audit logs:', error)
+    } finally {
+      setAuditLogsLoading(false)
+    }
+  }
+
+  // Format audit log timestamp
+  const formatAuditTime = (timestamp: string) => {
+    const date = new Date(timestamp)
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  }
+
+  // Get severity color
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'critical': return 'text-red-600 bg-red-50'
+      case 'error': return 'text-red-500 bg-red-50'
+      case 'warn': return 'text-amber-600 bg-amber-50'
+      case 'info': return 'text-blue-600 bg-blue-50'
+      default: return 'text-gray-600 bg-gray-50'
+    }
+  }
+
+  // Get event type icon
+  const getEventTypeIcon = (eventType: string) => {
+    switch (eventType) {
+      case 'agent_action': return <Bot className="h-4 w-4" />
+      case 'validation': return <Shield className="h-4 w-4" />
+      case 'safety_event': return <AlertTriangle className="h-4 w-4" />
+      case 'config_change': return <Settings className="h-4 w-4" />
+      case 'gate_transition': return <GitBranch className="h-4 w-4" />
+      default: return <History className="h-4 w-4" />
+    }
+  }
+
+  // Fetch watchdog status
+  const fetchWatchdogStatus = async () => {
+    if (!project?.root_path) return
+
+    setWatchdogLoading(true)
+    try {
+      const response = await fetch(`http://localhost:3000/api/watchdog?projectPath=${encodeURIComponent(project.root_path)}`)
+      const data = await response.json()
+
+      if (data.success) {
+        setWatchdogStatus({
+          overall_status: data.overall_status,
+          summary: data.summary,
+          agents: data.agents
+        })
+      }
+    } catch (error) {
+      console.error('Failed to fetch watchdog status:', error)
+    } finally {
+      setWatchdogLoading(false)
+    }
+  }
+
+  // Fetch safety traceability report
+  const fetchTraceabilityReport = async (regenerate = false) => {
+    if (!project?.root_path) return
+
+    setTraceabilityLoading(true)
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/safety-traceability?projectPath=${encodeURIComponent(project.root_path)}&regenerate=${regenerate}`
+      )
+      const data = await response.json()
+
+      if (data.success) {
+        setTraceabilityReport({
+          summary: data.summary,
+          risk_distribution: data.risk_distribution,
+          forbidden_operations: data.forbidden_operations,
+          traceability_matrix: data.traceability_matrix || data.stories || []
+        })
+      }
+    } catch (error) {
+      console.error('Failed to fetch traceability report:', error)
+    } finally {
+      setTraceabilityLoading(false)
+    }
+  }
+
+  // Fetch budget status (Phase 3.3)
+  const fetchBudgetStatus = async () => {
+    if (!project?.root_path) return
+
+    setBudgetLoading(true)
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/budgets?projectPath=${encodeURIComponent(project.root_path)}`
+      )
+      const data = await response.json()
+
+      if (data.success) {
+        setBudgetStatus({
+          config: data.config,
+          usage: data.usage,
+          status: data.status,
+          alerts: data.alerts || []
+        })
+      }
+    } catch (error) {
+      console.error('Failed to fetch budget status:', error)
+    } finally {
+      setBudgetLoading(false)
+    }
+  }
+
+  // Update budget configuration
+  const updateBudgetConfig = async (newConfig: Partial<BudgetStatus['config']>) => {
+    if (!project?.root_path) return
+
+    try {
+      const response = await fetch('http://localhost:3000/api/budgets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectPath: project.root_path,
+          config: newConfig
+        })
+      })
+      const data = await response.json()
+
+      if (data.success) {
+        await fetchBudgetStatus()
+      }
+    } catch (error) {
+      console.error('Failed to update budget config:', error)
     }
   }
 
@@ -2651,12 +3316,49 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
     if (activeTab === 'agent-dispatch' && project?.root_path) {
       fetchAgents()
       fetchAgentActivity()
+      fetchWatchdogStatus()
+      fetchBudgetStatus()
       // Set up polling for real-time updates
       const interval = setInterval(() => {
         fetchAgents()
         fetchAgentActivity()
+        fetchWatchdogStatus()
+        fetchBudgetStatus()
       }, 5000)
       return () => clearInterval(interval)
+    }
+  }, [activeTab, project?.root_path])
+
+  // Fetch audit logs when tab is active
+  useEffect(() => {
+    if (activeTab === 'audit-log' && project?.root_path) {
+      fetchAuditLogs()
+      // Refresh every 30 seconds
+      const interval = setInterval(() => {
+        fetchAuditLogs()
+      }, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [activeTab, project?.root_path])
+
+  // Fetch safety traceability report when tab is active
+  useEffect(() => {
+    if (activeTab === 'compliance-safety' && project?.root_path && !traceabilityReport) {
+      fetchTraceabilityReport()
+    }
+  }, [activeTab, project?.root_path])
+
+  // Fetch build QA thresholds when tab is active
+  useEffect(() => {
+    if (activeTab === 'build-qa' && project?.root_path && !buildQaThresholds) {
+      fetchBuildQaThresholds()
+    }
+  }, [activeTab, project?.root_path])
+
+  // Fetch drift report when RLM tab is active
+  useEffect(() => {
+    if (activeTab === 'rlm-protocol' && project?.root_path && !driftReport) {
+      fetchDriftReport()
     }
   }, [activeTab, project?.root_path])
 
@@ -2683,6 +3385,20 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
   return (
     <div className="max-w-[1440px] mx-auto pb-12">
+      {/* DEV MODE Banner */}
+      {validationMode !== 'strict' && (
+        <div className={cn(
+          "px-4 py-2 text-center text-sm font-semibold",
+          validationMode === 'dev' ? "bg-amber-500 text-white" : "bg-blue-500 text-white"
+        )}>
+          {validationMode === 'dev' ? (
+            <>⚠️ DEV MODE - Behavioral probes & drift checks DISABLED - NOT FOR PRODUCTION</>
+          ) : (
+            <>🔄 CI MODE - Optimized for automation - Limited interactive checks</>
+          )}
+        </div>
+      )}
+
       {/* Compact Header */}
       <div className="flex items-center justify-between py-4 mb-6 border-b border-border">
         <div>
@@ -2690,6 +3406,26 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
           <p className="text-sm text-muted-foreground">Aerospace-Grade Validation · {lastUpdate}</p>
         </div>
         <div className="flex items-center gap-3">
+          {/* Validation Mode Selector */}
+          <div className="relative">
+            <select
+              value={validationMode}
+              onChange={(e) => setValidationMode(e.target.value as 'strict' | 'dev' | 'ci')}
+              className={cn(
+                "appearance-none pl-3 pr-8 py-1.5 rounded-full text-xs font-medium border cursor-pointer",
+                validationMode === 'strict'
+                  ? "bg-green-50 border-green-200 text-green-700"
+                  : validationMode === 'dev'
+                  ? "bg-amber-50 border-amber-200 text-amber-700"
+                  : "bg-blue-50 border-blue-200 text-blue-700"
+              )}
+            >
+              <option value="strict">🛡️ Strict Mode</option>
+              <option value="dev">⚡ Dev Mode</option>
+              <option value="ci">🔄 CI Mode</option>
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 pointer-events-none text-muted-foreground" />
+          </div>
           <a
             href="/architecture"
             className="px-3 py-1.5 bg-primary text-primary-foreground rounded-full text-xs font-medium hover:opacity-90 flex items-center gap-1.5"
@@ -4064,69 +4800,364 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             <div className="flex items-center justify-between p-6 border border-border bg-white rounded-2xl mb-6">
               <div className="flex items-center gap-6">
                 <span className="text-sm font-medium text-muted-foreground">BUILD & QA</span>
-                <span className="font-semibold">Smoke Tests, Development & Validation</span>
+                <span className="font-semibold">Build Validation & Quality Assurance</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => validateBuildQa(true)}
+                  disabled={validatingBuildQa}
+                  className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
+                >
+                  <Zap className="h-4 w-4" />
+                  Quick Check
+                </button>
+                <button
+                  onClick={() => validateBuildQa(false)}
+                  disabled={validatingBuildQa}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2",
+                    validatingBuildQa
+                      ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                      : "bg-primary text-primary-foreground hover:opacity-90"
+                  )}
+                >
+                  {validatingBuildQa ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Running...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-4 w-4" />
+                      Run Full Validation
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setShowBuildQaConfig(!showBuildQaConfig)}
+                  className="p-2 rounded-lg hover:bg-zinc-100 transition-colors"
+                  title="Configure quality thresholds"
+                >
+                  <Settings className="h-4 w-4" />
+                </button>
               </div>
             </div>
 
-            <SectionHeader badge="2" badgeColor="bg-blue-500" title="Phase 2: Smoke Test" description="Build, type check, lint, test" timestamp={lastUpdate} status="blocked" />
+            {/* Quality Thresholds Configuration Panel */}
+            {showBuildQaConfig && buildQaThresholds && (
+              <div className="p-5 bg-zinc-50 border border-zinc-200 rounded-2xl mb-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <Settings className="h-5 w-5 text-zinc-600" />
+                  <h3 className="font-semibold">Quality Thresholds Configuration</h3>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                  {/* Quality Gates */}
+                  <div className="col-span-full">
+                    <h4 className="text-sm font-medium mb-3 text-zinc-700">Quality Gates (Block Deployment)</h4>
+                    <div className="flex flex-wrap gap-4">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={buildQaThresholds.quality_gates.block_on_typescript_errors}
+                          onChange={(e) => updateBuildQaThresholds({
+                            quality_gates: { ...buildQaThresholds.quality_gates, block_on_typescript_errors: e.target.checked }
+                          })}
+                          className="rounded"
+                        />
+                        TypeScript errors
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={buildQaThresholds.quality_gates.block_on_lint_errors}
+                          onChange={(e) => updateBuildQaThresholds({
+                            quality_gates: { ...buildQaThresholds.quality_gates, block_on_lint_errors: e.target.checked }
+                          })}
+                          className="rounded"
+                        />
+                        Lint errors
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={buildQaThresholds.quality_gates.block_on_test_failures}
+                          onChange={(e) => updateBuildQaThresholds({
+                            quality_gates: { ...buildQaThresholds.quality_gates, block_on_test_failures: e.target.checked }
+                          })}
+                          className="rounded"
+                        />
+                        Test failures
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={buildQaThresholds.quality_gates.block_on_security_critical}
+                          onChange={(e) => updateBuildQaThresholds({
+                            quality_gates: { ...buildQaThresholds.quality_gates, block_on_security_critical: e.target.checked }
+                          })}
+                          className="rounded"
+                        />
+                        Security vulnerabilities
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={buildQaThresholds.quality_gates.block_on_build_failure}
+                          onChange={(e) => updateBuildQaThresholds({
+                            quality_gates: { ...buildQaThresholds.quality_gates, block_on_build_failure: e.target.checked }
+                          })}
+                          className="rounded"
+                        />
+                        Build failure
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* TypeScript */}
+                  <div>
+                    <h4 className="text-sm font-medium mb-2 text-zinc-700">TypeScript</h4>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-xs text-muted-foreground">Max Errors</label>
+                        <input
+                          type="number"
+                          value={buildQaThresholds.typescript.max_errors}
+                          onChange={(e) => updateBuildQaThresholds({
+                            typescript: { ...buildQaThresholds.typescript, max_errors: parseInt(e.target.value) || 0 }
+                          })}
+                          className="w-full mt-1 px-2 py-1 border rounded text-sm"
+                          min="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Max Warnings</label>
+                        <input
+                          type="number"
+                          value={buildQaThresholds.typescript.max_warnings}
+                          onChange={(e) => updateBuildQaThresholds({
+                            typescript: { ...buildQaThresholds.typescript, max_warnings: parseInt(e.target.value) || 0 }
+                          })}
+                          className="w-full mt-1 px-2 py-1 border rounded text-sm"
+                          min="0"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Lint */}
+                  <div>
+                    <h4 className="text-sm font-medium mb-2 text-zinc-700">Lint</h4>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-xs text-muted-foreground">Max Errors</label>
+                        <input
+                          type="number"
+                          value={buildQaThresholds.lint.max_errors}
+                          onChange={(e) => updateBuildQaThresholds({
+                            lint: { ...buildQaThresholds.lint, max_errors: parseInt(e.target.value) || 0 }
+                          })}
+                          className="w-full mt-1 px-2 py-1 border rounded text-sm"
+                          min="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Max Warnings</label>
+                        <input
+                          type="number"
+                          value={buildQaThresholds.lint.max_warnings}
+                          onChange={(e) => updateBuildQaThresholds({
+                            lint: { ...buildQaThresholds.lint, max_warnings: parseInt(e.target.value) || 0 }
+                          })}
+                          className="w-full mt-1 px-2 py-1 border rounded text-sm"
+                          min="0"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Security */}
+                  <div>
+                    <h4 className="text-sm font-medium mb-2 text-zinc-700">Security</h4>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-xs text-muted-foreground">Max Critical</label>
+                        <input
+                          type="number"
+                          value={buildQaThresholds.security.max_critical}
+                          onChange={(e) => updateBuildQaThresholds({
+                            security: { ...buildQaThresholds.security, max_critical: parseInt(e.target.value) || 0 }
+                          })}
+                          className="w-full mt-1 px-2 py-1 border rounded text-sm"
+                          min="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Max High</label>
+                        <input
+                          type="number"
+                          value={buildQaThresholds.security.max_high}
+                          onChange={(e) => updateBuildQaThresholds({
+                            security: { ...buildQaThresholds.security, max_high: parseInt(e.target.value) || 0 }
+                          })}
+                          className="w-full mt-1 px-2 py-1 border rounded text-sm"
+                          min="0"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-4">
+                  Changes are saved automatically. Set thresholds to 0 to disallow any errors.
+                </p>
+              </div>
+            )}
+
+            {/* Build QA Status Summary */}
+            {buildQaChecks.length > 0 && (
+              <div className="grid grid-cols-4 gap-4 mb-6">
+                <div className={cn("p-4 rounded-xl border", buildQaChecks.filter(c => c.status === 'pass').length > 0 ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200")}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    <span className="font-medium text-sm">Passed</span>
+                  </div>
+                  <p className="text-2xl font-bold text-green-700">{buildQaChecks.filter(c => c.status === 'pass').length}</p>
+                </div>
+                <div className={cn("p-4 rounded-xl border", buildQaChecks.filter(c => c.status === 'fail').length > 0 ? "bg-red-50 border-red-200" : "bg-gray-50 border-gray-200")}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <XCircle className="h-5 w-5 text-red-500" />
+                    <span className="font-medium text-sm">Failed</span>
+                  </div>
+                  <p className="text-2xl font-bold text-red-700">{buildQaChecks.filter(c => c.status === 'fail').length}</p>
+                </div>
+                <div className={cn("p-4 rounded-xl border", "bg-gray-50 border-gray-200")}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <MinusCircle className="h-5 w-5 text-gray-400" />
+                    <span className="font-medium text-sm">Skipped</span>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-700">{buildQaChecks.filter(c => c.status === 'skipped').length}</p>
+                </div>
+                <div className={cn("p-4 rounded-xl border", "bg-blue-50 border-blue-200")}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className="h-5 w-5 text-blue-500" />
+                    <span className="font-medium text-sm">Last Run</span>
+                  </div>
+                  <p className="text-sm font-medium text-blue-700">{buildQaLastChecked || 'Never'}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Build QA Checks Section */}
+            <SectionHeader
+              badge="A"
+              badgeColor="bg-blue-500"
+              title="Section A: Build & Compilation"
+              description="TypeScript compilation and production build"
+              timestamp={buildQaLastChecked || lastUpdate}
+              status={(() => {
+                const checks = buildQaChecks.filter(c => ['TypeScript', 'Build'].includes(c.name))
+                if (checks.length === 0) return buildQaStatus === 'idle' ? 'warn' : 'pending'
+                if (checks.some(c => c.status === 'fail')) return 'fail'
+                if (checks.every(c => c.status === 'pass')) return 'pass'
+                return 'warn'
+              })()}
+            />
             <div className="border-x border-b border-border rounded-b-xl">
               <CheckItem
-                label="pnpm build"
-                status="pending"
+                label="TypeScript Compilation"
+                status={(buildQaChecks.find(c => c.name === 'TypeScript')?.status as 'pass' | 'fail' | 'warn') || (buildQaStatus === 'idle' ? 'warn' : 'pending')}
+                description="TypeScript type checking must pass with zero errors (tsc --noEmit)"
+                command="npx tsc --noEmit"
+                output={buildQaChecks.find(c => c.name === 'TypeScript')?.output || buildQaChecks.find(c => c.name === 'TypeScript')?.reason}
+              />
+              <CheckItem
+                label="Production Build"
+                status={(buildQaChecks.find(c => c.name === 'Build')?.status as 'pass' | 'fail' | 'warn') || (buildQaStatus === 'idle' ? 'warn' : 'pending')}
                 description="Production build must complete without errors"
-                command="pnpm build 2>&1 | tail -5"
+                command="npm run build"
+                output={buildQaChecks.find(c => c.name === 'Build')?.output || buildQaChecks.find(c => c.name === 'Build')?.reason}
               />
+            </div>
+
+            {/* Test & Lint Section */}
+            <SectionHeader
+              badge="B"
+              badgeColor="bg-purple-500"
+              title="Section B: Tests & Linting"
+              description="Unit tests and code quality checks"
+              timestamp={buildQaLastChecked || lastUpdate}
+              status={(() => {
+                const checks = buildQaChecks.filter(c => ['Tests', 'Lint'].includes(c.name))
+                if (checks.length === 0) return buildQaStatus === 'idle' ? 'warn' : 'pending'
+                if (checks.some(c => c.status === 'fail')) return 'fail'
+                if (checks.every(c => c.status === 'pass')) return 'pass'
+                return 'warn'
+              })()}
+            />
+            <div className="border-x border-b border-border rounded-b-xl">
               <CheckItem
-                label="pnpm typecheck"
-                status="pending"
-                description="TypeScript type checking must pass with zero errors"
-                command="pnpm typecheck 2>&1 | grep -E '(error|Found)' || echo '0 errors'"
-              />
-              <CheckItem
-                label="pnpm lint"
-                status="pending"
-                description="ESLint must pass with no errors (warnings allowed)"
-                command="pnpm lint 2>&1 | grep -E '(error|warning)' | tail -3"
-              />
-              <CheckItem
-                label="pnpm test"
-                status="pending"
+                label="Unit Tests"
+                status={(buildQaChecks.find(c => c.name === 'Tests')?.status as 'pass' | 'fail' | 'warn') || (buildQaStatus === 'idle' ? 'warn' : 'pending')}
                 description="All unit and integration tests must pass"
-                command="pnpm test --reporter=dot 2>&1 | tail -3"
+                command="npm test"
+                output={buildQaChecks.find(c => c.name === 'Tests')?.output || buildQaChecks.find(c => c.name === 'Tests')?.reason}
+              />
+              <CheckItem
+                label="ESLint"
+                status={(buildQaChecks.find(c => c.name === 'Lint')?.status as 'pass' | 'fail' | 'warn') || (buildQaStatus === 'idle' ? 'warn' : 'pending')}
+                description="ESLint must pass with no errors"
+                command="npm run lint"
+                output={buildQaChecks.find(c => c.name === 'Lint')?.output || buildQaChecks.find(c => c.name === 'Lint')?.reason}
               />
             </div>
 
-            <SectionHeader badge="3" badgeColor="bg-purple-500" title="Phase 3: Development" description="Agent completion signals" timestamp={lastUpdate} status="blocked" />
+            {/* Security Section */}
+            <SectionHeader
+              badge="C"
+              badgeColor="bg-red-500"
+              title="Section C: Security"
+              description="Dependency vulnerability scanning"
+              timestamp={buildQaLastChecked || lastUpdate}
+              status={(() => {
+                const check = buildQaChecks.find(c => c.name === 'Security Audit')
+                if (!check) return buildQaStatus === 'idle' ? 'warn' : 'pending'
+                if (check.status === 'fail') return 'fail'
+                if (check.status === 'pass') return 'pass'
+                return 'warn'
+              })()}
+            />
             <div className="border-x border-b border-border rounded-b-xl">
               <CheckItem
-                label="FE-Dev Completion Signal"
-                status="pending"
-                description="Frontend agent has signaled completion of assigned stories"
-                command="cat .claude/signal-fe-dev-complete.json | jq '.status'"
-              />
-              <CheckItem
-                label="BE-Dev Completion Signal"
-                status="pending"
-                description="Backend agent has signaled completion of assigned stories"
-                command="cat .claude/signal-be-dev-complete.json | jq '.status'"
+                label="Security Audit"
+                status={(buildQaChecks.find(c => c.name === 'Security Audit')?.status as 'pass' | 'fail' | 'warn') || (buildQaStatus === 'idle' ? 'warn' : 'pending')}
+                description="No high or critical vulnerabilities in dependencies"
+                command="npm audit --audit-level=high"
+                output={buildQaChecks.find(c => c.name === 'Security Audit')?.output || buildQaChecks.find(c => c.name === 'Security Audit')?.reason}
               />
             </div>
 
-            <SectionHeader badge="4" badgeColor="bg-green-500" title="Phase 4: QA/Merge" description="Final validation and merge" timestamp={lastUpdate} status="blocked" />
-            <div className="border-x border-b border-border rounded-b-xl">
-              <CheckItem
-                label="QA Approval"
-                status="pending"
-                description="QA agent has approved all changes after validation"
-                command="cat .claude/signal-qa-approved.json | jq '{status, tests_passed, coverage}'"
-              />
-              <CheckItem
-                label="Merge to Main"
-                status="pending"
-                description="All changes have been merged to main branch"
-                command="git log main --oneline -1"
-              />
-            </div>
+            {/* Results Detail */}
+            {buildQaChecks.length > 0 && buildQaChecks.some(c => c.duration_ms) && (
+              <div className="mt-6 p-4 bg-zinc-50 border border-zinc-200 rounded-xl">
+                <h4 className="font-medium text-sm mb-3">Execution Details</h4>
+                <div className="space-y-2">
+                  {buildQaChecks.filter(c => c.duration_ms).map((check, i) => (
+                    <div key={i} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">{check.name}</span>
+                      <span className="font-mono text-xs">{check.duration_ms}ms</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {buildQaChecks.length === 0 && buildQaStatus === 'idle' && (
+              <div className="mt-6 p-8 text-center text-muted-foreground border border-dashed border-zinc-300 rounded-xl">
+                <Rocket className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                <p className="font-medium">No validation results yet</p>
+                <p className="text-sm mt-1">Click "Run Full Validation" to check TypeScript, build, tests, lint, and security</p>
+              </div>
+            )}
           </>
         )}
 
@@ -4450,6 +5481,191 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                 />
               </div>
             )}
+
+            {/* Drift Monitoring Section (Phase 1.3.5) */}
+            <div className="mt-6 p-5 bg-white border border-border rounded-2xl">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "w-10 h-10 rounded-xl flex items-center justify-center",
+                    driftReport?.overall_status === 'healthy' ? "bg-green-100" :
+                    driftReport?.overall_status === 'drift_detected' ? "bg-amber-100" :
+                    "bg-zinc-100"
+                  )}>
+                    <Brain className={cn(
+                      "h-5 w-5",
+                      driftReport?.overall_status === 'healthy' ? "text-green-600" :
+                      driftReport?.overall_status === 'drift_detected' ? "text-amber-600" :
+                      "text-zinc-600"
+                    )} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Agent Memory Drift Monitor</h3>
+                    <p className="text-sm text-muted-foreground">Detect memory pollution and context drift</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {driftReport && (
+                    <span className={cn(
+                      "px-3 py-1 rounded-full text-sm",
+                      driftReport.overall_status === 'healthy' ? "bg-green-100 text-green-700" :
+                      "bg-amber-100 text-amber-700"
+                    )}>
+                      {driftReport.overall_status === 'healthy' ? 'No Drift' :
+                       `${driftReport.summary.drifted + driftReport.summary.stale} Agents Affected`}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => fetchDriftReport(true)}
+                    disabled={driftLoading}
+                    className="p-2 rounded-lg hover:bg-zinc-100 transition-colors"
+                    title="Refresh drift report"
+                  >
+                    <RefreshCw className={cn("h-4 w-4", driftLoading && "animate-spin")} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Drift Recommendations */}
+              {driftReport && driftReport.recommendations.filter(r => r.priority !== 'info').length > 0 && (
+                <div className="mb-4 space-y-2">
+                  {driftReport.recommendations.filter(r => r.priority !== 'info').map((rec, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        "px-4 py-3 rounded-lg flex items-start gap-3",
+                        rec.priority === 'high' ? "bg-red-50 border border-red-200" :
+                        rec.priority === 'medium' ? "bg-amber-50 border border-amber-200" :
+                        "bg-blue-50 border border-blue-200"
+                      )}
+                    >
+                      {rec.priority === 'high' ? (
+                        <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                      ) : rec.priority === 'medium' ? (
+                        <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                      ) : (
+                        <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                      )}
+                      <div>
+                        <p className={cn(
+                          "text-sm font-medium",
+                          rec.priority === 'high' ? "text-red-700" :
+                          rec.priority === 'medium' ? "text-amber-700" :
+                          "text-blue-700"
+                        )}>
+                          {rec.message}
+                        </p>
+                        {rec.agents.length > 0 && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Affected: {rec.agents.join(', ')}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Drift Summary */}
+              {driftReport && (
+                <div className="grid grid-cols-5 gap-3 mb-4">
+                  <div className="p-3 bg-green-50 rounded-lg text-center">
+                    <p className="text-xl font-bold text-green-700">{driftReport.summary.healthy}</p>
+                    <p className="text-xs text-green-600">Healthy</p>
+                  </div>
+                  <div className="p-3 bg-amber-50 rounded-lg text-center">
+                    <p className="text-xl font-bold text-amber-700">{driftReport.summary.drifted}</p>
+                    <p className="text-xs text-amber-600">Drifted</p>
+                  </div>
+                  <div className="p-3 bg-orange-50 rounded-lg text-center">
+                    <p className="text-xl font-bold text-orange-700">{driftReport.summary.stale}</p>
+                    <p className="text-xs text-orange-600">Stale</p>
+                  </div>
+                  <div className="p-3 bg-zinc-100 rounded-lg text-center">
+                    <p className="text-xl font-bold text-zinc-700">{driftReport.summary.no_baseline}</p>
+                    <p className="text-xs text-zinc-600">No Baseline</p>
+                  </div>
+                  <div className="p-3 bg-violet-50 rounded-lg text-center">
+                    <p className="text-xl font-bold text-violet-700">{(driftReport.summary.average_drift_score * 100).toFixed(0)}%</p>
+                    <p className="text-xs text-violet-600">Avg Drift</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Agent Drift Details */}
+              {driftReport && (
+                <div className="border rounded-xl overflow-hidden">
+                  <div className="px-4 py-2 bg-zinc-50 border-b text-sm font-medium">
+                    Agent Memory Status
+                  </div>
+                  <div className="divide-y">
+                    {driftReport.agents.map((agent) => (
+                      <div key={agent.agent} className="px-4 py-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "w-2 h-2 rounded-full",
+                            agent.status === 'healthy' ? "bg-green-500" :
+                            agent.status === 'drifted' ? "bg-amber-500" :
+                            agent.status === 'stale' ? "bg-orange-500" :
+                            "bg-zinc-300"
+                          )} />
+                          <div>
+                            <span className="font-medium text-sm">{agent.agent}</span>
+                            <span className={cn(
+                              "ml-2 text-xs px-2 py-0.5 rounded",
+                              agent.status === 'healthy' ? "bg-green-100 text-green-700" :
+                              agent.status === 'drifted' ? "bg-amber-100 text-amber-700" :
+                              agent.status === 'stale' ? "bg-orange-100 text-orange-700" :
+                              "bg-zinc-100 text-zinc-600"
+                            )}>
+                              {agent.status}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          {agent.drift_score !== null && (
+                            <div className="text-right">
+                              <p className="text-sm font-medium">{(agent.drift_score * 100).toFixed(0)}%</p>
+                              <p className="text-xs text-muted-foreground">drift</p>
+                            </div>
+                          )}
+                          {agent.memory_drift && (
+                            <div className="text-right">
+                              <p className="text-sm">{agent.memory_drift.current_size_kb}KB</p>
+                              <p className="text-xs text-muted-foreground">memory</p>
+                            </div>
+                          )}
+                          {agent.status === 'no_baseline' ? (
+                            <button
+                              onClick={() => generateAgentBaseline(agent.agent)}
+                              className="px-2 py-1 text-xs bg-violet-100 text-violet-700 rounded hover:bg-violet-200"
+                            >
+                              Create Baseline
+                            </button>
+                          ) : (agent.status === 'drifted' || agent.status === 'stale') && (
+                            <button
+                              onClick={() => resetAgentMemory(agent.agent)}
+                              className="px-2 py-1 text-xs bg-amber-100 text-amber-700 rounded hover:bg-amber-200"
+                            >
+                              Reset Memory
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Empty state */}
+              {!driftReport && !driftLoading && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Brain className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No drift data available</p>
+                  <p className="text-xs mt-1">Click refresh to check agent memory drift</p>
+                </div>
+              )}
+            </div>
           </>
         )}
 
@@ -4661,6 +5877,355 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                 command="test -f .claudecode/agents/pm-agent.md && grep -q 'Gate' .claudecode/agents/pm-agent.md"
                 output={safetyChecks.find(c => c.name === 'PM Agent Configuration')?.message}
               />
+            </div>
+
+            {/* Section F: Behavioral Safety Probes */}
+            <SectionHeader
+              badge="F"
+              badgeColor="bg-amber-500"
+              title="Section F: Behavioral Safety Probes"
+              description="Tests that agents actually REFUSE forbidden operations"
+              timestamp={behavioralLastChecked || lastUpdate}
+              status={
+                behavioralProbeStatus === 'ready' ? 'pass' :
+                behavioralProbeStatus === 'blocked' ? 'fail' :
+                behavioralProbeStatus === 'validating' ? 'pending' :
+                'warn'
+              }
+            />
+            <div className="border-x border-b border-border rounded-b-xl">
+              {/* Explanation Banner */}
+              <div className="p-4 bg-amber-50 border-b border-amber-100">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-amber-800">Why Behavioral Probes Matter</p>
+                    <p className="text-sm text-amber-700 mt-1">
+                      Structural validation checks "Does the safety file exist?" but never asks
+                      "Will the agent actually refuse a forbidden operation?" These probes test
+                      actual behavior, not just configuration.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Run Probes Button */}
+              <div className="p-4 border-b border-border bg-white">
+                <button
+                  onClick={validateBehavioralProbes}
+                  disabled={validatingBehavioral}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2",
+                    validatingBehavioral
+                      ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                      : "bg-amber-600 text-white hover:bg-amber-700"
+                  )}
+                >
+                  {validatingBehavioral ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Running Probes...
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="h-4 w-4" />
+                      Run Behavioral Probes
+                    </>
+                  )}
+                </button>
+                <p className="text-xs text-muted-foreground mt-2">
+                  15 probes testing forbidden operations, domain boundaries, prompt injection resistance
+                </p>
+              </div>
+
+              {/* Probe Results */}
+              {behavioralProbes.length > 0 ? (
+                <div className="divide-y divide-border">
+                  {/* Summary */}
+                  <div className="p-4 bg-white">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        <span className="text-sm font-medium">
+                          {behavioralProbes.filter(p => p.status === 'validated' || p.status === 'pass').length} Validated
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <XCircle className="h-5 w-5 text-red-500" />
+                        <span className="text-sm font-medium">
+                          {behavioralProbes.filter(p => p.status === 'fail').length} Failed
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-5 w-5 text-blue-500" />
+                        <span className="text-sm font-medium">
+                          {behavioralProbes.filter(p => p.status === 'pending').length} Pending
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MinusCircle className="h-5 w-5 text-gray-400" />
+                        <span className="text-sm font-medium">
+                          {behavioralProbes.filter(p => p.status === 'skipped').length} Skipped
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Individual Probes */}
+                  {behavioralProbes.map((probe) => (
+                    <div key={probe.probe_id} className="p-4 bg-white hover:bg-zinc-50">
+                      <div className="flex items-start gap-3">
+                        <div className={cn(
+                          "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
+                          probe.status === 'validated' || probe.status === 'pass' ? "bg-green-100" :
+                          probe.status === 'fail' ? "bg-red-100" :
+                          probe.status === 'pending' ? "bg-blue-100" :
+                          "bg-gray-100"
+                        )}>
+                          {probe.status === 'validated' || probe.status === 'pass' ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          ) : probe.status === 'fail' ? (
+                            <XCircle className="h-4 w-4 text-red-600" />
+                          ) : probe.status === 'pending' ? (
+                            <Clock className="h-4 w-4 text-blue-600" />
+                          ) : (
+                            <MinusCircle className="h-4 w-4 text-gray-400" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm">{probe.name}</span>
+                            <span className={cn(
+                              "text-xs px-2 py-0.5 rounded-full",
+                              probe.severity === 'critical' ? "bg-red-100 text-red-700" :
+                              probe.severity === 'high' ? "bg-orange-100 text-orange-700" :
+                              probe.severity === 'medium' ? "bg-yellow-100 text-yellow-700" :
+                              "bg-gray-100 text-gray-700"
+                            )}>
+                              {probe.severity}
+                            </span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600">
+                              {probe.category?.replace('_', ' ')}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <code className="text-xs text-muted-foreground font-mono">
+                              {probe.probe_id}
+                            </code>
+                            {probe.message && (
+                              <span className="text-xs text-muted-foreground">
+                                - {probe.message}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center text-muted-foreground">
+                  <Shield className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                  <p className="font-medium">No probe results yet</p>
+                  <p className="text-sm mt-1">Click "Run Behavioral Probes" to test agent safety behavior</p>
+                </div>
+              )}
+            </div>
+
+            {/* Section G: Safety Traceability Matrix (Phase 3.2) */}
+            <SectionHeader
+              badge="G"
+              badgeColor="bg-blue-500"
+              title="Section G: Safety Traceability Matrix"
+              description="Story-to-safety-control mapping for audit compliance"
+              timestamp={lastUpdate}
+              status={traceabilityReport
+                ? (traceabilityReport.summary.coverage_percent >= 80 ? 'pass' :
+                   traceabilityReport.summary.coverage_percent >= 50 ? 'warn' : 'fail')
+                : 'pending'
+              }
+            />
+            <div className="border-x border-b border-border rounded-b-xl">
+              {/* Generate Button */}
+              <div className="p-4 border-b border-border bg-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <button
+                      onClick={() => fetchTraceabilityReport(true)}
+                      disabled={traceabilityLoading}
+                      className={cn(
+                        "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2",
+                        traceabilityLoading
+                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                          : "bg-blue-600 text-white hover:bg-blue-700"
+                      )}
+                    >
+                      {traceabilityLoading ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Layers className="h-4 w-4" />
+                          Generate Traceability Matrix
+                        </>
+                      )}
+                    </button>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Links stories to safety controls, risk levels, and forbidden operations
+                    </p>
+                  </div>
+                  {traceabilityReport && (
+                    <div className="flex items-center gap-2">
+                      <span className={cn(
+                        "px-3 py-1 rounded-full text-sm font-medium",
+                        traceabilityReport.summary.coverage_percent >= 80 ? "bg-green-100 text-green-700" :
+                        traceabilityReport.summary.coverage_percent >= 50 ? "bg-amber-100 text-amber-700" :
+                        "bg-red-100 text-red-700"
+                      )}>
+                        {traceabilityReport.summary.coverage_percent}% Coverage
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Traceability Report */}
+              {traceabilityReport ? (
+                <>
+                  {/* Summary Stats */}
+                  <div className="grid grid-cols-4 gap-4 p-4 bg-white border-b border-border">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold">{traceabilityReport.summary.total_stories}</div>
+                      <div className="text-xs text-muted-foreground">Total Stories</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-red-600">{traceabilityReport.summary.critical_risk_stories}</div>
+                      <div className="text-xs text-muted-foreground">Critical Risk</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-orange-600">{traceabilityReport.summary.high_risk_stories}</div>
+                      <div className="text-xs text-muted-foreground">High Risk</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-purple-600">{traceabilityReport.summary.stories_requiring_review}</div>
+                      <div className="text-xs text-muted-foreground">Need Review</div>
+                    </div>
+                  </div>
+
+                  {/* Risk Distribution Bar */}
+                  <div className="p-4 bg-white border-b border-border">
+                    <div className="text-xs font-medium text-muted-foreground mb-2">Risk Distribution</div>
+                    <div className="flex h-4 rounded-full overflow-hidden bg-zinc-100">
+                      {traceabilityReport.risk_distribution.critical > 0 && (
+                        <div
+                          className="bg-red-500"
+                          style={{ width: `${(traceabilityReport.risk_distribution.critical / traceabilityReport.summary.total_stories) * 100}%` }}
+                          title={`Critical: ${traceabilityReport.risk_distribution.critical}`}
+                        />
+                      )}
+                      {traceabilityReport.risk_distribution.high > 0 && (
+                        <div
+                          className="bg-orange-500"
+                          style={{ width: `${(traceabilityReport.risk_distribution.high / traceabilityReport.summary.total_stories) * 100}%` }}
+                          title={`High: ${traceabilityReport.risk_distribution.high}`}
+                        />
+                      )}
+                      {traceabilityReport.risk_distribution.medium > 0 && (
+                        <div
+                          className="bg-amber-400"
+                          style={{ width: `${(traceabilityReport.risk_distribution.medium / traceabilityReport.summary.total_stories) * 100}%` }}
+                          title={`Medium: ${traceabilityReport.risk_distribution.medium}`}
+                        />
+                      )}
+                      {traceabilityReport.risk_distribution.low > 0 && (
+                        <div
+                          className="bg-green-400"
+                          style={{ width: `${(traceabilityReport.risk_distribution.low / traceabilityReport.summary.total_stories) * 100}%` }}
+                          title={`Low: ${traceabilityReport.risk_distribution.low}`}
+                        />
+                      )}
+                    </div>
+                    <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" /> Critical</span>
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500" /> High</span>
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" /> Medium</span>
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-400" /> Low</span>
+                    </div>
+                  </div>
+
+                  {/* Traceability Matrix Table */}
+                  <div className="max-h-80 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-zinc-50 sticky top-0">
+                        <tr>
+                          <th className="px-4 py-2 text-left font-medium text-muted-foreground">Story</th>
+                          <th className="px-4 py-2 text-left font-medium text-muted-foreground">Wave</th>
+                          <th className="px-4 py-2 text-left font-medium text-muted-foreground">Risk</th>
+                          <th className="px-4 py-2 text-left font-medium text-muted-foreground">Safety Tags</th>
+                          <th className="px-4 py-2 text-center font-medium text-muted-foreground">Review</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {traceabilityReport.traceability_matrix.map((item) => (
+                          <tr key={item.story_id} className="hover:bg-zinc-50">
+                            <td className="px-4 py-2">
+                              <div className="font-mono text-xs text-muted-foreground">{item.story_id}</div>
+                              <div className="text-sm truncate max-w-[200px]" title={item.title}>{item.title}</div>
+                            </td>
+                            <td className="px-4 py-2">
+                              <span className="px-2 py-0.5 bg-zinc-100 rounded text-xs">W{item.wave}</span>
+                            </td>
+                            <td className="px-4 py-2">
+                              <span className={cn(
+                                "px-2 py-0.5 rounded text-xs font-medium",
+                                item.risk === 'critical' ? 'bg-red-100 text-red-700' :
+                                item.risk === 'high' ? 'bg-orange-100 text-orange-700' :
+                                item.risk === 'medium' ? 'bg-amber-100 text-amber-700' :
+                                'bg-green-100 text-green-700'
+                              )}>
+                                {item.risk?.toUpperCase() || 'LOW'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2">
+                              <div className="flex flex-wrap gap-1">
+                                {item.safety_tags?.length > 0 ? item.safety_tags.map(tag => (
+                                  <span key={tag} className="px-1.5 py-0.5 bg-red-50 text-red-600 rounded text-[10px] border border-red-200">
+                                    {tag}
+                                  </span>
+                                )) : (
+                                  <span className="text-muted-foreground text-xs">-</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-2 text-center">
+                              {item.requires_review ? (
+                                <CheckCircle2 className="h-4 w-4 text-purple-500 mx-auto" />
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                        {traceabilityReport.traceability_matrix.length === 0 && (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                              No stories found. Add stories to .claudecode/stories/wave1/
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <div className="p-8 text-center text-muted-foreground">
+                  <Layers className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                  <p className="font-medium">No traceability report yet</p>
+                  <p className="text-sm mt-1">Click "Generate Traceability Matrix" to create audit artifact</p>
+                </div>
+              )}
             </div>
           </>
         )}
@@ -5343,6 +6908,26 @@ WAVE_PROJECT_ROOT=${project?.root_path || ''}`
                 <span className="font-semibold">Multi-Agent Orchestration Control</span>
               </div>
               <div className="flex items-center gap-2">
+                {/* Watchdog Status Indicator */}
+                {watchdogStatus && (
+                  <div className={cn(
+                    "px-3 py-1 rounded-full text-sm flex items-center gap-1.5",
+                    watchdogStatus.overall_status === 'healthy' ? "bg-green-100 text-green-700" :
+                    watchdogStatus.overall_status === 'warning' ? "bg-amber-100 text-amber-700" :
+                    "bg-red-100 text-red-700"
+                  )}>
+                    {watchdogStatus.overall_status === 'healthy' ? (
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    ) : watchdogStatus.overall_status === 'warning' ? (
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                    ) : (
+                      <XCircle className="h-3.5 w-3.5" />
+                    )}
+                    {watchdogStatus.overall_status === 'healthy' ? 'Healthy' :
+                     watchdogStatus.overall_status === 'warning' ? `${watchdogStatus.summary.slow} Slow` :
+                     `${watchdogStatus.summary.stuck} Stuck`}
+                  </div>
+                )}
                 <span className={cn(
                   "px-3 py-1 rounded-full text-sm",
                   agents.some(a => a.status === 'running')
@@ -5639,6 +7224,482 @@ WAVE_PROJECT_ROOT=${project?.root_path || ''}`
                     <Radio className="h-8 w-8 mx-auto mb-2 opacity-30" />
                     <p className="text-sm">No recent activity</p>
                     <p className="text-xs mt-1">Activity will appear when agents create signal files</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Token Budget Governance Section */}
+            <div className="p-5 bg-white border border-border rounded-2xl mt-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                    <TrendingUp className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Token Budget Governance</h3>
+                    <p className="text-sm text-muted-foreground">Monitor and control AI spending</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {budgetStatus && (
+                    <span className={cn(
+                      "px-3 py-1 rounded-full text-sm font-medium",
+                      budgetStatus.status.project.status === 'ok' ? "bg-green-100 text-green-700" :
+                      budgetStatus.status.project.status === 'warning' ? "bg-amber-100 text-amber-700" :
+                      budgetStatus.status.project.status === 'critical' ? "bg-orange-100 text-orange-700" :
+                      "bg-red-100 text-red-700"
+                    )}>
+                      ${budgetStatus.status.project.spent.toFixed(2)} / ${budgetStatus.status.project.budget.toFixed(2)}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => setShowBudgetConfig(!showBudgetConfig)}
+                    className="p-2 rounded-lg hover:bg-zinc-100 transition-colors"
+                    title="Configure budgets"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={fetchBudgetStatus}
+                    className="p-2 rounded-lg hover:bg-zinc-100 transition-colors"
+                    title="Refresh"
+                  >
+                    <RefreshCw className={cn("h-4 w-4", budgetLoading && "animate-spin")} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Budget Alerts */}
+              {budgetStatus && budgetStatus.alerts.length > 0 && (
+                <div className="mb-4 space-y-2">
+                  {budgetStatus.alerts.map((alert, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        "px-4 py-3 rounded-lg flex items-center gap-3",
+                        alert.level === 'critical' ? "bg-red-50 border border-red-200" :
+                        alert.level === 'warning' ? "bg-amber-50 border border-amber-200" :
+                        "bg-blue-50 border border-blue-200"
+                      )}
+                    >
+                      {alert.level === 'critical' ? (
+                        <XCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
+                      ) : alert.level === 'warning' ? (
+                        <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0" />
+                      ) : (
+                        <Info className="h-5 w-5 text-blue-500 flex-shrink-0" />
+                      )}
+                      <div className="flex-1">
+                        <p className={cn(
+                          "text-sm font-medium",
+                          alert.level === 'critical' ? "text-red-700" :
+                          alert.level === 'warning' ? "text-amber-700" :
+                          "text-blue-700"
+                        )}>
+                          {alert.message}
+                        </p>
+                        {alert.action && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Action: {alert.action === 'auto_pause' ? 'Agents auto-paused' :
+                                    alert.action === 'pause_agent' ? 'Agent paused' : alert.action}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Project Budget Progress */}
+              {budgetStatus && (
+                <div className="mb-6">
+                  <div className="flex items-center justify-between text-sm mb-2">
+                    <span className="font-medium">Project Budget</span>
+                    <span className={cn(
+                      "font-medium",
+                      budgetStatus.status.project.status === 'ok' ? "text-green-600" :
+                      budgetStatus.status.project.status === 'warning' ? "text-amber-600" :
+                      "text-red-600"
+                    )}>
+                      {budgetStatus.status.project.percent}%
+                    </span>
+                  </div>
+                  <div className="h-3 bg-zinc-100 rounded-full overflow-hidden">
+                    <div
+                      className={cn(
+                        "h-full rounded-full transition-all",
+                        budgetStatus.status.project.status === 'ok' ? "bg-green-500" :
+                        budgetStatus.status.project.status === 'warning' ? "bg-amber-500" :
+                        budgetStatus.status.project.status === 'critical' ? "bg-orange-500" :
+                        "bg-red-500"
+                      )}
+                      style={{ width: `${Math.min(budgetStatus.status.project.percent, 100)}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mt-1">
+                    <span>$0</span>
+                    <span className="flex gap-3">
+                      <span className="text-amber-600">Warning: ${(budgetStatus.config.project_budget * 0.75).toFixed(2)}</span>
+                      <span className="text-red-600">Critical: ${(budgetStatus.config.project_budget * 0.90).toFixed(2)}</span>
+                    </span>
+                    <span>${budgetStatus.config.project_budget.toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Agent Budget Grid */}
+              {budgetStatus && (
+                <div>
+                  <h4 className="text-sm font-medium mb-3">Agent Budgets</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {Object.entries(budgetStatus.status.agents).map(([agent, status]) => (
+                      <div
+                        key={agent}
+                        className={cn(
+                          "p-3 rounded-lg border",
+                          status.status === 'ok' ? "border-zinc-200 bg-white" :
+                          status.status === 'warning' ? "border-amber-200 bg-amber-50" :
+                          status.status === 'critical' ? "border-orange-200 bg-orange-50" :
+                          "border-red-200 bg-red-50"
+                        )}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-medium">{agent}</span>
+                          <span className={cn(
+                            "text-xs",
+                            status.status === 'ok' ? "text-green-600" :
+                            status.status === 'warning' ? "text-amber-600" :
+                            "text-red-600"
+                          )}>
+                            {status.percent}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+                          <div
+                            className={cn(
+                              "h-full rounded-full",
+                              status.status === 'ok' ? "bg-green-500" :
+                              status.status === 'warning' ? "bg-amber-500" :
+                              "bg-red-500"
+                            )}
+                            style={{ width: `${Math.min(status.percent, 100)}%` }}
+                          />
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          ${status.spent.toFixed(2)} / ${status.budget.toFixed(2)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Budget Configuration Panel */}
+              {showBudgetConfig && budgetStatus && (
+                <div className="mt-6 p-4 bg-zinc-50 rounded-xl border">
+                  <h4 className="font-medium mb-4 flex items-center gap-2">
+                    <Settings className="h-4 w-4" />
+                    Budget Configuration
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-muted-foreground">Project Budget ($)</label>
+                      <input
+                        type="number"
+                        value={budgetStatus.config.project_budget}
+                        onChange={(e) => updateBudgetConfig({ project_budget: parseFloat(e.target.value) || 50 })}
+                        className="w-full mt-1 px-3 py-2 border rounded-lg"
+                        step="5"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-muted-foreground">Wave Budget ($)</label>
+                      <input
+                        type="number"
+                        value={budgetStatus.config.wave_budget}
+                        onChange={(e) => updateBudgetConfig({ wave_budget: parseFloat(e.target.value) || 25 })}
+                        className="w-full mt-1 px-3 py-2 border rounded-lg"
+                        step="5"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-muted-foreground">Warning Threshold (%)</label>
+                      <input
+                        type="number"
+                        value={(budgetStatus.config.alert_thresholds.warning * 100)}
+                        onChange={(e) => updateBudgetConfig({
+                          alert_thresholds: {
+                            ...budgetStatus.config.alert_thresholds,
+                            warning: (parseFloat(e.target.value) || 75) / 100
+                          }
+                        })}
+                        className="w-full mt-1 px-3 py-2 border rounded-lg"
+                        min="0"
+                        max="100"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-muted-foreground">Auto-Pause Threshold (%)</label>
+                      <input
+                        type="number"
+                        value={(budgetStatus.config.alert_thresholds.auto_pause * 100)}
+                        onChange={(e) => updateBudgetConfig({
+                          alert_thresholds: {
+                            ...budgetStatus.config.alert_thresholds,
+                            auto_pause: (parseFloat(e.target.value) || 100) / 100
+                          }
+                        })}
+                        className="w-full mt-1 px-3 py-2 border rounded-lg"
+                        min="0"
+                        max="150"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={budgetStatus.config.anomaly_detection.enabled}
+                        onChange={(e) => updateBudgetConfig({
+                          anomaly_detection: {
+                            ...budgetStatus.config.anomaly_detection,
+                            enabled: e.target.checked
+                          }
+                        })}
+                        className="rounded"
+                      />
+                      Enable anomaly detection (alert on spending spikes)
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* Empty state */}
+              {!budgetStatus && !budgetLoading && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No budget data available</p>
+                  <p className="text-xs mt-1">Budget tracking will appear when agents start running</p>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Audit Log Tab */}
+        {activeTab === 'audit-log' && (
+          <>
+            {/* Audit Log Header */}
+            <div className="flex items-center justify-between p-6 border border-border bg-white rounded-2xl mb-6">
+              <div className="flex items-center gap-6">
+                <span className="text-sm font-medium text-muted-foreground">AUDIT LOG</span>
+                <span className="font-semibold">System Event Traceability</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {auditLogSummary && (
+                  <>
+                    <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
+                      {auditLogSummary.total_events} Events (24h)
+                    </span>
+                    {auditLogSummary.requires_review > 0 && (
+                      <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm">
+                        {auditLogSummary.requires_review} Need Review
+                      </span>
+                    )}
+                  </>
+                )}
+                <div className="relative">
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value && project?.root_path) {
+                        window.open(
+                          `http://localhost:3000/api/audit-log/export?projectPath=${encodeURIComponent(project.root_path)}&format=${e.target.value}&hours=168`,
+                          '_blank'
+                        )
+                        e.target.value = ''
+                      }
+                    }}
+                    className="appearance-none pl-3 pr-8 py-2 bg-zinc-100 hover:bg-zinc-200 rounded-lg text-sm font-medium cursor-pointer border-0"
+                    defaultValue=""
+                  >
+                    <option value="" disabled>Export...</option>
+                    <option value="json">Export as JSON</option>
+                    <option value="csv">Export as CSV</option>
+                    <option value="jsonl">Export as JSONL</option>
+                  </select>
+                  <Download className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none text-zinc-500" />
+                </div>
+                <button
+                  onClick={fetchAuditLogs}
+                  disabled={auditLogsLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-sm font-medium transition-colors"
+                >
+                  {auditLogsLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            {/* Summary Cards */}
+            {auditLogSummary && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="p-4 bg-white border border-border rounded-xl">
+                  <div className="text-2xl font-bold">{auditLogSummary.by_event_type?.agent_action || 0}</div>
+                  <div className="text-sm text-muted-foreground flex items-center gap-2">
+                    <Bot className="h-4 w-4" />
+                    Agent Actions
+                  </div>
+                </div>
+                <div className="p-4 bg-white border border-border rounded-xl">
+                  <div className="text-2xl font-bold">{auditLogSummary.by_event_type?.validation || 0}</div>
+                  <div className="text-sm text-muted-foreground flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Validations
+                  </div>
+                </div>
+                <div className="p-4 bg-white border border-border rounded-xl">
+                  <div className="text-2xl font-bold text-amber-600">{auditLogSummary.by_severity?.warn || 0}</div>
+                  <div className="text-sm text-muted-foreground flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    Warnings
+                  </div>
+                </div>
+                <div className="p-4 bg-white border border-border rounded-xl">
+                  <div className="text-2xl font-bold text-red-600">{(auditLogSummary.by_severity?.error || 0) + (auditLogSummary.by_severity?.critical || 0)}</div>
+                  <div className="text-sm text-muted-foreground flex items-center gap-2">
+                    <XCircle className="h-4 w-4" />
+                    Errors
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Filter Tabs */}
+            <div className="flex gap-2 mb-4">
+              {['all', 'agent_action', 'validation', 'safety_event', 'config_change'].map(filter => (
+                <button
+                  key={filter}
+                  onClick={() => setAuditLogFilter(filter)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                    auditLogFilter === filter
+                      ? "bg-zinc-900 text-white"
+                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                  )}
+                >
+                  {filter === 'all' ? 'All Events' :
+                   filter === 'agent_action' ? 'Agent Actions' :
+                   filter === 'validation' ? 'Validations' :
+                   filter === 'safety_event' ? 'Safety Events' :
+                   'Config Changes'}
+                </button>
+              ))}
+            </div>
+
+            {/* Audit Log List */}
+            <div className="bg-white border border-border rounded-2xl overflow-hidden">
+              <div className="max-h-[500px] overflow-y-auto">
+                {auditLogsLoading && auditLogs.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Loader2 className="h-8 w-8 mx-auto animate-spin text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground mt-2">Loading audit logs...</p>
+                  </div>
+                ) : auditLogs.length > 0 ? (
+                  auditLogs
+                    .filter(log => auditLogFilter === 'all' || log.event_type === auditLogFilter)
+                    .map((log) => (
+                    <div
+                      key={log.id}
+                      className={cn(
+                        "px-4 py-3 border-b last:border-0 flex items-start gap-4 hover:bg-zinc-50",
+                        log.requires_review && "bg-amber-50/50"
+                      )}
+                    >
+                      {/* Time */}
+                      <span className="text-xs text-muted-foreground w-20 flex-shrink-0 pt-0.5">
+                        {formatAuditTime(log.created_at)}
+                      </span>
+
+                      {/* Event Type Icon */}
+                      <div className={cn(
+                        "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
+                        log.event_type === 'agent_action' ? "bg-violet-100 text-violet-600" :
+                        log.event_type === 'validation' ? "bg-blue-100 text-blue-600" :
+                        log.event_type === 'safety_event' ? "bg-red-100 text-red-600" :
+                        log.event_type === 'config_change' ? "bg-amber-100 text-amber-600" :
+                        "bg-zinc-100 text-zinc-600"
+                      )}>
+                        {getEventTypeIcon(log.event_type)}
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={cn(
+                            "px-2 py-0.5 rounded text-xs font-medium",
+                            log.actor_type === 'agent' ? "bg-violet-100 text-violet-700" :
+                            log.actor_type === 'user' ? "bg-blue-100 text-blue-700" :
+                            "bg-zinc-100 text-zinc-700"
+                          )}>
+                            {log.actor_id}
+                          </span>
+                          <span className="text-sm font-medium">{log.action}</span>
+                          {log.resource_type && (
+                            <span className="text-xs text-muted-foreground">
+                              ({log.resource_type}{log.resource_id ? `:${log.resource_id}` : ''})
+                            </span>
+                          )}
+                          {log.requires_review && (
+                            <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs">
+                              Needs Review
+                            </span>
+                          )}
+                        </div>
+                        {log.details && Object.keys(log.details).length > 0 && (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {JSON.stringify(log.details).slice(0, 100)}
+                            {JSON.stringify(log.details).length > 100 && '...'}
+                          </div>
+                        )}
+                        {log.safety_tags && log.safety_tags.length > 0 && (
+                          <div className="mt-1 flex gap-1">
+                            {log.safety_tags.map(tag => (
+                              <span key={tag} className="px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-[10px]">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Severity Badge */}
+                      <span className={cn(
+                        "px-2 py-0.5 rounded text-xs font-medium flex-shrink-0",
+                        getSeverityColor(log.severity)
+                      )}>
+                        {log.severity.toUpperCase()}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <History className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p>No audit logs found</p>
+                    <p className="text-sm mt-1">Events will be logged when agents run or validations occur</p>
+                    <button
+                      onClick={fetchAuditLogs}
+                      className="mt-4 px-4 py-2 bg-zinc-100 hover:bg-zinc-200 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      <RefreshCw className="h-4 w-4 inline mr-2" />
+                      Check for Logs
+                    </button>
                   </div>
                 )}
               </div>

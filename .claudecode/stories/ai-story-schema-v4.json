@@ -60,6 +60,44 @@
       "enum": ["P0-Critical", "P1-High", "P2-Medium", "P3-Low"],
       "default": "P2-Medium"
     },
+    "risk": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"],
+      "default": "low",
+      "description": "Risk level for this story. Higher risk = more scrutiny required."
+    },
+    "approval_required": {
+      "type": "string",
+      "enum": ["L0", "L1", "L2", "L3", "L4", "L5"],
+      "default": "L5",
+      "description": "Approval level from approval matrix. L0=Forbidden, L1=Multi-human, L2=Single-human, L3=Agent-peer, L4=Self-review, L5=Auto-approve"
+    },
+    "safety_tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "auth",
+          "payments",
+          "secrets",
+          "database_schema",
+          "external_api",
+          "user_data",
+          "file_system",
+          "network",
+          "admin_functions",
+          "deployment",
+          "security_config"
+        ]
+      },
+      "default": [],
+      "description": "Safety-relevant tags for risk classification and routing"
+    },
+    "requires_review": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, PR must be reviewed before merge regardless of approval_required level"
+    },
     "complexity": {
       "type": "string",
       "enum": ["S", "M", "L", "XL"],

@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WAVE Validation Modes Configuration",
+  "description": "Defines validation profiles for different execution contexts",
+  "version": "1.0.0",
+  "modes": {
+    "strict": {
+      "name": "Strict Mode",
+      "description": "Full validation for production deployment",
+      "icon": "shield-check",
+      "certified": true,
+      "settings": {
+        "behavioral_probes": true,
+        "build_qa": true,
+        "drift_check": true,
+        "network_tests": true,
+        "gate_blocking": true,
+        "memory_ttl_check": true,
+        "security_audit": true
+      },
+      "thresholds": {
+        "min_pass_rate": 0.95,
+        "max_warnings": 5,
+        "max_failed": 0,
+        "memory_ttl_days": 7,
+        "memory_max_size_kb": 10240
+      },
+      "notes": "Use for production deployments. All checks must pass."
+    },
+    "dev": {
+      "name": "Development Mode",
+      "description": "Fast iteration for local development",
+      "icon": "code",
+      "certified": false,
+      "settings": {
+        "behavioral_probes": false,
+        "build_qa": true,
+        "drift_check": false,
+        "network_tests": false,
+        "gate_blocking": false,
+        "memory_ttl_check": true,
+        "security_audit": false
+      },
+      "thresholds": {
+        "min_pass_rate": 0.70,
+        "max_warnings": 20,
+        "max_failed": 5,
+        "memory_ttl_days": 30,
+        "memory_max_size_kb": 51200
+      },
+      "notes": "Use for local development. Skips slow checks. NOT CERTIFIED."
+    },
+    "ci": {
+      "name": "CI/CD Mode",
+      "description": "Automated pipeline validation",
+      "icon": "git-branch",
+      "certified": true,
+      "settings": {
+        "behavioral_probes": true,
+        "build_qa": true,
+        "drift_check": true,
+        "network_tests": true,
+        "gate_blocking": true,
+        "memory_ttl_check": true,
+        "security_audit": true
+      },
+      "thresholds": {
+        "min_pass_rate": 0.95,
+        "max_warnings": 5,
+        "max_failed": 0,
+        "memory_ttl_days": 7,
+        "memory_max_size_kb": 10240
+      },
+      "notes": "Use in CI/CD pipelines. Identical to strict but optimized for automation."
+    }
+  },
+  "default_mode": "strict",
+  "mode_selection_rules": {
+    "auto_detect": {
+      "ci_environment_vars": ["CI", "GITHUB_ACTIONS", "GITLAB_CI", "JENKINS_URL", "CIRCLECI"],
+      "dev_indicators": [".dev", "localhost", "127.0.0.1"]
+    }
+  }
+}

@@ -68,6 +68,134 @@ function getStats(filePath) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUDIT LOGGING UTILITIES
+// Tracks all significant events for traceability (Phase 2.2)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// In-memory audit log buffer (for when Supabase is not available)
+const auditLogBuffer = [];
+const MAX_BUFFER_SIZE = 1000;
+
+// Audit log function - logs to file and optionally to Supabase
+async function logAudit(event) {
+  const auditEntry = {
+    id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    project_id: event.projectId || null,
+    event_type: event.eventType || 'system_event',
+    event_category: event.category || null,
+    severity: event.severity || 'info',
+    actor_type: event.actorType || 'system',
+    actor_id: event.actorId || 'system',
+    action: event.action,
+    resource_type: event.resourceType || null,
+    resource_id: event.resourceId || null,
+    wave_number: event.waveNumber || null,
+    gate_number: event.gateNumber || null,
+    validation_mode: event.validationMode || null,
+    details: event.details || {},
+    metadata: event.metadata || {},
+    safety_tags: event.safetyTags || [],
+    requires_review: event.requiresReview || false,
+    token_input: event.tokenInput || null,
+    token_output: event.tokenOutput || null,
+    cost_usd: event.costUsd || null,
+    created_at: new Date().toISOString()
+  };
+
+  // Add to in-memory buffer
+  auditLogBuffer.unshift(auditEntry);
+  if (auditLogBuffer.length > MAX_BUFFER_SIZE) {
+    auditLogBuffer.pop();
+  }
+
+  // Write to file-based audit log
+  const auditDir = event.projectPath
+    ? path.join(event.projectPath, '.claude', 'audit')
+    : path.join(__dirname, '..', '.claude', 'audit');
+
+  try {
+    if (!fs.existsSync(auditDir)) {
+      fs.mkdirSync(auditDir, { recursive: true });
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const auditFile = path.join(auditDir, `audit-${today}.jsonl`);
+    fs.appendFileSync(auditFile, JSON.stringify(auditEntry) + '\n');
+  } catch (err) {
+    console.error('Failed to write audit log:', err.message);
+  }
+
+  // Log to console in development
+  const logLevel = event.severity === 'error' || event.severity === 'critical' ? 'error' : 'log';
+  console[logLevel](`[AUDIT] ${event.severity?.toUpperCase() || 'INFO'} - ${event.actorType}/${event.actorId}: ${event.action}`,
+    event.resourceType ? `(${event.resourceType}:${event.resourceId})` : '');
+
+  return auditEntry;
+}
+
+// Log agent action
+async function logAgentAction(agentType, action, details = {}) {
+  return logAudit({
+    eventType: 'agent_action',
+    category: 'agent',
+    actorType: 'agent',
+    actorId: agentType,
+    action: action,
+    resourceType: 'agent',
+    resourceId: agentType,
+    details: details,
+    projectPath: details.projectPath,
+    waveNumber: details.waveNumber,
+    gateNumber: details.gateNumber,
+    tokenInput: details.tokenInput,
+    tokenOutput: details.tokenOutput,
+    costUsd: details.costUsd
+  });
+}
+
+// Log validation run
+async function logValidation(validationType, status, details = {}) {
+  return logAudit({
+    eventType: 'validation',
+    category: validationType,
+    actorType: details.triggeredBy || 'user',
+    actorId: details.actorId || 'portal',
+    action: `validation_${status}`,
+    resourceType: 'validation',
+    resourceId: validationType,
+    details: {
+      ...details,
+      overall_status: status,
+      total_checks: details.totalChecks,
+      passed: details.passed,
+      failed: details.failed
+    },
+    projectPath: details.projectPath,
+    validationMode: details.validationMode,
+    severity: status === 'fail' ? 'warn' : 'info',
+    requiresReview: status === 'fail' && details.validationMode === 'strict'
+  });
+}
+
+// Log safety event
+async function logSafetyEvent(action, details = {}) {
+  return logAudit({
+    eventType: 'safety_event',
+    category: 'safety',
+    severity: details.severity || 'warn',
+    actorType: details.actorType || 'system',
+    actorId: details.actorId || 'safety-monitor',
+    action: action,
+    resourceType: details.resourceType,
+    resourceId: details.resourceId,
+    details: details,
+    projectPath: details.projectPath,
+    safetyTags: details.safetyTags || [],
+    requiresReview: true
+  });
+}
+
 // Streaming analysis endpoint with step-by-step progress
 app.post('/api/analyze-stream', async (req, res) => {
   const { projectPath } = req.body;
@@ -1661,6 +1789,14 @@ app.post('/api/agents/:agentType/start', (req, res) => {
   const signalPath = `${claudePath}/signal-${agentType}-assignment.json`;
   fs.writeFileSync(signalPath, JSON.stringify(assignmentSignal, null, 2));
 
+  // Audit log: Agent started
+  logAgentAction(agentType, 'started', {
+    projectPath,
+    waveNumber: waveNumber || 1,
+    stories: stories?.length || 0,
+    signalFile: signalPath
+  });
+
   console.log(`✅ Agent ${agentType} started for project ${projectPath}`);
 
   res.json({
@@ -1703,6 +1839,16 @@ app.post('/api/agents/:agentType/stop', (req, res) => {
 
   const signalPath = `${claudePath}/signal-${agentType}-STOP.json`;
   fs.writeFileSync(signalPath, JSON.stringify(stopSignal, null, 2));
+
+  // Audit log: Agent stopped
+  logAgentAction(agentType, 'stopped', {
+    projectPath,
+    reason: reason || 'User requested stop',
+    tokenUsage: session.token_usage,
+    runDuration: session.started_at
+      ? Date.now() - new Date(session.started_at).getTime()
+      : null
+  });
 
   console.log(`🛑 Agent ${agentType} stopped for project ${projectPath}`);
 
@@ -3162,6 +3308,2289 @@ app.get('/api/validate-quick', async (req, res) => {
       success: false,
       error: err.message
     });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BEHAVIORAL SAFETY PROBES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Get behavioral probe definitions
+app.get('/api/behavioral-probes', async (req, res) => {
+  try {
+    // Try multiple locations for probes file
+    const possiblePaths = [
+      path.join(__dirname, '../../core/safety/behavioral-probes.json'),
+      '/wave-framework/core/safety/behavioral-probes.json',
+      path.join(process.cwd(), 'core/safety/behavioral-probes.json')
+    ];
+
+    let probesData = null;
+    let foundPath = null;
+
+    for (const probePath of possiblePaths) {
+      if (exists(probePath)) {
+        probesData = readJSON(probePath);
+        foundPath = probePath;
+        break;
+      }
+    }
+
+    if (!probesData) {
+      return res.status(404).json({
+        success: false,
+        error: 'Behavioral probes definition file not found',
+        searched: possiblePaths
+      });
+    }
+
+    return res.json({
+      success: true,
+      source: foundPath,
+      version: probesData.version,
+      probe_count: probesData.probes?.length || 0,
+      categories: Object.keys(probesData.probe_categories || {}),
+      probes: probesData.probes,
+      execution_config: probesData.execution_config
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// Validate behavioral probes (dry-run mode - validates structure)
+app.post('/api/validate-behavioral', async (req, res) => {
+  const { projectPath, mode = 'strict', agentType = null, dryRun = true } = req.body;
+
+  if (!projectPath) {
+    return res.status(400).json({ error: 'projectPath is required' });
+  }
+
+  try {
+    // Load probes
+    const possiblePaths = [
+      path.join(__dirname, '../../core/safety/behavioral-probes.json'),
+      '/wave-framework/core/safety/behavioral-probes.json',
+      path.join(process.cwd(), 'core/safety/behavioral-probes.json')
+    ];
+
+    let probesData = null;
+    for (const probePath of possiblePaths) {
+      if (exists(probePath)) {
+        probesData = readJSON(probePath);
+        break;
+      }
+    }
+
+    if (!probesData || !probesData.probes) {
+      return res.status(404).json({
+        success: false,
+        error: 'Behavioral probes not found'
+      });
+    }
+
+    const results = [];
+    let passCount = 0;
+    let failCount = 0;
+    let skipCount = 0;
+    let pendingCount = 0;
+
+    // Get mode config
+    const modeConfig = probesData.execution_config?.modes?.[mode] || { run_all_probes: true };
+    const sampleSize = modeConfig.probe_sample_size || probesData.probes.length;
+    const probesToRun = mode === 'dev' ? probesData.probes.slice(0, sampleSize) : probesData.probes;
+
+    for (const probe of probesToRun) {
+      // Check agent applicability
+      if (agentType && probe.applicable_agents && !probe.applicable_agents.includes(agentType)) {
+        results.push({
+          probe_id: probe.id,
+          name: probe.name,
+          status: 'skipped',
+          reason: `Not applicable to ${agentType}`
+        });
+        skipCount++;
+        continue;
+      }
+
+      // Validate probe structure
+      const hasRequiredFields = probe.id && probe.name && probe.test_prompt &&
+        probe.pass_indicators?.length > 0 && probe.fail_indicators?.length > 0;
+
+      if (!hasRequiredFields) {
+        results.push({
+          probe_id: probe.id,
+          name: probe.name,
+          status: 'fail',
+          reason: 'Missing required fields'
+        });
+        failCount++;
+        continue;
+      }
+
+      if (dryRun) {
+        // Dry run - just validate structure
+        results.push({
+          probe_id: probe.id,
+          name: probe.name,
+          category: probe.category,
+          severity: probe.severity,
+          status: 'validated',
+          pass_indicators_count: probe.pass_indicators.length,
+          fail_indicators_count: probe.fail_indicators.length
+        });
+        passCount++;
+      } else {
+        // Live execution would happen here (requires Claude API integration)
+        results.push({
+          probe_id: probe.id,
+          name: probe.name,
+          category: probe.category,
+          severity: probe.severity,
+          expected_behavior: probe.expected_behavior,
+          status: 'pending',
+          message: 'Live execution requires agent interaction'
+        });
+        pendingCount++;
+      }
+    }
+
+    // Determine overall status
+    let overallStatus = 'pass';
+    if (failCount > 0) {
+      overallStatus = 'fail';
+    } else if (pendingCount > 0) {
+      overallStatus = 'pending';
+    }
+
+    // Save report
+    const reportDir = path.join(projectPath, '.claude', 'reports');
+    if (!exists(reportDir)) {
+      fs.mkdirSync(reportDir, { recursive: true });
+    }
+
+    const report = {
+      behavioral_probe_report: {
+        timestamp: new Date().toISOString(),
+        project: projectPath,
+        mode,
+        agent_filter: agentType || 'all',
+        dry_run: dryRun,
+        overall_status: overallStatus,
+        summary: {
+          total_probes: probesData.probes.length,
+          probes_run: results.length,
+          passed: passCount,
+          failed: failCount,
+          skipped: skipCount,
+          pending: pendingCount
+        },
+        results,
+        probe_categories: probesData.probe_categories
+      }
+    };
+
+    fs.writeFileSync(
+      path.join(reportDir, 'behavioral-probe-results.json'),
+      JSON.stringify(report, null, 2)
+    );
+
+    // Audit log: Behavioral validation completed
+    logValidation('behavioral_probe', overallStatus, {
+      projectPath,
+      validationMode: mode,
+      totalChecks: results.length,
+      passed: passCount,
+      failed: failCount,
+      skipped: skipCount,
+      dryRun,
+      triggeredBy: 'user',
+      actorId: 'portal'
+    });
+
+    return res.json({
+      success: true,
+      ...report.behavioral_probe_report
+    });
+
+  } catch (err) {
+    // Audit log: Behavioral validation error
+    logValidation('behavioral_probe', 'error', {
+      projectPath,
+      error: err.message
+    });
+
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// Get behavioral probe results (latest report)
+app.get('/api/behavioral-probes/results', async (req, res) => {
+  const { projectPath } = req.query;
+
+  if (!projectPath) {
+    return res.status(400).json({ error: 'projectPath query param required' });
+  }
+
+  try {
+    const reportFile = path.join(projectPath, '.claude', 'reports', 'behavioral-probe-results.json');
+
+    if (!exists(reportFile)) {
+      return res.json({
+        success: true,
+        has_results: false,
+        message: 'No behavioral probe results found. Run validation first.'
+      });
+    }
+
+    const report = readJSON(reportFile);
+    const stat = fs.statSync(reportFile);
+    const ageMinutes = (Date.now() - stat.mtime.getTime()) / 1000 / 60;
+
+    return res.json({
+      success: true,
+      has_results: true,
+      age_minutes: Math.round(ageMinutes),
+      ...report.behavioral_probe_report
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STORY RISK VALIDATION (Phase 3.1)
+// Enforces risk-based gate requirements for high/critical stories
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Risk level requirements
+const RISK_REQUIREMENTS = {
+  critical: {
+    min_approval: 'L3',
+    requires_review: true,
+    blocked_in_dev_mode: false,
+    extra_validation: ['behavioral_probes', 'safety_review'],
+    description: 'Critical risk: Requires L3+ approval and safety review'
+  },
+  high: {
+    min_approval: 'L2',
+    requires_review: true,
+    blocked_in_dev_mode: false,
+    extra_validation: ['behavioral_probes'],
+    description: 'High risk: Requires L2+ approval'
+  },
+  medium: {
+    min_approval: 'L1',
+    requires_review: false,
+    blocked_in_dev_mode: false,
+    extra_validation: [],
+    description: 'Medium risk: Requires L1+ approval'
+  },
+  low: {
+    min_approval: 'L0',
+    requires_review: false,
+    blocked_in_dev_mode: false,
+    extra_validation: [],
+    description: 'Low risk: Standard processing'
+  }
+};
+
+// Approval level hierarchy (higher number = more authority)
+const APPROVAL_LEVELS = { L0: 0, L1: 1, L2: 2, L3: 3, L4: 4, L5: 5 };
+
+// POST /api/validate-story-risk - Validate story risk and gate requirements
+app.post('/api/validate-story-risk', (req, res) => {
+  const { projectPath, storyId, story, mode = 'strict' } = req.body;
+
+  if (!story) {
+    return res.status(400).json({ success: false, error: 'story object required' });
+  }
+
+  try {
+    const risk = story.risk || 'low';
+    const approval = story.approval_required || 'L0';
+    const safetyTags = story.safety_tags || [];
+    const requiresReview = story.requires_review || false;
+
+    const requirements = RISK_REQUIREMENTS[risk] || RISK_REQUIREMENTS.low;
+    const results = [];
+    let overallStatus = 'pass';
+    let canProceed = true;
+
+    // Check 1: Approval level meets minimum
+    const hasMinApproval = APPROVAL_LEVELS[approval] >= APPROVAL_LEVELS[requirements.min_approval];
+    results.push({
+      check: 'approval_level',
+      status: hasMinApproval ? 'pass' : 'fail',
+      message: hasMinApproval
+        ? `Approval ${approval} meets minimum ${requirements.min_approval}`
+        : `Approval ${approval} does not meet minimum ${requirements.min_approval} for ${risk} risk`,
+      required: requirements.min_approval,
+      actual: approval
+    });
+    if (!hasMinApproval) {
+      overallStatus = 'fail';
+      if (mode === 'strict') canProceed = false;
+    }
+
+    // Check 2: Review requirement
+    if (requirements.requires_review) {
+      const hasReview = requiresReview === true;
+      results.push({
+        check: 'review_required',
+        status: hasReview ? 'pass' : 'fail',
+        message: hasReview
+          ? 'Story marked for review as required'
+          : `${risk.toUpperCase()} risk stories require review flag`,
+        required: true,
+        actual: requiresReview
+      });
+      if (!hasReview) {
+        overallStatus = 'fail';
+        if (mode === 'strict') canProceed = false;
+      }
+    }
+
+    // Check 3: Safety tags for sensitive operations
+    const sensitiveTags = ['auth', 'payments', 'secrets', 'pii', 'database'];
+    const hasSensitiveTags = safetyTags.some(tag => sensitiveTags.includes(tag));
+    if (hasSensitiveTags && risk === 'low') {
+      results.push({
+        check: 'safety_tag_mismatch',
+        status: 'warn',
+        message: `Story has sensitive tags ${safetyTags.filter(t => sensitiveTags.includes(t)).join(', ')} but is marked as low risk`,
+        recommendation: 'Consider upgrading risk level to medium or higher'
+      });
+      if (overallStatus === 'pass') overallStatus = 'warn';
+    }
+
+    // Check 4: Extra validation requirements
+    if (requirements.extra_validation.length > 0) {
+      results.push({
+        check: 'extra_validation',
+        status: 'info',
+        message: `${risk.toUpperCase()} risk requires: ${requirements.extra_validation.join(', ')}`,
+        required_validations: requirements.extra_validation
+      });
+    }
+
+    // Audit log the validation
+    logValidation('story_risk', overallStatus, {
+      projectPath,
+      storyId: story.id || storyId,
+      risk,
+      approval,
+      validationMode: mode,
+      canProceed,
+      triggeredBy: 'user',
+      actorId: 'portal'
+    });
+
+    // Save report
+    if (projectPath) {
+      const reportDir = path.join(projectPath, '.claude', 'reports');
+      if (!exists(reportDir)) {
+        fs.mkdirSync(reportDir, { recursive: true });
+      }
+
+      const report = {
+        timestamp: new Date().toISOString(),
+        story_id: story.id || storyId,
+        risk_level: risk,
+        approval_level: approval,
+        mode,
+        overall_status: overallStatus,
+        can_proceed: canProceed,
+        results
+      };
+
+      fs.writeFileSync(
+        path.join(reportDir, `story-risk-${story.id || storyId || 'unknown'}.json`),
+        JSON.stringify(report, null, 2)
+      );
+    }
+
+    return res.json({
+      success: true,
+      story_id: story.id || storyId,
+      risk_level: risk,
+      overall_status: overallStatus,
+      can_proceed: canProceed,
+      requirements,
+      results
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// GET /api/story-risk/requirements - Get risk level requirements
+app.get('/api/story-risk/requirements', (req, res) => {
+  return res.json({
+    success: true,
+    requirements: RISK_REQUIREMENTS,
+    approval_levels: Object.keys(APPROVAL_LEVELS),
+    safety_tags: ['auth', 'payments', 'secrets', 'pii', 'database', 'external_api', 'admin', 'deployment']
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SAFETY TRACEABILITY (Phase 3.2)
+// Generate and retrieve safety traceability matrix
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// GET /api/safety-traceability - Get or generate safety traceability report
+app.get('/api/safety-traceability', async (req, res) => {
+  const { projectPath, regenerate = 'false' } = req.query;
+
+  if (!projectPath) {
+    return res.status(400).json({ success: false, error: 'projectPath required' });
+  }
+
+  try {
+    const reportFile = path.join(projectPath, '.claude', 'reports', 'safety-traceability.json');
+
+    // Check for existing report
+    if (exists(reportFile) && regenerate !== 'true') {
+      const report = readJSON(reportFile);
+      const stat = fs.statSync(reportFile);
+      const ageMinutes = Math.round((Date.now() - stat.mtime.getTime()) / 1000 / 60);
+
+      return res.json({
+        success: true,
+        from_cache: true,
+        cache_age_minutes: ageMinutes,
+        ...report.safety_traceability_report
+      });
+    }
+
+    // Generate new report
+    const storiesDir = path.join(projectPath, '.claudecode', 'stories');
+    const stories = [];
+
+    // Scan for story files
+    if (exists(storiesDir)) {
+      const waveDirs = fs.readdirSync(storiesDir).filter(d => d.startsWith('wave'));
+
+      for (const waveDir of waveDirs) {
+        const wavePath = path.join(storiesDir, waveDir);
+        if (fs.statSync(wavePath).isDirectory()) {
+          const storyFiles = fs.readdirSync(wavePath).filter(f => f.endsWith('.json'));
+
+          for (const storyFile of storyFiles) {
+            const storyData = readJSON(path.join(wavePath, storyFile));
+            if (storyData && storyData.id) {
+              stories.push({
+                id: storyData.id,
+                title: storyData.title || storyData.id,
+                wave: parseInt(waveDir.replace('wave', '')) || 1,
+                risk: storyData.risk || 'low',
+                approval_required: storyData.approval_required || 'L0',
+                safety_tags: storyData.safety_tags || [],
+                requires_review: storyData.requires_review || false
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Calculate summary statistics
+    const totalStories = stories.length;
+    const storiesWithRisk = stories.filter(s => s.risk !== 'low').length;
+    const storiesWithTags = stories.filter(s => s.safety_tags.length > 0).length;
+    const storiesRequiringReview = stories.filter(s => s.requires_review).length;
+    const criticalStories = stories.filter(s => s.risk === 'critical').length;
+    const highStories = stories.filter(s => s.risk === 'high').length;
+
+    // Forbidden operations list
+    const forbiddenOperations = [
+      'delete_env_files',
+      'force_push_main',
+      'expose_secrets',
+      'modify_safety_rules',
+      'bypass_gates',
+      'cross_domain_access',
+      'exceed_budget',
+      'access_other_agent_memory'
+    ];
+
+    // Build traceability matrix
+    const traceabilityMatrix = stories.map(story => ({
+      story_id: story.id,
+      title: story.title,
+      wave: story.wave,
+      risk: story.risk,
+      approval: story.approval_required,
+      safety_tags: story.safety_tags,
+      requires_review: story.requires_review,
+      applicable_controls: forbiddenOperations.filter(() => story.risk !== 'low' || story.safety_tags.length > 0)
+    }));
+
+    const report = {
+      generated_at: new Date().toISOString(),
+      project: projectPath,
+      summary: {
+        total_stories: totalStories,
+        stories_with_risk_classification: storiesWithRisk,
+        stories_with_safety_tags: storiesWithTags,
+        stories_requiring_review: storiesRequiringReview,
+        critical_risk_stories: criticalStories,
+        high_risk_stories: highStories,
+        coverage_percent: totalStories > 0 ? Math.round((storiesWithTags / totalStories) * 100) : 0
+      },
+      risk_distribution: {
+        critical: criticalStories,
+        high: highStories,
+        medium: stories.filter(s => s.risk === 'medium').length,
+        low: stories.filter(s => s.risk === 'low').length
+      },
+      forbidden_operations: forbiddenOperations,
+      stories,
+      traceability_matrix: traceabilityMatrix
+    };
+
+    // Save report
+    const reportDir = path.join(projectPath, '.claude', 'reports');
+    if (!exists(reportDir)) {
+      fs.mkdirSync(reportDir, { recursive: true });
+    }
+
+    fs.writeFileSync(reportFile, JSON.stringify({ safety_traceability_report: report }, null, 2));
+
+    // Audit log
+    logAudit({
+      eventType: 'validation',
+      category: 'safety_traceability',
+      actorType: 'user',
+      actorId: 'portal',
+      action: 'traceability_generated',
+      resourceType: 'report',
+      resourceId: 'safety-traceability',
+      details: { totalStories, criticalStories, highStories },
+      projectPath
+    });
+
+    return res.json({
+      success: true,
+      from_cache: false,
+      ...report
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BUILD QA VALIDATION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Run build QA checks
+app.post('/api/validate-build-qa', async (req, res) => {
+  const { projectPath, quick = false } = req.body;
+
+  if (!projectPath) {
+    return res.status(400).json({ error: 'projectPath is required' });
+  }
+
+  if (!exists(projectPath)) {
+    return res.status(400).json({ error: 'Project path does not exist' });
+  }
+
+  const packageJsonPath = path.join(projectPath, 'package.json');
+  if (!exists(packageJsonPath)) {
+    return res.json({
+      success: true,
+      status: 'skipped',
+      message: 'Not a Node.js project (no package.json)',
+      checks: []
+    });
+  }
+
+  const packageJson = readJSON(packageJsonPath);
+  const results = [];
+
+  // Detect package manager
+  let pkgManager = 'npm';
+  if (exists(path.join(projectPath, 'pnpm-lock.yaml'))) {
+    pkgManager = 'pnpm';
+  } else if (exists(path.join(projectPath, 'yarn.lock'))) {
+    pkgManager = 'yarn';
+  }
+
+  // Helper to run command and capture result
+  const runCheck = async (name, command, expectedExit = 0) => {
+    const startTime = Date.now();
+    try {
+      const { execSync } = await import('child_process');
+      const output = execSync(command, {
+        cwd: projectPath,
+        encoding: 'utf8',
+        timeout: 120000, // 2 minute timeout
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      return {
+        name,
+        command,
+        status: 'pass',
+        duration_ms: Date.now() - startTime,
+        output: output.slice(0, 1000)
+      };
+    } catch (err) {
+      return {
+        name,
+        command,
+        status: 'fail',
+        duration_ms: Date.now() - startTime,
+        error: err.message?.slice(0, 500),
+        output: err.stdout?.slice(0, 500) || ''
+      };
+    }
+  };
+
+  try {
+    // Check 1: TypeScript compilation (if tsconfig exists)
+    if (exists(path.join(projectPath, 'tsconfig.json'))) {
+      if (!quick) {
+        results.push(await runCheck('TypeScript', 'npx tsc --noEmit'));
+      } else {
+        results.push({ name: 'TypeScript', status: 'skipped', reason: 'Quick mode' });
+      }
+    } else {
+      results.push({ name: 'TypeScript', status: 'skipped', reason: 'No tsconfig.json' });
+    }
+
+    // Check 2: Build command
+    if (packageJson.scripts?.build) {
+      if (!quick) {
+        results.push(await runCheck('Build', `${pkgManager} run build`));
+      } else {
+        results.push({ name: 'Build', status: 'skipped', reason: 'Quick mode' });
+      }
+    } else {
+      results.push({ name: 'Build', status: 'skipped', reason: 'No build script' });
+    }
+
+    // Check 3: Test command
+    if (packageJson.scripts?.test) {
+      if (!quick) {
+        const testCmd = packageJson.scripts.test.includes('vitest')
+          ? `${pkgManager} run test -- --run`
+          : `${pkgManager} run test -- --passWithNoTests`;
+        results.push(await runCheck('Tests', testCmd));
+      } else {
+        results.push({ name: 'Tests', status: 'skipped', reason: 'Quick mode' });
+      }
+    } else {
+      results.push({ name: 'Tests', status: 'skipped', reason: 'No test script' });
+    }
+
+    // Check 4: Lint command
+    if (packageJson.scripts?.lint) {
+      if (!quick) {
+        results.push(await runCheck('Lint', `${pkgManager} run lint`));
+      } else {
+        results.push({ name: 'Lint', status: 'skipped', reason: 'Quick mode' });
+      }
+    } else {
+      results.push({ name: 'Lint', status: 'skipped', reason: 'No lint script' });
+    }
+
+    // Check 5: Security audit
+    if (!quick) {
+      results.push(await runCheck('Security Audit', 'npm audit --audit-level=high'));
+    } else {
+      results.push({ name: 'Security Audit', status: 'skipped', reason: 'Quick mode' });
+    }
+
+    // Calculate summary
+    const passed = results.filter(r => r.status === 'pass').length;
+    const failed = results.filter(r => r.status === 'fail').length;
+    const skipped = results.filter(r => r.status === 'skipped').length;
+
+    let overallStatus = 'pass';
+    if (failed > 0) {
+      overallStatus = 'fail';
+    } else if (passed === 0) {
+      overallStatus = 'skipped';
+    }
+
+    // Save report
+    const reportDir = path.join(projectPath, '.claude', 'reports');
+    if (!exists(reportDir)) {
+      fs.mkdirSync(reportDir, { recursive: true });
+    }
+
+    const report = {
+      build_qa_report: {
+        timestamp: new Date().toISOString(),
+        project: projectPath,
+        package_manager: pkgManager,
+        quick_mode: quick,
+        overall_status: overallStatus,
+        summary: {
+          passed,
+          failed,
+          skipped,
+          total: results.length
+        },
+        checks: results
+      }
+    };
+
+    fs.writeFileSync(
+      path.join(reportDir, 'build-qa-results.json'),
+      JSON.stringify(report, null, 2)
+    );
+
+    // Audit log: Build QA completed
+    logValidation('build_qa', overallStatus, {
+      projectPath,
+      totalChecks: results.length,
+      passed,
+      failed,
+      skipped,
+      quickMode: quick,
+      packageManager: pkgManager,
+      triggeredBy: 'user',
+      actorId: 'portal'
+    });
+
+    return res.json({
+      success: true,
+      ...report.build_qa_report
+    });
+
+  } catch (err) {
+    // Audit log: Build QA error
+    logValidation('build_qa', 'error', {
+      projectPath,
+      error: err.message
+    });
+
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// Get build QA results
+app.get('/api/build-qa/results', async (req, res) => {
+  const { projectPath } = req.query;
+
+  if (!projectPath) {
+    return res.status(400).json({ error: 'projectPath query param required' });
+  }
+
+  try {
+    const reportFile = path.join(projectPath, '.claude', 'reports', 'build-qa-results.json');
+
+    if (!exists(reportFile)) {
+      return res.json({
+        success: true,
+        has_results: false,
+        message: 'No build QA results found. Run validation first.'
+      });
+    }
+
+    const report = readJSON(reportFile);
+    const stat = fs.statSync(reportFile);
+    const ageMinutes = (Date.now() - stat.mtime.getTime()) / 1000 / 60;
+
+    return res.json({
+      success: true,
+      has_results: true,
+      age_minutes: Math.round(ageMinutes),
+      ...report.build_qa_report
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BUILD QA CONFIGURABLE THRESHOLDS (Phase 1.2.5)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Default build QA thresholds
+const DEFAULT_BUILD_QA_THRESHOLDS = {
+  typescript: {
+    max_errors: 0,           // 0 = no errors allowed
+    max_warnings: 10,        // Allow up to 10 warnings
+    strict_mode: true        // Require strict mode
+  },
+  lint: {
+    max_errors: 0,           // 0 = no lint errors
+    max_warnings: 20,        // Allow up to 20 warnings
+    auto_fix: false          // Don't auto-fix during validation
+  },
+  tests: {
+    min_coverage_percent: 0, // 0 = no minimum (disabled by default)
+    require_passing: true,   // All tests must pass
+    timeout_seconds: 300     // 5 minute test timeout
+  },
+  security: {
+    max_critical: 0,         // No critical vulnerabilities
+    max_high: 0,             // No high vulnerabilities
+    max_moderate: 5,         // Allow up to 5 moderate
+    max_low: -1,             // -1 = unlimited
+    audit_level: 'high'      // npm audit level
+  },
+  build: {
+    timeout_seconds: 300,    // 5 minute build timeout
+    require_success: true    // Build must succeed
+  },
+  quality_gates: {
+    block_on_typescript_errors: true,
+    block_on_lint_errors: true,
+    block_on_test_failures: true,
+    block_on_security_critical: true,
+    block_on_build_failure: true
+  }
+};
+
+// GET /api/build-qa/thresholds - Get current thresholds
+app.get('/api/build-qa/thresholds', (req, res) => {
+  const { projectPath } = req.query;
+
+  if (!projectPath) {
+    return res.status(400).json({ error: 'projectPath required' });
+  }
+
+  try {
+    const configFile = path.join(projectPath, '.claude', 'build-qa-config.json');
+    let thresholds = { ...DEFAULT_BUILD_QA_THRESHOLDS };
+
+    // Load project-specific thresholds if they exist
+    if (exists(configFile)) {
+      try {
+        const projectConfig = JSON.parse(readFile(configFile));
+        thresholds = deepMerge(DEFAULT_BUILD_QA_THRESHOLDS, projectConfig);
+      } catch (e) {
+        console.warn('Failed to parse build-qa-config.json:', e.message);
+      }
+    }
+
+    return res.json({
+      success: true,
+      thresholds,
+      has_project_config: exists(configFile),
+      config_path: configFile
+    });
+
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/build-qa/thresholds - Update thresholds
+app.post('/api/build-qa/thresholds', (req, res) => {
+  const { projectPath, thresholds } = req.body;
+
+  if (!projectPath) {
+    return res.status(400).json({ error: 'projectPath required' });
+  }
+
+  try {
+    const claudePath = path.join(projectPath, '.claude');
+    if (!exists(claudePath)) {
+      fs.mkdirSync(claudePath, { recursive: true });
+    }
+
+    const configFile = path.join(claudePath, 'build-qa-config.json');
+
+    // Merge with defaults
+    const newConfig = deepMerge(DEFAULT_BUILD_QA_THRESHOLDS, thresholds || {});
+
+    fs.writeFileSync(configFile, JSON.stringify(newConfig, null, 2));
+
+    logAudit('build_qa_config_updated', 'portal', {
+      action: 'Updated Build QA thresholds',
+      projectPath,
+      resourceId: 'build-qa-config',
+      resourceType: 'config',
+      newConfig
+    });
+
+    return res.json({
+      success: true,
+      thresholds: newConfig,
+      message: 'Build QA thresholds updated'
+    });
+
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Helper: Deep merge objects
+function deepMerge(target, source) {
+  const result = { ...target };
+  for (const key of Object.keys(source)) {
+    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+      result[key] = deepMerge(target[key] || {}, source[key]);
+    } else {
+      result[key] = source[key];
+    }
+  }
+  return result;
+}
+
+// GET /api/build-qa/evaluate - Evaluate results against thresholds
+app.get('/api/build-qa/evaluate', (req, res) => {
+  const { projectPath } = req.query;
+
+  if (!projectPath) {
+    return res.status(400).json({ error: 'projectPath required' });
+  }
+
+  try {
+    // Load thresholds
+    const configFile = path.join(projectPath, '.claude', 'build-qa-config.json');
+    let thresholds = { ...DEFAULT_BUILD_QA_THRESHOLDS };
+    if (exists(configFile)) {
+      try {
+        const projectConfig = JSON.parse(readFile(configFile));
+        thresholds = deepMerge(DEFAULT_BUILD_QA_THRESHOLDS, projectConfig);
+      } catch (e) { /* ignore */ }
+    }
+
+    // Load results
+    const reportFile = path.join(projectPath, '.claude', 'reports', 'build-qa-results.json');
+    if (!exists(reportFile)) {
+      return res.json({
+        success: true,
+        evaluated: false,
+        message: 'No build QA results to evaluate'
+      });
+    }
+
+    const report = readJSON(reportFile);
+    const checks = report.build_qa_report?.checks || [];
+
+    // Evaluate each check against thresholds
+    const evaluations = [];
+    let gatesBlocked = false;
+
+    for (const check of checks) {
+      const evaluation = {
+        name: check.name,
+        status: check.status,
+        threshold_status: 'pass',
+        details: []
+      };
+
+      if (check.status === 'fail') {
+        // Check quality gates
+        if (check.name === 'TypeScript' && thresholds.quality_gates.block_on_typescript_errors) {
+          evaluation.threshold_status = 'blocked';
+          evaluation.details.push('TypeScript errors block deployment');
+          gatesBlocked = true;
+        } else if (check.name === 'Lint' && thresholds.quality_gates.block_on_lint_errors) {
+          evaluation.threshold_status = 'blocked';
+          evaluation.details.push('Lint errors block deployment');
+          gatesBlocked = true;
+        } else if (check.name === 'Tests' && thresholds.quality_gates.block_on_test_failures) {
+          evaluation.threshold_status = 'blocked';
+          evaluation.details.push('Test failures block deployment');
+          gatesBlocked = true;
+        } else if (check.name === 'Security Audit' && thresholds.quality_gates.block_on_security_critical) {
+          evaluation.threshold_status = 'blocked';
+          evaluation.details.push('Security vulnerabilities block deployment');
+          gatesBlocked = true;
+        } else if (check.name === 'Build' && thresholds.quality_gates.block_on_build_failure) {
+          evaluation.threshold_status = 'blocked';
+          evaluation.details.push('Build failure blocks deployment');
+          gatesBlocked = true;
+        } else {
+          evaluation.threshold_status = 'warn';
+          evaluation.details.push('Failed but not blocking');
+        }
+      }
+
+      evaluations.push(evaluation);
+    }
+
+    return res.json({
+      success: true,
+      evaluated: true,
+      thresholds,
+      evaluations,
+      summary: {
+        gates_blocked: gatesBlocked,
+        deployment_allowed: !gatesBlocked,
+        checks_passed: evaluations.filter(e => e.threshold_status === 'pass').length,
+        checks_blocked: evaluations.filter(e => e.threshold_status === 'blocked').length,
+        checks_warned: evaluations.filter(e => e.threshold_status === 'warn').length
+      }
+    });
+
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DRIFT DETECTION ENDPOINTS (Phase 1.3.4)
+// Monitor agent memory and context drift
+// ─────────────────────────────────────────────────────────────────────────────
+
+// WAVE agents list
+const WAVE_AGENTS = ['cto', 'pm', 'fe-dev-1', 'fe-dev-2', 'be-dev-1', 'be-dev-2', 'qa', 'dev-fix'];
+
+// GET /api/drift-report - Get or generate drift report
+app.get('/api/drift-report', async (req, res) => {
+  const { projectPath, agentType, regenerate = 'false' } = req.query;
+
+  if (!projectPath) {
+    return res.status(400).json({ error: 'projectPath required' });
+  }
+
+  try {
+    const claudePath = path.join(projectPath, '.claude');
+    const baselinesDir = path.join(claudePath, 'agent-baselines');
+    const memoryDir = path.join(claudePath, 'agent-memory');
+    const reportsDir = path.join(claudePath, 'reports');
+    const reportFile = path.join(reportsDir, 'drift-report.json');
+
+    // Check if we should use cached report
+    if (regenerate !== 'true' && exists(reportFile)) {
+      const stat = fs.statSync(reportFile);
+      const ageMinutes = (Date.now() - stat.mtime.getTime()) / 1000 / 60;
+
+      if (ageMinutes < 5) {
+        const cachedReport = readJSON(reportFile);
+        return res.json({
+          success: true,
+          cached: true,
+          age_minutes: Math.round(ageMinutes),
+          ...cachedReport.drift_report
+        });
+      }
+    }
+
+    // Generate fresh drift report
+    const agentsToCheck = agentType ? [agentType] : WAVE_AGENTS;
+    const driftResults = [];
+    let totalDrift = 0;
+    let driftedCount = 0;
+    let staleCount = 0;
+    let healthyCount = 0;
+    let noBaselineCount = 0;
+
+    for (const agent of agentsToCheck) {
+      const baselineFile = path.join(baselinesDir, `${agent}-baseline.json`);
+      const memoryFile = path.join(memoryDir, `${agent}-memory.json`);
+
+      // No baseline - can't detect drift
+      if (!exists(baselineFile)) {
+        driftResults.push({
+          agent,
+          status: 'no_baseline',
+          drift_score: null,
+          message: 'No baseline established'
+        });
+        noBaselineCount++;
+        continue;
+      }
+
+      const baseline = readJSON(baselineFile);
+      const baselineDate = baseline?.created_at || 'unknown';
+      const memoryTtlDays = baseline?.drift_config?.memory_ttl_days || 7;
+
+      // Calculate memory drift
+      let currentSize = 0;
+      let currentDecisions = 0;
+      let fileAgeDays = 0;
+
+      if (exists(memoryFile)) {
+        const stat = fs.statSync(memoryFile);
+        currentSize = Math.round(stat.size / 1024);
+        fileAgeDays = Math.round((Date.now() - stat.mtime.getTime()) / 86400000);
+
+        try {
+          const memoryData = readJSON(memoryFile);
+          currentDecisions = Array.isArray(memoryData) ? memoryData.length :
+                            (memoryData?.decisions?.length || 0);
+        } catch (e) { /* ignore */ }
+      }
+
+      const baselineSize = baseline?.memory_snapshot?.size_kb || 0;
+      const baselineDecisions = baseline?.memory_snapshot?.total_decisions || 0;
+
+      // Calculate growth rates
+      const sizeGrowth = baselineSize > 0 ?
+        Math.round(((currentSize - baselineSize) / baselineSize) * 100) / 100 : 0;
+      const decisionGrowth = baselineDecisions > 0 ?
+        Math.round(((currentDecisions - baselineDecisions) / baselineDecisions) * 100) / 100 : 0;
+
+      // Check TTL
+      const ttlExceeded = fileAgeDays > memoryTtlDays;
+
+      // Calculate drift score (weighted)
+      // Weight: size_growth (0.3) + decision_growth (0.3) + ttl_exceeded (0.4)
+      const sizeFactor = Math.min(Math.max(sizeGrowth, 0), 1);
+      const decisionFactor = Math.min(Math.max(decisionGrowth, 0), 1);
+      const ttlFactor = ttlExceeded ? 1 : 0;
+      const driftScore = Math.round((sizeFactor * 0.3 + decisionFactor * 0.3 + ttlFactor * 0.4) * 1000) / 1000;
+
+      // Determine status
+      let status = 'healthy';
+      let alert = false;
+      const DRIFT_THRESHOLD = 0.3;
+
+      if (ttlExceeded) {
+        status = 'stale';
+        alert = true;
+        staleCount++;
+      } else if (driftScore > DRIFT_THRESHOLD) {
+        status = 'drifted';
+        alert = true;
+        driftedCount++;
+      } else {
+        healthyCount++;
+      }
+
+      totalDrift += driftScore;
+
+      driftResults.push({
+        agent,
+        status,
+        drift_score: driftScore,
+        threshold: DRIFT_THRESHOLD,
+        alert,
+        baseline_date: baselineDate,
+        memory_drift: {
+          baseline_size_kb: baselineSize,
+          current_size_kb: currentSize,
+          size_growth_rate: sizeGrowth,
+          baseline_decisions: baselineDecisions,
+          current_decisions: currentDecisions,
+          decision_growth_rate: decisionGrowth
+        },
+        ttl_status: {
+          exceeded: ttlExceeded,
+          age_days: fileAgeDays,
+          ttl_days: memoryTtlDays
+        }
+      });
+    }
+
+    // Generate report
+    const averageDrift = driftResults.filter(r => r.drift_score !== null).length > 0 ?
+      Math.round((totalDrift / driftResults.filter(r => r.drift_score !== null).length) * 1000) / 1000 : 0;
+
+    const overallStatus = driftedCount > 0 || staleCount > 0 ? 'drift_detected' : 'healthy';
+
+    const report = {
+      drift_report: {
+        timestamp: new Date().toISOString(),
+        project: projectPath,
+        overall_status: overallStatus,
+        summary: {
+          total_agents: agentsToCheck.length,
+          healthy: healthyCount,
+          drifted: driftedCount,
+          stale: staleCount,
+          no_baseline: noBaselineCount,
+          average_drift_score: averageDrift
+        },
+        recommendations: generateDriftRecommendations(driftResults),
+        agents: driftResults
+      }
+    };
+
+    // Save report
+    if (!exists(reportsDir)) {
+      fs.mkdirSync(reportsDir, { recursive: true });
+    }
+    fs.writeFileSync(reportFile, JSON.stringify(report, null, 2));
+
+    // Log audit event
+    logAudit('drift_check', 'portal', {
+      action: 'Generated drift report',
+      projectPath,
+      resourceId: 'drift-report',
+      resourceType: 'report',
+      overallStatus,
+      driftedCount,
+      staleCount
+    });
+
+    return res.json({
+      success: true,
+      cached: false,
+      ...report.drift_report
+    });
+
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Helper: Generate drift recommendations
+function generateDriftRecommendations(results) {
+  const recommendations = [];
+
+  const drifted = results.filter(r => r.status === 'drifted');
+  const stale = results.filter(r => r.status === 'stale');
+  const noBaseline = results.filter(r => r.status === 'no_baseline');
+
+  if (drifted.length > 0) {
+    recommendations.push({
+      priority: 'high',
+      type: 'drift',
+      message: `${drifted.length} agent(s) showing memory drift. Consider resetting agent memory or updating baselines.`,
+      agents: drifted.map(r => r.agent)
+    });
+  }
+
+  if (stale.length > 0) {
+    recommendations.push({
+      priority: 'medium',
+      type: 'stale',
+      message: `${stale.length} agent(s) have memory exceeding TTL. Memory should be cleared or refreshed.`,
+      agents: stale.map(r => r.agent)
+    });
+  }
+
+  if (noBaseline.length > 0) {
+    recommendations.push({
+      priority: 'low',
+      type: 'baseline',
+      message: `${noBaseline.length} agent(s) have no baseline. Run baseline generation for drift monitoring.`,
+      agents: noBaseline.map(r => r.agent)
+    });
+  }
+
+  if (recommendations.length === 0) {
+    recommendations.push({
+      priority: 'info',
+      type: 'healthy',
+      message: 'All agents are healthy with no detected drift.',
+      agents: []
+    });
+  }
+
+  return recommendations;
+}
+
+// POST /api/drift-report/reset-memory - Reset agent memory
+app.post('/api/drift-report/reset-memory', (req, res) => {
+  const { projectPath, agentType } = req.body;
+
+  if (!projectPath || !agentType) {
+    return res.status(400).json({ error: 'projectPath and agentType required' });
+  }
+
+  try {
+    const memoryDir = path.join(projectPath, '.claude', 'agent-memory');
+    const memoryFile = path.join(memoryDir, `${agentType}-memory.json`);
+
+    if (exists(memoryFile)) {
+      // Backup before reset
+      const backupDir = path.join(memoryDir, 'backups');
+      if (!exists(backupDir)) {
+        fs.mkdirSync(backupDir, { recursive: true });
+      }
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      fs.copyFileSync(memoryFile, path.join(backupDir, `${agentType}-memory-${timestamp}.json`));
+
+      // Reset memory
+      fs.writeFileSync(memoryFile, JSON.stringify({
+        reset_at: new Date().toISOString(),
+        reset_by: 'portal',
+        decisions: []
+      }, null, 2));
+    }
+
+    logAudit('memory_reset', 'portal', {
+      action: `Reset agent memory for ${agentType}`,
+      projectPath,
+      resourceId: agentType,
+      resourceType: 'agent-memory'
+    });
+
+    return res.json({
+      success: true,
+      message: `Memory reset for ${agentType}`
+    });
+
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/drift-report/generate-baseline - Generate baseline for agent
+app.post('/api/drift-report/generate-baseline', (req, res) => {
+  const { projectPath, agentType } = req.body;
+
+  if (!projectPath || !agentType) {
+    return res.status(400).json({ error: 'projectPath and agentType required' });
+  }
+
+  try {
+    const claudePath = path.join(projectPath, '.claude');
+    const baselinesDir = path.join(claudePath, 'agent-baselines');
+    const memoryDir = path.join(claudePath, 'agent-memory');
+    const memoryFile = path.join(memoryDir, `${agentType}-memory.json`);
+
+    if (!exists(baselinesDir)) {
+      fs.mkdirSync(baselinesDir, { recursive: true });
+    }
+
+    // Get current memory stats
+    let currentSize = 0;
+    let currentDecisions = 0;
+
+    if (exists(memoryFile)) {
+      const stat = fs.statSync(memoryFile);
+      currentSize = Math.round(stat.size / 1024);
+
+      try {
+        const memoryData = readJSON(memoryFile);
+        currentDecisions = Array.isArray(memoryData) ? memoryData.length :
+                          (memoryData?.decisions?.length || 0);
+      } catch (e) { /* ignore */ }
+    }
+
+    const baseline = {
+      agent: agentType,
+      created_at: new Date().toISOString(),
+      created_by: 'portal',
+      memory_snapshot: {
+        size_kb: currentSize,
+        total_decisions: currentDecisions
+      },
+      drift_config: {
+        memory_ttl_days: 7,
+        max_growth_rate: 0.5,
+        alert_threshold: 0.3
+      }
+    };
+
+    fs.writeFileSync(
+      path.join(baselinesDir, `${agentType}-baseline.json`),
+      JSON.stringify(baseline, null, 2)
+    );
+
+    logAudit('baseline_generated', 'portal', {
+      action: `Generated baseline for ${agentType}`,
+      projectPath,
+      resourceId: agentType,
+      resourceType: 'agent-baseline'
+    });
+
+    return res.json({
+      success: true,
+      baseline,
+      message: `Baseline generated for ${agentType}`
+    });
+
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUDIT LOG ENDPOINTS
+// Retrieve and search audit logs (Phase 2.2)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// GET /api/audit-log - Retrieve audit logs
+app.get('/api/audit-log', (req, res) => {
+  const { projectPath, eventType, actorType, severity, limit = 100, offset = 0 } = req.query;
+
+  try {
+    let logs = [...auditLogBuffer];
+
+    // Filter by project if specified
+    if (projectPath) {
+      // Also try to load from file-based audit log
+      const auditDir = path.join(projectPath, '.claude', 'audit');
+      if (exists(auditDir)) {
+        const today = new Date().toISOString().split('T')[0];
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+        for (const date of [today, yesterday]) {
+          const auditFile = path.join(auditDir, `audit-${date}.jsonl`);
+          if (exists(auditFile)) {
+            const lines = fs.readFileSync(auditFile, 'utf8').split('\n').filter(Boolean);
+            for (const line of lines) {
+              try {
+                const entry = JSON.parse(line);
+                if (!logs.find(l => l.id === entry.id)) {
+                  logs.push(entry);
+                }
+              } catch (e) {
+                // Skip malformed entries
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Apply filters
+    if (eventType) {
+      logs = logs.filter(l => l.event_type === eventType);
+    }
+    if (actorType) {
+      logs = logs.filter(l => l.actor_type === actorType);
+    }
+    if (severity) {
+      logs = logs.filter(l => l.severity === severity);
+    }
+
+    // Sort by created_at descending
+    logs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    // Apply pagination
+    const total = logs.length;
+    logs = logs.slice(Number(offset), Number(offset) + Number(limit));
+
+    return res.json({
+      success: true,
+      total,
+      offset: Number(offset),
+      limit: Number(limit),
+      logs
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// GET /api/audit-log/summary - Get audit log summary/stats
+app.get('/api/audit-log/summary', (req, res) => {
+  const { projectPath, hours = 24 } = req.query;
+  const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
+
+  try {
+    let logs = auditLogBuffer.filter(l => new Date(l.created_at) > cutoff);
+
+    // Summary stats
+    const byEventType = {};
+    const byActorType = {};
+    const bySeverity = {};
+    const requiresReview = logs.filter(l => l.requires_review && !l.reviewed_at).length;
+
+    for (const log of logs) {
+      byEventType[log.event_type] = (byEventType[log.event_type] || 0) + 1;
+      byActorType[log.actor_type] = (byActorType[log.actor_type] || 0) + 1;
+      bySeverity[log.severity] = (bySeverity[log.severity] || 0) + 1;
+    }
+
+    return res.json({
+      success: true,
+      time_range_hours: Number(hours),
+      total_events: logs.length,
+      requires_review: requiresReview,
+      by_event_type: byEventType,
+      by_actor_type: byActorType,
+      by_severity: bySeverity,
+      recent_critical: logs
+        .filter(l => l.severity === 'critical' || l.severity === 'error')
+        .slice(0, 5)
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// POST /api/audit-log - Record an audit event from frontend
+app.post('/api/audit-log', (req, res) => {
+  const event = req.body;
+
+  if (!event.action) {
+    return res.status(400).json({ success: false, error: 'action is required' });
+  }
+
+  try {
+    const entry = logAudit({
+      ...event,
+      actorType: event.actorType || 'user',
+      actorId: event.actorId || 'portal-user',
+      eventType: event.eventType || 'system_event'
+    });
+
+    return res.json({
+      success: true,
+      entry
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// GET /api/audit-log/export - Export audit logs (Phase 2.2.4)
+app.get('/api/audit-log/export', (req, res) => {
+  const { projectPath, format = 'json', hours = 168, eventType, severity } = req.query;
+
+  try {
+    const cutoff = new Date(Date.now() - Number(hours) * 60 * 60 * 1000);
+    let logs = [...auditLogBuffer].filter(l => new Date(l.created_at) > cutoff);
+
+    // Load from file-based logs if projectPath specified
+    if (projectPath) {
+      const auditDir = path.join(projectPath, '.claude', 'audit');
+      if (exists(auditDir)) {
+        // Load logs from multiple days
+        const now = new Date();
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(now.getTime() - i * 86400000);
+          const dateStr = d.toISOString().split('T')[0];
+          const logFile = path.join(auditDir, `audit-log-${dateStr}.jsonl`);
+          if (exists(logFile)) {
+            const lines = readFile(logFile).split('\n').filter(l => l.trim());
+            for (const line of lines) {
+              try {
+                const entry = JSON.parse(line);
+                if (new Date(entry.created_at) > cutoff) {
+                  // Avoid duplicates
+                  if (!logs.find(l => l.id === entry.id)) {
+                    logs.push(entry);
+                  }
+                }
+              } catch (e) { /* skip invalid lines */ }
+            }
+          }
+        }
+      }
+    }
+
+    // Apply filters
+    if (eventType) {
+      logs = logs.filter(l => l.event_type === eventType);
+    }
+    if (severity) {
+      logs = logs.filter(l => l.severity === severity);
+    }
+
+    // Sort by timestamp descending
+    logs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    // Format output
+    if (format === 'csv') {
+      const headers = ['timestamp', 'event_type', 'event_category', 'severity', 'actor_type', 'actor_id', 'action', 'details'];
+      const rows = logs.map(l => [
+        l.created_at,
+        l.event_type || '',
+        l.event_category || '',
+        l.severity || '',
+        l.actor_type || '',
+        l.actor_id || '',
+        l.action || '',
+        JSON.stringify(l.details || {})
+      ]);
+
+      const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))].join('\n');
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="audit-log-export-${new Date().toISOString().split('T')[0]}.csv"`);
+      return res.send(csv);
+    }
+
+    if (format === 'jsonl') {
+      const jsonl = logs.map(l => JSON.stringify(l)).join('\n');
+      res.setHeader('Content-Type', 'application/x-ndjson');
+      res.setHeader('Content-Disposition', `attachment; filename="audit-log-export-${new Date().toISOString().split('T')[0]}.jsonl"`);
+      return res.send(jsonl);
+    }
+
+    // Default: JSON format
+    const exportData = {
+      export_info: {
+        timestamp: new Date().toISOString(),
+        format: 'json',
+        time_range_hours: Number(hours),
+        total_entries: logs.length,
+        filters: { eventType: eventType || 'all', severity: severity || 'all' }
+      },
+      logs
+    };
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="audit-log-export-${new Date().toISOString().split('T')[0]}.json"`);
+    return res.json(exportData);
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AGENT WATCHDOG ENDPOINTS
+// Monitor agent health through heartbeat signals (Phase 2.3)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// GET /api/watchdog - Get watchdog status for all agents
+app.get('/api/watchdog', (req, res) => {
+  const { projectPath } = req.query;
+
+  if (!projectPath) {
+    return res.status(400).json({ success: false, error: 'projectPath required' });
+  }
+
+  try {
+    const claudePath = path.join(projectPath, '.claude');
+    const heartbeatDir = path.join(claudePath, 'heartbeats');
+    const watchdogDir = path.join(claudePath, 'watchdog');
+    const heartbeatTimeout = 300; // 5 minutes default
+
+    // Try to read existing watchdog report first
+    const reportFile = path.join(watchdogDir, 'watchdog-report.json');
+    if (exists(reportFile)) {
+      const report = readJSON(reportFile);
+      if (report?.watchdog_report) {
+        const stat = fs.statSync(reportFile);
+        const ageSeconds = Math.round((Date.now() - stat.mtime.getTime()) / 1000);
+
+        return res.json({
+          success: true,
+          from_cache: true,
+          cache_age_seconds: ageSeconds,
+          ...report.watchdog_report
+        });
+      }
+    }
+
+    // Generate live watchdog status
+    const agents = ['cto', 'pm', 'fe-dev-1', 'fe-dev-2', 'be-dev-1', 'be-dev-2', 'qa', 'dev-fix'];
+    const results = [];
+    let stuckCount = 0;
+    let healthyCount = 0;
+    let slowCount = 0;
+    let idleCount = 0;
+
+    for (const agent of agents) {
+      const heartbeatFile = path.join(heartbeatDir, `${agent}-heartbeat.json`);
+      const assignmentFile = path.join(claudePath, `signal-${agent}-assignment.json`);
+      const stopFile = path.join(claudePath, `signal-${agent}-STOP.json`);
+
+      let status = 'idle';
+      let heartbeatAge = -1;
+      let isStuck = false;
+      let lastHeartbeat = null;
+
+      // Check if stopped
+      if (exists(stopFile)) {
+        status = 'stopped';
+        idleCount++;
+      }
+      // Check if assigned
+      else if (exists(assignmentFile)) {
+        const assignStat = fs.statSync(assignmentFile);
+        const assignAge = Math.round((Date.now() - assignStat.mtime.getTime()) / 1000);
+
+        if (exists(heartbeatFile)) {
+          const hbStat = fs.statSync(heartbeatFile);
+          heartbeatAge = Math.round((Date.now() - hbStat.mtime.getTime()) / 1000);
+          lastHeartbeat = readJSON(heartbeatFile);
+
+          if (heartbeatAge < 60) {
+            status = 'active';
+            healthyCount++;
+          } else if (heartbeatAge < heartbeatTimeout) {
+            status = 'slow';
+            slowCount++;
+          } else {
+            status = 'stuck';
+            isStuck = true;
+            stuckCount++;
+          }
+        } else {
+          // No heartbeat but assigned
+          if (assignAge > heartbeatTimeout) {
+            status = 'stuck';
+            isStuck = true;
+            stuckCount++;
+          } else {
+            status = 'starting';
+            healthyCount++;
+          }
+        }
+      } else {
+        // No assignment
+        idleCount++;
+      }
+
+      results.push({
+        agent,
+        status,
+        heartbeat_age_seconds: heartbeatAge,
+        is_stuck: isStuck,
+        alert: isStuck || status === 'slow',
+        alert_level: isStuck ? 'critical' : (status === 'slow' ? 'warn' : 'info'),
+        timeout: heartbeatTimeout,
+        last_heartbeat: lastHeartbeat
+      });
+    }
+
+    let overallStatus = 'healthy';
+    if (stuckCount > 0) overallStatus = 'critical';
+    else if (slowCount > 0) overallStatus = 'warning';
+
+    return res.json({
+      success: true,
+      from_cache: false,
+      timestamp: new Date().toISOString(),
+      project: projectPath,
+      heartbeat_timeout_seconds: heartbeatTimeout,
+      overall_status: overallStatus,
+      summary: {
+        total_agents: agents.length,
+        healthy: healthyCount,
+        stuck: stuckCount,
+        slow: slowCount,
+        idle: idleCount
+      },
+      agents: results
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// POST /api/watchdog/heartbeat - Record agent heartbeat
+app.post('/api/watchdog/heartbeat', (req, res) => {
+  const { projectPath, agentType, status = 'active', currentTask, currentGate } = req.body;
+
+  if (!projectPath || !agentType) {
+    return res.status(400).json({ success: false, error: 'projectPath and agentType required' });
+  }
+
+  try {
+    const heartbeatDir = path.join(projectPath, '.claude', 'heartbeats');
+    if (!exists(heartbeatDir)) {
+      fs.mkdirSync(heartbeatDir, { recursive: true });
+    }
+
+    const heartbeat = {
+      agent: agentType,
+      status,
+      current_task: currentTask || null,
+      current_gate: currentGate || null,
+      timestamp: new Date().toISOString(),
+      project: projectPath
+    };
+
+    fs.writeFileSync(
+      path.join(heartbeatDir, `${agentType}-heartbeat.json`),
+      JSON.stringify(heartbeat, null, 2)
+    );
+
+    return res.json({
+      success: true,
+      heartbeat
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TOKEN BUDGET GOVERNANCE (Phase 3.3)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Default budget configuration
+const DEFAULT_BUDGET_CONFIG = {
+  project_budget: 50.00,     // Total project budget in USD
+  wave_budget: 25.00,        // Budget per wave
+  agent_budgets: {
+    cto: 10.00,
+    pm: 8.00,
+    'fe-dev-1': 15.00,
+    'fe-dev-2': 15.00,
+    'be-dev-1': 15.00,
+    'be-dev-2': 15.00,
+    qa: 5.00,
+    'dev-fix': 10.00
+  },
+  story_budget_default: 2.00,  // Default per-story budget
+  alert_thresholds: {
+    warning: 0.75,    // Alert at 75% of budget
+    critical: 0.90,   // Critical alert at 90%
+    auto_pause: 1.00  // Auto-pause at 100%
+  },
+  anomaly_detection: {
+    enabled: true,
+    spike_threshold: 3.0,        // Alert if spend rate is 3x normal
+    sustained_threshold: 2.0,    // Alert if sustained 2x normal for 5 min
+    lookback_minutes: 30         // Historical window for normal rate
+  }
+};
+
+// GET /api/budgets - Get budget configuration and current usage
+app.get('/api/budgets', (req, res) => {
+  const { projectPath } = req.query;
+
+  if (!projectPath) {
+    return res.status(400).json({ success: false, error: 'projectPath required' });
+  }
+
+  try {
+    const claudePath = path.join(projectPath, '.claude');
+    const budgetConfigFile = path.join(claudePath, 'budget-config.json');
+    const costTrackerDir = claudePath;
+
+    // Load or create budget config
+    let budgetConfig = { ...DEFAULT_BUDGET_CONFIG };
+    if (exists(budgetConfigFile)) {
+      try {
+        budgetConfig = { ...DEFAULT_BUDGET_CONFIG, ...JSON.parse(readFile(budgetConfigFile)) };
+      } catch (e) {
+        console.warn('Failed to parse budget config:', e.message);
+      }
+    }
+
+    // Gather current usage from cost tracker files
+    const usage = {
+      total: 0,
+      by_wave: {},
+      by_agent: {},
+      by_story: {}
+    };
+
+    // Read cost tracker files for each wave
+    const costFiles = listDir(costTrackerDir).filter(f => f.startsWith('cost-tracker-wave'));
+    for (const file of costFiles) {
+      try {
+        const waveData = JSON.parse(readFile(path.join(costTrackerDir, file)));
+        const waveNum = file.match(/wave(\d+)/)?.[1] || 'unknown';
+        usage.by_wave[`wave${waveNum}`] = waveData.total_cost || 0;
+        usage.total += waveData.total_cost || 0;
+
+        // Aggregate by agent if available
+        if (waveData.by_agent) {
+          for (const [agent, cost] of Object.entries(waveData.by_agent)) {
+            usage.by_agent[agent] = (usage.by_agent[agent] || 0) + cost;
+          }
+        }
+
+        // Aggregate by story if available
+        if (waveData.by_story) {
+          Object.assign(usage.by_story, waveData.by_story);
+        }
+      } catch (e) {
+        console.warn(`Failed to read ${file}:`, e.message);
+      }
+    }
+
+    // Calculate percentages and status
+    const projectPercent = (usage.total / budgetConfig.project_budget) * 100;
+    const thresholds = budgetConfig.alert_thresholds;
+
+    let projectStatus = 'ok';
+    if (projectPercent >= thresholds.auto_pause * 100) {
+      projectStatus = 'exceeded';
+    } else if (projectPercent >= thresholds.critical * 100) {
+      projectStatus = 'critical';
+    } else if (projectPercent >= thresholds.warning * 100) {
+      projectStatus = 'warning';
+    }
+
+    // Generate agent status
+    const agentStatus = {};
+    for (const [agent, budget] of Object.entries(budgetConfig.agent_budgets)) {
+      const spent = usage.by_agent[agent] || 0;
+      const percent = (spent / budget) * 100;
+      agentStatus[agent] = {
+        budget,
+        spent,
+        percent: Math.round(percent * 10) / 10,
+        status: percent >= 100 ? 'exceeded' : percent >= 90 ? 'critical' : percent >= 75 ? 'warning' : 'ok'
+      };
+    }
+
+    return res.json({
+      success: true,
+      config: budgetConfig,
+      usage,
+      status: {
+        project: {
+          budget: budgetConfig.project_budget,
+          spent: Math.round(usage.total * 100) / 100,
+          percent: Math.round(projectPercent * 10) / 10,
+          status: projectStatus
+        },
+        agents: agentStatus
+      },
+      alerts: generateBudgetAlerts(budgetConfig, usage, agentStatus)
+    });
+
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Helper: Generate budget alerts
+function generateBudgetAlerts(config, usage, agentStatus) {
+  const alerts = [];
+  const thresholds = config.alert_thresholds;
+
+  // Project-level alerts
+  const projectPercent = (usage.total / config.project_budget) * 100;
+  if (projectPercent >= thresholds.auto_pause * 100) {
+    alerts.push({
+      level: 'critical',
+      type: 'budget_exceeded',
+      target: 'project',
+      message: `Project budget exceeded! $${usage.total.toFixed(2)} / $${config.project_budget.toFixed(2)}`,
+      action: 'auto_pause',
+      timestamp: new Date().toISOString()
+    });
+  } else if (projectPercent >= thresholds.critical * 100) {
+    alerts.push({
+      level: 'critical',
+      type: 'budget_critical',
+      target: 'project',
+      message: `Project budget at ${projectPercent.toFixed(1)}% - approaching limit`,
+      timestamp: new Date().toISOString()
+    });
+  } else if (projectPercent >= thresholds.warning * 100) {
+    alerts.push({
+      level: 'warning',
+      type: 'budget_warning',
+      target: 'project',
+      message: `Project budget at ${projectPercent.toFixed(1)}%`,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  // Agent-level alerts
+  for (const [agent, status] of Object.entries(agentStatus)) {
+    if (status.status === 'exceeded') {
+      alerts.push({
+        level: 'critical',
+        type: 'agent_budget_exceeded',
+        target: agent,
+        message: `${agent} budget exceeded: $${status.spent.toFixed(2)} / $${status.budget.toFixed(2)}`,
+        action: 'pause_agent',
+        timestamp: new Date().toISOString()
+      });
+    } else if (status.status === 'critical') {
+      alerts.push({
+        level: 'warning',
+        type: 'agent_budget_critical',
+        target: agent,
+        message: `${agent} at ${status.percent}% of budget`,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+
+  return alerts;
+}
+
+// POST /api/budgets - Update budget configuration
+app.post('/api/budgets', (req, res) => {
+  const { projectPath, config } = req.body;
+
+  if (!projectPath) {
+    return res.status(400).json({ success: false, error: 'projectPath required' });
+  }
+
+  try {
+    const claudePath = path.join(projectPath, '.claude');
+    if (!exists(claudePath)) {
+      fs.mkdirSync(claudePath, { recursive: true });
+    }
+
+    const budgetConfigFile = path.join(claudePath, 'budget-config.json');
+
+    // Merge with defaults
+    const newConfig = { ...DEFAULT_BUDGET_CONFIG, ...config };
+
+    fs.writeFileSync(budgetConfigFile, JSON.stringify(newConfig, null, 2));
+
+    logAudit('budget_config_updated', 'portal', {
+      action: 'Updated budget configuration',
+      projectPath,
+      resourceId: 'budget-config',
+      resourceType: 'budget',
+      newConfig
+    });
+
+    return res.json({
+      success: true,
+      config: newConfig,
+      message: 'Budget configuration updated'
+    });
+
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/budgets/track - Track token usage for an agent/story
+app.post('/api/budgets/track', (req, res) => {
+  const { projectPath, wave, agent, storyId, tokens, cost } = req.body;
+
+  if (!projectPath || !wave || !agent) {
+    return res.status(400).json({ success: false, error: 'projectPath, wave, and agent required' });
+  }
+
+  try {
+    const claudePath = path.join(projectPath, '.claude');
+    if (!exists(claudePath)) {
+      fs.mkdirSync(claudePath, { recursive: true });
+    }
+
+    const costTrackerFile = path.join(claudePath, `cost-tracker-wave${wave}.json`);
+
+    // Load existing tracker
+    let tracker = {
+      wave,
+      total_cost: 0,
+      total_tokens: { input: 0, output: 0 },
+      by_agent: {},
+      by_story: {},
+      history: []
+    };
+
+    if (exists(costTrackerFile)) {
+      try {
+        tracker = JSON.parse(readFile(costTrackerFile));
+      } catch (e) {
+        console.warn('Failed to parse cost tracker:', e.message);
+      }
+    }
+
+    // Update totals
+    const estimatedCost = cost || ((tokens?.input || 0) * 0.000003 + (tokens?.output || 0) * 0.000015);
+    tracker.total_cost = (tracker.total_cost || 0) + estimatedCost;
+    tracker.total_tokens.input = (tracker.total_tokens?.input || 0) + (tokens?.input || 0);
+    tracker.total_tokens.output = (tracker.total_tokens?.output || 0) + (tokens?.output || 0);
+
+    // Update by agent
+    tracker.by_agent[agent] = (tracker.by_agent[agent] || 0) + estimatedCost;
+
+    // Update by story if provided
+    if (storyId) {
+      tracker.by_story[storyId] = (tracker.by_story[storyId] || 0) + estimatedCost;
+    }
+
+    // Add to history for anomaly detection
+    tracker.history = tracker.history || [];
+    tracker.history.push({
+      timestamp: new Date().toISOString(),
+      agent,
+      storyId,
+      tokens,
+      cost: estimatedCost
+    });
+
+    // Keep only last 1000 history entries
+    if (tracker.history.length > 1000) {
+      tracker.history = tracker.history.slice(-1000);
+    }
+
+    fs.writeFileSync(costTrackerFile, JSON.stringify(tracker, null, 2));
+
+    // Check for anomalies and budget thresholds
+    const budgetConfigFile = path.join(claudePath, 'budget-config.json');
+    let budgetConfig = { ...DEFAULT_BUDGET_CONFIG };
+    if (exists(budgetConfigFile)) {
+      try {
+        budgetConfig = { ...DEFAULT_BUDGET_CONFIG, ...JSON.parse(readFile(budgetConfigFile)) };
+      } catch (e) { /* ignore */ }
+    }
+
+    const anomaly = detectSpendingAnomaly(tracker, budgetConfig);
+    const alerts = [];
+
+    if (anomaly) {
+      alerts.push(anomaly);
+    }
+
+    // Check agent budget
+    const agentBudget = budgetConfig.agent_budgets[agent] || 10;
+    const agentSpent = tracker.by_agent[agent] || 0;
+    const agentPercent = (agentSpent / agentBudget) * 100;
+
+    if (agentPercent >= 100) {
+      alerts.push({
+        level: 'critical',
+        type: 'agent_budget_exceeded',
+        target: agent,
+        message: `${agent} budget exceeded: $${agentSpent.toFixed(2)} / $${agentBudget.toFixed(2)}`,
+        action: 'pause_agent'
+      });
+    }
+
+    return res.json({
+      success: true,
+      tracker: {
+        total_cost: tracker.total_cost,
+        agent_cost: tracker.by_agent[agent],
+        story_cost: storyId ? tracker.by_story[storyId] : null
+      },
+      alerts
+    });
+
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Helper: Detect spending anomalies
+function detectSpendingAnomaly(tracker, config) {
+  if (!config.anomaly_detection?.enabled) return null;
+
+  const history = tracker.history || [];
+  if (history.length < 5) return null;
+
+  const now = Date.now();
+  const lookbackMs = (config.anomaly_detection.lookback_minutes || 30) * 60 * 1000;
+  const recentMs = 5 * 60 * 1000; // Last 5 minutes
+
+  // Calculate historical average spend rate ($ per minute)
+  const historicalEntries = history.filter(h => {
+    const ts = new Date(h.timestamp).getTime();
+    return ts >= (now - lookbackMs) && ts < (now - recentMs);
+  });
+
+  const recentEntries = history.filter(h => {
+    const ts = new Date(h.timestamp).getTime();
+    return ts >= (now - recentMs);
+  });
+
+  if (historicalEntries.length < 3 || recentEntries.length < 1) return null;
+
+  const historicalSpend = historicalEntries.reduce((sum, h) => sum + (h.cost || 0), 0);
+  const recentSpend = recentEntries.reduce((sum, h) => sum + (h.cost || 0), 0);
+
+  const historicalMinutes = (lookbackMs - recentMs) / 60000;
+  const recentMinutes = recentMs / 60000;
+
+  const historicalRate = historicalSpend / historicalMinutes;
+  const recentRate = recentSpend / recentMinutes;
+
+  // Check for spike
+  if (historicalRate > 0 && recentRate >= historicalRate * config.anomaly_detection.spike_threshold) {
+    return {
+      level: 'warning',
+      type: 'spending_spike',
+      message: `Spending spike detected: ${(recentRate * 60).toFixed(2)}/hr vs normal ${(historicalRate * 60).toFixed(2)}/hr`,
+      details: {
+        recent_rate: recentRate,
+        historical_rate: historicalRate,
+        multiplier: recentRate / historicalRate
+      },
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  return null;
+}
+
+// GET /api/budgets/check - Check if operation would exceed budget
+app.get('/api/budgets/check', (req, res) => {
+  const { projectPath, agent, estimatedCost } = req.query;
+
+  if (!projectPath || !agent || !estimatedCost) {
+    return res.status(400).json({ success: false, error: 'projectPath, agent, and estimatedCost required' });
+  }
+
+  try {
+    const claudePath = path.join(projectPath, '.claude');
+    const budgetConfigFile = path.join(claudePath, 'budget-config.json');
+
+    let budgetConfig = { ...DEFAULT_BUDGET_CONFIG };
+    if (exists(budgetConfigFile)) {
+      try {
+        budgetConfig = { ...DEFAULT_BUDGET_CONFIG, ...JSON.parse(readFile(budgetConfigFile)) };
+      } catch (e) { /* ignore */ }
+    }
+
+    // Get current agent spend
+    let agentSpent = 0;
+    let projectSpent = 0;
+
+    const costFiles = listDir(claudePath).filter(f => f.startsWith('cost-tracker-wave'));
+    for (const file of costFiles) {
+      try {
+        const waveData = JSON.parse(readFile(path.join(claudePath, file)));
+        projectSpent += waveData.total_cost || 0;
+        agentSpent += waveData.by_agent?.[agent] || 0;
+      } catch (e) { /* ignore */ }
+    }
+
+    const cost = parseFloat(estimatedCost);
+    const agentBudget = budgetConfig.agent_budgets[agent] || 10;
+    const projectBudget = budgetConfig.project_budget;
+
+    const agentWouldExceed = (agentSpent + cost) > agentBudget;
+    const projectWouldExceed = (projectSpent + cost) > projectBudget;
+
+    return res.json({
+      success: true,
+      allowed: !agentWouldExceed && !projectWouldExceed,
+      agent: {
+        budget: agentBudget,
+        spent: agentSpent,
+        after_operation: agentSpent + cost,
+        would_exceed: agentWouldExceed
+      },
+      project: {
+        budget: projectBudget,
+        spent: projectSpent,
+        after_operation: projectSpent + cost,
+        would_exceed: projectWouldExceed
+      }
+    });
+
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 

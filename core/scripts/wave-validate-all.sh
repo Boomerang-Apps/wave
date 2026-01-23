@@ -7,8 +7,19 @@
 #
 # Usage:
 #   ./wave-validate-all.sh [PROJECT_PATH]
-#   ./wave-validate-all.sh /path/to/project --json    # JSON output for Portal
-#   ./wave-validate-all.sh /path/to/project --quick   # Skip slow checks
+#   ./wave-validate-all.sh /path/to/project --json         # JSON output for Portal
+#   ./wave-validate-all.sh /path/to/project --quick        # Skip slow checks
+#   ./wave-validate-all.sh /path/to/project --mode=strict  # Full validation (default)
+#   ./wave-validate-all.sh /path/to/project --mode=dev     # Development mode (faster)
+#   ./wave-validate-all.sh /path/to/project --mode=ci      # CI/CD pipeline mode
+#
+# Validation Modes:
+#   strict - Full validation for production (default)
+#            All checks enabled, gate blocking enforced
+#   dev    - Fast iteration for development
+#            Skip behavioral probes, network tests, use quick mode
+#   ci     - CI/CD pipeline validation
+#            All checks enabled, optimized for automation
 #
 # Exit codes:
 #   0 = ALL PASSED
@@ -26,14 +37,50 @@ set -o pipefail
 PROJECT_ROOT="${1:-.}"
 JSON_OUTPUT=false
 QUICK_MODE=false
+VALIDATION_MODE="strict"
+
+# Memory TTL in days (default: 7)
+MEMORY_TTL_DAYS="${MEMORY_TTL_DAYS:-7}"
 
 # Parse flags
 for arg in "$@"; do
     case $arg in
         --json) JSON_OUTPUT=true ;;
         --quick) QUICK_MODE=true ;;
+        --mode=strict) VALIDATION_MODE="strict" ;;
+        --mode=dev) VALIDATION_MODE="dev"; QUICK_MODE=true ;;
+        --mode=ci) VALIDATION_MODE="ci" ;;
+        --mode=*)
+            echo "Unknown mode: ${arg#--mode=}. Valid modes: strict, dev, ci" >&2
+            exit 2
+            ;;
     esac
 done
+
+# Mode-specific settings
+case $VALIDATION_MODE in
+    strict)
+        RUN_BEHAVIORAL_PROBES=true
+        RUN_BUILD_QA=true
+        RUN_DRIFT_CHECK=true
+        RUN_NETWORK_TESTS=true
+        GATE_BLOCKING=true
+        ;;
+    dev)
+        RUN_BEHAVIORAL_PROBES=false
+        RUN_BUILD_QA=true
+        RUN_DRIFT_CHECK=false
+        RUN_NETWORK_TESTS=false
+        GATE_BLOCKING=false
+        ;;
+    ci)
+        RUN_BEHAVIORAL_PROBES=true
+        RUN_BUILD_QA=true
+        RUN_DRIFT_CHECK=true
+        RUN_NETWORK_TESTS=true
+        GATE_BLOCKING=true
+        ;;
+esac
 
 # Resolve absolute path
 PROJECT_ROOT=$(cd "$PROJECT_ROOT" 2>/dev/null && pwd || echo "$PROJECT_ROOT")
@@ -461,6 +508,41 @@ validate_signal_files() {
     if [ "$error_signals" -gt 0 ]; then
         log_check "error_signals" "WARN" "$error_signals error/stop signals present" "Review agent errors"
     fi
+
+    # Memory TTL Check - Flag stale agent memory files
+    local memory_dir="$CLAUDE_DIR/agent-memory"
+    if [ -d "$memory_dir" ]; then
+        local stale_memory=$(find "$memory_dir" -name "*.json" -mtime +$MEMORY_TTL_DAYS 2>/dev/null | wc -l | tr -d ' ')
+        local total_memory=$(find "$memory_dir" -name "*.json" 2>/dev/null | wc -l | tr -d ' ')
+
+        if [ "$stale_memory" -gt 0 ]; then
+            log_check "memory_ttl" "WARN" "$stale_memory of $total_memory memory files older than ${MEMORY_TTL_DAYS} days" "Consider archiving stale memories"
+
+            # List the stale files if not in JSON mode
+            if [ "$JSON_OUTPUT" = false ] && [ "$stale_memory" -lt 10 ]; then
+                echo "    Stale memory files:"
+                find "$memory_dir" -name "*.json" -mtime +$MEMORY_TTL_DAYS 2>/dev/null | while read f; do
+                    echo "      - $(basename "$f") ($(stat -f "%Sm" -t "%Y-%m-%d" "$f" 2>/dev/null || stat -c "%y" "$f" 2>/dev/null | cut -d' ' -f1))"
+                done
+            fi
+        elif [ "$total_memory" -gt 0 ]; then
+            log_check "memory_ttl" "PASS" "All $total_memory memory files within TTL (${MEMORY_TTL_DAYS} days)" ""
+        else
+            log_check "memory_ttl" "PASS" "No agent memory files (fresh start)" ""
+        fi
+    else
+        log_check "memory_ttl" "PASS" "No agent-memory directory (fresh start)" ""
+    fi
+
+    # Check memory size (warn if too large)
+    if [ -d "$memory_dir" ]; then
+        local memory_size_kb=$(du -sk "$memory_dir" 2>/dev/null | cut -f1 || echo "0")
+        if [ "$memory_size_kb" -gt 10240 ]; then  # >10MB
+            log_check "memory_size" "WARN" "Agent memory is ${memory_size_kb}KB (>10MB)" "Consider pruning old memories"
+        elif [ "$memory_size_kb" -gt 0 ]; then
+            log_check "memory_size" "PASS" "Agent memory size: ${memory_size_kb}KB" ""
+        fi
+    fi
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -502,6 +584,153 @@ validate_agents() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+# SECTION 9: BUILD QA VALIDATION
+# ─────────────────────────────────────────────────────────────────────────────
+
+validate_build_qa() {
+    log_section "9. BUILD QA VALIDATION"
+
+    # Skip if disabled by mode
+    if [ "$RUN_BUILD_QA" = false ]; then
+        log_check "build_qa_skipped" "PASS" "Build QA skipped (dev mode)" ""
+        return
+    fi
+
+    # Check if we're in a Node.js project
+    local package_json="$PROJECT_ROOT/package.json"
+    if [ ! -f "$package_json" ]; then
+        log_check "package_json" "WARN" "No package.json found" "Not a Node.js project or wrong directory"
+        return
+    fi
+
+    log_check "package_json" "PASS" "package.json found" ""
+
+    # Check if node_modules exists
+    if [ ! -d "$PROJECT_ROOT/node_modules" ]; then
+        log_check "node_modules" "WARN" "node_modules not found" "Run: npm install"
+        return
+    fi
+
+    # Detect package manager
+    local pkg_manager="npm"
+    if [ -f "$PROJECT_ROOT/pnpm-lock.yaml" ]; then
+        pkg_manager="pnpm"
+    elif [ -f "$PROJECT_ROOT/yarn.lock" ]; then
+        pkg_manager="yarn"
+    fi
+
+    # Check TypeScript compilation (if tsconfig exists)
+    if [ -f "$PROJECT_ROOT/tsconfig.json" ]; then
+        if [ "$QUICK_MODE" = false ]; then
+            echo "    Running TypeScript check..."
+            local tsc_output
+            tsc_output=$(cd "$PROJECT_ROOT" && npx tsc --noEmit 2>&1) || true
+            local tsc_exit=$?
+
+            if [ $tsc_exit -eq 0 ]; then
+                log_check "typescript" "PASS" "TypeScript compilation successful" ""
+            else
+                local error_count=$(echo "$tsc_output" | grep -c "error TS" || echo "0")
+                log_check "typescript" "FAIL" "TypeScript errors: $error_count" "Run: npx tsc --noEmit"
+            fi
+        else
+            log_check "typescript" "PASS" "TypeScript check skipped (quick mode)" ""
+        fi
+    else
+        log_check "typescript" "PASS" "No tsconfig.json (not a TypeScript project)" ""
+    fi
+
+    # Check build command
+    local has_build=$(jq -r '.scripts.build // empty' "$package_json" 2>/dev/null)
+    if [ -n "$has_build" ]; then
+        if [ "$QUICK_MODE" = false ]; then
+            echo "    Running build check..."
+            local build_output
+            build_output=$(cd "$PROJECT_ROOT" && $pkg_manager run build 2>&1) || true
+            local build_exit=$?
+
+            if [ $build_exit -eq 0 ]; then
+                log_check "build" "PASS" "Build successful ($pkg_manager run build)" ""
+            else
+                log_check "build" "FAIL" "Build failed" "Run: $pkg_manager run build"
+            fi
+        else
+            log_check "build" "PASS" "Build check skipped (quick mode)" ""
+        fi
+    else
+        log_check "build" "WARN" "No build script defined" ""
+    fi
+
+    # Check test command
+    local has_test=$(jq -r '.scripts.test // empty' "$package_json" 2>/dev/null)
+    if [ -n "$has_test" ]; then
+        if [ "$QUICK_MODE" = false ]; then
+            echo "    Running test check..."
+            local test_output
+            # Use --passWithNoTests for jest, --run for vitest
+            if echo "$has_test" | grep -q "vitest"; then
+                test_output=$(cd "$PROJECT_ROOT" && $pkg_manager run test -- --run 2>&1) || true
+            else
+                test_output=$(cd "$PROJECT_ROOT" && $pkg_manager run test -- --passWithNoTests 2>&1) || true
+            fi
+            local test_exit=$?
+
+            if [ $test_exit -eq 0 ]; then
+                # Try to extract test count
+                local test_count=$(echo "$test_output" | grep -oE "[0-9]+ pass" | head -1 || echo "")
+                log_check "tests" "PASS" "Tests passed${test_count:+ ($test_count)}" ""
+            else
+                local fail_count=$(echo "$test_output" | grep -oE "[0-9]+ fail" | head -1 || echo "some")
+                log_check "tests" "FAIL" "Tests failed ($fail_count)" "Run: $pkg_manager test"
+            fi
+        else
+            log_check "tests" "PASS" "Test check skipped (quick mode)" ""
+        fi
+    else
+        log_check "tests" "WARN" "No test script defined" ""
+    fi
+
+    # Check lint command
+    local has_lint=$(jq -r '.scripts.lint // empty' "$package_json" 2>/dev/null)
+    if [ -n "$has_lint" ]; then
+        if [ "$QUICK_MODE" = false ]; then
+            echo "    Running lint check..."
+            local lint_output
+            lint_output=$(cd "$PROJECT_ROOT" && $pkg_manager run lint 2>&1) || true
+            local lint_exit=$?
+
+            if [ $lint_exit -eq 0 ]; then
+                log_check "lint" "PASS" "Lint passed" ""
+            else
+                local lint_errors=$(echo "$lint_output" | grep -cE "(error|warning)" || echo "some")
+                log_check "lint" "WARN" "Lint issues found ($lint_errors)" "Run: $pkg_manager run lint"
+            fi
+        else
+            log_check "lint" "PASS" "Lint check skipped (quick mode)" ""
+        fi
+    else
+        log_check "lint" "WARN" "No lint script defined" ""
+    fi
+
+    # Check for security vulnerabilities (npm audit)
+    if [ "$QUICK_MODE" = false ]; then
+        echo "    Running security audit..."
+        local audit_output
+        audit_output=$(cd "$PROJECT_ROOT" && npm audit --audit-level=high 2>&1) || true
+        local audit_exit=$?
+
+        if [ $audit_exit -eq 0 ]; then
+            log_check "security_audit" "PASS" "No high/critical vulnerabilities" ""
+        else
+            local vuln_count=$(echo "$audit_output" | grep -oE "[0-9]+ (high|critical)" | head -1 || echo "some")
+            log_check "security_audit" "WARN" "Vulnerabilities found ($vuln_count)" "Run: npm audit"
+        fi
+    else
+        log_check "security_audit" "PASS" "Security audit skipped (quick mode)" ""
+    fi
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # GENERATE REPORT
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -522,7 +751,10 @@ generate_report() {
   "validation_report": {
     "timestamp": "$TIMESTAMP",
     "project": "$PROJECT_ROOT",
+    "mode": "$VALIDATION_MODE",
+    "quick_mode": $QUICK_MODE,
     "overall_status": "$overall_status",
+    "certified": $([ "$overall_status" = "PASS" ] && [ "$VALIDATION_MODE" = "strict" ] && echo "true" || echo "false"),
     "summary": {
       "total_checks": $TOTAL_CHECKS,
       "passed": $PASS_COUNT,
@@ -593,8 +825,17 @@ main() {
         echo ""
         echo "  Project:   $PROJECT_ROOT"
         echo "  Timestamp: $TIMESTAMP"
-        echo "  Mode:      $([ "$QUICK_MODE" = true ] && echo "Quick" || echo "Full")"
+        echo "  Mode:      $VALIDATION_MODE$([ "$QUICK_MODE" = true ] && echo " (quick)" || echo "")"
         echo ""
+
+        # Show mode banner for dev mode
+        if [ "$VALIDATION_MODE" = "dev" ]; then
+            echo -e "${YELLOW}┌─────────────────────────────────────────────────────────────────────────────┐${NC}"
+            echo -e "${YELLOW}│  ⚠️  DEV MODE - NOT CERTIFIED FOR PRODUCTION                                │${NC}"
+            echo -e "${YELLOW}│  Some checks are skipped for faster iteration. Use --mode=strict for full. │${NC}"
+            echo -e "${YELLOW}└─────────────────────────────────────────────────────────────────────────────┘${NC}"
+            echo ""
+        fi
     fi
 
     # Run all validations
@@ -606,6 +847,7 @@ main() {
     validate_slack
     validate_signal_files
     validate_agents
+    validate_build_qa
 
     # Generate and output report
     generate_report
