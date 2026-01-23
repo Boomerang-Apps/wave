@@ -1,0 +1,235 @@
+{
+  "id": "GAP-003",
+  "title": "Implement Input Validation Enforcement for All API Endpoints",
+  "domain": "security",
+  "agent": "be-dev-1",
+  "priority": "high",
+  "risk": "high",
+  "status": "completed",
+  "wave": null,
+  "description": "Currently 60 API endpoints exist but most lack schema validation. This exposes the Portal to injection attacks, type confusion, and malformed data issues. All endpoints accepting input must validate: type, length, format, and reject unexpected fields.",
+
+  "gate0_research": {
+    "sources": [
+      {
+        "name": "OWASP Input Validation Cheat Sheet",
+        "url": "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html",
+        "key_findings": [
+          "Validate input is both syntactically and semantically valid",
+          "Use allowlist (whitelist) approach - accept known good",
+          "Define allowed character sets, min/max length for all strings",
+          "Validate on server-side, not just client-side"
+        ]
+      },
+      {
+        "name": "OWASP REST Security Cheat Sheet",
+        "url": "https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html",
+        "key_findings": [
+          "Validate input: length, range, format, and type",
+          "Use strong types (numbers, booleans, dates) in API parameters",
+          "Constrain string inputs with regex patterns",
+          "Reject requests with unexpected/missing content type headers"
+        ]
+      },
+      {
+        "name": "CWE-20: Improper Input Validation",
+        "url": "https://cwe.mitre.org/data/definitions/20.html",
+        "key_findings": [
+          "Input validation problems are the root cause of many vulnerabilities",
+          "Both syntactic (format) and semantic (meaning) validation required",
+          "Validate all input from untrusted sources"
+        ]
+      }
+    ],
+    "compliance_requirements": [
+      "All POST/PUT/PATCH endpoints must have schema validation",
+      "Type checking enforced (string, number, boolean, array, object)",
+      "Length/size limits on all string and array fields",
+      "Invalid input returns 400 Bad Request with clear error",
+      "Unexpected fields rejected in strict mode",
+      "SQL/NoSQL injection patterns detected and blocked"
+    ]
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "All endpoints accepting body have schema validation",
+      "threshold": "100% of POST/PUT/PATCH endpoints validate input",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "Type checking enforced for all fields",
+      "threshold": "String, number, boolean, array, object types validated",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "Length/size limits on string fields",
+      "threshold": "All string fields have maxLength, minLength where appropriate",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "Invalid input returns 400 with clear error message",
+      "threshold": "Error response includes field name and validation failure reason",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "Unexpected fields rejected (strict mode)",
+      "threshold": "Request with unknown fields returns 400",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "Enum validation for constrained fields",
+      "threshold": "Fields with known values (status, type) validate against enum",
+      "testable": true
+    },
+    {
+      "id": "AC7",
+      "description": "Query parameter validation",
+      "threshold": "GET endpoints validate query params (type coercion, limits)",
+      "testable": true
+    },
+    {
+      "id": "AC8",
+      "description": "Path parameter validation",
+      "threshold": "URL params validated (format, allowed values)",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/middleware/validation.js",
+      "portal/server/middleware/schemas.js",
+      "portal/server/__tests__/validation.test.js"
+    ],
+    "modify": [
+      "portal/server/index.js"
+    ],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Validation bypass possible",
+      "Injection patterns not blocked",
+      "Type coercion vulnerabilities"
+    ],
+    "escalation_triggers": [
+      "Endpoints without validation",
+      "SQL injection possible"
+    ]
+  },
+
+  "dependencies": ["GAP-001", "GAP-002"],
+
+  "validation_sources": [
+    {
+      "name": "OWASP Input Validation Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html",
+      "requirement": "Validate all input syntactically and semantically"
+    },
+    {
+      "name": "OWASP REST Security Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html",
+      "requirement": "Validate length, range, format, type for all inputs"
+    },
+    {
+      "name": "CWE-20: Improper Input Validation",
+      "url": "https://cwe.mitre.org/data/definitions/20.html",
+      "requirement": "Root cause of many vulnerabilities, must address comprehensively"
+    }
+  ],
+
+  "endpoint_count": 60,
+  "endpoints_requiring_validation": [
+    "POST /api/analyze-stream",
+    "POST /api/analyze",
+    "POST /api/sync-stories",
+    "POST /api/validate-safety",
+    "POST /api/validate-rlm",
+    "POST /api/agents/:agentType/start",
+    "POST /api/agents/:agentType/stop",
+    "POST /api/test-anthropic",
+    "POST /api/test-slack",
+    "POST /api/validate-foundation",
+    "POST /api/validate-all",
+    "POST /api/validate-behavioral",
+    "POST /api/validate-story-risk",
+    "POST /api/validate-build-qa",
+    "POST /api/build-qa/thresholds",
+    "POST /api/drift-report/reset-memory",
+    "POST /api/drift-report/generate-baseline",
+    "POST /api/audit-log",
+    "POST /api/gate-override",
+    "POST /api/watchdog/heartbeat",
+    "POST /api/budgets",
+    "POST /api/budgets/track",
+    "POST /api/dora/deployment",
+    "POST /api/dora/lead-time",
+    "POST /api/dora/failure",
+    "POST /api/dora/recovery",
+    "POST /api/rate-limits/check",
+    "POST /api/rate-limits/record",
+    "PUT /api/rate-limits/config",
+    "POST /api/rate-limits/reset",
+    "POST /api/slack/test",
+    "POST /api/slack/notify",
+    "POST /api/slack/send"
+  ],
+
+  "implementation_hints": [
+    "Extend existing validateInput from security-middleware.js",
+    "Create schemas.js with schema definitions for each endpoint",
+    "Add strict mode to reject unexpected fields",
+    "Use express-validator style error messages",
+    "Apply validation middleware before route handlers"
+  ],
+
+  "test_plan": {
+    "unit_tests": [
+      "validateSchema - validates required fields",
+      "validateSchema - rejects missing required field",
+      "validateSchema - validates type (string)",
+      "validateSchema - validates type (number)",
+      "validateSchema - validates type (boolean)",
+      "validateSchema - validates type (array)",
+      "validateSchema - validates minLength",
+      "validateSchema - validates maxLength",
+      "validateSchema - validates min/max for numbers",
+      "validateSchema - validates enum values",
+      "validateSchema - validates pattern (regex)",
+      "validateSchema - rejects unexpected fields (strict)",
+      "validateSchema - validates nested objects",
+      "validateSchema - validates array items"
+    ],
+    "integration_tests": [
+      "POST /api/budgets - valid input succeeds",
+      "POST /api/budgets - invalid type returns 400",
+      "POST /api/budgets - missing required returns 400",
+      "POST /api/gate-override - enum validation",
+      "POST /api/agents/:agentType/start - path param validation",
+      "GET endpoints - query param validation"
+    ],
+    "security_tests": [
+      "SQL injection patterns blocked",
+      "XSS patterns sanitized",
+      "Path traversal in params blocked",
+      "Oversized arrays rejected"
+    ]
+  },
+
+  "created_at": "2026-01-24T03:00:00Z",
+  "completed_at": "2026-01-24T03:57:00Z",
+  "tests_passed": 102,
+  "endpoints_validated": 10,
+  "score": 100
+}

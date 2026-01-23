@@ -11,6 +11,34 @@ import { promptInjectionDetector } from './utils/prompt-injection-detector.js';
 import { DORAMetricsTracker } from './utils/dora-metrics.js';
 import { AgentRateLimiter } from './utils/rate-limiter.js';
 import { securityMiddleware, generateOWASPReport } from './security-middleware.js';
+import { createValidator, validateSchema, VALIDATION_ERRORS } from './middleware/validation.js';
+import {
+  budgetSchema,
+  budgetTrackSchema,
+  gateOverrideSchema,
+  agentStartSchema,
+  agentStopSchema,
+  auditLogSchema,
+  slackNotifySchema,
+  slackSendSchema,
+  slackTestSchema,
+  rateLimitConfigSchema,
+  rateLimitCheckSchema,
+  rateLimitRecordSchema,
+  rateLimitResetSchema,
+  analyzeSchema,
+  syncStoriesSchema,
+  validationSchema,
+  buildQAThresholdsSchema,
+  driftReportSchema,
+  watchdogHeartbeatSchema,
+  doraDeploymentSchema,
+  doraLeadTimeSchema,
+  doraFailureSchema,
+  doraRecoverySchema,
+  testConnectionSchema,
+  agentTypeParamSchema
+} from './middleware/schemas.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -5150,7 +5178,7 @@ app.get('/api/audit-log/summary', (req, res) => {
 });
 
 // POST /api/audit-log - Record an audit event from frontend
-app.post('/api/audit-log', (req, res) => {
+app.post('/api/audit-log', createValidator(auditLogSchema), (req, res) => {
   const event = req.body;
 
   if (!event.action) {
@@ -5283,7 +5311,7 @@ app.get('/api/audit-log/export', (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // POST /api/gate-override - Log a gate override event
-app.post('/api/gate-override', async (req, res) => {
+app.post('/api/gate-override', createValidator(gateOverrideSchema), async (req, res) => {
   const {
     gateNumber,
     action = 'override', // 'override', 'bypass_requested', 'bypass_approved', 'bypass_denied'
@@ -5761,7 +5789,7 @@ function generateBudgetAlerts(config, usage, agentStatus) {
 }
 
 // POST /api/budgets - Update budget configuration
-app.post('/api/budgets', (req, res) => {
+app.post('/api/budgets', createValidator(budgetSchema), (req, res) => {
   const { projectPath, config } = req.body;
 
   if (!projectPath) {
@@ -5801,7 +5829,7 @@ app.post('/api/budgets', (req, res) => {
 });
 
 // POST /api/budgets/track - Track token usage for an agent/story
-app.post('/api/budgets/track', (req, res) => {
+app.post('/api/budgets/track', createValidator(budgetTrackSchema), (req, res) => {
   const { projectPath, wave, agent, storyId, tokens, cost } = req.body;
 
   if (!projectPath || !wave || !agent) {
@@ -6336,7 +6364,7 @@ app.get('/api/rate-limits', (req, res) => {
 });
 
 // POST /api/rate-limits/check - Check if a request would be allowed
-app.post('/api/rate-limits/check', (req, res) => {
+app.post('/api/rate-limits/check', createValidator(rateLimitCheckSchema), (req, res) => {
   const { projectPath, agent, estimatedTokens } = req.body;
 
   if (!projectPath || !agent) {
@@ -6369,7 +6397,7 @@ app.post('/api/rate-limits/check', (req, res) => {
 });
 
 // POST /api/rate-limits/record - Record a completed request
-app.post('/api/rate-limits/record', (req, res) => {
+app.post('/api/rate-limits/record', createValidator(rateLimitRecordSchema), (req, res) => {
   const { projectPath, agent, tokensUsed } = req.body;
 
   if (!projectPath || !agent) {
@@ -6388,7 +6416,7 @@ app.post('/api/rate-limits/record', (req, res) => {
 });
 
 // PUT /api/rate-limits/config - Update rate limits for an agent type
-app.put('/api/rate-limits/config', (req, res) => {
+app.put('/api/rate-limits/config', createValidator(rateLimitConfigSchema), (req, res) => {
   const { projectPath, agentType, limits } = req.body;
 
   if (!projectPath || !agentType || !limits) {
@@ -6460,7 +6488,7 @@ app.get('/api/slack/status', (req, res) => {
 });
 
 // Test Slack connection
-app.post('/api/slack/test', async (req, res) => {
+app.post('/api/slack/test', createValidator(slackTestSchema), async (req, res) => {
   const { message } = req.body;
 
   try {
@@ -6476,7 +6504,7 @@ app.post('/api/slack/test', async (req, res) => {
 });
 
 // Send a Slack notification
-app.post('/api/slack/notify', async (req, res) => {
+app.post('/api/slack/notify', createValidator(slackNotifySchema), async (req, res) => {
   const { type, data } = req.body;
 
   if (!type) {
@@ -6497,7 +6525,7 @@ app.post('/api/slack/notify', async (req, res) => {
 });
 
 // Send custom blocks to Slack
-app.post('/api/slack/send', async (req, res) => {
+app.post('/api/slack/send', createValidator(slackSendSchema), async (req, res) => {
   const { blocks, text, channel } = req.body;
 
   if (!blocks && !text) {
