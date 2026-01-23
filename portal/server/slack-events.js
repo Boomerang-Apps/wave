@@ -29,6 +29,12 @@ export const SLACK_EVENT_TYPES = {
   GATE_REJECTED: 'gate_rejected',       // Stage failed/rejected
   GATE_SKIPPED: 'gate_skipped',         // Stage skipped
 
+  // Gate override events (validated: SonarSource audit logging requirements)
+  GATE_OVERRIDE: 'gate_override',               // Manual gate override
+  GATE_BYPASS_REQUESTED: 'gate_bypass_requested', // Bypass requested (pending)
+  GATE_BYPASS_APPROVED: 'gate_bypass_approved',   // Bypass approved
+  GATE_BYPASS_DENIED: 'gate_bypass_denied',       // Bypass denied
+
   // ─────────────────────────────────────────────────────────────────────────────
   // WORKER/AGENT EVENTS
   // Events for automated workers (agents, jobs, runners)
@@ -145,6 +151,10 @@ export const EVENT_SEVERITY_MAP = {
   // Warning severity
   [SLACK_EVENT_TYPES.STORY_BLOCKED]: SEVERITY_LEVELS.WARNING,
   [SLACK_EVENT_TYPES.GATE_REJECTED]: SEVERITY_LEVELS.WARNING,
+  [SLACK_EVENT_TYPES.GATE_OVERRIDE]: SEVERITY_LEVELS.WARNING,
+  [SLACK_EVENT_TYPES.GATE_BYPASS_REQUESTED]: SEVERITY_LEVELS.WARNING,
+  [SLACK_EVENT_TYPES.GATE_BYPASS_APPROVED]: SEVERITY_LEVELS.WARNING,
+  [SLACK_EVENT_TYPES.GATE_BYPASS_DENIED]: SEVERITY_LEVELS.WARNING,
   [SLACK_EVENT_TYPES.AGENT_ERROR]: SEVERITY_LEVELS.WARNING,
   [SLACK_EVENT_TYPES.BUDGET_WARNING]: SEVERITY_LEVELS.WARNING,
   [SLACK_EVENT_TYPES.VALIDATION_FAIL]: SEVERITY_LEVELS.WARNING,
@@ -290,6 +300,10 @@ export function getEventEmoji(type) {
     // Warnings
     [SLACK_EVENT_TYPES.STORY_BLOCKED]: ':no_entry_sign:',
     [SLACK_EVENT_TYPES.GATE_REJECTED]: ':x:',
+    [SLACK_EVENT_TYPES.GATE_OVERRIDE]: ':shield:',
+    [SLACK_EVENT_TYPES.GATE_BYPASS_REQUESTED]: ':raised_hand:',
+    [SLACK_EVENT_TYPES.GATE_BYPASS_APPROVED]: ':white_check_mark:',
+    [SLACK_EVENT_TYPES.GATE_BYPASS_DENIED]: ':no_entry:',
     [SLACK_EVENT_TYPES.BUDGET_WARNING]: ':warning:',
     [SLACK_EVENT_TYPES.VALIDATION_FAIL]: ':x:',
     [SLACK_EVENT_TYPES.RETRY]: ':arrows_counterclockwise:',

@@ -13,16 +13,133 @@ dotenv.config();
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SLACK NOTIFIER INITIALIZATION
+// Validated: Slack Developer Docs - Web API enables threading
 // ═══════════════════════════════════════════════════════════════════════════════
+
+// Thread persistence helpers (uses Supabase REST API)
+async function persistSlackThread(storyId, threadInfo) {
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.log('[SlackThreads] No Supabase configured - thread stored in memory only');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/slack_threads`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({
+        task_id: storyId,
+        task_type: 'story',
+        thread_ts: threadInfo.thread_ts,
+        channel_id: threadInfo.channel_id,
+        status: 'active',
+        message_count: threadInfo.message_count || 1,
+        last_message_at: new Date().toISOString()
+      })
+    });
+
+    if (!response.ok) {
+      console.error('[SlackThreads] Failed to persist thread:', await response.text());
+    } else {
+      console.log(`[SlackThreads] Persisted thread for ${storyId}: ${threadInfo.thread_ts}`);
+    }
+  } catch (error) {
+    console.error('[SlackThreads] Error persisting thread:', error.message);
+  }
+}
+
+async function updateSlackThread(storyId, threadInfo) {
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) return;
+
+  try {
+    await fetch(`${supabaseUrl}/rest/v1/slack_threads?task_id=eq.${encodeURIComponent(storyId)}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`
+      },
+      body: JSON.stringify({
+        message_count: threadInfo.message_count,
+        last_message_at: new Date().toISOString()
+      })
+    });
+  } catch (error) {
+    console.error('[SlackThreads] Error updating thread:', error.message);
+  }
+}
+
+async function loadSlackThreads() {
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) return {};
+
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/slack_threads?status=eq.active&select=task_id,thread_ts,channel_id,message_count`, {
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`
+      }
+    });
+
+    if (response.ok) {
+      const threads = await response.json();
+      const threadMap = {};
+      threads.forEach(t => {
+        threadMap[t.task_id] = {
+          thread_ts: t.thread_ts,
+          channel_id: t.channel_id,
+          message_count: t.message_count
+        };
+      });
+      console.log(`[SlackThreads] Loaded ${threads.length} active threads from database`);
+      return threadMap;
+    }
+  } catch (error) {
+    console.error('[SlackThreads] Error loading threads:', error.message);
+  }
+  return {};
+}
+
 const slackNotifier = getSlackNotifier({
+  // Web API (preferred - enables threading)
+  botToken: process.env.SLACK_BOT_TOKEN,
+  // Legacy webhook (fallback)
   webhookUrl: process.env.SLACK_WEBHOOK_URL,
   projectName: process.env.PROJECT_NAME || 'Portal',
   enabled: process.env.SLACK_ENABLED !== 'false',
+  // Channel IDs for Web API (must be IDs like C0123456789, not names)
   channels: {
-    default: process.env.SLACK_CHANNEL_UPDATES || process.env.SLACK_WEBHOOK_URL,
-    alerts: process.env.SLACK_CHANNEL_ALERTS || process.env.SLACK_WEBHOOK_URL,
-    budget: process.env.SLACK_CHANNEL_BUDGET || process.env.SLACK_WEBHOOK_URL
-  }
+    default: process.env.SLACK_CHANNEL_UPDATES,
+    alerts: process.env.SLACK_CHANNEL_ALERTS,
+    budget: process.env.SLACK_CHANNEL_BUDGET
+  },
+  // Legacy webhooks (fallback)
+  webhooks: {
+    default: process.env.SLACK_WEBHOOK_URL,
+    alerts: process.env.SLACK_WEBHOOK_URL,
+    budget: process.env.SLACK_WEBHOOK_URL
+  },
+  // Thread persistence callbacks
+  onThreadCreated: persistSlackThread,
+  onThreadUpdated: updateSlackThread
+});
+
+// Load existing threads on startup (async, non-blocking)
+loadSlackThreads().then(threads => {
+  slackNotifier.loadThreads(threads);
 });
 
 const __filename = fileURLToPath(import.meta.url);
@@ -173,6 +290,75 @@ async function logAgentAction(agentType, action, details = {}) {
     tokenOutput: details.tokenOutput,
     costUsd: details.costUsd
   });
+}
+
+/**
+ * Log gate override with required reason
+ * Validated: SonarSource audit entry requirements
+ * - Timestamp (UTC preferred)
+ * - User/Actor Identification
+ * - Action Type
+ * - Resource/Object affected
+ * - Outcome (success/failure)
+ * - Contextual Data (before/after states)
+ */
+async function logGateOverride(gateNumber, action, details = {}) {
+  // Validate reason is provided (mandatory for audit compliance)
+  if (!details.reason || details.reason.length < 10) {
+    throw new Error('Gate override requires a reason (minimum 10 characters)');
+  }
+
+  const auditEntry = await logAudit({
+    projectId: details.projectId,
+    projectPath: details.projectPath,
+    eventType: 'gate_transition',
+    category: 'gate_override',
+    severity: 'warning',
+
+    // Actor identification (SonarSource requirement)
+    actorType: details.actor_type || 'user',
+    actorId: details.actor_id || 'unknown',
+
+    // Action Type (standardized verb)
+    action: action, // 'override', 'bypass_requested', 'bypass_approved', 'bypass_denied'
+
+    // Resource/Object affected
+    resourceType: 'gate',
+    resourceId: `gate-${gateNumber}`,
+
+    // Context
+    waveNumber: details.wave_number,
+    gateNumber: gateNumber,
+    validationMode: details.validation_mode,
+
+    // Contextual Data with before/after states (SonarSource)
+    details: {
+      reason: details.reason,
+      reason_code: details.reason_code, // e.g., 'emergency', 'false_positive', 'approved_exception'
+      previous_status: details.previous_status,
+      new_status: details.new_status,
+      bypassed_checks: details.bypassed_checks || [],
+      approval_reference: details.approval_reference
+    },
+
+    // Liminal AI Governance - document overrides
+    safetyTags: ['gate_override'],
+    requiresReview: true // ALWAYS flag for review
+  });
+
+  // Notify Slack (always alerts channel for overrides)
+  if (slackNotifier.enabled) {
+    await slackNotifier.notifyGateOverride({
+      gate: gateNumber,
+      action,
+      reason: details.reason,
+      actor: details.actor_id,
+      wave: details.wave_number,
+      story_id: details.story_id
+    });
+  }
+
+  return auditEntry;
 }
 
 // Log validation run
@@ -4991,6 +5177,117 @@ app.get('/api/audit-log/export', (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// GATE OVERRIDE ENDPOINTS
+// Validated: SonarSource audit logging requirements
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// POST /api/gate-override - Log a gate override event
+app.post('/api/gate-override', async (req, res) => {
+  const {
+    gateNumber,
+    action = 'override', // 'override', 'bypass_requested', 'bypass_approved', 'bypass_denied'
+    reason,
+    reason_code, // 'emergency', 'false_positive', 'approved_exception'
+    actor_type = 'user',
+    actor_id,
+    projectId,
+    projectPath,
+    wave_number,
+    story_id,
+    previous_status,
+    new_status,
+    bypassed_checks,
+    approval_reference,
+    validation_mode
+  } = req.body;
+
+  // Validate required fields
+  if (!gateNumber) {
+    return res.status(400).json({
+      success: false,
+      error: 'gateNumber is required'
+    });
+  }
+
+  if (!reason || reason.length < 10) {
+    return res.status(400).json({
+      success: false,
+      error: 'reason is required (minimum 10 characters)'
+    });
+  }
+
+  const validActions = ['override', 'bypass_requested', 'bypass_approved', 'bypass_denied'];
+  if (!validActions.includes(action)) {
+    return res.status(400).json({
+      success: false,
+      error: `Invalid action. Must be one of: ${validActions.join(', ')}`
+    });
+  }
+
+  try {
+    const auditEntry = await logGateOverride(gateNumber, action, {
+      reason,
+      reason_code,
+      actor_type,
+      actor_id,
+      projectId,
+      projectPath,
+      wave_number,
+      story_id,
+      previous_status,
+      new_status,
+      bypassed_checks,
+      approval_reference,
+      validation_mode
+    });
+
+    return res.json({
+      success: true,
+      message: `Gate ${gateNumber} ${action} logged`,
+      audit_id: auditEntry.id,
+      requires_review: true
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// GET /api/gate-overrides - List recent gate overrides
+app.get('/api/gate-overrides', (req, res) => {
+  const { projectPath, hours = 24 } = req.query;
+
+  try {
+    // Filter audit log for gate override events
+    const overrides = auditLogBuffer.filter(entry =>
+      entry.event_category === 'gate_override' ||
+      entry.safety_tags?.includes('gate_override')
+    );
+
+    // Sort by timestamp descending
+    overrides.sort((a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    return res.json({
+      success: true,
+      total: overrides.length,
+      overrides: overrides.slice(0, 100), // Limit to 100 most recent
+      requires_attention: overrides.filter(o => o.requires_review).length
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // AGENT WATCHDOG ENDPOINTS
 // Monitor agent health through heartbeat signals (Phase 2.3)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -5744,6 +6041,75 @@ app.get('/api/slack/event-types', (req, res) => {
     success: true,
     eventTypes: SLACK_EVENT_TYPES
   });
+});
+
+// Get active Slack threads (for thread-per-story pattern)
+app.get('/api/slack/threads', async (req, res) => {
+  const { status = 'active' } = req.query;
+
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+  // Return in-memory threads if no database
+  if (!supabaseUrl || !supabaseKey) {
+    const memoryThreads = [];
+    slackNotifier.threadCache.forEach((info, taskId) => {
+      memoryThreads.push({
+        task_id: taskId,
+        ...info,
+        source: 'memory'
+      });
+    });
+    return res.json({
+      success: true,
+      threads: memoryThreads,
+      source: 'memory'
+    });
+  }
+
+  try {
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/slack_threads?status=eq.${status}&order=created_at.desc`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`
+        }
+      }
+    );
+
+    if (response.ok) {
+      const threads = await response.json();
+      return res.json({
+        success: true,
+        threads,
+        source: 'database'
+      });
+    }
+
+    return res.status(response.status).json({
+      success: false,
+      error: 'Failed to fetch threads from database'
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Test Web API connection (validates OAuth)
+app.post('/api/slack/test-connection', async (req, res) => {
+  try {
+    const result = await slackNotifier.testConnection();
+    res.json({
+      success: result.success,
+      mode: result.mode,
+      team: result.team,
+      user: result.user,
+      reason: result.reason
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
