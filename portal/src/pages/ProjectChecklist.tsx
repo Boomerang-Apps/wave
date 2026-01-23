@@ -5232,6 +5232,57 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               />
             </div>
 
+            {/* Terminal Setup Section */}
+            <SectionHeader
+              badge="TMUX"
+              badgeColor="bg-purple-500"
+              title="Terminal Setup"
+              description="Copy command to set up WAVE terminal session"
+              timestamp={lastUpdate}
+              status="pass"
+            />
+            <div className="border-x border-b border-border rounded-b-xl p-4">
+              <div className="mb-3">
+                <p className="text-sm text-gray-600 mb-2">
+                  Run this command to create a 4-pane tmux session with merge-watcher, portal, and agent terminals:
+                </p>
+                <div className="relative">
+                  <pre className="bg-gray-900 text-green-400 p-4 rounded-lg text-sm overflow-x-auto font-mono">
+{`# Start WAVE terminal session
+./core/scripts/wave-terminal.sh --project ${project?.root_path || '/path/to/project'} --wave 1
+
+# Or without auto-starting services:
+./core/scripts/wave-terminal.sh -p ${project?.root_path || '/path/to/project'} --no-watcher --no-portal`}
+                  </pre>
+                  <button
+                    onClick={() => {
+                      const cmd = `./core/scripts/wave-terminal.sh --project ${project?.root_path || '/path/to/project'} --wave 1`;
+                      navigator.clipboard.writeText(cmd);
+                    }}
+                    className="absolute top-2 right-2 p-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-xs flex items-center gap-1"
+                  >
+                    <Copy className="h-3 w-3" />
+                    Copy
+                  </button>
+                </div>
+              </div>
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mt-3">
+                <p className="text-sm font-medium text-purple-800 mb-1">Layout Created:</p>
+                <pre className="text-xs text-purple-700 font-mono">
+{`┌─────────────────────┬─────────────────────┐
+│   MERGE WATCHER     │   FE-DEV AGENT      │
+│   (auto-starts)     │   (ready)           │
+├─────────────────────┼─────────────────────┤
+│   PORTAL SERVER     │   BE-DEV AGENT      │
+│   (auto-starts)     │   (ready)           │
+└─────────────────────┴─────────────────────┘`}
+                </pre>
+                <p className="text-xs text-purple-600 mt-2">
+                  <strong>Keys:</strong> Ctrl+b arrow (navigate) | Ctrl+b d (detach) | Ctrl+b z (zoom) | tmux attach -t wave (reattach)
+                </p>
+              </div>
+            </div>
+
             {/* Results Detail */}
             {buildQaChecks.length > 0 && buildQaChecks.some(c => c.duration_ms) && (
               <div className="mt-6 p-4 bg-zinc-50 border border-zinc-200 rounded-xl">
