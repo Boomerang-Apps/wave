@@ -33,7 +33,7 @@ export function NewProject() {
 
     try {
       const { data, error: insertError } = await supabase
-        .from('maf_projects')
+        .from('wave_projects')
         .insert({
           name: name.trim(),
           root_path: rootPath.trim(),

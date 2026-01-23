@@ -1,0 +1,94 @@
+# WAVE Docker Ignore
+# Excludes unnecessary files from Docker build context
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Dependencies (rebuilt in container)
+node_modules
+**/node_modules
+
+# Build outputs
+dist
+build
+.next
+.nuxt
+.output
+
+# IDE and editors
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# Documentation (not needed in container)
+*.md
+!README.md
+docs/
+
+# Test files
+__tests__
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+coverage/
+.nyc_output/
+
+# Development files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local configuration
+.claude/
+!.claudecode/agents/
+*.local
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Portal build artifacts
+portal/node_modules
+portal/dist
+
+# Reports and output
+reports/
+*.report.json
+
+# Worktrees (created dynamically)
+worktrees/
+
+# Large media files
+*.mp4
+*.mov
+*.avi
+*.pdf
+*.zip
+*.tar.gz
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.venv
+venv/

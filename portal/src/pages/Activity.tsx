@@ -15,7 +15,7 @@ export function Activity() {
     }
 
     const { data } = await supabase
-      .from('maf_audit_log')
+      .from('wave_audit_log')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(100)
@@ -32,7 +32,7 @@ export function Activity() {
     if (isSupabaseConfigured()) {
       const subscription = supabase
         .channel('audit-log')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'maf_audit_log' }, () => {
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'wave_audit_log' }, () => {
           fetchLogs()
         })
         .subscribe()

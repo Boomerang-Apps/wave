@@ -9,7 +9,7 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
-      maf_projects: {
+      wave_projects: {
         Row: {
           id: string
           name: string
@@ -44,7 +44,7 @@ export interface Database {
           updated_at?: string
         }
       }
-      maf_stories: {
+      wave_stories: {
         Row: {
           id: string
           pipeline_id: string | null
@@ -82,7 +82,7 @@ export interface Database {
           updated_at?: string
         }
       }
-      maf_waves: {
+      wave_waves: {
         Row: {
           id: string
           project_id: string
@@ -120,7 +120,7 @@ export interface Database {
           updated_at?: string
         }
       }
-      maf_audit_log: {
+      wave_audit_log: {
         Row: {
           id: string
           project_id: string | null
@@ -152,7 +152,7 @@ export interface Database {
           created_at?: string
         }
       }
-      maf_analysis_reports: {
+      wave_analysis_reports: {
         Row: {
           id: string
           project_id: string
@@ -184,7 +184,7 @@ export interface Database {
           updated_at?: string
         }
       }
-      maf_project_config: {
+      wave_project_config: {
         Row: {
           id: string
           project_id: string
@@ -221,7 +221,7 @@ export interface Database {
 }
 
 // Helper types
-export type Project = Database['public']['Tables']['maf_projects']['Row']
-export type Story = Database['public']['Tables']['maf_stories']['Row']
-export type Wave = Database['public']['Tables']['maf_waves']['Row']
-export type AuditLog = Database['public']['Tables']['maf_audit_log']['Row']
+export type Project = Database['public']['Tables']['wave_projects']['Row']
+export type Story = Database['public']['Tables']['wave_stories']['Row']
+export type Wave = Database['public']['Tables']['wave_waves']['Row']
+export type AuditLog = Database['public']['Tables']['wave_audit_log']['Row']

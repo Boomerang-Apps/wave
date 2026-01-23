@@ -58,7 +58,7 @@ export function Dashboard() {
       try {
         // Fetch projects
         const { data: projects } = await supabase
-          .from('maf_projects')
+          .from('wave_projects')
           .select('*')
           .order('created_at', { ascending: false })
           .limit(5)
@@ -69,7 +69,7 @@ export function Dashboard() {
 
         // Fetch waves
         const { data: waves } = await supabase
-          .from('maf_waves')
+          .from('wave_waves')
           .select('*')
           .order('created_at', { ascending: false })
           .limit(5)
@@ -80,7 +80,7 @@ export function Dashboard() {
 
         // Fetch stories
         const { data: stories } = await supabase
-          .from('maf_stories')
+          .from('wave_stories')
           .select('*')
           .order('created_at', { ascending: false })
           .limit(5)
@@ -98,9 +98,9 @@ export function Dashboard() {
         }
 
         // Get total counts
-        const { count: projectCount } = await supabase.from('maf_projects').select('*', { count: 'exact', head: true })
-        const { count: waveCount } = await supabase.from('maf_waves').select('*', { count: 'exact', head: true })
-        const { count: storyCount } = await supabase.from('maf_stories').select('*', { count: 'exact', head: true })
+        const { count: projectCount } = await supabase.from('wave_projects').select('*', { count: 'exact', head: true })
+        const { count: waveCount } = await supabase.from('wave_waves').select('*', { count: 'exact', head: true })
+        const { count: storyCount } = await supabase.from('wave_stories').select('*', { count: 'exact', head: true })
 
         setStats(prev => ({
           ...prev,
@@ -120,9 +120,9 @@ export function Dashboard() {
     // Subscribe to real-time updates
     const subscription = supabase
       .channel('dashboard-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'maf_projects' }, fetchData)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'maf_waves' }, fetchData)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'maf_stories' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wave_projects' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wave_waves' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wave_stories' }, fetchData)
       .subscribe()
 
     return () => {

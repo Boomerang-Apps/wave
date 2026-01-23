@@ -42,15 +42,24 @@ export function Layout({ children }: LayoutProps) {
 
       try {
         const { data, error } = await supabase
-          .from('maf_projects')
+          .from('wave_projects')
           .select('id, name, root_path')
           .order('created_at', { ascending: false })
 
-        if (!error && data) {
+        console.log('Fetched projects:', data, 'Error:', error)
+
+        if (error) {
+          console.error('Supabase error:', error)
+          setSupabaseConnected(false)
+          return
+        }
+
+        if (data) {
           setProjects(data)
           setSupabaseConnected(true)
         }
-      } catch {
+      } catch (err) {
+        console.error('Fetch projects error:', err)
         setSupabaseConnected(false)
       }
     }
@@ -60,7 +69,7 @@ export function Layout({ children }: LayoutProps) {
     // Subscribe to project changes
     const subscription = supabase
       .channel('projects-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'maf_projects' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wave_projects' }, () => {
         fetchProjects()
       })
       .subscribe()

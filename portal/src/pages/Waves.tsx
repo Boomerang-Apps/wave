@@ -66,7 +66,7 @@ export function Waves() {
 
     try {
       const { data: stories } = await supabase
-        .from('maf_stories')
+        .from('wave_stories')
         .select('*')
         .order('wave_number', { ascending: true })
 
@@ -112,7 +112,7 @@ export function Waves() {
     if (isSupabaseConfigured()) {
       const subscription = supabase
         .channel('waves-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'maf_stories' }, () => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'wave_stories' }, () => {
           fetchWaves()
         })
         .subscribe()

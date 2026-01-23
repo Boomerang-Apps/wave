@@ -1,126 +1,404 @@
 # WAVE Multi-Agent Docker Compose
-# Usage: ./wave-start.sh --project /path/to/project --wave 3
-
-# Load environment from .env file automatically
+# Orchestrates 8 autonomous coding agents with Gate 0 certification
+#
+# Usage:
+#   docker compose up -d                    # Start merge-watcher + dozzle
+#   docker compose --profile agents up -d   # Start dev agents
+#   docker compose --profile qa up -d       # Start QA agent
+#   docker compose --profile all up -d      # Start everything
+#
+# Environment variables (set in .env or export):
+#   PROJECT_PATH=/path/to/your/project
+#   WAVE_NUMBER=1
+#   ANTHROPIC_API_KEY=sk-ant-...
 
 services:
-  # ─────────────────────────────────────────────────────────────
-  # MERGE WATCHER - Control Tower
-  # ─────────────────────────────────────────────────────────────
+  # ═══════════════════════════════════════════════════════════════
+  # ORCHESTRATION LAYER
+  # ═══════════════════════════════════════════════════════════════
+
+  # Merge Watcher - Control Tower
   merge-watcher:
     build:
       context: .
       dockerfile: Dockerfile.agent
     container_name: wave-merge-watcher
+    hostname: merge-watcher
     environment:
       - WAVE_ROLE=merge-watcher
       - WAVE_NUMBER=${WAVE_NUMBER:-1}
       - PROJECT_PATH=/project
+      - WAVE_PATH=/wave-framework
     volumes:
-      - ${PROJECT_PATH}:/project
+      - ${PROJECT_PATH:-.}:/project
+      - ./:/wave-framework:ro
       - ./core/scripts:/scripts:ro
-      - ~/.claude:/root/.claude:ro
     working_dir: /project
-    command: /scripts/merge-watcher-v12.sh --wave ${WAVE_NUMBER:-1} --project /project
+    command: ["merge-watcher"]
     networks:
       - wave-network
     restart: unless-stopped
+    labels:
+      - "wave.role=orchestrator"
+      - "wave.component=merge-watcher"
 
-  # ─────────────────────────────────────────────────────────────
-  # FE-DEV Agent
-  # ─────────────────────────────────────────────────────────────
-  fe-dev:
+  # Wave Orchestrator - Budget & Retry Management
+  orchestrator:
     build:
       context: .
       dockerfile: Dockerfile.agent
-    container_name: wave-fe-dev
+    container_name: wave-orchestrator
+    hostname: orchestrator
     environment:
-      - WAVE_ROLE=fe-dev
+      - WAVE_ROLE=orchestrator
+      - WAVE_NUMBER=${WAVE_NUMBER:-1}
+      - PROJECT_PATH=/project
+      - WAVE_BUDGET=${WAVE_BUDGET:-2.00}
+      - MAX_RETRIES=${MAX_RETRIES:-3}
+    volumes:
+      - ${PROJECT_PATH:-.}:/project
+      - ./:/wave-framework:ro
+      - ./core/scripts:/scripts:ro
+    working_dir: /project
+    command: ["orchestrator"]
+    networks:
+      - wave-network
+    depends_on:
+      - merge-watcher
+    restart: unless-stopped
+    labels:
+      - "wave.role=orchestrator"
+      - "wave.component=wave-orchestrator"
+
+  # ═══════════════════════════════════════════════════════════════
+  # LEADERSHIP AGENTS (Opus 4.5)
+  # ═══════════════════════════════════════════════════════════════
+
+  # CTO Agent - Architecture & Technical Oversight
+  cto:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: wave-cto
+    hostname: cto
+    environment:
+      - WAVE_ROLE=cto
       - WAVE_NUMBER=${WAVE_NUMBER:-1}
       - PROJECT_PATH=/project
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_MODEL=claude-opus-4-5-20251101
+      - AGENT_GATES=0,7
     volumes:
-      - ${PROJECT_PATH}:/project
+      - ${PROJECT_PATH:-.}:/project
+      - ./:/wave-framework:ro
       - ./core/scripts:/scripts:ro
-      - ./entrypoint-agent.sh:/entrypoint.sh:ro
-      - ~/.claude:/home/wave/.claude
+      - ./.claudecode/agents:/agents:ro
+      - wave-claude-config:/home/wave/.claude
     working_dir: /project
-    command: /entrypoint.sh
+    command: ["cto"]
+    networks:
+      - wave-network
+    depends_on:
+      - merge-watcher
+    profiles:
+      - leadership
+      - all
+    labels:
+      - "wave.role=agent"
+      - "wave.agent=cto"
+      - "wave.model=opus"
+
+  # PM Agent - Orchestration & Story Assignment
+  pm:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: wave-pm
+    hostname: pm
+    environment:
+      - WAVE_ROLE=pm
+      - WAVE_NUMBER=${WAVE_NUMBER:-1}
+      - PROJECT_PATH=/project
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_MODEL=claude-opus-4-5-20251101
+      - AGENT_GATES=0,5,6,7
+    volumes:
+      - ${PROJECT_PATH:-.}:/project
+      - ./:/wave-framework:ro
+      - ./core/scripts:/scripts:ro
+      - ./.claudecode/agents:/agents:ro
+      - wave-claude-config:/home/wave/.claude
+    working_dir: /project
+    command: ["pm"]
+    networks:
+      - wave-network
+    depends_on:
+      - merge-watcher
+    profiles:
+      - leadership
+      - all
+    labels:
+      - "wave.role=agent"
+      - "wave.agent=pm"
+      - "wave.model=opus"
+
+  # ═══════════════════════════════════════════════════════════════
+  # DEVELOPMENT AGENTS (Sonnet 4)
+  # ═══════════════════════════════════════════════════════════════
+
+  # FE-Dev-1 Agent - Frontend Development Wave 1
+  fe-dev-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: wave-fe-dev-1
+    hostname: fe-dev-1
+    environment:
+      - WAVE_ROLE=fe-dev-1
+      - WAVE_NUMBER=${WAVE_NUMBER:-1}
+      - PROJECT_PATH=/project
+      - WORKTREE_PATH=/project/worktrees/fe-dev-1
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_MODEL=claude-sonnet-4-20250514
+      - AGENT_GATES=2,3
+    volumes:
+      - ${PROJECT_PATH:-.}:/project
+      - ./:/wave-framework:ro
+      - ./core/scripts:/scripts:ro
+      - ./.claudecode/agents:/agents:ro
+      - wave-claude-config:/home/wave/.claude
+    working_dir: /project/worktrees/fe-dev-1
+    command: ["fe-dev-1"]
     networks:
       - wave-network
     depends_on:
       - merge-watcher
     profiles:
       - agents
+      - frontend
+      - all
+    labels:
+      - "wave.role=agent"
+      - "wave.agent=fe-dev-1"
+      - "wave.model=sonnet"
+      - "wave.domain=frontend"
 
-  # ─────────────────────────────────────────────────────────────
-  # BE-DEV Agent
-  # ─────────────────────────────────────────────────────────────
-  be-dev:
+  # FE-Dev-2 Agent - Frontend Development Wave 2
+  fe-dev-2:
     build:
       context: .
       dockerfile: Dockerfile.agent
-    container_name: wave-be-dev
+    container_name: wave-fe-dev-2
+    hostname: fe-dev-2
     environment:
-      - WAVE_ROLE=be-dev
-      - WAVE_NUMBER=${WAVE_NUMBER:-1}
+      - WAVE_ROLE=fe-dev-2
+      - WAVE_NUMBER=${WAVE_NUMBER:-2}
       - PROJECT_PATH=/project
+      - WORKTREE_PATH=/project/worktrees/fe-dev-2
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_MODEL=claude-sonnet-4-20250514
+      - AGENT_GATES=2,3
     volumes:
-      - ${PROJECT_PATH}:/project
+      - ${PROJECT_PATH:-.}:/project
+      - ./:/wave-framework:ro
       - ./core/scripts:/scripts:ro
-      - ./entrypoint-agent.sh:/entrypoint.sh:ro
-      - ~/.claude:/home/wave/.claude
-    working_dir: /project
-    command: /entrypoint.sh
+      - ./.claudecode/agents:/agents:ro
+      - wave-claude-config:/home/wave/.claude
+    working_dir: /project/worktrees/fe-dev-2
+    command: ["fe-dev-2"]
     networks:
       - wave-network
     depends_on:
       - merge-watcher
     profiles:
       - agents
+      - frontend
+      - all
+    labels:
+      - "wave.role=agent"
+      - "wave.agent=fe-dev-2"
+      - "wave.model=sonnet"
+      - "wave.domain=frontend"
 
-  # ─────────────────────────────────────────────────────────────
-  # QA Agent
-  # ─────────────────────────────────────────────────────────────
+  # BE-Dev-1 Agent - Backend Development Wave 1
+  be-dev-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: wave-be-dev-1
+    hostname: be-dev-1
+    environment:
+      - WAVE_ROLE=be-dev-1
+      - WAVE_NUMBER=${WAVE_NUMBER:-1}
+      - PROJECT_PATH=/project
+      - WORKTREE_PATH=/project/worktrees/be-dev-1
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_MODEL=claude-sonnet-4-20250514
+      - AGENT_GATES=2,3
+    volumes:
+      - ${PROJECT_PATH:-.}:/project
+      - ./:/wave-framework:ro
+      - ./core/scripts:/scripts:ro
+      - ./.claudecode/agents:/agents:ro
+      - wave-claude-config:/home/wave/.claude
+    working_dir: /project/worktrees/be-dev-1
+    command: ["be-dev-1"]
+    networks:
+      - wave-network
+    depends_on:
+      - merge-watcher
+    profiles:
+      - agents
+      - backend
+      - all
+    labels:
+      - "wave.role=agent"
+      - "wave.agent=be-dev-1"
+      - "wave.model=sonnet"
+      - "wave.domain=backend"
+
+  # BE-Dev-2 Agent - Backend Development Wave 2
+  be-dev-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: wave-be-dev-2
+    hostname: be-dev-2
+    environment:
+      - WAVE_ROLE=be-dev-2
+      - WAVE_NUMBER=${WAVE_NUMBER:-2}
+      - PROJECT_PATH=/project
+      - WORKTREE_PATH=/project/worktrees/be-dev-2
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_MODEL=claude-sonnet-4-20250514
+      - AGENT_GATES=2,3
+    volumes:
+      - ${PROJECT_PATH:-.}:/project
+      - ./:/wave-framework:ro
+      - ./core/scripts:/scripts:ro
+      - ./.claudecode/agents:/agents:ro
+      - wave-claude-config:/home/wave/.claude
+    working_dir: /project/worktrees/be-dev-2
+    command: ["be-dev-2"]
+    networks:
+      - wave-network
+    depends_on:
+      - merge-watcher
+    profiles:
+      - agents
+      - backend
+      - all
+    labels:
+      - "wave.role=agent"
+      - "wave.agent=be-dev-2"
+      - "wave.model=sonnet"
+      - "wave.domain=backend"
+
+  # Dev-Fix Agent - Bug Fix Retry Loop
+  dev-fix:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: wave-dev-fix
+    hostname: dev-fix
+    environment:
+      - WAVE_ROLE=dev-fix
+      - WAVE_NUMBER=${WAVE_NUMBER:-1}
+      - PROJECT_PATH=/project
+      - WORKTREE_PATH=/project/worktrees/dev-fix
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_MODEL=claude-sonnet-4-20250514
+      - AGENT_GATES=4.5
+    volumes:
+      - ${PROJECT_PATH:-.}:/project
+      - ./:/wave-framework:ro
+      - ./core/scripts:/scripts:ro
+      - ./.claudecode/agents:/agents:ro
+      - wave-claude-config:/home/wave/.claude
+    working_dir: /project/worktrees/dev-fix
+    command: ["dev-fix"]
+    networks:
+      - wave-network
+    depends_on:
+      - merge-watcher
+    profiles:
+      - agents
+      - all
+    labels:
+      - "wave.role=agent"
+      - "wave.agent=dev-fix"
+      - "wave.model=sonnet"
+
+  # ═══════════════════════════════════════════════════════════════
+  # VALIDATION AGENT (Haiku 4)
+  # ═══════════════════════════════════════════════════════════════
+
+  # QA Agent - Validation & Testing
   qa:
     build:
       context: .
       dockerfile: Dockerfile.agent
     container_name: wave-qa
+    hostname: qa
     environment:
       - WAVE_ROLE=qa
       - WAVE_NUMBER=${WAVE_NUMBER:-1}
       - PROJECT_PATH=/project
+      - WORKTREE_PATH=/project/worktrees/qa
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_MODEL=claude-haiku-4-20250514
+      - AGENT_GATES=4
     volumes:
-      - ${PROJECT_PATH}:/project
+      - ${PROJECT_PATH:-.}:/project
+      - ./:/wave-framework:ro
       - ./core/scripts:/scripts:ro
-      - ./entrypoint-agent.sh:/entrypoint.sh:ro
-      - ~/.claude:/home/wave/.claude
-    working_dir: /project
-    command: /entrypoint.sh
+      - ./.claudecode/agents:/agents:ro
+      - wave-claude-config:/home/wave/.claude
+    working_dir: /project/worktrees/qa
+    command: ["qa"]
     networks:
       - wave-network
     depends_on:
       - merge-watcher
     profiles:
       - qa
+      - all
+    labels:
+      - "wave.role=agent"
+      - "wave.agent=qa"
+      - "wave.model=haiku"
 
-  # ─────────────────────────────────────────────────────────────
-  # DOZZLE - Log Viewer Dashboard
-  # ─────────────────────────────────────────────────────────────
+  # ═══════════════════════════════════════════════════════════════
+  # MONITORING & TOOLS
+  # ═══════════════════════════════════════════════════════════════
+
+  # Dozzle - Log Viewer Dashboard
   dozzle:
     image: amir20/dozzle:latest
     container_name: wave-dozzle
+    hostname: dozzle
     ports:
-      - "9080:8080"
+      - "${DOZZLE_PORT:-9080}:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - wave-network
     restart: unless-stopped
+    labels:
+      - "wave.role=monitoring"
+      - "wave.component=dozzle"
 
+# ═══════════════════════════════════════════════════════════════
+# NETWORKS
+# ═══════════════════════════════════════════════════════════════
 networks:
   wave-network:
     driver: bridge
+    name: wave-network
+
+# ═══════════════════════════════════════════════════════════════
+# VOLUMES
+# ═══════════════════════════════════════════════════════════════
+volumes:
+  wave-claude-config:
+    name: wave-claude-config

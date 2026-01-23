@@ -150,7 +150,7 @@ export function Projects() {
 
     async function fetchProjects() {
       const { data } = await supabase
-        .from('maf_projects')
+        .from('wave_projects')
         .select('*')
         .order('created_at', { ascending: false })
 
@@ -170,7 +170,7 @@ export function Projects() {
     if (!newProjectName || !newProjectPath) return
 
     const { data } = await supabase
-      .from('maf_projects')
+      .from('wave_projects')
       .insert({
         name: newProjectName,
         path: newProjectPath,

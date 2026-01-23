@@ -18,7 +18,7 @@ export function Stories() {
 
     async function fetchStories() {
       const { data } = await supabase
-        .from('maf_stories')
+        .from('wave_stories')
         .select('*')
         .order('wave_number', { ascending: false })
         .order('created_at', { ascending: false })
@@ -33,7 +33,7 @@ export function Stories() {
 
     const subscription = supabase
       .channel('stories-all')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'maf_stories' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wave_stories' }, () => {
         fetchStories()
       })
       .subscribe()
