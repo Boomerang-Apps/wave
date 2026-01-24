@@ -43,6 +43,11 @@ import {
   History,
   TrendingUp,
   MinusCircle,
+  Send,
+  Flag,
+  DollarSign,
+  BarChart3,
+  XOctagon,
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { cn } from '../lib/utils'
@@ -110,6 +115,33 @@ function StatusBadge({ status }: { status: CheckStatusType }) {
       {labels[status]}
     </span>
   )
+}
+
+// Format validation timestamp for display
+// Takes ISO string, returns friendly format like "Today at 1:27 PM" or "Jan 20 at 10:30 AM"
+function formatValidationTimestamp(isoString: string | null): string {
+  if (!isoString) return 'Never'
+
+  try {
+    const date = new Date(isoString)
+    if (isNaN(date.getTime())) return 'Invalid date'
+
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+    const diffDays = Math.floor((today.getTime() - dateOnly.getTime()) / (1000 * 60 * 60 * 24))
+
+    const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+
+    if (diffDays === 0) return `Today at ${timeStr}`
+    if (diffDays === 1) return `Yesterday at ${timeStr}`
+    if (diffDays < 7) return `${diffDays} days ago at ${timeStr}`
+
+    const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    return `${dateStr} at ${timeStr}`
+  } catch {
+    return isoString // Fallback to original string if parsing fails
+  }
 }
 
 // Section header with badge
@@ -1739,7 +1771,7 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
                   })
                 } else if (data.type === 'complete') {
                   setFoundationStatus(data.status)
-                  setFoundationLastChecked(new Date().toLocaleTimeString())
+                  setFoundationLastChecked(new Date().toISOString())
 
                   // Update checks with final state from server
                   if (data.checks) {
@@ -2395,21 +2427,25 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
       }
 
       if (savedConfig?.config) {
-        const config = savedConfig.config as Record<string, string>
+        // Config contains both string values and nested objects (_foundation, _safety, etc.)
+        const config = savedConfig.config as Record<string, unknown>
         console.log('[DEBUG] Config object from database:', config)
-        console.log('[DEBUG] ANTHROPIC_API_KEY in config:', config.ANTHROPIC_API_KEY ? 'Present (length: ' + config.ANTHROPIC_API_KEY.length + ')' : 'Missing')
+        console.log('[DEBUG] ANTHROPIC_API_KEY in config:', config.ANTHROPIC_API_KEY ? 'Present' : 'Missing')
+        console.log('[DEBUG] _foundation in config:', config._foundation ? 'Present' : 'Missing')
+        console.log('[DEBUG] _foundation data:', config._foundation)
         setConfigValues(prev => {
           const newValues = {
             ...prev,
-            ANTHROPIC_API_KEY: config.ANTHROPIC_API_KEY || '',
-            SUPABASE_URL: config.SUPABASE_URL || '',
-            SUPABASE_ANON_KEY: config.SUPABASE_ANON_KEY || '',
-            SUPABASE_SERVICE_ROLE_KEY: config.SUPABASE_SERVICE_ROLE_KEY || '',
-            SLACK_WEBHOOK_URL: config.SLACK_WEBHOOK_URL || '',
-            GITHUB_TOKEN: config.GITHUB_TOKEN || '',
-            GITHUB_REPO_URL: config.GITHUB_REPO_URL || '',
-            VERCEL_TOKEN: config.VERCEL_TOKEN || '',
-            WAVE_BUDGET_LIMIT: config.WAVE_BUDGET_LIMIT || '5.00',
+            ANTHROPIC_API_KEY: (config.ANTHROPIC_API_KEY as string) || '',
+            SUPABASE_URL: (config.SUPABASE_URL as string) || '',
+            SUPABASE_ANON_KEY: (config.SUPABASE_ANON_KEY as string) || '',
+            SUPABASE_SERVICE_ROLE_KEY: (config.SUPABASE_SERVICE_ROLE_KEY as string) || '',
+            SLACK_WEBHOOK_URL: (config.SLACK_WEBHOOK_URL as string) || '',
+            SLACK_BOT_TOKEN: (config.SLACK_BOT_TOKEN as string) || '',
+            GITHUB_TOKEN: (config.GITHUB_TOKEN as string) || '',
+            GITHUB_REPO_URL: (config.GITHUB_REPO_URL as string) || '',
+            VERCEL_TOKEN: (config.VERCEL_TOKEN as string) || '',
+            WAVE_BUDGET_LIMIT: (config.WAVE_BUDGET_LIMIT as string) || '5.00',
           }
           console.log('[DEBUG] Setting configValues to:', Object.keys(newValues).map(k => `${k}: ${newValues[k as keyof typeof newValues] ? 'SET' : 'EMPTY'}`))
           return newValues
@@ -2424,7 +2460,7 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
             setFoundationStatus(foundation.status as 'idle' | 'validating' | 'ready' | 'blocked')
           }
           if (foundation.last_checked) {
-            setFoundationLastChecked(new Date(foundation.last_checked).toLocaleTimeString())
+            setFoundationLastChecked(foundation.last_checked)
           }
           if (foundation.checks) {
             setFoundationChecks(foundation.checks)
@@ -2439,7 +2475,7 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
             setSafetyStatus(safety.status as 'idle' | 'validating' | 'ready' | 'blocked')
           }
           if (safety.last_checked) {
-            setSafetyLastChecked(new Date(safety.last_checked).toLocaleTimeString())
+            setSafetyLastChecked(safety.last_checked)
           }
           if (safety.checks) {
             setSafetyChecks(safety.checks)
@@ -2571,7 +2607,7 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
       const newStatus = result.status === 'pass' ? 'ready' : 'blocked'
       setSafetyStatus(newStatus)
       setSafetyChecks(result.details || [])
-      const checkedTime = new Date().toLocaleTimeString()
+      const checkedTime = new Date().toISOString()
       setSafetyLastChecked(checkedTime)
 
       // Save validation results to database (SOURCE OF TRUTH)
@@ -4140,7 +4176,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                        'Run validation to verify all systems are configured correctly'}
                     </p>
                     {foundationLastChecked && (
-                      <p className="text-xs text-muted-foreground mt-1">Last checked: {foundationLastChecked}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Last checked: {formatValidationTimestamp(foundationLastChecked)}</p>
                     )}
                   </div>
                 </div>
@@ -4373,7 +4409,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                 <span className="font-semibold">Git, Environment & Deployment</span>
               </div>
               {foundationLastChecked && (
-                <span className="text-xs text-muted-foreground">Last validated: {foundationLastChecked}</span>
+                <span className="text-xs text-muted-foreground">Last validated: {formatValidationTimestamp(foundationLastChecked)}</span>
               )}
             </div>
 
@@ -4382,7 +4418,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               badgeColor="bg-orange-500"
               title="Git Repository"
               description="Version control foundation - required for worktrees"
-              timestamp={foundationLastChecked || lastUpdate}
+              timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
               status={
                 foundationChecks.filter(c => c.category === 'Git').every(c => c.status === 'pass') ? 'pass' :
                 foundationChecks.filter(c => c.category === 'Git').some(c => c.status === 'fail') ? 'fail' :
@@ -4422,7 +4458,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               badgeColor="bg-blue-500"
               title="Environment Variables"
               description="API keys and configuration"
-              timestamp={foundationLastChecked || lastUpdate}
+              timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
               status={
                 foundationChecks.filter(c => c.category === 'Environment').every(c => c.status === 'pass') ? 'pass' :
                 foundationChecks.filter(c => c.category === 'Environment').some(c => c.status === 'fail') ? 'fail' :
@@ -4461,7 +4497,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               badgeColor="bg-purple-500"
               title="Build & Dependencies"
               description="Package configuration and node modules"
-              timestamp={foundationLastChecked || lastUpdate}
+              timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
               status={
                 foundationChecks.filter(c => c.category === 'Build').every(c => c.status === 'pass') ? 'pass' :
                 foundationChecks.filter(c => c.category === 'Build').some(c => c.status === 'fail') ? 'fail' :
@@ -4500,7 +4536,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               badgeColor="bg-zinc-800"
               title="WAVE Configuration"
               description="Stories and protocol files"
-              timestamp={foundationLastChecked || lastUpdate}
+              timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
               status={
                 foundationChecks.filter(c => c.category === 'WAVE').every(c => c.status === 'pass') ? 'pass' :
                 foundationChecks.filter(c => c.category === 'WAVE').some(c => c.status === 'fail') ? 'fail' :
@@ -4542,7 +4578,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                 <span className="font-semibold">Git Worktrees, Docker, Signals & Pre-Validation</span>
               </div>
               {foundationLastChecked && (
-                <span className="text-xs text-muted-foreground">Last validated: {foundationLastChecked}</span>
+                <span className="text-xs text-muted-foreground">Last validated: {formatValidationTimestamp(foundationLastChecked)}</span>
               )}
             </div>
 
@@ -4551,7 +4587,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               badgeColor="bg-orange-500"
               title="Git Worktrees"
               description="Isolated worktrees for parallel agent development"
-              timestamp={foundationLastChecked || lastUpdate}
+              timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
               status={
                 foundationChecks.filter(c => c.category === 'Git Worktrees').every(c => c.status === 'pass') ? 'pass' :
                 foundationChecks.filter(c => c.category === 'Git Worktrees').some(c => c.status === 'fail') ? 'fail' :
@@ -4585,7 +4621,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               </div>
             )}
 
-            <SectionHeader badge="DOCKER" badgeColor="bg-blue-500" title="Docker Build" description="Container infrastructure for deployment" timestamp={foundationLastChecked || lastUpdate} status={
+            <SectionHeader badge="DOCKER" badgeColor="bg-blue-500" title="Docker Build" description="Container infrastructure for deployment" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
               foundationChecks.filter(c => c.category === 'Docker Build').every(c => c.status === 'pass') ? 'pass' :
               foundationChecks.filter(c => c.category === 'Docker Build').some(c => c.status === 'fail') ? 'fail' :
               foundationChecks.filter(c => c.category === 'Docker Build').some(c => c.status === 'warn') ? 'warn' : 'pending'
@@ -4613,7 +4649,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               )}
             </div>
 
-            <SectionHeader badge="TERM" badgeColor="bg-amber-500" title="Terminal Tools" description="Terminal emulators and session management" timestamp={foundationLastChecked || lastUpdate} status={
+            <SectionHeader badge="TERM" badgeColor="bg-amber-500" title="Terminal Tools" description="Terminal emulators and session management" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
               foundationChecks.filter(c => c.category === 'Terminal Tools').every(c => c.status === 'pass') ? 'pass' :
               foundationChecks.filter(c => c.category === 'Terminal Tools').some(c => c.status === 'fail') ? 'fail' :
               foundationChecks.filter(c => c.category === 'Terminal Tools').some(c => c.status === 'warn') ? 'warn' : 'pending'
@@ -4639,7 +4675,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               )}
             </div>
 
-            <SectionHeader badge="ORCH" badgeColor="bg-indigo-500" title="Orchestration" description="Merge Watcher and agent coordination" timestamp={foundationLastChecked || lastUpdate} status={
+            <SectionHeader badge="ORCH" badgeColor="bg-indigo-500" title="Orchestration" description="Merge Watcher and agent coordination" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
               foundationChecks.filter(c => c.category === 'Orchestration').every(c => c.status === 'pass') ? 'pass' :
               foundationChecks.filter(c => c.category === 'Orchestration').some(c => c.status === 'fail') ? 'fail' :
               foundationChecks.filter(c => c.category === 'Orchestration').some(c => c.status === 'warn') ? 'warn' : 'pending'
@@ -4665,7 +4701,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               )}
             </div>
 
-            <SectionHeader badge="CI/CD" badgeColor="bg-orange-500" title="CI/CD Pipelines" description="GitHub Actions and Vercel deployments" timestamp={foundationLastChecked || lastUpdate} status={
+            <SectionHeader badge="CI/CD" badgeColor="bg-orange-500" title="CI/CD Pipelines" description="GitHub Actions and Vercel deployments" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
               foundationChecks.filter(c => c.category === 'CI/CD').every(c => c.status === 'pass') ? 'pass' :
               foundationChecks.filter(c => c.category === 'CI/CD').some(c => c.status === 'fail') ? 'fail' :
               foundationChecks.filter(c => c.category === 'CI/CD').some(c => c.status === 'warn') ? 'warn' : 'pending'
@@ -4691,7 +4727,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               )}
             </div>
 
-            <SectionHeader badge="SLACK" badgeColor="bg-pink-500" title="Notifications" description="Slack and alerting integrations" timestamp={foundationLastChecked || lastUpdate} status={
+            <SectionHeader badge="SLACK" badgeColor="bg-pink-500" title="Notifications" description="Slack and alerting integrations" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
               foundationChecks.filter(c => c.category === 'Notifications').every(c => c.status === 'pass') ? 'pass' :
               foundationChecks.filter(c => c.category === 'Notifications').some(c => c.status === 'fail') ? 'fail' :
               foundationChecks.filter(c => c.category === 'Notifications').some(c => c.status === 'warn') ? 'warn' : 'pending'
@@ -4716,7 +4752,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               )}
             </div>
 
-            <SectionHeader badge="SIGNAL" badgeColor="bg-purple-500" title="Signal Files (Speed Layer)" description="Signal JSON files for agent coordination" timestamp={foundationLastChecked || lastUpdate} status={
+            <SectionHeader badge="SIGNAL" badgeColor="bg-purple-500" title="Signal Files (Speed Layer)" description="Signal JSON files for agent coordination" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
               foundationChecks.filter(c => c.category === 'Signal Files (Speed Layer)').every(c => c.status === 'pass') ? 'pass' :
               foundationChecks.filter(c => c.category === 'Signal Files (Speed Layer)').some(c => c.status === 'fail') ? 'fail' :
               foundationChecks.filter(c => c.category === 'Signal Files (Speed Layer)').some(c => c.status === 'warn') ? 'warn' : 'pending'
@@ -4746,7 +4782,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               badgeColor="bg-emerald-600"
               title="Database (Source of Truth)"
               description="Supabase connection and table validation"
-              timestamp={foundationLastChecked || lastUpdate}
+              timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
               status={
                 foundationChecks.filter(c => c.category === 'Database').every(c => c.status === 'pass') ? 'pass' :
                 foundationChecks.filter(c => c.category === 'Database').some(c => c.status === 'fail') ? 'fail' :
@@ -4785,7 +4821,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               badgeColor="bg-blue-600"
               title="Deployment"
               description="Vercel, GitHub, and CI/CD configuration"
-              timestamp={foundationLastChecked || lastUpdate}
+              timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
               status={
                 foundationChecks.filter(c => c.category === 'Deployment').every(c => c.status === 'pass') ? 'pass' :
                 foundationChecks.filter(c => c.category === 'Deployment').some(c => c.status === 'fail') ? 'fail' :
@@ -4824,7 +4860,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               badgeColor="bg-violet-600"
               title="Claude Code CLI"
               description="CLI installation, hooks, and agent configuration"
-              timestamp={foundationLastChecked || lastUpdate}
+              timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
               status={
                 foundationChecks.filter(c => c.category === 'CLI').every(c => c.status === 'pass') ? 'pass' :
                 foundationChecks.filter(c => c.category === 'CLI').some(c => c.status === 'fail') ? 'fail' :
@@ -4859,7 +4895,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               </div>
             )}
 
-            <SectionHeader badge="GATE-1" badgeColor="bg-zinc-800" title="Gate -1: Pre-Validation" description="Pre-requisites before starting a wave" timestamp={foundationLastChecked || lastUpdate} status={
+            <SectionHeader badge="GATE-1" badgeColor="bg-zinc-800" title="Gate -1: Pre-Validation" description="Pre-requisites before starting a wave" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
               foundationChecks.filter(c => c.category === 'Gate -1: Pre-Validation').every(c => c.status === 'pass') ? 'pass' :
               foundationChecks.filter(c => c.category === 'Gate -1: Pre-Validation').some(c => c.status === 'fail') ? 'fail' :
               foundationChecks.filter(c => c.category === 'Gate -1: Pre-Validation').some(c => c.status === 'warn') ? 'warn' : 'pending'
@@ -5916,7 +5952,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               badgeColor="bg-gray-400"
               title="Section D: Aerospace Safety (DO-178C)"
               description="Design Assurance and FMEA compliance"
-              timestamp={safetyLastChecked || lastUpdate}
+              timestamp={formatValidationTimestamp(safetyLastChecked) || lastUpdate}
               status={(() => {
                 const sectionDChecks = ['FMEA Document (17 modes)', 'Emergency Levels (E1-E5)', 'Approval Matrix (L0-L5)', 'Forbidden Operations (108)', 'Safety Policy']
                 const results = safetyChecks.filter(c => sectionDChecks.includes(c.name))
@@ -5970,7 +6006,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               badgeColor="bg-gray-400"
               title="Section E: Operational Safety"
               description="Validation scripts and PM agent"
-              timestamp={safetyLastChecked || lastUpdate}
+              timestamp={formatValidationTimestamp(safetyLastChecked) || lastUpdate}
               status={(() => {
                 const sectionEChecks = ['pre-flight-validator.sh', 'pre-merge-validator.sh', 'post-deploy-validator.sh', 'safety-violation-detector.sh', 'protocol-compliance-checker.sh', 'PM Agent Configuration']
                 const results = safetyChecks.filter(c => sectionEChecks.includes(c.name))
@@ -6835,279 +6871,466 @@ WAVE_PROJECT_ROOT=${project?.root_path || ''}`
           </>
         )}
 
-        {/* TAB 8: Notifications - Slack & Dozzle Testing */}
+        {/* TAB 8: Notifications - Slack Feedback Loop */}
         {activeTab === 'notifications' && (
           <>
-            <div className="flex items-center justify-between p-6 border border-border bg-white rounded-2xl mb-6">
-              <div className="flex items-center gap-6">
-                <span className="text-sm font-medium text-muted-foreground">NOTIFICATIONS</span>
-                <span className="font-semibold">Slack & Dozzle Testing</span>
+            {/* Info Box - Subtle gray bg, purple icon */}
+            <div className="p-5 bg-zinc-50 border border-zinc-200 rounded-2xl mb-6">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+                  <Bell className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-zinc-900 mb-1">Slack Feedback Loop</h3>
+                  <p className="text-sm text-zinc-600 leading-relaxed">
+                    Real-time notifications keep your team informed about WAVE automation progress.
+                    Configure webhooks for different channels: <strong>#wave-updates</strong> (info),
+                    <strong> #wave-alerts</strong> (critical), <strong>#wave-budget</strong> (cost alerts).
+                    Thread-per-story pattern organizes updates for easy tracking.
+                  </p>
+                  <p className="text-xs text-zinc-500 mt-2">
+                    Test each notification type below to verify delivery works correctly.
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* Slack Configuration Status */}
-            <div className="p-5 bg-white border border-border rounded-2xl mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
-                    <Bell className="h-5 w-5 text-purple-600" />
+            {/* Validation CTA with Progress */}
+            <div className="p-6 border border-zinc-200 rounded-2xl mb-6 bg-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className={cn(
+                    "w-12 h-12 rounded-xl flex items-center justify-center",
+                    configValues.SLACK_WEBHOOK_URL ? "bg-zinc-100" : "bg-zinc-100"
+                  )}>
+                    {configValues.SLACK_WEBHOOK_URL ? (
+                      <CheckCircle2 className="h-6 w-6 text-green-600" />
+                    ) : (
+                      <AlertTriangle className="h-6 w-6 text-amber-500" />
+                    )}
                   </div>
                   <div>
-                    <h3 className="font-semibold">Slack Notifications</h3>
-                    <p className="text-sm text-muted-foreground">Test different notification types</p>
+                    <h3 className="font-semibold text-lg text-zinc-900">
+                      {configValues.SLACK_WEBHOOK_URL ? 'Notifications Ready' : 'Setup Required'}
+                    </h3>
+                    <p className="text-sm text-zinc-500">
+                      {configValues.SLACK_WEBHOOK_URL
+                        ? 'Webhook configured - test notifications below'
+                        : 'Configure SLACK_WEBHOOK_URL in Configurations tab'}
+                    </p>
                   </div>
                 </div>
-                <div className={cn(
-                  "px-3 py-1.5 rounded-full text-sm font-medium",
-                  configValues.SLACK_WEBHOOK_URL ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                )}>
-                  {configValues.SLACK_WEBHOOK_URL ? "Webhook Configured" : "Webhook Not Set"}
+                <div className="flex items-center gap-3">
+                  {/* Secondary button - outline */}
+                  <button
+                    onClick={() => {
+                      const guide = `# Slack Notification Setup Guide
+Generated: ${new Date().toISOString()}
+Project: ${project?.name || 'Unknown'}
+
+## Configuration Status
+- Webhook URL: ${configValues.SLACK_WEBHOOK_URL ? 'Configured' : 'Not Set'}
+- Bot Token: ${configValues.SLACK_BOT_TOKEN ? 'Configured' : 'Not Set (Optional)'}
+
+## Setup Instructions
+
+### 1. Create Slack App
+1. Go to https://api.slack.com/apps
+2. Click "Create New App" > "From scratch"
+3. Name it "WAVE Notifications"
+4. Select your workspace
+
+### 2. Enable Incoming Webhooks
+1. In your app settings, go to "Incoming Webhooks"
+2. Toggle "Activate Incoming Webhooks" ON
+3. Click "Add New Webhook to Workspace"
+4. Select channel (e.g., #wave-updates)
+5. Copy the webhook URL
+
+### 3. Configure in Portal
+1. Go to Configurations tab (Tab 3)
+2. Paste webhook URL in SLACK_WEBHOOK_URL field
+3. Save configuration
+
+## Channel Routing (Recommended)
+| Event Type | Channel | Purpose |
+|------------|---------|---------|
+| Story Start/Complete | #wave-updates | General progress |
+| Escalations | #wave-alerts | Critical issues |
+| Budget Warnings | #wave-budget | Cost tracking |
+
+## Test Notifications
+After setup, use the test buttons to verify each notification type.
+
+## Troubleshooting
+- **401 Error**: Webhook URL is invalid or expired
+- **404 Error**: Channel was deleted or app removed
+- **Timeout**: Check network connectivity
+`
+                      const blob = new Blob([guide], { type: 'text/markdown' })
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement('a')
+                      a.href = url
+                      a.download = `slack-setup-guide-${new Date().toISOString().split('T')[0]}.md`
+                      document.body.appendChild(a)
+                      a.click()
+                      document.body.removeChild(a)
+                      URL.revokeObjectURL(url)
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 border border-zinc-200 hover:border-zinc-300 rounded-xl transition-colors"
+                  >
+                    <Download className="h-4 w-4" />
+                    Setup Guide (.md)
+                  </button>
+                  {/* Primary button - black */}
+                  <button
+                    onClick={() => setActiveTab('system-config')}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-sm font-medium transition-colors"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Configure
+                  </button>
                 </div>
               </div>
 
-              {!configValues.SLACK_WEBHOOK_URL && (
-                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl mb-4">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-amber-800">Slack Webhook Not Configured</p>
-                      <p className="text-sm text-amber-700 mt-1">
-                        Go to the Configurations tab to set your SLACK_WEBHOOK_URL to enable notifications.
-                      </p>
+              {/* Progress Bar */}
+              {(() => {
+                const checks = [
+                  { name: 'Webhook URL', pass: !!configValues.SLACK_WEBHOOK_URL, required: true },
+                  { name: 'Valid URL Format', pass: configValues.SLACK_WEBHOOK_URL?.startsWith('https://hooks.slack.com/'), required: true },
+                  { name: 'Bot Token', pass: !!configValues.SLACK_BOT_TOKEN, required: false },
+                ]
+                const requiredChecks = checks.filter(c => c.required)
+                const optionalChecks = checks.filter(c => !c.required)
+                const passed = requiredChecks.filter(c => c.pass).length
+                const failed = requiredChecks.filter(c => !c.pass).length
+                const optional = optionalChecks.filter(c => !c.pass).length
+                // Percentage based on required checks only - 100% when all required checks pass
+                const percent = requiredChecks.length > 0 ? Math.round((passed / requiredChecks.length) * 100) : 100
+
+                return (
+                  <div className="mt-6 pt-6 border-t border-zinc-100">
+                    <div className="flex items-center gap-6">
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-zinc-600">Configuration Status</span>
+                          <span className="text-sm font-semibold text-zinc-900">{percent}%</span>
+                        </div>
+                        <div className="h-2 bg-zinc-200 rounded-full overflow-hidden">
+                          <div
+                            className={cn(
+                              "h-full rounded-full transition-all duration-500",
+                              failed > 0 ? "bg-red-500" : "bg-green-500"
+                            )}
+                            style={{ width: `${percent}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 pl-4 border-l border-zinc-200">
+                        <div className="text-center">
+                          <div className="text-xl font-bold text-green-600">{passed}</div>
+                          <div className="text-xs text-zinc-500">Ready</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xl font-bold text-red-600">{failed}</div>
+                          <div className="text-xs text-zinc-500">Missing</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xl font-bold text-amber-500">{optional}</div>
+                          <div className="text-xs text-zinc-500">Optional</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
+
+            {/* Test Notifications - Two columns: Info & Alerts */}
+            <div className="p-5 bg-white border border-zinc-200 rounded-2xl mb-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-zinc-100 flex items-center justify-center">
+                  <Zap className="h-5 w-5 text-zinc-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-zinc-900">Test Notifications</h3>
+                  <p className="text-sm text-zinc-500">Send test messages to verify Slack integration</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                {/* Info Notifications Column */}
+                <div>
+                  <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Info Notifications</h4>
+                  <div className="space-y-3">
+                    {/* Ping Test */}
+                    <div className="p-4 border border-zinc-200 rounded-xl">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                          <Send className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <h5 className="font-medium text-zinc-900">Ping Test</h5>
+                          <p className="text-xs text-zinc-500">Verify webhook works</p>
+                        </div>
+                      </div>
+                      <button
+                        disabled={!configValues.SLACK_WEBHOOK_URL || slackTestStatus['info'] === 'sending'}
+                        onClick={() => sendSlackTest('info', 'Ping Test')}
+                        className={cn(
+                          "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                          slackTestStatus['info'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
+                          slackTestStatus['info'] === 'success' ? "bg-zinc-100 text-green-600 border border-green-200" :
+                          slackTestStatus['info'] === 'error' ? "bg-zinc-100 text-red-600 border border-red-200" :
+                          "bg-zinc-900 hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                        )}
+                      >
+                        {slackTestStatus['info'] === 'sending' ? 'Sending...' :
+                         slackTestStatus['info'] === 'success' ? '✓ Sent' :
+                         slackTestStatus['info'] === 'error' ? '✗ Failed' : 'Send Test'}
+                      </button>
+                    </div>
+
+                    {/* Story Started */}
+                    <div className="p-4 border border-zinc-200 rounded-xl">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                          <Play className="h-4 w-4 text-green-600" />
+                        </div>
+                        <div>
+                          <h5 className="font-medium text-zinc-900">Story Started</h5>
+                          <p className="text-xs text-zinc-500">Agent begins work</p>
+                        </div>
+                      </div>
+                      <button
+                        disabled={!configValues.SLACK_WEBHOOK_URL || slackTestStatus['story_start'] === 'sending'}
+                        onClick={() => sendSlackTest('story_start', 'Story Started')}
+                        className={cn(
+                          "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                          slackTestStatus['story_start'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
+                          slackTestStatus['story_start'] === 'success' ? "bg-zinc-100 text-green-600 border border-green-200" :
+                          slackTestStatus['story_start'] === 'error' ? "bg-zinc-100 text-red-600 border border-red-200" :
+                          "bg-zinc-900 hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                        )}
+                      >
+                        {slackTestStatus['story_start'] === 'sending' ? 'Sending...' :
+                         slackTestStatus['story_start'] === 'success' ? '✓ Sent' :
+                         slackTestStatus['story_start'] === 'error' ? '✗ Failed' : 'Send Test'}
+                      </button>
+                    </div>
+
+                    {/* Story Complete */}
+                    <div className="p-4 border border-zinc-200 rounded-xl">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                        </div>
+                        <div>
+                          <h5 className="font-medium text-zinc-900">Story Complete</h5>
+                          <p className="text-xs text-zinc-500">With cost summary</p>
+                        </div>
+                      </div>
+                      <button
+                        disabled={!configValues.SLACK_WEBHOOK_URL || slackTestStatus['story_complete'] === 'sending'}
+                        onClick={() => sendSlackTest('story_complete', 'Story Complete')}
+                        className={cn(
+                          "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                          slackTestStatus['story_complete'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
+                          slackTestStatus['story_complete'] === 'success' ? "bg-zinc-100 text-green-600 border border-green-200" :
+                          slackTestStatus['story_complete'] === 'error' ? "bg-zinc-100 text-red-600 border border-red-200" :
+                          "bg-zinc-900 hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                        )}
+                      >
+                        {slackTestStatus['story_complete'] === 'sending' ? 'Sending...' :
+                         slackTestStatus['story_complete'] === 'success' ? '✓ Sent' :
+                         slackTestStatus['story_complete'] === 'error' ? '✗ Failed' : 'Send Test'}
+                      </button>
+                    </div>
+
+                    {/* Gate Passed */}
+                    <div className="p-4 border border-zinc-200 rounded-xl">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                          <Flag className="h-4 w-4 text-amber-600" />
+                        </div>
+                        <div>
+                          <h5 className="font-medium text-zinc-900">Gate Passed</h5>
+                          <p className="text-xs text-zinc-500">Validation milestone</p>
+                        </div>
+                      </div>
+                      <button
+                        disabled={!configValues.SLACK_WEBHOOK_URL || slackTestStatus['gate_complete'] === 'sending'}
+                        onClick={() => sendSlackTest('gate_complete', 'Gate Complete')}
+                        className={cn(
+                          "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                          slackTestStatus['gate_complete'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
+                          slackTestStatus['gate_complete'] === 'success' ? "bg-zinc-100 text-green-600 border border-green-200" :
+                          slackTestStatus['gate_complete'] === 'error' ? "bg-zinc-100 text-red-600 border border-red-200" :
+                          "bg-zinc-900 hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                        )}
+                      >
+                        {slackTestStatus['gate_complete'] === 'sending' ? 'Sending...' :
+                         slackTestStatus['gate_complete'] === 'success' ? '✓ Sent' :
+                         slackTestStatus['gate_complete'] === 'error' ? '✗ Failed' : 'Send Test'}
+                      </button>
                     </div>
                   </div>
                 </div>
-              )}
 
-              {/* Slack Test Buttons */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 border border-border rounded-xl">
-                  <h4 className="font-medium mb-2 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-xs">1</span>
-                    Ping Test
-                  </h4>
-                  <p className="text-sm text-muted-foreground mb-3">Simple ping to verify Slack webhook works</p>
-                  <button
-                    disabled={!configValues.SLACK_WEBHOOK_URL || slackTestStatus['ping'] === 'sending'}
-                    onClick={() => sendSlackTest('info', 'Ping Test')}
-                    className={cn(
-                      "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                      slackTestStatus['info'] === 'success' ? "bg-green-600 text-white" :
-                      slackTestStatus['info'] === 'error' ? "bg-red-600 text-white" :
-                      slackTestStatus['info'] === 'sending' ? "bg-blue-400 text-white" :
-                      "bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-200 disabled:text-zinc-400 text-white"
-                    )}
-                  >
-                    {slackTestStatus['info'] === 'sending' ? 'Sending...' :
-                     slackTestStatus['info'] === 'success' ? 'Sent!' :
-                     slackTestStatus['info'] === 'error' ? 'Failed' : 'Send Ping'}
-                  </button>
-                </div>
+                {/* Alert Notifications Column */}
+                <div>
+                  <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Alert Notifications</h4>
+                  <div className="space-y-3">
+                    {/* Escalation */}
+                    <div className="p-4 border border-zinc-200 rounded-xl">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
+                          <AlertTriangle className="h-4 w-4 text-red-600" />
+                        </div>
+                        <div>
+                          <h5 className="font-medium text-zinc-900">Escalation</h5>
+                          <p className="text-xs text-zinc-500">Requires attention</p>
+                        </div>
+                      </div>
+                      <button
+                        disabled={!configValues.SLACK_WEBHOOK_URL || slackTestStatus['escalation'] === 'sending'}
+                        onClick={() => sendSlackTest('escalation', 'Escalation')}
+                        className={cn(
+                          "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                          slackTestStatus['escalation'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
+                          slackTestStatus['escalation'] === 'success' ? "bg-zinc-100 text-green-600 border border-green-200" :
+                          slackTestStatus['escalation'] === 'error' ? "bg-zinc-100 text-red-600 border border-red-200" :
+                          "bg-zinc-900 hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                        )}
+                      >
+                        {slackTestStatus['escalation'] === 'sending' ? 'Sending...' :
+                         slackTestStatus['escalation'] === 'success' ? '✓ Sent' :
+                         slackTestStatus['escalation'] === 'error' ? '✗ Failed' : 'Send Test'}
+                      </button>
+                    </div>
 
-                <div className="p-4 border border-border rounded-xl">
-                  <h4 className="font-medium mb-2 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-xs">2</span>
-                    Story Started
-                  </h4>
-                  <p className="text-sm text-muted-foreground mb-3">Notification when an agent starts a story</p>
-                  <button
-                    disabled={!configValues.SLACK_WEBHOOK_URL || slackTestStatus['story_start'] === 'sending'}
-                    onClick={() => sendSlackTest('story_start', 'Story Started')}
-                    className={cn(
-                      "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                      slackTestStatus['story_start'] === 'success' ? "bg-green-600 text-white" :
-                      slackTestStatus['story_start'] === 'error' ? "bg-red-600 text-white" :
-                      slackTestStatus['story_start'] === 'sending' ? "bg-green-400 text-white" :
-                      "bg-green-600 hover:bg-green-700 disabled:bg-zinc-200 disabled:text-zinc-400 text-white"
-                    )}
-                  >
-                    {slackTestStatus['story_start'] === 'sending' ? 'Sending...' :
-                     slackTestStatus['story_start'] === 'success' ? 'Sent!' :
-                     slackTestStatus['story_start'] === 'error' ? 'Failed' : 'Test Story Started'}
-                  </button>
-                </div>
+                    {/* Budget Warning */}
+                    <div className="p-4 border border-zinc-200 rounded-xl">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
+                          <DollarSign className="h-4 w-4 text-orange-600" />
+                        </div>
+                        <div>
+                          <h5 className="font-medium text-zinc-900">Budget Warning</h5>
+                          <p className="text-xs text-zinc-500">Cost threshold alert</p>
+                        </div>
+                      </div>
+                      <button
+                        disabled={!configValues.SLACK_WEBHOOK_URL || slackTestStatus['budget_warning'] === 'sending'}
+                        onClick={() => sendSlackTest('budget_warning', 'Budget Warning')}
+                        className={cn(
+                          "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                          slackTestStatus['budget_warning'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
+                          slackTestStatus['budget_warning'] === 'success' ? "bg-zinc-100 text-green-600 border border-green-200" :
+                          slackTestStatus['budget_warning'] === 'error' ? "bg-zinc-100 text-red-600 border border-red-200" :
+                          "bg-zinc-900 hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                        )}
+                      >
+                        {slackTestStatus['budget_warning'] === 'sending' ? 'Sending...' :
+                         slackTestStatus['budget_warning'] === 'success' ? '✓ Sent' :
+                         slackTestStatus['budget_warning'] === 'error' ? '✗ Failed' : 'Send Test'}
+                      </button>
+                    </div>
 
-                <div className="p-4 border border-border rounded-xl">
-                  <h4 className="font-medium mb-2 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-xs">3</span>
-                    Story Completed
-                  </h4>
-                  <p className="text-sm text-muted-foreground mb-3">Notification with token count and cost</p>
-                  <button
-                    disabled={!configValues.SLACK_WEBHOOK_URL || slackTestStatus['story_complete'] === 'sending'}
-                    onClick={() => sendSlackTest('story_complete', 'Story Complete')}
-                    className={cn(
-                      "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                      slackTestStatus['story_complete'] === 'success' ? "bg-green-600 text-white" :
-                      slackTestStatus['story_complete'] === 'error' ? "bg-red-600 text-white" :
-                      slackTestStatus['story_complete'] === 'sending' ? "bg-emerald-400 text-white" :
-                      "bg-emerald-600 hover:bg-emerald-700 disabled:bg-zinc-200 disabled:text-zinc-400 text-white"
-                    )}
-                  >
-                    {slackTestStatus['story_complete'] === 'sending' ? 'Sending...' :
-                     slackTestStatus['story_complete'] === 'success' ? 'Sent!' :
-                     slackTestStatus['story_complete'] === 'error' ? 'Failed' : 'Test Story Completed'}
-                  </button>
-                </div>
+                    {/* Wave Summary */}
+                    <div className="p-4 border border-zinc-200 rounded-xl">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                          <BarChart3 className="h-4 w-4 text-purple-600" />
+                        </div>
+                        <div>
+                          <h5 className="font-medium text-zinc-900">Wave Summary</h5>
+                          <p className="text-xs text-zinc-500">End-of-wave stats</p>
+                        </div>
+                      </div>
+                      <button
+                        disabled={!configValues.SLACK_WEBHOOK_URL || slackTestStatus['wave_complete'] === 'sending'}
+                        onClick={() => sendSlackTest('wave_complete', 'Wave Complete')}
+                        className={cn(
+                          "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                          slackTestStatus['wave_complete'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
+                          slackTestStatus['wave_complete'] === 'success' ? "bg-zinc-100 text-green-600 border border-green-200" :
+                          slackTestStatus['wave_complete'] === 'error' ? "bg-zinc-100 text-red-600 border border-red-200" :
+                          "bg-zinc-900 hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                        )}
+                      >
+                        {slackTestStatus['wave_complete'] === 'sending' ? 'Sending...' :
+                         slackTestStatus['wave_complete'] === 'success' ? '✓ Sent' :
+                         slackTestStatus['wave_complete'] === 'error' ? '✗ Failed' : 'Send Test'}
+                      </button>
+                    </div>
 
-                <div className="p-4 border border-border rounded-xl">
-                  <h4 className="font-medium mb-2 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center text-xs">4</span>
-                    Escalation Alert
-                  </h4>
-                  <p className="text-sm text-muted-foreground mb-3">Critical escalation requiring attention</p>
-                  <button
-                    disabled={!configValues.SLACK_WEBHOOK_URL || slackTestStatus['escalation'] === 'sending'}
-                    onClick={() => sendSlackTest('escalation', 'Escalation')}
-                    className={cn(
-                      "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                      slackTestStatus['escalation'] === 'success' ? "bg-green-600 text-white" :
-                      slackTestStatus['escalation'] === 'error' ? "bg-red-600 text-white" :
-                      slackTestStatus['escalation'] === 'sending' ? "bg-red-400 text-white" :
-                      "bg-red-600 hover:bg-red-700 disabled:bg-zinc-200 disabled:text-zinc-400 text-white"
-                    )}
-                  >
-                    {slackTestStatus['escalation'] === 'sending' ? 'Sending...' :
-                     slackTestStatus['escalation'] === 'success' ? 'Sent!' :
-                     slackTestStatus['escalation'] === 'error' ? 'Failed' : 'Test Escalation'}
-                  </button>
-                </div>
-
-                <div className="p-4 border border-border rounded-xl">
-                  <h4 className="font-medium mb-2 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center text-xs">5</span>
-                    Wave Summary
-                  </h4>
-                  <p className="text-sm text-muted-foreground mb-3">End-of-wave summary with stats</p>
-                  <button
-                    disabled={!configValues.SLACK_WEBHOOK_URL || slackTestStatus['wave_complete'] === 'sending'}
-                    onClick={() => sendSlackTest('wave_complete', 'Wave Complete')}
-                    className={cn(
-                      "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                      slackTestStatus['wave_complete'] === 'success' ? "bg-green-600 text-white" :
-                      slackTestStatus['wave_complete'] === 'error' ? "bg-red-600 text-white" :
-                      slackTestStatus['wave_complete'] === 'sending' ? "bg-purple-400 text-white" :
-                      "bg-purple-600 hover:bg-purple-700 disabled:bg-zinc-200 disabled:text-zinc-400 text-white"
-                    )}
-                  >
-                    {slackTestStatus['wave_complete'] === 'sending' ? 'Sending...' :
-                     slackTestStatus['wave_complete'] === 'success' ? 'Sent!' :
-                     slackTestStatus['wave_complete'] === 'error' ? 'Failed' : 'Test Wave Summary'}
-                  </button>
-                </div>
-
-                <div className="p-4 border border-border rounded-xl">
-                  <h4 className="font-medium mb-2 flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center text-xs">6</span>
-                    Gate Passed
-                  </h4>
-                  <p className="text-sm text-muted-foreground mb-3">Gate validation passed notification</p>
-                  <button
-                    disabled={!configValues.SLACK_WEBHOOK_URL || slackTestStatus['gate_complete'] === 'sending'}
-                    onClick={() => sendSlackTest('gate_complete', 'Gate Complete')}
-                    className={cn(
-                      "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                      slackTestStatus['gate_complete'] === 'success' ? "bg-green-600 text-white" :
-                      slackTestStatus['gate_complete'] === 'error' ? "bg-red-600 text-white" :
-                      slackTestStatus['gate_complete'] === 'sending' ? "bg-amber-400 text-white" :
-                      "bg-amber-600 hover:bg-amber-700 disabled:bg-zinc-200 disabled:text-zinc-400 text-white"
-                    )}
-                  >
-                    {slackTestStatus['gate_complete'] === 'sending' ? 'Sending...' :
-                     slackTestStatus['gate_complete'] === 'success' ? 'Sent!' :
-                     slackTestStatus['gate_complete'] === 'error' ? 'Failed' : 'Test Gate Passed'}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Dozzle Section */}
-            <div className="p-5 bg-white border border-border rounded-2xl mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-cyan-100 flex items-center justify-center">
-                    <Eye className="h-5 w-5 text-cyan-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">Dozzle Log Viewer</h3>
-                    <p className="text-sm text-muted-foreground">Docker container log viewer</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 border border-border rounded-xl">
-                  <h4 className="font-medium mb-2">Dozzle Status</h4>
-                  <p className="text-sm text-muted-foreground mb-3">Check if Dozzle container is running</p>
-                  <div className="flex items-center gap-3">
-                    <button className="flex-1 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-sm font-medium transition-colors">
-                      Check Status
-                    </button>
-                    <a
-                      href="http://localhost:8080"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-                    >
-                      Open Dozzle
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  </div>
-                </div>
-
-                <div className="p-4 border border-border rounded-xl">
-                  <h4 className="font-medium mb-2">Start Dozzle</h4>
-                  <p className="text-sm text-muted-foreground mb-3">Start Dozzle if not running</p>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 bg-zinc-900 text-zinc-100 px-3 py-2 rounded-lg text-xs font-mono truncate">
-                      docker run -d --name dozzle -p 8080:8080 -v /var/run/docker.sock:/var/run/docker.sock amir20/dozzle
-                    </code>
-                    <button
-                      onClick={() => navigator.clipboard.writeText('docker run -d --name dozzle -p 8080:8080 -v /var/run/docker.sock:/var/run/docker.sock amir20/dozzle')}
-                      className="p-2 bg-zinc-100 hover:bg-zinc-200 rounded-lg"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </button>
+                    {/* E-STOP */}
+                    <div className="p-4 border border-zinc-200 rounded-xl">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
+                          <XOctagon className="h-4 w-4 text-red-600" />
+                        </div>
+                        <div>
+                          <h5 className="font-medium text-zinc-900">E-STOP Alert</h5>
+                          <p className="text-xs text-zinc-500">Emergency stop</p>
+                        </div>
+                      </div>
+                      <button
+                        disabled={!configValues.SLACK_WEBHOOK_URL || slackTestStatus['estop'] === 'sending'}
+                        onClick={() => sendSlackTest('escalation', 'E-STOP Triggered')}
+                        className={cn(
+                          "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                          slackTestStatus['estop'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
+                          slackTestStatus['estop'] === 'success' ? "bg-zinc-100 text-green-600 border border-green-200" :
+                          slackTestStatus['estop'] === 'error' ? "bg-zinc-100 text-red-600 border border-red-200" :
+                          "bg-zinc-900 hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                        )}
+                      >
+                        {slackTestStatus['estop'] === 'sending' ? 'Sending...' :
+                         slackTestStatus['estop'] === 'success' ? '✓ Sent' :
+                         slackTestStatus['estop'] === 'error' ? '✗ Failed' : 'Send Test'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Notification History */}
-            <div className="p-5 bg-white border border-border rounded-2xl">
+            {/* Recent Notifications */}
+            <div className="p-5 bg-white border border-zinc-200 rounded-2xl mb-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-zinc-100 flex items-center justify-center">
                     <ScrollText className="h-5 w-5 text-zinc-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold">Recent Notifications</h3>
-                    <p className="text-sm text-muted-foreground">Last 5 sent notifications</p>
+                    <h3 className="font-semibold text-zinc-900">Recent Notifications</h3>
+                    <p className="text-sm text-zinc-500">Last 5 sent notifications</p>
                   </div>
                 </div>
-                <button
-                  onClick={() => setSlackNotificationHistory([])}
-                  className="px-3 py-1.5 text-sm text-zinc-500 hover:text-zinc-700"
-                >
-                  Clear History
-                </button>
+                {slackNotificationHistory.length > 0 && (
+                  <button
+                    onClick={() => setSlackNotificationHistory([])}
+                    className="px-3 py-1.5 text-sm text-zinc-500 hover:text-zinc-900 transition-colors"
+                  >
+                    Clear History
+                  </button>
+                )}
               </div>
 
               {slackNotificationHistory.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">No notifications sent yet</p>
-                  <p className="text-xs mt-1">Send a test notification to see it here</p>
+                <div className="text-center py-8">
+                  <Bell className="h-8 w-8 mx-auto mb-2 text-zinc-300" />
+                  <p className="text-sm text-zinc-500">No notifications sent yet</p>
+                  <p className="text-xs text-zinc-400 mt-1">Send a test notification to see it here</p>
                 </div>
               ) : (
                 <div className="space-y-2">
                   {slackNotificationHistory.map((notification) => (
                     <div
                       key={notification.id}
-                      className={cn(
-                        "flex items-center justify-between p-3 rounded-lg",
-                        notification.success ? "bg-green-50" : "bg-red-50"
-                      )}
+                      className="flex items-center justify-between p-3 bg-zinc-50 rounded-lg"
                     >
                       <div className="flex items-center gap-3">
                         {notification.success ? (
@@ -7116,17 +7339,69 @@ WAVE_PROJECT_ROOT=${project?.root_path || ''}`
                           <XCircle className="h-4 w-4 text-red-600" />
                         )}
                         <div>
-                          <p className="text-sm font-medium">{notification.type}</p>
+                          <p className="text-sm font-medium text-zinc-900">{notification.type}</p>
                           {notification.message && (
                             <p className="text-xs text-red-600">{notification.message}</p>
                           )}
                         </div>
                       </div>
-                      <span className="text-xs text-muted-foreground">{notification.timestamp}</span>
+                      <div className="flex items-center gap-3">
+                        <span className={cn(
+                          "px-2 py-0.5 rounded text-xs font-medium",
+                          notification.success ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                        )}>
+                          {notification.success ? 'Delivered' : 'Failed'}
+                        </span>
+                        <span className="text-xs text-zinc-400">{notification.timestamp}</span>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Dozzle Section - Secondary, at bottom */}
+            <div className="p-5 bg-white border border-zinc-200 rounded-2xl">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-100 flex items-center justify-center">
+                    <Eye className="h-5 w-5 text-cyan-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-zinc-900">Dozzle Log Viewer</h3>
+                    <p className="text-sm text-zinc-500">Docker container log viewer</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button className="px-4 py-2 border border-zinc-200 hover:border-zinc-300 text-zinc-600 hover:text-zinc-900 rounded-lg text-sm font-medium transition-colors">
+                    Check Status
+                  </button>
+                  <a
+                    href="http://localhost:8080"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2 border border-zinc-200 hover:border-zinc-300 text-zinc-600 hover:text-zinc-900 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Open Dozzle
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </div>
+              </div>
+
+              <div className="p-4 bg-zinc-50 rounded-xl">
+                <p className="text-xs text-zinc-500 mb-2">Start Dozzle if not running:</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 bg-zinc-900 text-zinc-100 px-3 py-2 rounded-lg text-xs font-mono overflow-x-auto">
+                    docker run -d --name dozzle -p 8080:8080 -v /var/run/docker.sock:/var/run/docker.sock amir20/dozzle
+                  </code>
+                  <button
+                    onClick={() => navigator.clipboard.writeText('docker run -d --name dozzle -p 8080:8080 -v /var/run/docker.sock:/var/run/docker.sock amir20/dozzle')}
+                    className="p-2 border border-zinc-200 hover:border-zinc-300 rounded-lg transition-colors"
+                  >
+                    <Copy className="h-4 w-4 text-zinc-500" />
+                  </button>
+                </div>
+              </div>
             </div>
           </>
         )}
@@ -7134,66 +7409,228 @@ WAVE_PROJECT_ROOT=${project?.root_path || ''}`
         {/* Agent Dispatch Tab */}
         {activeTab === 'agent-dispatch' && (
           <>
-            <div className="flex items-center justify-between p-6 border border-border bg-white rounded-2xl mb-6">
-              <div className="flex items-center gap-6">
-                <span className="text-sm font-medium text-muted-foreground">AGENT DISPATCH</span>
-                <span className="font-semibold">Multi-Agent Orchestration Control</span>
+            {/* Info Box - Subtle gray bg, blue icon */}
+            <div className="p-5 bg-zinc-50 border border-zinc-200 rounded-2xl mb-6">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <Bot className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-zinc-900 mb-1">Multi-Agent Orchestration</h3>
+                  <p className="text-sm text-zinc-600 leading-relaxed">
+                    Control and monitor specialized AI agents working on your project. Agents include
+                    <strong> CTO</strong> (architecture), <strong>PM</strong> (planning), <strong>FE/BE Developers</strong> (implementation),
+                    and <strong>QA</strong> (testing). Each agent operates in isolated worktrees with budget controls.
+                  </p>
+                  <p className="text-xs text-zinc-500 mt-2">
+                    Run validation checks before dispatching to ensure system readiness.
+                  </p>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                {/* Watchdog Status Indicator */}
-                {watchdogStatus && (
-                  <div className={cn(
-                    "px-3 py-1 rounded-full text-sm flex items-center gap-1.5",
-                    watchdogStatus.overall_status === 'healthy' ? "bg-green-100 text-green-700" :
-                    watchdogStatus.overall_status === 'warning' ? "bg-amber-100 text-amber-700" :
-                    "bg-red-100 text-red-700"
-                  )}>
-                    {watchdogStatus.overall_status === 'healthy' ? (
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                    ) : watchdogStatus.overall_status === 'warning' ? (
-                      <AlertTriangle className="h-3.5 w-3.5" />
+            </div>
+
+            {/* Validation CTA with Progress */}
+            <div className="p-6 border border-zinc-200 rounded-2xl mb-6 bg-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-zinc-100 flex items-center justify-center">
+                    {validationReport?.overall_status === 'PASS' ? (
+                      <CheckCircle2 className="h-6 w-6 text-green-600" />
+                    ) : validationReport?.overall_status === 'FAIL' ? (
+                      <XCircle className="h-6 w-6 text-red-600" />
+                    ) : validationReport?.overall_status === 'WARN' ? (
+                      <AlertTriangle className="h-6 w-6 text-amber-500" />
                     ) : (
-                      <XCircle className="h-3.5 w-3.5" />
+                      <Shield className="h-6 w-6 text-zinc-600" />
                     )}
-                    {watchdogStatus.overall_status === 'healthy' ? 'Healthy' :
-                     watchdogStatus.overall_status === 'warning' ? `${watchdogStatus.summary.slow} Slow` :
-                     `${watchdogStatus.summary.stuck} Stuck`}
                   </div>
-                )}
-                <span className={cn(
-                  "px-3 py-1 rounded-full text-sm",
-                  agents.some(a => a.status === 'running')
-                    ? "bg-green-100 text-green-700"
-                    : "bg-zinc-100 text-zinc-600"
-                )}>
-                  {agents.filter(a => a.status === 'running').length} Active
-                </span>
-                <button
-                  onClick={() => runValidation(false)}
-                  disabled={validating}
-                  className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                    validating
-                      ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
-                      : "bg-zinc-900 hover:bg-zinc-800 text-white"
+                  <div>
+                    <h3 className="font-semibold text-lg text-zinc-900">
+                      {validationReport ? `System ${validationReport.overall_status}` : 'System Validation'}
+                    </h3>
+                    <p className="text-sm text-zinc-500">
+                      {validationReport
+                        ? `Last checked ${new Date(validationReport.timestamp).toLocaleTimeString()}`
+                        : 'Run validation to check system readiness'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {/* Watchdog Status Badge */}
+                  {watchdogStatus && (
+                    <div className={cn(
+                      "px-3 py-1.5 rounded-full text-sm flex items-center gap-1.5",
+                      watchdogStatus.overall_status === 'healthy' ? "bg-zinc-100 text-green-600" :
+                      watchdogStatus.overall_status === 'warning' ? "bg-zinc-100 text-amber-600" :
+                      "bg-zinc-100 text-red-600"
+                    )}>
+                      {watchdogStatus.overall_status === 'healthy' ? (
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      ) : watchdogStatus.overall_status === 'warning' ? (
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                      ) : (
+                        <XCircle className="h-3.5 w-3.5" />
+                      )}
+                      {watchdogStatus.overall_status === 'healthy' ? 'Healthy' :
+                       watchdogStatus.overall_status === 'warning' ? `${watchdogStatus.summary.slow} Slow` :
+                       `${watchdogStatus.summary.stuck} Stuck`}
+                    </div>
                   )}
-                  title="Run all validation checks"
-                >
-                  {validating ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Shield className="h-4 w-4" />
-                  )}
-                  {validating ? 'Validating...' : 'Validate All'}
-                </button>
-                <button
-                  onClick={fetchAgents}
-                  className="p-2 rounded-lg hover:bg-zinc-100 transition-colors"
-                  title="Refresh agents"
-                >
-                  <RefreshCw className={cn("h-4 w-4", loadingAgents && "animate-spin")} />
-                </button>
+                  {/* Active agents count */}
+                  <span className={cn(
+                    "px-3 py-1.5 rounded-full text-sm",
+                    agents.some(a => a.status === 'running')
+                      ? "bg-zinc-100 text-green-600"
+                      : "bg-zinc-100 text-zinc-600"
+                  )}>
+                    {agents.filter(a => a.status === 'running').length} Active
+                  </span>
+                  {/* Download Guide - outline */}
+                  <button
+                    onClick={() => {
+                      const guide = `# Agent Dispatch Setup Guide
+Generated: ${new Date().toISOString()}
+Project: ${project?.name || 'Unknown'}
+
+## System Status
+- Validation: ${validationReport?.overall_status || 'Not run'}
+- Active Agents: ${agents.filter(a => a.status === 'running').length}
+- Watchdog: ${watchdogStatus?.overall_status || 'Unknown'}
+
+## Agent Types
+
+| Agent | Role | Model |
+|-------|------|-------|
+| CTO | Architecture & Planning | opus |
+| PM | Story Management | sonnet |
+| FE-Dev-1/2 | Frontend Development | sonnet |
+| BE-Dev-1/2 | Backend Development | sonnet |
+| QA | Testing & Validation | sonnet |
+| Dev-Fix | Bug Fixes & Patches | haiku |
+
+## Pre-Launch Checklist
+
+1. **Project Configuration**
+   - [ ] Project root path set correctly
+   - [ ] Wave number selected
+   - [ ] Stories synced to database
+
+2. **Infrastructure**
+   - [ ] Git worktrees initialized
+   - [ ] Signal files directory exists
+   - [ ] Budget tracking enabled
+
+3. **Validation**
+   - [ ] Run "Validate All" check
+   - [ ] All checks pass (or warnings acceptable)
+
+## Starting Agents
+
+1. Click "Start" on the agent card
+2. Agent will create worktree and begin work
+3. Monitor progress in Activity feed below
+
+## Stopping Agents
+
+1. Click stop button (red X) on running agent
+2. Agent will complete current task and exit
+3. Work is preserved in worktree
+
+## Troubleshooting
+
+### Agent won't start
+- Check validation status
+- Ensure project path is accessible
+- Verify budget limits not exceeded
+
+### Agent stuck
+- Check watchdog status
+- View agent logs in Dozzle
+- Use E-STOP if unresponsive
+`
+                      const blob = new Blob([guide], { type: 'text/markdown' })
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement('a')
+                      a.href = url
+                      a.download = `agent-dispatch-guide-${new Date().toISOString().split('T')[0]}.md`
+                      document.body.appendChild(a)
+                      a.click()
+                      document.body.removeChild(a)
+                      URL.revokeObjectURL(url)
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 border border-zinc-200 hover:border-zinc-300 rounded-xl transition-colors"
+                  >
+                    <Download className="h-4 w-4" />
+                    Setup Guide (.md)
+                  </button>
+                  {/* Validate All - black */}
+                  <button
+                    onClick={() => runValidation(false)}
+                    disabled={validating}
+                    className={cn(
+                      "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors",
+                      validating
+                        ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
+                        : "bg-zinc-900 hover:bg-zinc-800 text-white"
+                    )}
+                  >
+                    {validating ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Shield className="h-4 w-4" />
+                    )}
+                    {validating ? 'Validating...' : 'Validate All'}
+                  </button>
+                  {/* Refresh */}
+                  <button
+                    onClick={fetchAgents}
+                    className="p-2.5 rounded-xl border border-zinc-200 hover:border-zinc-300 text-zinc-600 hover:text-zinc-900 transition-colors"
+                    title="Refresh agents"
+                  >
+                    <RefreshCw className={cn("h-4 w-4", loadingAgents && "animate-spin")} />
+                  </button>
+                </div>
               </div>
+
+              {/* Progress Bar */}
+              {validationReport && (
+                <div className="mt-6 pt-6 border-t border-zinc-100">
+                  <div className="flex items-center gap-6">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-zinc-600">Validation Status</span>
+                        <span className="text-sm font-semibold text-zinc-900">
+                          {Math.round((validationReport.summary.passed / validationReport.summary.total) * 100)}%
+                        </span>
+                      </div>
+                      <div className="h-2 bg-zinc-200 rounded-full overflow-hidden">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all duration-500",
+                            validationReport.summary.failed > 0 ? "bg-red-500" :
+                            validationReport.summary.warnings > 0 ? "bg-amber-400" : "bg-green-500"
+                          )}
+                          style={{ width: `${(validationReport.summary.passed / validationReport.summary.total) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 pl-4 border-l border-zinc-200">
+                      <div className="text-center">
+                        <div className="text-xl font-bold text-green-600">{validationReport.summary.passed}</div>
+                        <div className="text-xs text-zinc-500">Passed</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-xl font-bold text-red-600">{validationReport.summary.failed}</div>
+                        <div className="text-xs text-zinc-500">Failed</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-xl font-bold text-amber-500">{validationReport.summary.warnings}</div>
+                        <div className="text-xs text-zinc-500">Warnings</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Agent Cards Grid */}
@@ -7724,59 +8161,227 @@ WAVE_PROJECT_ROOT=${project?.root_path || ''}`
         {/* Audit Log Tab */}
         {activeTab === 'audit-log' && (
           <>
-            {/* Audit Log Header */}
-            <div className="flex items-center justify-between p-6 border border-border bg-white rounded-2xl mb-6">
-              <div className="flex items-center gap-6">
-                <span className="text-sm font-medium text-muted-foreground">AUDIT LOG</span>
-                <span className="font-semibold">System Event Traceability</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {auditLogSummary && (
-                  <>
-                    <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
-                      {auditLogSummary.total_events} Events (24h)
-                    </span>
-                    {auditLogSummary.requires_review > 0 && (
-                      <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm">
-                        {auditLogSummary.requires_review} Need Review
-                      </span>
-                    )}
-                  </>
-                )}
-                <div className="relative">
-                  <select
-                    onChange={(e) => {
-                      if (e.target.value && project?.root_path) {
-                        window.open(
-                          `http://localhost:3000/api/audit-log/export?projectPath=${encodeURIComponent(project.root_path)}&format=${e.target.value}&hours=168`,
-                          '_blank'
-                        )
-                        e.target.value = ''
-                      }
-                    }}
-                    className="appearance-none pl-3 pr-8 py-2 bg-zinc-100 hover:bg-zinc-200 rounded-lg text-sm font-medium cursor-pointer border-0"
-                    defaultValue=""
-                  >
-                    <option value="" disabled>Export...</option>
-                    <option value="json">Export as JSON</option>
-                    <option value="csv">Export as CSV</option>
-                    <option value="jsonl">Export as JSONL</option>
-                  </select>
-                  <Download className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none text-zinc-500" />
+            {/* Info Box - Subtle gray bg, orange icon */}
+            <div className="p-5 bg-zinc-50 border border-zinc-200 rounded-2xl mb-6">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
+                  <FileText className="h-5 w-5 text-orange-600" />
                 </div>
-                <button
-                  onClick={fetchAuditLogs}
-                  disabled={auditLogsLoading}
-                  className="flex items-center gap-2 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-sm font-medium transition-colors"
-                >
-                  {auditLogsLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4" />
-                  )}
-                  Refresh
-                </button>
+                <div>
+                  <h3 className="font-semibold text-zinc-900 mb-1">System Event Traceability</h3>
+                  <p className="text-sm text-zinc-600 leading-relaxed">
+                    Complete audit trail of all WAVE automation events. Track <strong>agent actions</strong>,
+                    <strong> validation results</strong>, <strong>safety events</strong>, and <strong>configuration changes</strong>.
+                    Events requiring attention are flagged for review.
+                  </p>
+                  <p className="text-xs text-zinc-500 mt-2">
+                    Export logs in JSON, CSV, or JSONL format for compliance reporting.
+                  </p>
+                </div>
               </div>
+            </div>
+
+            {/* Audit Status CTA */}
+            <div className="p-6 border border-zinc-200 rounded-2xl mb-6 bg-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-zinc-100 flex items-center justify-center">
+                    {auditLogSummary?.requires_review > 0 ? (
+                      <AlertTriangle className="h-6 w-6 text-amber-500" />
+                    ) : auditLogs.length > 0 ? (
+                      <CheckCircle2 className="h-6 w-6 text-green-600" />
+                    ) : (
+                      <FileText className="h-6 w-6 text-zinc-600" />
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg text-zinc-900">
+                      {auditLogSummary?.requires_review > 0
+                        ? `${auditLogSummary.requires_review} Events Need Review`
+                        : 'Audit Log Active'}
+                    </h3>
+                    <p className="text-sm text-zinc-500">
+                      {auditLogSummary
+                        ? `${auditLogSummary.total_events} events in last 24 hours`
+                        : 'Tracking all system events'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {/* Event count badges */}
+                  {auditLogSummary && (
+                    <>
+                      <span className="px-3 py-1.5 bg-zinc-100 text-blue-600 rounded-full text-sm">
+                        {auditLogSummary.total_events} Events
+                      </span>
+                      {auditLogSummary.requires_review > 0 && (
+                        <span className="px-3 py-1.5 bg-zinc-100 text-amber-600 rounded-full text-sm">
+                          {auditLogSummary.requires_review} Review
+                        </span>
+                      )}
+                    </>
+                  )}
+                  {/* Download Guide - outline */}
+                  <button
+                    onClick={() => {
+                      const guide = `# Audit Log Guide
+Generated: ${new Date().toISOString()}
+Project: ${project?.name || 'Unknown'}
+
+## Overview
+
+The audit log captures all system events for compliance and debugging.
+
+## Event Types
+
+| Type | Description | Example |
+|------|-------------|---------|
+| agent_action | AI agent activities | Task start, completion, errors |
+| validation | QA and safety checks | Build pass/fail, test results |
+| safety_event | Security-related events | E-STOP triggers, escalations |
+| config_change | Configuration updates | Settings modified, budgets changed |
+
+## Severity Levels
+
+- **INFO**: Normal operations
+- **WARN**: Requires attention but not critical
+- **ERROR**: Failed operation, needs review
+- **CRITICAL**: Immediate attention required
+
+## Event Status
+
+${auditLogSummary ? `
+### Current Statistics (24h)
+- Total Events: ${auditLogSummary.total_events}
+- Agent Actions: ${auditLogSummary.by_event_type?.agent_action || 0}
+- Validations: ${auditLogSummary.by_event_type?.validation || 0}
+- Warnings: ${auditLogSummary.by_severity?.warn || 0}
+- Errors: ${(auditLogSummary.by_severity?.error || 0) + (auditLogSummary.by_severity?.critical || 0)}
+- Needs Review: ${auditLogSummary.requires_review}
+` : 'No data available yet.'}
+
+## Export Formats
+
+- **JSON**: Full structured data for programmatic processing
+- **CSV**: Spreadsheet-compatible for analysis
+- **JSONL**: Line-delimited JSON for log aggregators
+
+## Best Practices
+
+1. Review flagged events daily
+2. Export logs weekly for archive
+3. Monitor error/critical counts
+4. Set up Slack alerts for critical events
+
+## Troubleshooting
+
+### Missing events
+- Check project path is correct
+- Verify backend server is running
+
+### Export fails
+- Ensure sufficient disk space
+- Check network connectivity
+`
+                      const blob = new Blob([guide], { type: 'text/markdown' })
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement('a')
+                      a.href = url
+                      a.download = `audit-log-guide-${new Date().toISOString().split('T')[0]}.md`
+                      document.body.appendChild(a)
+                      a.click()
+                      document.body.removeChild(a)
+                      URL.revokeObjectURL(url)
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 border border-zinc-200 hover:border-zinc-300 rounded-xl transition-colors"
+                  >
+                    <Download className="h-4 w-4" />
+                    Guide (.md)
+                  </button>
+                  {/* Export dropdown - outline */}
+                  <div className="relative">
+                    <select
+                      onChange={(e) => {
+                        if (e.target.value && project?.root_path) {
+                          window.open(
+                            `http://localhost:3000/api/audit-log/export?projectPath=${encodeURIComponent(project.root_path)}&format=${e.target.value}&hours=168`,
+                            '_blank'
+                          )
+                          e.target.value = ''
+                        }
+                      }}
+                      className="appearance-none pl-4 pr-8 py-2.5 border border-zinc-200 hover:border-zinc-300 rounded-xl text-sm font-medium cursor-pointer bg-white text-zinc-600 hover:text-zinc-900 transition-colors"
+                      defaultValue=""
+                    >
+                      <option value="" disabled>Export...</option>
+                      <option value="json">JSON</option>
+                      <option value="csv">CSV</option>
+                      <option value="jsonl">JSONL</option>
+                    </select>
+                    <Download className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none text-zinc-400" />
+                  </div>
+                  {/* Refresh - black */}
+                  <button
+                    onClick={fetchAuditLogs}
+                    disabled={auditLogsLoading}
+                    className={cn(
+                      "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors",
+                      auditLogsLoading
+                        ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
+                        : "bg-zinc-900 hover:bg-zinc-800 text-white"
+                    )}
+                  >
+                    {auditLogsLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    Refresh
+                  </button>
+                </div>
+              </div>
+
+              {/* Progress Bar - showing event distribution */}
+              {auditLogSummary && auditLogSummary.total_events > 0 && (
+                <div className="mt-6 pt-6 border-t border-zinc-100">
+                  <div className="flex items-center gap-6">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-zinc-600">Event Health</span>
+                        <span className="text-sm font-semibold text-zinc-900">
+                          {Math.round(((auditLogSummary.total_events - (auditLogSummary.by_severity?.error || 0) - (auditLogSummary.by_severity?.critical || 0)) / auditLogSummary.total_events) * 100)}% Clean
+                        </span>
+                      </div>
+                      <div className="h-2 bg-zinc-200 rounded-full overflow-hidden">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all duration-500",
+                            (auditLogSummary.by_severity?.error || 0) + (auditLogSummary.by_severity?.critical || 0) > 0 ? "bg-red-500" :
+                            (auditLogSummary.by_severity?.warn || 0) > 0 ? "bg-amber-400" : "bg-green-500"
+                          )}
+                          style={{
+                            width: `${((auditLogSummary.total_events - (auditLogSummary.by_severity?.error || 0) - (auditLogSummary.by_severity?.critical || 0)) / auditLogSummary.total_events) * 100}%`
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 pl-4 border-l border-zinc-200">
+                      <div className="text-center">
+                        <div className="text-xl font-bold text-green-600">{auditLogSummary.by_severity?.info || 0}</div>
+                        <div className="text-xs text-zinc-500">Info</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-xl font-bold text-amber-500">{auditLogSummary.by_severity?.warn || 0}</div>
+                        <div className="text-xs text-zinc-500">Warn</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-xl font-bold text-red-600">{(auditLogSummary.by_severity?.error || 0) + (auditLogSummary.by_severity?.critical || 0)}</div>
+                        <div className="text-xs text-zinc-500">Error</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Summary Cards */}
@@ -8187,7 +8792,7 @@ WAVE_PROJECT_ROOT=${project?.root_path || ''}`
             {/* Modal Footer */}
             <div className="px-6 py-4 bg-zinc-50 border-t border-border flex items-center justify-between flex-shrink-0">
               <div className="text-sm text-muted-foreground">
-                {foundationLastChecked && `Last validated: ${foundationLastChecked}`}
+                {foundationLastChecked && `Last validated: ${formatValidationTimestamp(foundationLastChecked)}`}
               </div>
               <div className="flex items-center gap-3">
                 {!foundationValidating && foundationChecks.length > 0 && (
@@ -8445,7 +9050,7 @@ WAVE_PROJECT_ROOT=${project?.root_path || ''}`
             {/* Modal Footer */}
             <div className="px-6 py-4 bg-zinc-50 border-t border-border flex items-center justify-between flex-shrink-0">
               <div className="text-sm text-muted-foreground">
-                {safetyLastChecked && `Last validated: ${safetyLastChecked}`}
+                {safetyLastChecked && `Last validated: ${formatValidationTimestamp(safetyLastChecked)}`}
               </div>
               <div className="flex items-center gap-3">
                 {!validatingSafety && safetyChecks.length > 0 && (

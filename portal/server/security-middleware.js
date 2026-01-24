@@ -787,9 +787,7 @@ function generateOWASPReport(app = {}) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export {
-  // SEC-002: CSP Nonce functions
-  generateNonce,
-  cspNonceMiddleware,
+  // SEC-002: generateNonce and cspNonceMiddleware already exported with function declarations
   // Core security
   securityHeaders,
   securityMiddleware,
