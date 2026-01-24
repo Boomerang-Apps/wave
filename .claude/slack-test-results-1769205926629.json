@@ -1,0 +1,130 @@
+{
+  "timestamp": "2026-01-23T22:05:26.629Z",
+  "component": "all",
+  "passed": 22,
+  "failed": 2,
+  "pass_rate": 92,
+  "duration_ms": 36,
+  "results": [
+    {
+      "test": "notifier-disabled-mode",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "notifier-webhook-mode",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "notifier-send-disabled",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "notifier-thread-cache",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "notifier-thread-ts-string",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "notifier-missing-thread",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "notifier-status-structure",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "notifier-singleton",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "notifier-channels",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "notifier-methods-exist",
+      "status": "failed",
+      "message": "Missing method: notifyGateComplete"
+    },
+    {
+      "test": "events-types-defined",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "events-types-strings",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "events-create-function",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "events-create-structure",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "events-format-function",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "events-format-returns-array",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "events-gate-override-types",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "events-types-unique",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "integration-event-handlers",
+      "status": "failed",
+      "message": "No handler for event type gate_complete"
+    },
+    {
+      "test": "integration-event-pipeline",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "integration-channel-routing",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "integration-thread-workflow",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "integration-multiple-threads",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "integration-severity-routing",
+      "status": "passed",
+      "message": ""
+    }
+  ]
+}

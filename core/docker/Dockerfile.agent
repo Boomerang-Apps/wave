@@ -1,0 +1,91 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# WAVE FRAMEWORK - Agent Container Image
+# ═══════════════════════════════════════════════════════════════════════════════
+# Minimal, secure container for running WAVE agents
+#
+# Security Features:
+#   - Non-root user (wave-agent)
+#   - Minimal base image (node:20-slim)
+#   - No unnecessary packages
+#   - Read-only filesystem compatible
+#
+# Build:
+#   docker build -t wave-agent:latest -f Dockerfile.agent .
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+
+FROM node:20-slim AS base
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SYSTEM SETUP
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Install essential tools only
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    jq \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# ─────────────────────────────────────────────────────────────────────────────
+# USER SETUP (Security: Non-root execution)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Create non-root user and group (use dynamic UID/GID to avoid conflicts)
+RUN groupadd -r wave-agent 2>/dev/null || true \
+    && useradd -r -g wave-agent -m -d /home/wave-agent -s /bin/bash wave-agent 2>/dev/null || true \
+    && id wave-agent
+
+# Create required directories
+RUN mkdir -p /workspace /signals /stories /logs \
+    && chown -R wave-agent:wave-agent /workspace /signals /stories /logs /home/wave-agent
+
+# ─────────────────────────────────────────────────────────────────────────────
+# APPLICATION SETUP
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Copy entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh && chown wave-agent:wave-agent /entrypoint.sh
+
+# Copy agent utilities
+COPY agent-utils.sh /usr/local/bin/agent-utils.sh
+RUN chmod +x /usr/local/bin/agent-utils.sh
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RUNTIME CONFIGURATION
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Set working directory
+WORKDIR /workspace
+
+# Switch to non-root user
+USER wave-agent
+
+# Environment defaults
+ENV AGENT_TYPE="unknown" \
+    WAVE_PROJECT="/workspace" \
+    WAVE_SIGNALS="/signals" \
+    WAVE_STORIES="/stories" \
+    WAVE_LOGS="/logs" \
+    NODE_ENV="production"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD [ -f "/signals/heartbeat.json" ] || exit 1
+
+# Default command
+ENTRYPOINT ["/entrypoint.sh"]
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# METADATA
+# ═══════════════════════════════════════════════════════════════════════════════
+
+LABEL maintainer="WAVE Framework" \
+      version="1.0.0" \
+      description="Secure container for WAVE agent execution" \
+      security.user="wave-agent" \
+      security.read-only="true" \
+      security.no-new-privileges="true"

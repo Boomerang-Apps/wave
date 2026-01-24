@@ -1,0 +1,13 @@
+{
+    "drill_type": "kill_switch",
+    "drill_date": "2026-01-23",
+    "timestamp": "2026-01-23T21:08:26Z",
+    "total_duration_ms": 37,
+    "overall_result": "pass",
+    "tests": [{"test":"local_file_create","status":"pass","duration_ms":6},{"test":"local_file_detect","status":"pass","duration_ms":6},{"test":"supabase_connectivity","status":"skip","duration_ms":2,"reason":"not_configured"},{"test":"agent_signal_path","status":"pass","duration_ms":5,"existing_signals":       0}],
+    "configuration": {
+        "local_kill_file": ".claude/EMERGENCY-STOP",
+        "supabase_configured": false,
+        "poll_interval": 30
+    }
+}

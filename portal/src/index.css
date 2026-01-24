@@ -25,7 +25,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 9%;
 
-    --primary: 142 76% 36%;          /* Green accent */
+    --primary: 262 83% 58%;          /* Green accent */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 96%;           /* Light gray */
@@ -42,7 +42,7 @@
 
     --border: 0 0% 90%;
     --input: 0 0% 90%;
-    --ring: 142 76% 36%;
+    --ring: 262 83% 58%;
 
     --radius: 0.5rem;
 
@@ -53,7 +53,7 @@
     --warning-foreground: 0 0% 9%;
 
     /* Chart colors */
-    --chart-1: 142 76% 36%;
+    --chart-1: 262 83% 58%;
     --chart-2: 217 91% 60%;
     --chart-3: 280 65% 60%;
     --chart-4: 38 92% 50%;
@@ -78,7 +78,7 @@
     --popover: 0 0% 9%;              /* #171717 */
     --popover-foreground: 0 0% 98%;
 
-    --primary: 142 76% 36%;          /* Green accent */
+    --primary: 262 83% 58%;          /* Green accent */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 12%;           /* #1f1f1f */
@@ -95,7 +95,7 @@
 
     --border: 0 0% 15%;              /* #262626 */
     --input: 0 0% 12%;               /* #1f1f1f */
-    --ring: 142 76% 36%;
+    --ring: 262 83% 58%;
 
     /* Status colors */
     --success: 142 76% 36%;
@@ -104,7 +104,7 @@
     --warning-foreground: 0 0% 9%;
 
     /* Chart colors for dark mode */
-    --chart-1: 142 76% 46%;
+    --chart-1: 262 83% 63%;
     --chart-2: 217 91% 65%;
     --chart-3: 280 65% 65%;
     --chart-4: 38 92% 55%;

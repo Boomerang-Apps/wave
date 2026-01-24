@@ -1,0 +1,256 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# WAVE FRAMEWORK - Agent Container Orchestration
+# ═══════════════════════════════════════════════════════════════════════════════
+# Docker Compose configuration for running WAVE agents in isolated containers
+#
+# Usage:
+#   # Set project path first
+#   export WAVE_PROJECT_PATH=/path/to/your/project
+#
+#   # Start all agents
+#   docker-compose -f docker-compose.agents.yml up -d
+#
+#   # Start specific agent
+#   docker-compose -f docker-compose.agents.yml up -d fe-dev-1
+#
+#   # View logs
+#   docker-compose -f docker-compose.agents.yml logs -f fe-dev-1
+#
+#   # Stop all
+#   docker-compose -f docker-compose.agents.yml down
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+
+version: '3.8'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# COMMON CONFIGURATION
+# ─────────────────────────────────────────────────────────────────────────────
+
+x-agent-common: &agent-common
+  build:
+    context: .
+    dockerfile: Dockerfile.agent
+  image: wave-agent:latest
+  user: "wave-agent"
+  read_only: true
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,size=512m
+  restart: "no"
+  environment:
+    - NODE_ENV=production
+    - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+  networks:
+    - wave-internal
+  healthcheck:
+    test: ["CMD", "test", "-f", "/signals/heartbeats/${AGENT_TYPE:-agent}-heartbeat.json"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 10s
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SERVICES
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Frontend Developer 1 ───────────────────────────────────────────────────
+  fe-dev-1:
+    <<: *agent-common
+    container_name: wave-fe-dev-1
+    environment:
+      - AGENT_TYPE=fe-dev-1
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ${WAVE_PROJECT_PATH:-.}/worktrees/fe-dev-1:/workspace:rw
+      - ${WAVE_PROJECT_PATH:-.}/.claude:/signals:rw
+      - ${WAVE_PROJECT_PATH:-.}/stories:/stories:ro
+      - ${WAVE_PROJECT_PATH:-.}/logs:/logs:rw
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2'
+    labels:
+      - "wave.agent=fe-dev-1"
+      - "wave.domain=frontend"
+      - "wave.gates=2,3"
+
+  # ── Frontend Developer 2 ───────────────────────────────────────────────────
+  fe-dev-2:
+    <<: *agent-common
+    container_name: wave-fe-dev-2
+    environment:
+      - AGENT_TYPE=fe-dev-2
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ${WAVE_PROJECT_PATH:-.}/worktrees/fe-dev-2:/workspace:rw
+      - ${WAVE_PROJECT_PATH:-.}/.claude:/signals:rw
+      - ${WAVE_PROJECT_PATH:-.}/stories:/stories:ro
+      - ${WAVE_PROJECT_PATH:-.}/logs:/logs:rw
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2'
+    labels:
+      - "wave.agent=fe-dev-2"
+      - "wave.domain=frontend"
+      - "wave.gates=2,3"
+
+  # ── Backend Developer 1 ────────────────────────────────────────────────────
+  be-dev-1:
+    <<: *agent-common
+    container_name: wave-be-dev-1
+    environment:
+      - AGENT_TYPE=be-dev-1
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ${WAVE_PROJECT_PATH:-.}/worktrees/be-dev-1:/workspace:rw
+      - ${WAVE_PROJECT_PATH:-.}/.claude:/signals:rw
+      - ${WAVE_PROJECT_PATH:-.}/stories:/stories:ro
+      - ${WAVE_PROJECT_PATH:-.}/logs:/logs:rw
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2'
+    labels:
+      - "wave.agent=be-dev-1"
+      - "wave.domain=backend"
+      - "wave.gates=2,3"
+
+  # ── Backend Developer 2 ────────────────────────────────────────────────────
+  be-dev-2:
+    <<: *agent-common
+    container_name: wave-be-dev-2
+    environment:
+      - AGENT_TYPE=be-dev-2
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ${WAVE_PROJECT_PATH:-.}/worktrees/be-dev-2:/workspace:rw
+      - ${WAVE_PROJECT_PATH:-.}/.claude:/signals:rw
+      - ${WAVE_PROJECT_PATH:-.}/stories:/stories:ro
+      - ${WAVE_PROJECT_PATH:-.}/logs:/logs:rw
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2'
+    labels:
+      - "wave.agent=be-dev-2"
+      - "wave.domain=backend"
+      - "wave.gates=2,3"
+
+  # ── QA Agent ───────────────────────────────────────────────────────────────
+  qa:
+    <<: *agent-common
+    container_name: wave-qa
+    environment:
+      - AGENT_TYPE=qa
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ${WAVE_PROJECT_PATH:-.}/worktrees/qa:/workspace:rw
+      - ${WAVE_PROJECT_PATH:-.}/.claude:/signals:rw
+      - ${WAVE_PROJECT_PATH:-.}/stories:/stories:ro
+      - ${WAVE_PROJECT_PATH:-.}/logs:/logs:rw
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1'
+    labels:
+      - "wave.agent=qa"
+      - "wave.domain=qa"
+      - "wave.gates=4"
+
+  # ── Dev Fix Agent ──────────────────────────────────────────────────────────
+  dev-fix:
+    <<: *agent-common
+    container_name: wave-dev-fix
+    environment:
+      - AGENT_TYPE=dev-fix
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ${WAVE_PROJECT_PATH:-.}/worktrees/dev-fix:/workspace:rw
+      - ${WAVE_PROJECT_PATH:-.}/.claude:/signals:rw
+      - ${WAVE_PROJECT_PATH:-.}/stories:/stories:ro
+      - ${WAVE_PROJECT_PATH:-.}/logs:/logs:rw
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2'
+    labels:
+      - "wave.agent=dev-fix"
+      - "wave.domain=development"
+      - "wave.gates=4.5"
+
+  # ── CTO Agent ──────────────────────────────────────────────────────────────
+  cto:
+    <<: *agent-common
+    container_name: wave-cto
+    environment:
+      - AGENT_TYPE=cto
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ${WAVE_PROJECT_PATH:-.}:/workspace:ro  # CTO has read-only access to full project
+      - ${WAVE_PROJECT_PATH:-.}/.claude:/signals:rw
+      - ${WAVE_PROJECT_PATH:-.}/stories:/stories:ro
+      - ${WAVE_PROJECT_PATH:-.}/logs:/logs:rw
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2'
+    labels:
+      - "wave.agent=cto"
+      - "wave.domain=management"
+      - "wave.gates=0,7"
+
+  # ── PM Agent ───────────────────────────────────────────────────────────────
+  pm:
+    <<: *agent-common
+    container_name: wave-pm
+    environment:
+      - AGENT_TYPE=pm
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ${WAVE_PROJECT_PATH:-.}:/workspace:ro  # PM has read-only access
+      - ${WAVE_PROJECT_PATH:-.}/.claude:/signals:rw
+      - ${WAVE_PROJECT_PATH:-.}/stories:/stories:rw  # PM can update stories
+      - ${WAVE_PROJECT_PATH:-.}/logs:/logs:rw
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1'
+    labels:
+      - "wave.agent=pm"
+      - "wave.domain=management"
+      - "wave.gates=0,5,6,7"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NETWORKS
+# ─────────────────────────────────────────────────────────────────────────────
+
+networks:
+  wave-internal:
+    driver: bridge
+    internal: true  # No external network access
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+# ─────────────────────────────────────────────────────────────────────────────
+# VOLUMES (Optional persistent storage)
+# ─────────────────────────────────────────────────────────────────────────────
+
+volumes:
+  wave-logs:
+    driver: local

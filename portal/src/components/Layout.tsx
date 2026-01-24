@@ -15,6 +15,7 @@ import {
   Network
 } from 'lucide-react'
 import { cn } from '../lib/utils'
+import { ThemeToggle } from './ThemeToggle'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 
 interface LayoutProps {
@@ -273,7 +274,8 @@ export function Layout({ children }: LayoutProps) {
               {getPageTitle()}
             </h2>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
             <button className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border border-border hover:bg-muted transition-colors">
               <AlertCircle className="h-4 w-4 text-yellow-500" />
               <span>3 Alerts</span>

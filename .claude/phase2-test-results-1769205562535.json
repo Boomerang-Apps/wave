@@ -1,0 +1,175 @@
+{
+  "timestamp": "2026-01-23T21:59:22.535Z",
+  "component": "all",
+  "passed": 33,
+  "failed": 0,
+  "pass_rate": 100,
+  "duration_ms": 1109,
+  "results": [
+    {
+      "test": "cache-basic-set-get",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "cache-ttl-expiration",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "cache-lru-eviction",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "cache-memory-limit",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "cache-wrap-pattern",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "cache-statistics",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "cache-key-normalization",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "cache-delete",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "cache-clear",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "api-response-cache",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "websocket-initialization",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "websocket-event-types",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "websocket-room-structure",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "websocket-stats-tracking",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "websocket-broadcast-methods",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "websocket-history-config",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "security-headers-middleware",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "security-validate-middleware",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "security-sanitize-html",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "security-sanitize-shell",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "security-sanitize-path",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "security-rate-limiter",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "security-logger",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "security-owasp-report",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "security-ssrf-prevention",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "security-sanitize-json",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "security-validate-url",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "integration-middleware-creation",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "integration-service-init",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "integration-cache-singleton",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "integration-helpers",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "integration-custom-config",
+      "status": "passed",
+      "message": ""
+    },
+    {
+      "test": "integration-disabled-services",
+      "status": "passed",
+      "message": ""
+    }
+  ]
+}

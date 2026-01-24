@@ -1,0 +1,89 @@
+{
+  "watchdog_report": {
+    "timestamp": "2026-01-23T21:48:37Z",
+    "project": "/Volumes/SSD-01/Projects/WAVE",
+    "heartbeat_timeout_seconds": 1,
+    "overall_status": "healthy",
+    "summary": {
+      "total_agents": 8,
+      "healthy": 0,
+      "stuck": 0,
+      "slow": 0,
+      "idle": 8
+    },
+    "agents": [
+      {
+        "agent": "cto",
+        "status": "idle",
+        "heartbeat_age_seconds": -1,
+        "is_stuck": false,
+        "alert": false,
+        "alert_level": "info",
+        "timeout": 1
+      },
+      {
+        "agent": "pm",
+        "status": "idle",
+        "heartbeat_age_seconds": -1,
+        "is_stuck": false,
+        "alert": false,
+        "alert_level": "info",
+        "timeout": 1
+      },
+      {
+        "agent": "fe-dev-1",
+        "status": "idle",
+        "heartbeat_age_seconds": -1,
+        "is_stuck": false,
+        "alert": false,
+        "alert_level": "info",
+        "timeout": 1
+      },
+      {
+        "agent": "fe-dev-2",
+        "status": "idle",
+        "heartbeat_age_seconds": -1,
+        "is_stuck": false,
+        "alert": false,
+        "alert_level": "info",
+        "timeout": 1
+      },
+      {
+        "agent": "be-dev-1",
+        "status": "idle",
+        "heartbeat_age_seconds": -1,
+        "is_stuck": false,
+        "alert": false,
+        "alert_level": "info",
+        "timeout": 1
+      },
+      {
+        "agent": "be-dev-2",
+        "status": "idle",
+        "heartbeat_age_seconds": -1,
+        "is_stuck": false,
+        "alert": false,
+        "alert_level": "info",
+        "timeout": 1
+      },
+      {
+        "agent": "qa",
+        "status": "idle",
+        "heartbeat_age_seconds": -1,
+        "is_stuck": false,
+        "alert": false,
+        "alert_level": "info",
+        "timeout": 1
+      },
+      {
+        "agent": "dev-fix",
+        "status": "idle",
+        "heartbeat_age_seconds": -1,
+        "is_stuck": false,
+        "alert": false,
+        "alert_level": "info",
+        "timeout": 1
+      }
+    ]
+  }
+}
