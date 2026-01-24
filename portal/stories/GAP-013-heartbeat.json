@@ -1,0 +1,214 @@
+{
+  "id": "GAP-013",
+  "title": "Agent Heartbeat Optimization",
+  "domain": "reliability",
+  "agent": "be-dev-1",
+  "priority": "medium",
+  "risk": "low",
+  "status": "completed",
+  "wave": null,
+  "description": "Agent heartbeat timeout (120s) too long for detecting stale agents. Reduce to 60s, make configurable per agent type, add stale agent alerts, and implement optional auto-restart capability.",
+
+  "gate0_research": {
+    "sources": [
+      {
+        "name": "Kubernetes Liveness Probes Best Practices",
+        "url": "https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/",
+        "key_findings": [
+          "Liveness probes detect when container is not responding",
+          "Configure initialDelaySeconds to allow startup time",
+          "Use timeoutSeconds to set response deadline",
+          "failureThreshold determines restart after N failures",
+          "Separate liveness from readiness for different purposes"
+        ]
+      },
+      {
+        "name": "AWS ECS Health Checks",
+        "url": "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#container_definition_healthcheck",
+        "key_findings": [
+          "Health check interval configurable per container",
+          "Retries prevent false positives from transient failures",
+          "Start period allows warm-up time",
+          "Timeout should be less than interval"
+        ]
+      },
+      {
+        "name": "Distributed Systems Heartbeat Patterns",
+        "url": "https://martinfowler.com/articles/patterns-of-distributed-systems/heartbeat.html",
+        "key_findings": [
+          "Heartbeats detect server liveness in distributed systems",
+          "Interval should balance detection speed vs network overhead",
+          "Typically 1-5 second intervals for fast detection",
+          "Use exponential backoff for reconnection attempts"
+        ]
+      },
+      {
+        "name": "Existing WAVE Heartbeat Monitor",
+        "url": "file://core/scripts/heartbeat-monitor.sh",
+        "key_findings": [
+          "Current timeout: 120 seconds",
+          "Current warning: 60 seconds",
+          "Check interval: 30 seconds",
+          "Auto-restart available with --auto-restart flag",
+          "Supports multiple agents via comma-separated list"
+        ]
+      }
+    ],
+    "compliance_requirements": [
+      "Reduce default timeout from 120s to 60s",
+      "Make timeout configurable per agent type",
+      "Support warning threshold before timeout",
+      "Emit alerts when agent becomes stale",
+      "Optional auto-restart for failed agents",
+      "Expose health status via API"
+    ]
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "Configurable timeout per agent",
+      "threshold": "setAgentTimeout() accepts agent ID and timeout value",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "Default timeout reduced to 60s",
+      "threshold": "DEFAULT_TIMEOUT constant is 60000ms",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "Warning threshold configurable",
+      "threshold": "setWarningThreshold() triggers warning before timeout",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "Heartbeat recording implemented",
+      "threshold": "recordHeartbeat() updates last-seen timestamp",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "Stale agent detection",
+      "threshold": "checkAgentHealth() returns stale status when timeout exceeded",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "Alert emission for stale agents",
+      "threshold": "onStaleAgent callback invoked when agent goes stale",
+      "testable": true
+    },
+    {
+      "id": "AC7",
+      "description": "Auto-restart capability",
+      "threshold": "enableAutoRestart() triggers restart for stale agents",
+      "testable": true
+    },
+    {
+      "id": "AC8",
+      "description": "Health status API",
+      "threshold": "getHealthStatus() returns all agents with health info",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/utils/heartbeat-manager.js",
+      "portal/server/__tests__/heartbeat-manager.test.js"
+    ],
+    "modify": [],
+    "existing": [
+      "core/scripts/heartbeat-monitor.sh"
+    ],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Auto-restart causes infinite restart loop",
+      "Heartbeat monitoring impacts agent performance",
+      "False positives cause unnecessary restarts"
+    ],
+    "escalation_triggers": [
+      "Multiple agents stale simultaneously",
+      "Restart fails repeatedly"
+    ]
+  },
+
+  "dependencies": [],
+
+  "implementation_hints": [
+    "Use Map to track agent heartbeats and configs",
+    "Support both per-agent and global timeout settings",
+    "Implement grace period for startup",
+    "Use setInterval for periodic health checks",
+    "Callbacks for stale, warning, and restart events",
+    "Consider exponential backoff for auto-restart"
+  ],
+
+  "heartbeat_schema": {
+    "agent_status": {
+      "agent_id": "string",
+      "last_heartbeat": "ISO timestamp",
+      "status": "healthy | warning | stale | restarting",
+      "timeout_ms": "number",
+      "warning_ms": "number",
+      "restart_count": "number"
+    },
+    "default_config": {
+      "timeout_ms": 60000,
+      "warning_ms": 45000,
+      "check_interval_ms": 10000,
+      "max_restarts": 3,
+      "restart_cooldown_ms": 30000
+    }
+  },
+
+  "test_plan": {
+    "unit_tests": [
+      "DEFAULT_TIMEOUT is 60000ms",
+      "DEFAULT_WARNING is 45000ms",
+      "recordHeartbeat updates last-seen timestamp",
+      "recordHeartbeat creates entry for new agent",
+      "checkAgentHealth returns healthy for recent heartbeat",
+      "checkAgentHealth returns warning near timeout",
+      "checkAgentHealth returns stale after timeout",
+      "setAgentTimeout configures per-agent timeout",
+      "setWarningThreshold configures warning level",
+      "getAgentConfig returns current configuration",
+      "getHealthStatus returns all agents",
+      "getHealthStatus includes status for each agent",
+      "onStaleAgent callback invoked when agent stales",
+      "onWarning callback invoked at warning threshold",
+      "enableAutoRestart triggers restart callback",
+      "auto-restart respects max restart limit",
+      "auto-restart respects cooldown period",
+      "removeAgent removes from tracking",
+      "startMonitoring begins periodic checks",
+      "stopMonitoring clears interval",
+      "getStaleAgents returns only stale agents",
+      "reset clears all tracking data",
+      "multiple agents tracked independently"
+    ],
+    "integration_tests": [
+      "Heartbeat flow from recording to stale detection",
+      "Auto-restart triggered after timeout"
+    ],
+    "security_tests": [
+      "Invalid agent IDs rejected",
+      "Negative timeout values rejected"
+    ]
+  },
+
+  "created_at": "2026-01-24T09:00:00Z",
+  "completed_at": "2026-01-24T09:05:00Z",
+  "tests_passed": 55,
+  "score": 100
+}
