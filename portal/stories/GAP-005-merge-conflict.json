@@ -1,0 +1,168 @@
+{
+  "id": "GAP-005",
+  "title": "Merge Conflict Detection and Escalation",
+  "domain": "safety",
+  "agent": "be-dev-1",
+  "priority": "high",
+  "risk": "high",
+  "status": "completed",
+  "wave": null,
+  "description": "The merge-watcher-v12.sh script auto-resolves merge conflicts using 'git checkout --theirs' (lines 627-642). This causes silent data loss when FE and BE changes conflict. Merge conflicts must trigger ESCALATION signal and halt pipeline for human review, not be auto-resolved.",
+
+  "gate0_research": {
+    "sources": [
+      {
+        "name": "Git Merge Documentation",
+        "url": "https://git-scm.com/docs/git-merge",
+        "key_findings": [
+          "Merge conflicts occur when same lines modified in both branches",
+          "CONFLICT markers show differing content",
+          "git diff --name-only --diff-filter=U lists conflicting files",
+          "Unresolved conflicts leave repository in MERGING state"
+        ]
+      },
+      {
+        "name": "Git Best Practices - Atlassian",
+        "url": "https://www.atlassian.com/git/tutorials/using-branches/merge-conflicts",
+        "key_findings": [
+          "Never auto-resolve conflicts in automated pipelines",
+          "Conflicts indicate semantic overlap requiring human judgment",
+          "Document conflicts clearly for resolution",
+          "Abort merge if cannot resolve, don't force through"
+        ]
+      },
+      {
+        "name": "WAVE ESCALATION Signal Schema",
+        "url": ".claudecode/signals/SCHEMAS.md",
+        "key_findings": [
+          "ESCALATION signal halts pipeline for human intervention",
+          "Includes reason, requires, suggested_actions fields",
+          "File pattern: .claude/signal-wave[N]-ESCALATION.json",
+          "Must document unresolved_issues for human review"
+        ]
+      }
+    ],
+    "compliance_requirements": [
+      "Merge conflicts detected before any auto-resolution",
+      "ESCALATION signal created with conflict details",
+      "Conflicting files listed with paths",
+      "Pipeline halts until human resolves conflicts",
+      "Audit log records conflict event"
+    ]
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "Merge conflicts detected before auto-resolution",
+      "threshold": "git merge --no-commit used to detect conflicts first",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "Conflict triggers ESCALATION signal",
+      "threshold": "signal-wave[N]-ESCALATION.json created when conflicts found",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "Conflicting files listed in signal",
+      "threshold": "conflicting_files array contains all conflict paths",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "Human resolution required before proceed",
+      "threshold": "Pipeline exits with status indicating human action needed",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "Audit log records conflict details",
+      "threshold": "Conflict event logged with files, branch, wave",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "No auto-resolution with checkout --theirs",
+      "threshold": "git checkout --theirs removed from conflict paths",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "core/scripts/__tests__/merge-conflict-detection.test.sh",
+      "core/scripts/lib/merge-conflict-handler.sh"
+    ],
+    "modify": [
+      "core/scripts/merge-watcher-v12.sh"
+    ],
+    "existing": [
+      ".claudecode/signals/SCHEMAS.md"
+    ],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Auto-resolution still occurs",
+      "Conflicts not detected before merge",
+      "ESCALATION signal not created"
+    ],
+    "escalation_triggers": [
+      "Silent data loss on merge",
+      "Human review bypassed"
+    ]
+  },
+
+  "dependencies": [],
+
+  "implementation_hints": [
+    "Use git merge --no-commit to detect conflicts before completing",
+    "git diff --name-only --diff-filter=U lists conflicting files",
+    "Create ESCALATION signal following schema in SCHEMAS.md",
+    "Remove git checkout --theirs from lines 627-642",
+    "Add function to handle conflicts: detect, signal, abort, exit"
+  ],
+
+  "test_plan": {
+    "unit_tests": [
+      "detect_merge_conflict function identifies conflicts",
+      "get_conflicting_files returns list of conflict paths",
+      "create_escalation_signal generates valid JSON",
+      "abort_merge_and_escalate cleans up state"
+    ],
+    "integration_tests": [
+      "FE branch merge with conflict creates ESCALATION",
+      "BE branch merge with conflict creates ESCALATION",
+      "Clean merge proceeds without ESCALATION",
+      "Signal contains correct conflicting_files",
+      "Pipeline exits with human intervention code"
+    ],
+    "security_tests": [
+      "Cannot bypass conflict detection",
+      "Signal file written atomically"
+    ]
+  },
+
+  "existing_implementation": {
+    "merge_watcher": {
+      "file": "core/scripts/merge-watcher-v12.sh",
+      "lines": 800,
+      "auto_resolve_lines": [627, 628, 630, 639, 640, 642, 788],
+      "methods": [
+        "merge_fe_branch() - auto-resolves with --theirs",
+        "merge_be_branch() - auto-resolves with --theirs"
+      ]
+    }
+  },
+
+  "created_at": "2026-01-24T05:00:00Z",
+  "completed_at": "2026-01-24T05:12:00Z",
+  "tests_passed": 20,
+  "score": 100
+}

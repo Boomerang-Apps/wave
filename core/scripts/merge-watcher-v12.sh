@@ -143,6 +143,11 @@ fi
 PROJECT_ROOT="$(cd "$PROJECT_ROOT" && pwd)"
 SIGNAL_DIR=".claude"
 
+# Source merge conflict handler library (GAP-005)
+if [ -f "${SCRIPT_DIR}/lib/merge-conflict-handler.sh" ]; then
+    source "${SCRIPT_DIR}/lib/merge-conflict-handler.sh"
+fi
+
 # ─────────────────────────────────────────────────────────────────────────────
 # WAVE TYPE DETECTION (Generic - works for ANY wave)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -618,28 +623,68 @@ sync_worktrees() {
         log_success "BE-Dev changes committed"
     fi
 
-    # 3. Merge FE branch to main
+    # 3. Merge FE branch to main (GAP-005: Use safe merge with conflict detection)
     log_info "Merging FE branch to main..."
     git fetch . feature/fe-dev:feature/fe-dev 2>/dev/null || true
-    if git merge feature/fe-dev --no-edit -m "Merge Wave $WAVE FE changes" 2>/dev/null; then
-        log_success "FE branch merged to main"
+
+    # Ensure .claude directory exists for escalation signals
+    mkdir -p "${PROJECT_ROOT}/${SIGNAL_DIR}"
+
+    if type safe_merge_with_escalation &>/dev/null; then
+        # Use safe merge with conflict escalation (GAP-005)
+        local merge_result
+        if safe_merge_with_escalation "feature/fe-dev" "$WAVE" "${PROJECT_ROOT}/${SIGNAL_DIR}" "Merge Wave $WAVE FE changes"; then
+            log_success "FE branch merged to main"
+        else
+            merge_result=$?
+            if [ "$merge_result" -eq 1 ]; then
+                log_error "FE merge has conflicts - ESCALATION signal created"
+                log_error "Human intervention required: resolve conflicts in ${PROJECT_ROOT}/${SIGNAL_DIR}/signal-wave${WAVE}-ESCALATION.json"
+                exit 1
+            else
+                log_error "FE merge failed"
+                exit 1
+            fi
+        fi
     else
-        log_warn "FE merge may have conflicts - attempting resolution"
-        git checkout --theirs . 2>/dev/null || true
-        git add -A
-        git commit --no-edit -m "Merge Wave $WAVE FE (auto-resolved)" 2>/dev/null || true
+        # Fallback: original merge without auto-resolution
+        if git merge feature/fe-dev --no-edit -m "Merge Wave $WAVE FE changes" 2>/dev/null; then
+            log_success "FE branch merged to main"
+        else
+            log_error "FE merge has conflicts - manual resolution required"
+            git merge --abort 2>/dev/null || true
+            exit 1
+        fi
     fi
 
-    # 4. Merge BE branch to main
+    # 4. Merge BE branch to main (GAP-005: Use safe merge with conflict detection)
     log_info "Merging BE branch to main..."
     git fetch . feature/be-dev:feature/be-dev 2>/dev/null || true
-    if git merge feature/be-dev --no-edit -m "Merge Wave $WAVE BE changes" 2>/dev/null; then
-        log_success "BE branch merged to main"
+
+    if type safe_merge_with_escalation &>/dev/null; then
+        # Use safe merge with conflict escalation (GAP-005)
+        if safe_merge_with_escalation "feature/be-dev" "$WAVE" "${PROJECT_ROOT}/${SIGNAL_DIR}" "Merge Wave $WAVE BE changes"; then
+            log_success "BE branch merged to main"
+        else
+            merge_result=$?
+            if [ "$merge_result" -eq 1 ]; then
+                log_error "BE merge has conflicts - ESCALATION signal created"
+                log_error "Human intervention required: resolve conflicts in ${PROJECT_ROOT}/${SIGNAL_DIR}/signal-wave${WAVE}-ESCALATION.json"
+                exit 1
+            else
+                log_error "BE merge failed"
+                exit 1
+            fi
+        fi
     else
-        log_warn "BE merge may have conflicts - attempting resolution"
-        git checkout --theirs . 2>/dev/null || true
-        git add -A
-        git commit --no-edit -m "Merge Wave $WAVE BE (auto-resolved)" 2>/dev/null || true
+        # Fallback: original merge without auto-resolution
+        if git merge feature/be-dev --no-edit -m "Merge Wave $WAVE BE changes" 2>/dev/null; then
+            log_success "BE branch merged to main"
+        else
+            log_error "BE merge has conflicts - manual resolution required"
+            git merge --abort 2>/dev/null || true
+            exit 1
+        fi
     fi
 
     # 5. Update QA worktree from main
