@@ -464,8 +464,10 @@ export class HeartbeatManager {
           this.#callbacks.onStale(health);
         }
 
-        // Trigger auto-restart if enabled
-        this.#handleAutoRestart(agentId);
+        // Trigger auto-restart if enabled (CQ-003: handle async errors)
+        this.#handleAutoRestart(agentId).catch(err => {
+          console.error(`[HeartbeatManager] Auto-restart error for ${agentId}:`, err.message);
+        });
       }
     }
   }
