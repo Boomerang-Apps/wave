@@ -718,6 +718,97 @@ describe('AuthMiddleware', () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // SEC-001: Timing-Safe Comparison
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe('SEC-001: Timing-Safe Comparison', () => {
+    it('should export timingSafeCompare function', async () => {
+      const { timingSafeCompare } = await import('../middleware/auth.js');
+      expect(typeof timingSafeCompare).toBe('function');
+    });
+
+    it('should return true for matching strings', async () => {
+      const { timingSafeCompare } = await import('../middleware/auth.js');
+      expect(timingSafeCompare('secret123', 'secret123')).toBe(true);
+    });
+
+    it('should return false for non-matching strings', async () => {
+      const { timingSafeCompare } = await import('../middleware/auth.js');
+      expect(timingSafeCompare('secret123', 'secret456')).toBe(false);
+    });
+
+    it('should handle strings of different lengths', async () => {
+      const { timingSafeCompare } = await import('../middleware/auth.js');
+      expect(timingSafeCompare('short', 'muchlongerstring')).toBe(false);
+      expect(timingSafeCompare('muchlongerstring', 'short')).toBe(false);
+    });
+
+    it('should handle empty strings', async () => {
+      const { timingSafeCompare } = await import('../middleware/auth.js');
+      expect(timingSafeCompare('', '')).toBe(true);
+      expect(timingSafeCompare('', 'nonempty')).toBe(false);
+      expect(timingSafeCompare('nonempty', '')).toBe(false);
+    });
+
+    it('should use crypto.timingSafeEqual internally', async () => {
+      const { timingSafeCompare } = await import('../middleware/auth.js');
+      const spy = vi.spyOn(crypto, 'timingSafeEqual');
+
+      timingSafeCompare('test1', 'test2');
+
+      expect(spy).toHaveBeenCalled();
+      spy.mockRestore();
+    });
+
+    it('should have similar timing for different mismatch positions', async () => {
+      const { timingSafeCompare } = await import('../middleware/auth.js');
+      const secret = 'abcdefghijklmnop';
+
+      // Run multiple iterations to get more stable averages
+      const iterations = 5000;
+
+      // Measure time for wrong first character
+      const wrongFirst = 'Xbcdefghijklmnop';
+      const start1 = performance.now();
+      for (let i = 0; i < iterations; i++) {
+        timingSafeCompare(secret, wrongFirst);
+      }
+      const time1 = performance.now() - start1;
+
+      // Measure time for wrong last character
+      const wrongLast = 'abcdefghijklmnoX';
+      const start2 = performance.now();
+      for (let i = 0; i < iterations; i++) {
+        timingSafeCompare(secret, wrongLast);
+      }
+      const time2 = performance.now() - start2;
+
+      // In test environments timing can vary significantly due to GC, JIT, etc.
+      // The key is that we're using crypto.timingSafeEqual which is proven constant-time.
+      // We just verify both complete in similar order of magnitude (within 5x for safety)
+      const ratio = Math.max(time1, time2) / Math.min(time1, time2);
+      expect(ratio).toBeLessThan(5);
+    });
+
+    it('should handle Buffer input', async () => {
+      const { timingSafeCompare } = await import('../middleware/auth.js');
+      const buf1 = Buffer.from('secret');
+      const buf2 = Buffer.from('secret');
+      const buf3 = Buffer.from('differ');
+
+      expect(timingSafeCompare(buf1, buf2)).toBe(true);
+      expect(timingSafeCompare(buf1, buf3)).toBe(false);
+    });
+
+    it('should not leak key length in error messages', async () => {
+      const { timingSafeCompare } = await import('../middleware/auth.js');
+
+      // Should not throw, just return false
+      expect(() => timingSafeCompare('a', 'abc')).not.toThrow();
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // Error Constants
   // ─────────────────────────────────────────────────────────────────────────────
 

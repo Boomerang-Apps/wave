@@ -26,12 +26,45 @@
 import crypto from 'crypto';
 
 // ─────────────────────────────────────────────────────────────────────────────
+// CSP NONCE GENERATION (SEC-002)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Generate cryptographically random nonce for CSP
+ * SEC-002: Removes need for 'unsafe-inline' in script-src
+ *
+ * Sources:
+ * - https://content-security-policy.com/nonce/
+ * - https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html
+ * - https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/script-src
+ *
+ * @returns {string} Base64-encoded 128-bit random nonce
+ */
+export function generateNonce() {
+  return crypto.randomBytes(16).toString('base64');
+}
+
+/**
+ * CSP Nonce middleware - generates unique nonce per request
+ * Sets res.locals.nonce for use in templates
+ *
+ * @returns {Function} Express middleware
+ */
+export function cspNonceMiddleware() {
+  return (req, res, next) => {
+    res.locals.nonce = generateNonce();
+    next();
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SECURITY HEADERS (A05: Security Misconfiguration)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Set security headers
  * @param {Object} options - Configuration options
+ * @param {boolean} options.useNonce - Use nonce-based CSP (requires cspNonceMiddleware)
  * @returns {Function} Express middleware
  */
 function securityHeaders(options = {}) {
@@ -42,6 +75,7 @@ function securityHeaders(options = {}) {
     frameOptions: 'DENY',
     hsts: true,
     referrerPolicy: 'strict-origin-when-cross-origin',
+    useNonce: false, // SEC-002: Enable nonce-based CSP
     ...options
   };
 
@@ -73,9 +107,29 @@ function securityHeaders(options = {}) {
 
     // Content-Security-Policy
     if (defaultOptions.contentSecurityPolicy) {
-      const csp = typeof defaultOptions.contentSecurityPolicy === 'string'
-        ? defaultOptions.contentSecurityPolicy
-        : "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' wss: ws:";
+      let csp;
+
+      if (typeof defaultOptions.contentSecurityPolicy === 'string') {
+        csp = defaultOptions.contentSecurityPolicy;
+      } else if (defaultOptions.useNonce && res.locals.nonce) {
+        // SEC-002: Use nonce-based CSP (no unsafe-inline for scripts)
+        const nonce = res.locals.nonce;
+        csp = [
+          "default-src 'self'",
+          `script-src 'self' 'nonce-${nonce}'`,
+          "style-src 'self' 'unsafe-inline'", // CSS inline often needed for frameworks
+          "img-src 'self' data: https:",
+          "font-src 'self'",
+          "connect-src 'self' wss: ws:",
+          "frame-ancestors 'none'",
+          "base-uri 'self'",
+          "form-action 'self'"
+        ].join('; ');
+      } else {
+        // Legacy CSP with unsafe-inline (for backwards compatibility)
+        csp = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' wss: ws:";
+      }
+
       res.setHeader('Content-Security-Policy', csp);
     }
 
@@ -731,6 +785,10 @@ function generateOWASPReport(app = {}) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export {
+  // SEC-002: CSP Nonce functions
+  generateNonce,
+  cspNonceMiddleware,
+  // Core security
   securityHeaders,
   securityMiddleware,
   validateInput,

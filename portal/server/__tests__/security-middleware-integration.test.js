@@ -649,4 +649,99 @@ describe('Security Middleware Integration', () => {
       expect(res.headers['x-frame-options']).toBe('SAMEORIGIN');
     });
   });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // SEC-002: CSP Nonce Implementation
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe('SEC-002: CSP Nonce Implementation', () => {
+    it('should export generateNonce function', async () => {
+      const { generateNonce } = await import('../security-middleware.js');
+      expect(typeof generateNonce).toBe('function');
+    });
+
+    it('should generate cryptographically random nonce', async () => {
+      const { generateNonce } = await import('../security-middleware.js');
+      const nonce = generateNonce();
+
+      expect(typeof nonce).toBe('string');
+      expect(nonce.length).toBeGreaterThanOrEqual(16); // At least 128 bits base64
+    });
+
+    it('should generate unique nonce each time', async () => {
+      const { generateNonce } = await import('../security-middleware.js');
+      const nonces = new Set();
+
+      for (let i = 0; i < 100; i++) {
+        nonces.add(generateNonce());
+      }
+
+      expect(nonces.size).toBe(100); // All unique
+    });
+
+    it('should export cspNonceMiddleware function', async () => {
+      const { cspNonceMiddleware } = await import('../security-middleware.js');
+      expect(typeof cspNonceMiddleware).toBe('function');
+    });
+
+    it('should set nonce on res.locals', async () => {
+      const { cspNonceMiddleware } = await import('../security-middleware.js');
+      app.use(cspNonceMiddleware());
+      app.get('/test', (req, res) => {
+        res.json({ hasNonce: !!res.locals.nonce, nonceLength: res.locals.nonce?.length });
+      });
+
+      const res = await request(app).get('/test');
+
+      expect(res.body.hasNonce).toBe(true);
+      expect(res.body.nonceLength).toBeGreaterThanOrEqual(16);
+    });
+
+    it('should include nonce in CSP script-src directive', async () => {
+      const { cspNonceMiddleware, securityHeaders } = await import('../security-middleware.js');
+      app.use(cspNonceMiddleware());
+      app.use(securityHeaders({ useNonce: true }));
+      app.get('/test', (req, res) => res.json({ nonce: res.locals.nonce }));
+
+      const res = await request(app).get('/test');
+      const csp = res.headers['content-security-policy'];
+
+      expect(csp).toContain("'nonce-");
+      expect(csp).toContain(res.body.nonce);
+    });
+
+    it('should NOT include unsafe-inline in script-src when using nonce', async () => {
+      const { cspNonceMiddleware, securityHeaders } = await import('../security-middleware.js');
+      app.use(cspNonceMiddleware());
+      app.use(securityHeaders({ useNonce: true }));
+      app.get('/test', (req, res) => res.json({ ok: true }));
+
+      const res = await request(app).get('/test');
+      const csp = res.headers['content-security-policy'];
+
+      // Extract script-src directive
+      const scriptSrc = csp.split(';').find(d => d.trim().startsWith('script-src'));
+      expect(scriptSrc).not.toContain("'unsafe-inline'");
+    });
+
+    it('should generate unique nonce per request', async () => {
+      const { cspNonceMiddleware, securityHeaders } = await import('../security-middleware.js');
+      app.use(cspNonceMiddleware());
+      app.use(securityHeaders({ useNonce: true }));
+      app.get('/test', (req, res) => res.json({ nonce: res.locals.nonce }));
+
+      const res1 = await request(app).get('/test');
+      const res2 = await request(app).get('/test');
+
+      expect(res1.body.nonce).not.toBe(res2.body.nonce);
+    });
+
+    it('should use base64 encoding for nonce', async () => {
+      const { generateNonce } = await import('../security-middleware.js');
+      const nonce = generateNonce();
+
+      // Base64 pattern
+      expect(nonce).toMatch(/^[A-Za-z0-9+/]+=*$/);
+    });
+  });
 });

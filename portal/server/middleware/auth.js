@@ -59,6 +59,41 @@ const DEFAULT_CONFIG = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Timing-safe string comparison to prevent timing attacks
+ * SEC-001: Uses crypto.timingSafeEqual for constant-time comparison
+ *
+ * Sources:
+ * - https://nodejs.org/api/crypto.html#cryptotimingsafeequala-b
+ * - https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html
+ *
+ * @param {string|Buffer} a - First value to compare
+ * @param {string|Buffer} b - Second value to compare
+ * @returns {boolean} True if values are equal
+ */
+export function timingSafeCompare(a, b) {
+  // Convert to buffers
+  const bufA = Buffer.isBuffer(a) ? a : Buffer.from(String(a));
+  const bufB = Buffer.isBuffer(b) ? b : Buffer.from(String(b));
+
+  // Length check must be done but we still do full comparison
+  // to prevent length-based timing attacks
+  const lengthMatch = bufA.length === bufB.length;
+
+  // Pad to same length for timingSafeEqual (requires same length)
+  const maxLen = Math.max(bufA.length, bufB.length, 1); // min 1 to avoid empty buffer
+  const paddedA = Buffer.alloc(maxLen);
+  const paddedB = Buffer.alloc(maxLen);
+  bufA.copy(paddedA);
+  bufB.copy(paddedB);
+
+  // Use crypto.timingSafeEqual for constant-time comparison
+  const contentMatch = crypto.timingSafeEqual(paddedA, paddedB);
+
+  // Both length AND content must match
+  return lengthMatch && contentMatch;
+}
+
+/**
  * Extract API key from request headers
  * Supports: Authorization: Bearer <key> and x-api-key: <key>
  *
