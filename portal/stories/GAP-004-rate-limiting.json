@@ -1,0 +1,173 @@
+{
+  "id": "GAP-004",
+  "title": "Rate Limiting Enforcement on Agent Operations",
+  "domain": "security",
+  "agent": "be-dev-1",
+  "priority": "high",
+  "risk": "high",
+  "status": "completed",
+  "wave": null,
+  "description": "The AgentRateLimiter exists (345 LOC) but rate limits are advisory only - not enforced on agent operations. This allows budgets to be exceeded and agents to consume unlimited resources. Rate limiting must be enforced as middleware on all agent and analyze endpoints.",
+
+  "gate0_research": {
+    "sources": [
+      {
+        "name": "AWS API Gateway Throttling",
+        "url": "https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-request-throttling.html",
+        "key_findings": [
+          "Throttle requests that exceed configured rate limits",
+          "Return 429 Too Many Requests with Retry-After header",
+          "Track usage per API key/client",
+          "Configure burst limits and sustained rate limits"
+        ]
+      },
+      {
+        "name": "RFC 6585 - 429 Too Many Requests",
+        "url": "https://datatracker.ietf.org/doc/html/rfc6585",
+        "key_findings": [
+          "429 status code indicates rate limiting",
+          "Retry-After header specifies when to retry",
+          "Response should explain the limit that was exceeded"
+        ]
+      },
+      {
+        "name": "express-rate-limit Best Practices",
+        "url": "https://www.npmjs.com/package/express-rate-limit",
+        "key_findings": [
+          "Apply rate limiting as early middleware",
+          "Use sliding window algorithm for fair limiting",
+          "Include X-RateLimit-* headers in responses",
+          "Allow bypassing for health checks"
+        ]
+      }
+    ],
+    "compliance_requirements": [
+      "All agent endpoints enforce rate limits before processing",
+      "Returns 429 with clear message when limit exceeded",
+      "X-RateLimit-* headers in all responses",
+      "Budget enforcement tied to rate limiting",
+      "Configurable per-agent limits respected"
+    ]
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "Per-agent rate limits enforced on agent endpoints",
+      "threshold": "Agent start/stop blocked when rate limit exceeded",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "Returns 429 when limit exceeded",
+      "threshold": "HTTP 429 status with retry-after info",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "X-RateLimit headers in responses",
+      "threshold": "X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset present",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "Budget enforcement at API layer",
+      "threshold": "Requests blocked when budget exceeded",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "Configurable limits per agent type",
+      "threshold": "fe-dev, be-dev, qa have different limits",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "Rate limit middleware applied to agent operations",
+      "threshold": "POST /api/agents/:type/start enforces limits",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/middleware/rate-limit-enforcer.js",
+      "portal/server/__tests__/rate-limit-enforcer.test.js"
+    ],
+    "modify": [
+      "portal/server/index.js"
+    ],
+    "existing": [
+      "portal/server/utils/rate-limiter.js",
+      "portal/server/__tests__/rate-limiter.test.js"
+    ],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Rate limits can be bypassed",
+      "429 not returned when exceeded",
+      "Headers missing from responses"
+    ],
+    "escalation_triggers": [
+      "Budget enforcement fails",
+      "Rate limiting breaks existing functionality"
+    ]
+  },
+
+  "dependencies": ["GAP-001", "GAP-002", "GAP-003"],
+
+  "implementation_hints": [
+    "Create middleware that wraps AgentRateLimiter",
+    "Apply to /api/agents/:agentType/start, /api/analyze-stream, /api/analyze",
+    "Use getRateLimiter(projectPath) pattern from index.js",
+    "Add rate limit headers via limiter.getHeaders(agentId)",
+    "Return 429 with retry-after when checkLimit returns allowed: false"
+  ],
+
+  "test_plan": {
+    "unit_tests": [
+      "rateLimitEnforcer middleware created",
+      "middleware returns 429 when limit exceeded",
+      "middleware adds X-RateLimit headers",
+      "middleware calls next() when allowed",
+      "middleware extracts agent from params or body",
+      "middleware handles missing project path"
+    ],
+    "integration_tests": [
+      "POST /api/agents/:agentType/start - rate limited",
+      "POST /api/analyze - rate limited",
+      "Rate limit headers present in response",
+      "Retry-After header when rate limited",
+      "Multiple agents tracked separately"
+    ],
+    "security_tests": [
+      "Cannot bypass rate limit by header manipulation",
+      "Rate limit persists across requests"
+    ]
+  },
+
+  "existing_implementation": {
+    "AgentRateLimiter": {
+      "file": "portal/server/utils/rate-limiter.js",
+      "lines": 345,
+      "tests": 23,
+      "methods": [
+        "checkLimit(agentId, estimatedTokens)",
+        "recordRequest(agentId, tokensUsed)",
+        "getHeaders(agentId)",
+        "getLimits(agentId)",
+        "getUsage(agentId)"
+      ]
+    }
+  },
+
+  "created_at": "2026-01-24T04:00:00Z",
+  "completed_at": "2026-01-24T04:03:00Z",
+  "tests_passed": 28,
+  "score": 100
+}

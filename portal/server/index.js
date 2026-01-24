@@ -12,6 +12,7 @@ import { DORAMetricsTracker } from './utils/dora-metrics.js';
 import { AgentRateLimiter } from './utils/rate-limiter.js';
 import { securityMiddleware, generateOWASPReport } from './security-middleware.js';
 import { createValidator, validateSchema, VALIDATION_ERRORS } from './middleware/validation.js';
+import { createRateLimitEnforcer, RATE_LIMIT_ERRORS } from './middleware/rate-limit-enforcer.js';
 import {
   budgetSchema,
   budgetTrackSchema,
@@ -2049,10 +2050,27 @@ app.get('/api/agents', (req, res) => {
 // POST /api/agents/:agentType/start - Start an agent
 app.post('/api/agents/:agentType/start', (req, res) => {
   const { agentType } = req.params;
-  const { projectPath, waveNumber, stories } = req.body;
+  const { projectPath, waveNumber, stories, estimatedTokens } = req.body;
 
   if (!projectPath) {
     return res.status(400).json({ success: false, error: 'Project path required' });
+  }
+
+  // GAP-004: Enforce rate limits before starting agent
+  const limiter = getRateLimiter(projectPath);
+  const rateLimitCheck = limiter.checkLimit(agentType, estimatedTokens || 5000);
+
+  // Add rate limit headers
+  res.set(limiter.getHeaders(agentType));
+
+  if (!rateLimitCheck.allowed) {
+    res.set({ 'Retry-After': rateLimitCheck.retryAfter });
+    return res.status(429).json({
+      success: false,
+      error: RATE_LIMIT_ERRORS.RATE_EXCEEDED,
+      message: rateLimitCheck.message,
+      retryAfter: rateLimitCheck.retryAfter
+    });
   }
 
   const agentDef = AGENT_DEFINITIONS.find(a => a.agent_type === agentType);
