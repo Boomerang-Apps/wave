@@ -1,0 +1,191 @@
+{
+  "id": "GAP-011",
+  "title": "Silent Failure Elimination",
+  "domain": "observability",
+  "agent": "be-dev-1",
+  "priority": "medium",
+  "risk": "medium",
+  "status": "completed",
+  "wave": null,
+  "description": "Errors are being swallowed without logging in catch blocks with '/* ignore */' comments. All errors must be logged with correlation IDs, proper context, and severity levels to support debugging and incident response.",
+
+  "gate0_research": {
+    "sources": [
+      {
+        "name": "OWASP A09:2021 Security Logging Failures",
+        "url": "https://owasp.org/Top10/A09_2021-Security_Logging_and_Monitoring_Failures/",
+        "key_findings": [
+          "Log all login attempts, access control failures, and validation failures",
+          "Ensure logs are in a format that log management solutions can consume",
+          "Audit trails with integrity controls prevent tampering",
+          "Monitoring and alerting systems detect suspicious activities",
+          "CWE-778: logging mechanisms incomplete or absent"
+        ]
+      },
+      {
+        "name": "12-Factor App - Logs",
+        "url": "https://12factor.net/logs",
+        "key_findings": [
+          "Treat logs as event streams",
+          "Write to stdout/stderr, not files",
+          "Let environment handle routing and aggregation",
+          "Logs have no fixed beginning or end, flow continuously",
+          "Use log indexing systems like ELK for analysis"
+        ]
+      },
+      {
+        "name": "Node.js Error Handling Best Practices",
+        "url": "https://dev.to/artem_turlenko/async-error-handling-in-nodejs-4-best-practices-2j35",
+        "key_findings": [
+          "Use try/catch with async/await consistently",
+          "Always handle promise rejections",
+          "Keep try blocks small and specific",
+          "Re-throw errors when needed for outer handlers",
+          "Forward errors to error middleware with next(error)"
+        ]
+      },
+      {
+        "name": "Express Error Handling Patterns",
+        "url": "https://betterstack.com/community/guides/scaling-nodejs/error-handling-express/",
+        "key_findings": [
+          "Express 5 auto-propagates async errors",
+          "Use centralized error handling middleware",
+          "Log errors with stack traces for debugging",
+          "Return appropriate HTTP status codes",
+          "Distinguish operational vs programming errors"
+        ]
+      }
+    ],
+    "compliance_requirements": [
+      "All catch blocks must log errors",
+      "No empty catch blocks or /* ignore */ comments",
+      "Error correlation IDs for request tracing",
+      "Structured logging with timestamp, level, context",
+      "Errors propagated to monitoring systems"
+    ]
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "All catch blocks log errors",
+      "threshold": "logError() called in all catch blocks, never silent",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "Error correlation IDs added",
+      "threshold": "Each error logged with unique correlation ID for tracing",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "Structured error logging",
+      "threshold": "Errors include timestamp, level, message, stack, context",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "Severity levels supported",
+      "threshold": "ERROR, WARN, INFO levels with appropriate routing",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "Safe error wrapper for optional operations",
+      "threshold": "trySafe() logs but doesn't throw for non-critical ops",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "Error context preserved",
+      "threshold": "Original error, operation name, and metadata captured",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/utils/error-handler.js",
+      "portal/server/__tests__/error-handler.test.js"
+    ],
+    "modify": [],
+    "existing": [
+      "portal/server/index.js"
+    ],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Errors cause application crash",
+      "Sensitive data logged in error messages",
+      "Log injection vulnerabilities"
+    ],
+    "escalation_triggers": [
+      "High error rate detected",
+      "Critical system failure"
+    ]
+  },
+
+  "dependencies": [],
+
+  "implementation_hints": [
+    "Create ErrorHandler class with logError, logWarn, logInfo",
+    "Generate UUID for correlation IDs",
+    "trySafe() wrapper returns null on error but logs",
+    "Sanitize error messages to prevent log injection",
+    "Support custom metadata in log context",
+    "Output to stdout for 12-factor compliance"
+  ],
+
+  "error_schema": {
+    "correlation_id": "UUID string",
+    "timestamp": "ISO 8601",
+    "level": "ERROR | WARN | INFO",
+    "operation": "string describing the operation",
+    "message": "sanitized error message",
+    "stack": "stack trace (only in non-production)",
+    "context": "object with relevant metadata"
+  },
+
+  "test_plan": {
+    "unit_tests": [
+      "logError outputs to console.error",
+      "logError includes correlation ID",
+      "logError includes timestamp",
+      "logError sanitizes message for log injection",
+      "logWarn outputs to console.warn",
+      "logInfo outputs to console.info",
+      "generateCorrelationId returns valid UUID",
+      "trySafe returns value on success",
+      "trySafe returns null on error",
+      "trySafe logs error when operation fails",
+      "trySafe accepts custom default value",
+      "createErrorContext includes operation name",
+      "createErrorContext includes metadata",
+      "sanitizeForLog removes newlines",
+      "sanitizeForLog escapes special characters",
+      "wrapAsync catches and logs async errors",
+      "wrapAsync re-throws for propagation",
+      "Error stack included in development",
+      "Error stack excluded in production"
+    ],
+    "integration_tests": [
+      "Error logged and returned in HTTP response",
+      "Correlation ID matches between log and response"
+    ],
+    "security_tests": [
+      "No sensitive data in error logs",
+      "Log injection prevented"
+    ]
+  },
+
+  "created_at": "2026-01-24T08:50:00Z",
+  "completed_at": "2026-01-24T08:50:00Z",
+  "tests_passed": 52,
+  "score": 100
+}
