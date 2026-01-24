@@ -3,6 +3,7 @@ import type { ErrorInfo, ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { ThemeProvider } from './components/ThemeProvider'
 
 // Error Boundary to catch rendering errors
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
@@ -41,7 +42,9 @@ if (root) {
   createRoot(root).render(
     <StrictMode>
       <ErrorBoundary>
-        <App />
+        <ThemeProvider defaultTheme="dark">
+          <App />
+        </ThemeProvider>
       </ErrorBoundary>
     </StrictMode>,
   )
