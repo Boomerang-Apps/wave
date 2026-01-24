@@ -1,0 +1,233 @@
+{
+  "id": "GAP-008-APPROVAL",
+  "title": "Approval Level Enforcement (L1-L4)",
+  "domain": "security",
+  "agent": "be-dev-1",
+  "priority": "medium",
+  "risk": "medium",
+  "status": "completed",
+  "wave": null,
+  "description": "The WAVE framework documents L0-L5 approval levels but only partially enforces them. Operations requiring human approval (L1), CTO approval (L2), PM approval (L3), or QA review (L4) may proceed without proper authorization. All operations must be classified by approval level and require appropriate approval signals before execution.",
+
+  "gate0_research": {
+    "sources": [
+      {
+        "name": "NIST SP 800-53 Rev 5 - Access Control",
+        "url": "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final",
+        "key_findings": [
+          "AC-2 Account Management: Establish conditions for roles and user privileges",
+          "AC-3 Access Enforcement: Control access based on principle of least privilege",
+          "AC-5 Separation of Duties: Divide duties to reduce unauthorized action risk",
+          "AC-6 Least Privilege: Grant only minimum access necessary for task"
+        ]
+      },
+      {
+        "name": "RBAC Role-Based Access Control Best Practices",
+        "url": "https://www.cerbos.dev/blog/role-based-access-control-best-practices",
+        "key_findings": [
+          "Build automated approval steps into workflow for sensitive permissions",
+          "Multi-step approvals route requests through appropriate stakeholders",
+          "Implement Just-in-Time (JIT) access for elevated privileges",
+          "No single user should complete critical tasks independently (SoD)"
+        ]
+      },
+      {
+        "name": "AWS IAM Permission Boundaries",
+        "url": "https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html",
+        "key_findings": [
+          "Permission boundaries set maximum permissions for entities",
+          "SCPs define permission guardrails across organization",
+          "Multi-party approval requires multiple authorizations",
+          "Audit all permission grants and access decisions"
+        ]
+      },
+      {
+        "name": "WAVE APPROVAL-LEVELS.md",
+        "url": "internal:.claudecode/safety/APPROVAL-LEVELS.md",
+        "key_findings": [
+          "L0 FORBIDDEN: Never allowed (108 patterns)",
+          "L1 HUMAN ONLY: Production, migrations, security changes",
+          "L2 CTO APPROVAL: Architecture, shared interfaces, tech stack",
+          "L3 PM APPROVAL: Story coordination, gate transitions, assignments",
+          "L4 QA REVIEW: Code quality, test validation, acceptance criteria",
+          "L5 AUTO-ALLOWED: Safe operations within domain boundaries"
+        ]
+      }
+    ],
+    "compliance_requirements": [
+      "L1 operations blocked until human approval signal exists",
+      "L2 operations blocked until CTO approval signal exists",
+      "L3 operations blocked until PM approval signal exists",
+      "L4 operations validated by QA review signal",
+      "Approval chain audited with timestamps and approver identity",
+      "Separation of duties enforced (requester != approver)"
+    ]
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "L1 operations require human approval signal",
+      "threshold": "signal-wave[N]-L1-APPROVED.json must exist before L1 operation",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "L2 operations require CTO agent approval",
+      "threshold": "signal-wave[N]-L2-CTO-APPROVED.json must exist before L2 operation",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "L3 operations require PM agent approval",
+      "threshold": "signal-wave[N]-L3-PM-APPROVED.json must exist before L3 operation",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "L4 operations validated by QA",
+      "threshold": "signal-wave[N]-gate4-approved.json must exist before merge",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "Approval chain audited in black box",
+      "threshold": "All approval decisions logged with timestamp, approver, operation",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "Classify operations by approval level",
+      "threshold": "getApprovalLevel(operation) returns correct L1-L5 level",
+      "testable": true
+    },
+    {
+      "id": "AC7",
+      "description": "Separation of duties enforced",
+      "threshold": "Requester cannot approve own L1-L3 requests",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/utils/approval-enforcer.js",
+      "portal/server/__tests__/approval-enforcer.test.js"
+    ],
+    "modify": [],
+    "existing": [
+      ".claudecode/safety/APPROVAL-LEVELS.md",
+      ".claudecode/signals/SCHEMAS.md",
+      "core/scripts/wave-orchestrator.sh"
+    ],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "L1 operations proceed without human approval",
+      "Same agent can request and approve operations",
+      "Approval signals not validated before execution"
+    ],
+    "escalation_triggers": [
+      "Unauthorized operation detected",
+      "Approval chain broken or tampered"
+    ]
+  },
+
+  "dependencies": ["GAP-003"],
+
+  "implementation_hints": [
+    "Create operation classification patterns for L1-L5",
+    "Use signal file existence check for approval validation",
+    "Implement requireApproval(operation, level) middleware",
+    "Log all approval decisions to audit trail",
+    "Check approver != requester for separation of duties",
+    "Support approval timeout (24h default for L1)"
+  ],
+
+  "operation_classifications": {
+    "L1_HUMAN": [
+      "merge_to_main",
+      "database_migration",
+      "create_api_endpoint",
+      "add_dependency",
+      "modify_security_config",
+      "update_production_env",
+      "create_cloud_resources",
+      "delete_production_data",
+      "modify_cicd_pipeline"
+    ],
+    "L2_CTO": [
+      "create_module",
+      "modify_shared_interface",
+      "add_database_table",
+      "change_api_response_format",
+      "introduce_new_pattern",
+      "add_tech_stack_component",
+      "resolve_escalation"
+    ],
+    "L3_PM": [
+      "assign_story",
+      "approve_gate_transition",
+      "approve_merge_readiness",
+      "reassign_blocked_story",
+      "approve_retry_allocation",
+      "coordinate_cross_domain",
+      "approve_story_completion"
+    ],
+    "L4_QA": [
+      "approve_code_review",
+      "run_test_suite",
+      "check_lint_compliance",
+      "verify_acceptance_criteria",
+      "approve_minor_changes",
+      "verify_bug_fixes"
+    ],
+    "L5_AUTO": [
+      "read_file",
+      "write_file_in_domain",
+      "run_npm_install",
+      "run_npm_build",
+      "run_npm_test",
+      "git_commit_feature_branch",
+      "create_signal_file"
+    ]
+  },
+
+  "test_plan": {
+    "unit_tests": [
+      "getApprovalLevel returns L1 for merge_to_main",
+      "getApprovalLevel returns L2 for create_module",
+      "getApprovalLevel returns L3 for assign_story",
+      "getApprovalLevel returns L4 for approve_code_review",
+      "getApprovalLevel returns L5 for read_file",
+      "requireApproval blocks L1 without approval signal",
+      "requireApproval allows L1 with valid approval signal",
+      "requireApproval rejects expired approval",
+      "validateApprovalChain detects missing approval",
+      "validateApprovalChain enforces separation of duties",
+      "createApprovalRequest generates correct signal format",
+      "checkApprovalExists returns true when signal exists"
+    ],
+    "integration_tests": [
+      "L1 operation blocked without human approval signal",
+      "L2 operation blocked without CTO approval signal",
+      "L3 operation proceeds with PM approval signal",
+      "Approval chain logged to audit trail"
+    ],
+    "security_tests": [
+      "Cannot forge approval signal",
+      "Cannot approve own L1-L3 request",
+      "Expired approvals rejected"
+    ]
+  },
+
+  "created_at": "2026-01-24T07:30:00Z",
+  "completed_at": "2026-01-24T07:31:00Z",
+  "tests_passed": 67,
+  "score": 100
+}
