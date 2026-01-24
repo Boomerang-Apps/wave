@@ -1,0 +1,220 @@
+{
+  "id": "GAP-014",
+  "title": "Signal Schema Validation",
+  "domain": "consistency",
+  "agent": "be-dev-1",
+  "priority": "medium",
+  "risk": "medium",
+  "status": "completed",
+  "wave": null,
+  "description": "Signal file content is not validated - only filename patterns are checked by validate-signal.sh. Implement comprehensive JSON schema validation for all signal types including required fields, token_usage subfields, and schema versioning.",
+
+  "gate0_research": {
+    "sources": [
+      {
+        "name": "Ajv JSON Schema Validator",
+        "url": "https://ajv.js.org/",
+        "key_findings": [
+          "Fastest JSON validator for Node.js (50% faster than alternatives)",
+          "Supports JSON Schema draft-04/06/07/2019-09/2020-12",
+          "Compile validators once at startup for 10-100x performance",
+          "allErrors option provides comprehensive validation feedback",
+          "ajv-formats plugin adds standard format validation"
+        ]
+      },
+      {
+        "name": "JSON Schema Validation Guide",
+        "url": "https://betterstack.com/community/guides/scaling-nodejs/ajv-validation/",
+        "key_findings": [
+          "Pre-compile schemas for better performance",
+          "Use strict mode to catch schema errors",
+          "Type coercion available for flexible input",
+          "Custom formats and keywords supported",
+          "Error messages can be customized"
+        ]
+      },
+      {
+        "name": "WAVE Signal Schemas",
+        "url": "file://.claudecode/signals/SCHEMAS.md",
+        "key_findings": [
+          "All signals require token_usage with 5 required subfields",
+          "Signal types: Gate 3 Complete, Gate 4 Approved/Rejected, Gate 4.5 Retry/Fixed, Gate 7 Merge, Escalation, DORA",
+          "Required common fields: wave, gate, timestamp",
+          "Each signal type has specific required fields",
+          "Schema version 1.0.0 documented"
+        ]
+      },
+      {
+        "name": "Existing Validation Gap",
+        "url": "file://core/scripts/signal-enforcement/validate-signal.sh",
+        "key_findings": [
+          "Only validates filename patterns (regex)",
+          "Does NOT validate JSON content",
+          "Does NOT check required fields",
+          "Does NOT validate token_usage",
+          "No schema version tracking"
+        ]
+      }
+    ],
+    "compliance_requirements": [
+      "All signal types have JSON schema definitions",
+      "Required fields enforced for each signal type",
+      "token_usage subfields validated (input_tokens, output_tokens, total_tokens, estimated_cost_usd, model)",
+      "Invalid signals rejected with clear error messages",
+      "Schema version tracked in validation",
+      "Performance: pre-compiled schemas"
+    ]
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "All required fields validated",
+      "threshold": "validateSignal() checks all required fields per signal type",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "token_usage subfields validated",
+      "threshold": "All 5 token_usage fields validated: input_tokens, output_tokens, total_tokens, estimated_cost_usd, model",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "Invalid signals rejected with clear error",
+      "threshold": "Validation returns errors array with field paths and descriptions",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "Schema version tracked",
+      "threshold": "SCHEMA_VERSION constant exported and used in validation",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "All signal types supported",
+      "threshold": "Schemas for Gate 3, Gate 4, Gate 4.5, Gate 7, Escalation, DORA signals",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "Type validation enforced",
+      "threshold": "Number, string, boolean, array types validated",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/utils/signal-validator.js",
+      "portal/server/__tests__/signal-validator.test.js"
+    ],
+    "modify": [],
+    "existing": [
+      ".claudecode/signals/SCHEMAS.md",
+      "core/scripts/signal-enforcement/validate-signal.sh"
+    ],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Validation blocks valid signals",
+      "Performance degradation in signal processing",
+      "False positives cause pipeline failures"
+    ],
+    "escalation_triggers": [
+      "Schema mismatch between documentation and validation",
+      "Backwards compatibility broken"
+    ]
+  },
+
+  "dependencies": [],
+
+  "implementation_hints": [
+    "Use Ajv for JSON schema validation",
+    "Pre-compile all schemas at module load",
+    "Support schema version in validation result",
+    "Return all errors (allErrors: true) for debugging",
+    "Separate schemas for each signal type",
+    "Common token_usage schema reused across types"
+  ],
+
+  "signal_types": [
+    "gate3-complete",
+    "gate4-approved",
+    "gate4-rejected",
+    "gate4.5-retry",
+    "gate4.5-fixed",
+    "gate7-merge-approved",
+    "escalation",
+    "dora-deployment",
+    "dora-lead-time",
+    "dora-failure",
+    "dora-recovery"
+  ],
+
+  "token_usage_schema": {
+    "type": "object",
+    "required": ["input_tokens", "output_tokens", "total_tokens", "estimated_cost_usd", "model"],
+    "properties": {
+      "input_tokens": { "type": "integer", "minimum": 0 },
+      "output_tokens": { "type": "integer", "minimum": 0 },
+      "total_tokens": { "type": "integer", "minimum": 0 },
+      "estimated_cost_usd": { "type": "number", "minimum": 0 },
+      "model": { "type": "string", "minLength": 1 }
+    }
+  },
+
+  "test_plan": {
+    "unit_tests": [
+      "SCHEMA_VERSION is defined and exported",
+      "validateSignal returns valid for correct Gate 3 signal",
+      "validateSignal returns valid for correct Gate 4 approved signal",
+      "validateSignal returns valid for correct Gate 4 rejected signal",
+      "validateSignal returns valid for correct Gate 4.5 retry signal",
+      "validateSignal returns valid for correct Gate 4.5 fixed signal",
+      "validateSignal returns valid for correct Gate 7 signal",
+      "validateSignal returns valid for correct Escalation signal",
+      "validateSignal returns valid for correct DORA deployment signal",
+      "validateSignal rejects missing wave field",
+      "validateSignal rejects missing gate field",
+      "validateSignal rejects missing timestamp field",
+      "validateSignal rejects missing token_usage",
+      "validateSignal rejects missing token_usage.input_tokens",
+      "validateSignal rejects missing token_usage.output_tokens",
+      "validateSignal rejects missing token_usage.total_tokens",
+      "validateSignal rejects missing token_usage.estimated_cost_usd",
+      "validateSignal rejects missing token_usage.model",
+      "validateSignal rejects invalid wave type (string instead of number)",
+      "validateSignal rejects negative input_tokens",
+      "validateSignal rejects empty model string",
+      "validateSignal returns errors array with field paths",
+      "validateSignal returns all errors not just first",
+      "getSignalType returns correct type from filename",
+      "getSignalType returns null for invalid filename",
+      "getSchema returns compiled schema for type",
+      "getSchema returns null for unknown type",
+      "validateSignalFile reads and validates file",
+      "validateSignalFile returns error for non-existent file",
+      "validateSignalFile returns error for invalid JSON"
+    ],
+    "integration_tests": [
+      "Validate real signal file from .claude directory",
+      "Batch validate all signals in project"
+    ],
+    "security_tests": [
+      "Reject oversized signal files (DoS prevention)",
+      "Handle malformed JSON gracefully"
+    ]
+  },
+
+  "created_at": "2026-01-24T09:10:00Z",
+  "completed_at": "2026-01-24T09:11:00Z",
+  "tests_passed": 49,
+  "score": 100
+}
