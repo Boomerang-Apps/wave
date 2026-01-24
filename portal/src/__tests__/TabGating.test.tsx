@@ -10,7 +10,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-import { GatedTab, GatedTabProps } from '../components/GatedTab';
+import { GatedTab } from '../components/GatedTab';
+import type { GatedTabProps } from '../components/GatedTab';
 
 describe('GatedTab Component', () => {
 

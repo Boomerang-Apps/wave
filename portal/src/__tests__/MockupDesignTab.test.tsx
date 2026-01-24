@@ -10,7 +10,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
-import { MockupDesignTab, MockupDesignTabProps } from '../components/MockupDesignTab';
+import { MockupDesignTab } from '../components/MockupDesignTab';
+import type { MockupDesignTabProps } from '../components/MockupDesignTab';
 
 // Mock fetch for API calls
 global.fetch = vi.fn();

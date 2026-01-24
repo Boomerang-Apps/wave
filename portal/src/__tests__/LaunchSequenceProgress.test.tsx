@@ -4,7 +4,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { LaunchSequenceProgress, LaunchStep } from '../components/LaunchSequenceProgress';
+import { LaunchSequenceProgress } from '../components/LaunchSequenceProgress';
+import type { LaunchStep } from '../components/LaunchSequenceProgress';
 
 describe('LaunchSequenceProgress', () => {
   const mockSteps: LaunchStep[] = [

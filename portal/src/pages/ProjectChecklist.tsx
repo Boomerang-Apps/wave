@@ -51,6 +51,8 @@ import {
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { cn } from '../lib/utils'
+import { LaunchSequenceProgress } from '../components/LaunchSequenceProgress'
+import type { LaunchStep } from '../components/LaunchSequenceProgress'
 
 // Types
 type CheckStatusType = 'pass' | 'fail' | 'warn' | 'pending' | 'blocked'
@@ -1941,6 +1943,17 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
     { id: 'audit-log', label: 'Audit Log', shortLabel: '10', status: ((auditLogSummary?.requires_review || 0) > 0 ? 'warn' : 'pass') as CheckStatusType },
   ]
 
+  // Convert tabs to LaunchStep format for progress visualization
+  const launchSteps: LaunchStep[] = tabs.slice(0, 10).map(tab => ({
+    id: tab.id,
+    label: tab.label.split(' ')[0], // Short label for progress bar
+    status: tab.status === 'pass' ? 'ready' : tab.status === 'fail' ? 'blocked' : 'idle'
+  }))
+
+  // Find current step index (first non-ready step)
+  const currentStepIndex = launchSteps.findIndex(s => s.status !== 'ready')
+  const effectiveCurrentStep = currentStepIndex === -1 ? launchSteps.length - 1 : currentStepIndex
+
   const toggleShowKey = (key: string) => {
     setShowKeys(prev => ({ ...prev, [key]: !prev[key] }))
   }
@@ -3590,6 +3603,12 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
           </button>
         </div>
       </div>
+
+      {/* Launch Sequence Progress */}
+      <LaunchSequenceProgress
+        steps={launchSteps}
+        currentStep={effectiveCurrentStep}
+      />
 
       {/* Pill Tabs - Full Width Distribution */}
       <div className="bg-muted p-1.5 rounded-2xl mb-8 flex w-full">
