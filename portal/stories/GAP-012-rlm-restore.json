@@ -1,0 +1,195 @@
+{
+  "id": "GAP-012",
+  "title": "RLM Snapshot Restoration",
+  "domain": "recovery",
+  "agent": "be-dev-1",
+  "priority": "medium",
+  "risk": "medium",
+  "status": "completed",
+  "wave": null,
+  "description": "Cannot recover from failed sync operations. Implement snapshot restoration that verifies integrity, restores P.json from snapshots, and logs restoration events to audit trail.",
+
+  "gate0_research": {
+    "sources": [
+      {
+        "name": "AWS RDS Snapshot Restore Patterns",
+        "url": "https://aws.amazon.com/blogs/database/amazon-rds-snapshot-restore-and-recovery-demystified/",
+        "key_findings": [
+          "Point-in-time recovery (PITR) restores from automated snapshots",
+          "Transaction logs replay to bring to specific time",
+          "Backup validation essential before restore",
+          "Recovery time depends on transaction log size"
+        ]
+      },
+      {
+        "name": "Database Rollback Strategies",
+        "url": "https://www.robinwaite.com/blog/strategies-for-seamless-database-rollback-procedures",
+        "key_findings": [
+          "Transaction log-based rollback isolates specific transactions",
+          "Snapshot-based rollback quickly restores to previous states",
+          "Segment transactions for cohesive rollback actions",
+          "Automate backup process to minimize data loss risk"
+        ]
+      },
+      {
+        "name": "Git Restore Best Practices",
+        "url": "https://git-scm.com/docs/git-restore",
+        "key_findings": [
+          "git restore is recommended over git checkout for file recovery",
+          "Use --source option to specify commit hash",
+          "Backup current state before reverting",
+          "git reflog can recover lost commits"
+        ]
+      },
+      {
+        "name": "SQL Server Database Snapshots",
+        "url": "https://learn.microsoft.com/en-us/sql/relational-databases/databases/database-snapshots-sql-server",
+        "key_findings": [
+          "Snapshots are transactionally consistent at creation time",
+          "Reverting is faster than restoring from backup",
+          "Cannot roll forward after revert",
+          "Snapshots don't replace regular backups"
+        ]
+      }
+    ],
+    "compliance_requirements": [
+      "Verify snapshot integrity before restore",
+      "Backup current P.json before overwriting",
+      "Log all restoration events to audit trail",
+      "Support restore by checkpoint name or timestamp",
+      "Validate restored data matches expected schema"
+    ]
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "Restore from snapshot implemented",
+      "threshold": "restoreFromSnapshot() restores P.json from specified snapshot",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "Snapshot integrity verified",
+      "threshold": "verifySnapshotIntegrity() validates JSON and checksum",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "Current state backed up before restore",
+      "threshold": "Pre-restore backup created automatically",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "Restoration logged to audit trail",
+      "threshold": "Audit log records restoration with details",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "List available snapshots",
+      "threshold": "listSnapshots() returns sorted list with metadata",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "Find snapshot by checkpoint",
+      "threshold": "findSnapshot() locates by checkpoint name or timestamp",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/utils/snapshot-restore.js",
+      "portal/server/__tests__/snapshot-restore.test.js"
+    ],
+    "modify": [],
+    "existing": [
+      "core/scripts/rlm/snapshot-variable.sh"
+    ],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Restore corrupts P.json",
+      "Pre-restore backup not created",
+      "Integrity verification bypassed"
+    ],
+    "escalation_triggers": [
+      "All snapshots corrupted",
+      "Restore fails repeatedly"
+    ]
+  },
+
+  "dependencies": [],
+
+  "implementation_hints": [
+    "Snapshots stored in .claude/rlm-snapshots/",
+    "Filename format: P-wave{N}-{checkpoint}-{timestamp}.json",
+    "Pre-restore backup: P-wave{N}-pre-restore-{timestamp}.json",
+    "Verify JSON parses and has required fields",
+    "Calculate checksum for integrity verification",
+    "Log to audit with action: 'snapshot_restored'"
+  ],
+
+  "snapshot_schema": {
+    "filename_pattern": "P-wave{wave}-{checkpoint}-{YYYYMMDD-HHMMSS}.json",
+    "metadata_fields": {
+      "_snapshot": {
+        "checkpoint": "string",
+        "timestamp": "string",
+        "wave": "number",
+        "original_file": "P.json"
+      }
+    },
+    "valid_checkpoints": [
+      "startup",
+      "pre-sync",
+      "post-sync",
+      "pre-qa",
+      "post-qa",
+      "pre-retry",
+      "complete",
+      "pre-restore"
+    ]
+  },
+
+  "test_plan": {
+    "unit_tests": [
+      "listSnapshots returns empty array when no snapshots",
+      "listSnapshots returns sorted list of snapshots",
+      "listSnapshots filters by wave number",
+      "findSnapshot locates by checkpoint name",
+      "findSnapshot locates by timestamp",
+      "findSnapshot returns null when not found",
+      "verifySnapshotIntegrity validates JSON structure",
+      "verifySnapshotIntegrity detects corrupted files",
+      "verifySnapshotIntegrity validates required fields",
+      "restoreFromSnapshot creates pre-restore backup",
+      "restoreFromSnapshot copies snapshot to P.json",
+      "restoreFromSnapshot logs to audit trail",
+      "restoreFromSnapshot fails if integrity check fails",
+      "getLatestSnapshot returns most recent snapshot",
+      "getLatestSnapshot filters by checkpoint"
+    ],
+    "integration_tests": [
+      "Full restore workflow with verification",
+      "Restore after sync failure scenario"
+    ],
+    "security_tests": [
+      "Cannot restore from path outside project",
+      "Corrupted snapshot rejected"
+    ]
+  },
+
+  "created_at": "2026-01-24T08:55:00Z",
+  "completed_at": "2026-01-24T08:56:00Z",
+  "tests_passed": 33,
+  "score": 100
+}
