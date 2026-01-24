@@ -1,0 +1,175 @@
+{
+  "id": "GAP-006",
+  "title": "Path Traversal Protection",
+  "domain": "security",
+  "agent": "be-dev-1",
+  "priority": "high",
+  "risk": "high",
+  "status": "completed",
+  "wave": null,
+  "description": "File paths from user input (projectPath) are used directly in file operations without validating they're within allowed directories. This allows directory escape attacks via ../../../etc/passwd patterns. All file paths must be validated against allowed base directories and symlink attacks must be prevented.",
+
+  "gate0_research": {
+    "sources": [
+      {
+        "name": "OWASP Path Traversal Attack",
+        "url": "https://owasp.org/www-community/attacks/Path_Traversal",
+        "key_findings": [
+          "Attack uses ../ to escape intended directory",
+          "URL encoding can bypass naive filters (%2e%2e%2f)",
+          "Null byte injection may truncate paths",
+          "Validate against whitelist of allowed directories"
+        ]
+      },
+      {
+        "name": "CWE-22: Improper Limitation of a Pathname",
+        "url": "https://cwe.mitre.org/data/definitions/22.html",
+        "key_findings": [
+          "Resolve path to canonical form before validation",
+          "Use allowlist of permitted directories",
+          "Reject paths that escape the base directory",
+          "Consider symlink resolution"
+        ]
+      },
+      {
+        "name": "Node.js Path Security",
+        "url": "https://nodejs.org/api/path.html",
+        "key_findings": [
+          "path.resolve() returns absolute path",
+          "path.normalize() resolves .. and . segments",
+          "fs.realpath() follows symlinks to real path",
+          "Check resolved path starts with allowed base"
+        ]
+      },
+      {
+        "name": "OWASP Testing Guide - Path Traversal",
+        "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/05-Authorization_Testing/01-Testing_Directory_Traversal_File_Include",
+        "key_findings": [
+          "Test with various encodings (URL, double encoding)",
+          "Test with null bytes and special characters",
+          "Test symlink following behavior",
+          "Validate error messages don't leak path info"
+        ]
+      }
+    ],
+    "compliance_requirements": [
+      "All user-supplied paths validated before file operations",
+      "Paths resolved to canonical form using realpath",
+      "Validation against explicit allowlist of base directories",
+      "Symlink attacks blocked by resolving to real path",
+      "Returns 403 Forbidden on traversal attempts",
+      "Traversal attempts logged to audit"
+    ]
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "All file paths validated against allowed directories",
+      "threshold": "Path must be within configured allowedBasePaths",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "Path traversal patterns blocked",
+      "threshold": "../../../etc/passwd and encoded variants rejected",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "Symlink attacks prevented",
+      "threshold": "Symlinks resolved to real path before validation",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "Returns 403 on traversal attempt",
+      "threshold": "HTTP 403 Forbidden with security error code",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "Audit log records traversal attempts",
+      "threshold": "Log includes path, client IP, timestamp",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "Middleware validates projectPath automatically",
+      "threshold": "All endpoints using projectPath protected",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/utils/path-validator.js",
+      "portal/server/__tests__/path-validator.test.js"
+    ],
+    "modify": [
+      "portal/server/index.js"
+    ],
+    "existing": [
+      "portal/server/middleware/validation.js",
+      "portal/server/security-middleware.js"
+    ],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Path traversal still possible",
+      "Symlinks not resolved",
+      "403 not returned on attempt"
+    ],
+    "escalation_triggers": [
+      "File system access outside allowed directories",
+      "Audit logging fails"
+    ]
+  },
+
+  "dependencies": ["GAP-003"],
+
+  "implementation_hints": [
+    "Use path.resolve() to get absolute path",
+    "Use fs.realpathSync() to resolve symlinks",
+    "Check resolved path startsWith(allowedBasePath)",
+    "Create middleware that validates projectPath in req.body",
+    "Add PATH_TRAVERSAL_BLOCKED to error codes",
+    "Log to audit with action: 'path_traversal_blocked'"
+  ],
+
+  "test_plan": {
+    "unit_tests": [
+      "validatePath rejects ../ patterns",
+      "validatePath rejects URL-encoded traversal",
+      "validatePath rejects double-encoded traversal",
+      "validatePath accepts valid paths within allowed base",
+      "validatePath resolves symlinks before validation",
+      "validatePath rejects paths outside allowed directories",
+      "validatePath handles null bytes",
+      "validatePath handles Windows paths on Windows",
+      "isPathWithinBase correctly validates containment",
+      "resolveRealPath follows symlinks"
+    ],
+    "integration_tests": [
+      "POST /api/analyze returns 403 on traversal",
+      "Traversal attempt logged to audit",
+      "Valid projectPath succeeds",
+      "Multiple allowed base paths work"
+    ],
+    "security_tests": [
+      "All encoding variants blocked",
+      "Symlink escape blocked",
+      "Error messages don't leak path info"
+    ]
+  },
+
+  "created_at": "2026-01-24T05:15:00Z",
+  "completed_at": "2026-01-24T05:18:00Z",
+  "tests_passed": 42,
+  "score": 100
+}
