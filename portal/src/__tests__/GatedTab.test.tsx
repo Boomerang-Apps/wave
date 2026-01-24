@@ -79,11 +79,12 @@ describe('GatedTab', () => {
       expect(defaultProps.onClick).not.toHaveBeenCalled();
     });
 
-    it('should show tooltip with blocked steps', () => {
+    it('should have tooltip trigger when locked with blockers', () => {
       render(<GatedTab {...defaultProps} isLocked={true} blockedBy={['Mockup', 'PRD']} />);
 
+      // Radix UI tooltip trigger has data-state attribute
       const button = screen.getByRole('button');
-      expect(button.getAttribute('title')).toBe('Complete first: Mockup, PRD');
+      expect(button).toHaveAttribute('data-state', 'closed');
     });
 
     it('should have reduced opacity', () => {
@@ -99,14 +100,14 @@ describe('GatedTab', () => {
       render(<GatedTab {...defaultProps} isActive={true} />);
 
       const button = screen.getByRole('button');
-      expect(button.className).toContain('bg-white');
+      expect(button.className).toContain('bg-background');
     });
 
     it('should not have active styling when locked', () => {
       render(<GatedTab {...defaultProps} isActive={true} isLocked={true} blockedBy={['PRD']} />);
 
       const button = screen.getByRole('button');
-      expect(button.className).not.toContain('bg-white shadow-sm');
+      expect(button.className).not.toContain('bg-background shadow-sm');
     });
   });
 
@@ -118,25 +119,25 @@ describe('GatedTab', () => {
       expect(dot.className).toContain('bg-green-500');
     });
 
-    it('should show red dot for blocked status', () => {
+    it('should show destructive dot for blocked status', () => {
       render(<GatedTab {...defaultProps} status="blocked" />);
 
       const dot = screen.getByTestId('status-dot');
-      expect(dot.className).toContain('bg-red-500');
+      expect(dot.className).toContain('bg-destructive');
     });
 
-    it('should show gray dot for idle status', () => {
+    it('should show muted dot for idle status', () => {
       render(<GatedTab {...defaultProps} status="idle" />);
 
       const dot = screen.getByTestId('status-dot');
-      expect(dot.className).toContain('bg-gray-400');
+      expect(dot.className).toContain('bg-muted-foreground');
     });
 
     it('should show blocked status when locked', () => {
       render(<GatedTab {...defaultProps} status="idle" isLocked={true} blockedBy={['PRD']} />);
 
       const dot = screen.getByTestId('status-dot');
-      expect(dot.className).toContain('bg-red-500');
+      expect(dot.className).toContain('bg-destructive');
     });
   });
 });

@@ -5,9 +5,14 @@
  *
  * A tab button component that renders locked/unlocked states
  * based on gate access validation.
+ *
+ * Design: Shadcn UI, Light Mode, Tailwind colors, Lucide icons
  */
 
 import { Lock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 // ============================================
 // Types
@@ -43,17 +48,15 @@ interface StatusDotProps {
 }
 
 function StatusDot({ status }: StatusDotProps) {
-  const colorClass =
-    status === 'ready'
-      ? 'bg-green-500'
-      : status === 'blocked'
-      ? 'bg-red-500'
-      : 'bg-gray-400';
-
   return (
     <span
       data-testid="status-dot"
-      className={`w-2 h-2 rounded-full ${colorClass}`}
+      className={cn(
+        'w-2 h-2 rounded-full',
+        status === 'ready' && 'bg-green-500',
+        status === 'blocked' && 'bg-destructive',
+        status === 'idle' && 'bg-muted-foreground'
+      )}
     />
   );
 }
@@ -79,28 +82,17 @@ export function GatedTab({
     }
   };
 
-  // Build class names
-  const baseClasses =
-    'flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 text-sm font-medium rounded-xl';
-  const lockedClasses = isLocked ? 'opacity-40 cursor-not-allowed' : '';
-  const activeClasses = isActive && !isLocked ? 'bg-white shadow-sm' : '';
-
-  const className = [baseClasses, lockedClasses, activeClasses]
-    .filter(Boolean)
-    .join(' ');
-
-  // Build tooltip title for locked tabs
-  const title = isLocked
-    ? `Complete first: ${blockedBy.join(', ')}`
-    : undefined;
-
-  return (
-    <button
-      type="button"
+  const tabButton = (
+    <Button
+      variant={isActive && !isLocked ? 'secondary' : 'ghost'}
+      size="sm"
       onClick={handleClick}
       disabled={isLocked}
-      className={className}
-      title={title}
+      className={cn(
+        'flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 text-sm font-medium rounded-xl h-auto',
+        isLocked && 'opacity-40 cursor-not-allowed',
+        isActive && !isLocked && 'bg-background shadow-sm'
+      )}
     >
       {isLocked ? (
         <Lock className="h-3 w-3" data-testid="lock-icon" />
@@ -109,8 +101,26 @@ export function GatedTab({
       )}
       {label}
       <StatusDot status={isLocked ? 'blocked' : status} />
-    </button>
+    </Button>
   );
+
+  // Wrap with tooltip if locked
+  if (isLocked && blockedBy.length > 0) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {tabButton}
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Complete first: {blockedBy.join(', ')}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  return tabButton;
 }
 
 export default GatedTab;

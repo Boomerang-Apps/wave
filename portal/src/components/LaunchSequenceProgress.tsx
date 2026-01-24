@@ -4,10 +4,15 @@
  * Visual progress indicator for the 10-step launch sequence.
  * Shows completion status with step circles and connecting lines.
  *
- * Design: Light Mode, Tailwind colors, Lucide icons
+ * Design: Shadcn UI, Light Mode, Tailwind colors, Lucide icons
  */
 
 import { Check, Rocket } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
 
 // ============================================
 // Types
@@ -40,26 +45,16 @@ interface StepCircleProps {
 }
 
 function StepCircle({ stepNumber, status, isCurrent, isLast }: StepCircleProps) {
-  const getBackgroundClass = () => {
-    if (status === 'ready') return 'bg-green-500 text-white';
-    if (status === 'blocked') return 'bg-red-500 text-white';
-    if (status === 'validating') return 'bg-amber-500 text-white animate-pulse';
-    return 'bg-gray-200 text-gray-600';
-  };
-
-  const getRingClass = () => {
-    if (isCurrent) return 'ring-2 ring-green-500 ring-offset-2 ring-offset-white';
-    return '';
-  };
-
   return (
     <div
-      className={`
-        w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold
-        ${getBackgroundClass()}
-        ${getRingClass()}
-        transition-all duration-300
-      `}
+      className={cn(
+        'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300',
+        status === 'ready' && 'bg-primary text-primary-foreground',
+        status === 'blocked' && 'bg-destructive text-destructive-foreground',
+        status === 'validating' && 'bg-amber-500 text-white animate-pulse',
+        status === 'idle' && 'bg-muted text-muted-foreground',
+        isCurrent && 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+      )}
       title={`Step ${stepNumber}`}
     >
       {status === 'ready' ? (
@@ -86,10 +81,10 @@ interface ConnectingLineProps {
 function ConnectingLine({ isComplete }: ConnectingLineProps) {
   return (
     <div
-      className={`
-        flex-1 h-1 mx-1 rounded-full transition-colors duration-300
-        ${isComplete ? 'bg-green-500' : 'bg-gray-200'}
-      `}
+      className={cn(
+        'flex-1 h-1 mx-1 rounded-full transition-colors duration-300',
+        isComplete ? 'bg-primary' : 'bg-muted'
+      )}
     />
   );
 }
@@ -105,71 +100,79 @@ export function LaunchSequenceProgress({
 }: LaunchSequenceProgressProps) {
   const completedCount = steps.filter(s => s.status === 'ready').length;
   const allComplete = completedCount === steps.length;
+  const progressPercent = (completedCount / steps.length) * 100;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Rocket className={`h-5 w-5 ${allComplete ? 'text-green-500' : 'text-gray-400'}`} />
-          <h3 className="font-semibold text-gray-900">Launch Sequence</h3>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className={`text-sm ${allComplete ? 'text-green-600' : 'text-gray-500'}`}>
-            {completedCount}/{steps.length} Complete
-          </span>
-          {allComplete && (
-            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
-              READY
+    <Card className="mb-6">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Rocket className={cn('h-5 w-5', allComplete ? 'text-primary' : 'text-muted-foreground')} />
+            Launch Sequence
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <span className={cn('text-sm', allComplete ? 'text-primary' : 'text-muted-foreground')}>
+              {completedCount}/{steps.length} Complete
             </span>
-          )}
-        </div>
-      </div>
-
-      {/* Progress Bar */}
-      <div className="flex items-center">
-        {steps.map((step, index) => (
-          <div key={step.id} className="contents">
-            <StepCircle
-              stepNumber={index}
-              status={step.status}
-              isCurrent={index === currentStep}
-              isLast={index === steps.length - 1}
-            />
-            {index < steps.length - 1 && (
-              <ConnectingLine isComplete={step.status === 'ready'} />
+            {allComplete && (
+              <Badge variant="default" className="bg-green-500 hover:bg-green-600">
+                READY
+              </Badge>
             )}
           </div>
-        ))}
-      </div>
+        </div>
+      </CardHeader>
 
-      {/* Step Labels (non-compact mode) */}
-      {!compact && (
-        <div className="flex items-center mt-2 text-[10px] text-gray-400">
+      <CardContent className="space-y-4">
+        {/* Overall Progress Bar */}
+        <Progress value={progressPercent} className="h-2" />
+
+        {/* Step Circles */}
+        <div className="flex items-center">
           {steps.map((step, index) => (
-            <div
-              key={step.id}
-              className={`
-                flex-1 text-center truncate px-1
-                ${index === currentStep ? 'text-gray-900 font-medium' : ''}
-                ${step.status === 'ready' ? 'text-green-600' : ''}
-              `}
-            >
-              {step.label}
+            <div key={step.id} className="contents">
+              <StepCircle
+                stepNumber={index}
+                status={step.status}
+                isCurrent={index === currentStep}
+                isLast={index === steps.length - 1}
+              />
+              {index < steps.length - 1 && (
+                <ConnectingLine isComplete={step.status === 'ready'} />
+              )}
             </div>
           ))}
         </div>
-      )}
 
-      {/* All Green Message */}
-      {allComplete && (
-        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-xl text-center">
-          <span className="text-green-700 font-medium">
-            All systems green - Launch authorized
-          </span>
-        </div>
-      )}
-    </div>
+        {/* Step Labels (non-compact mode) */}
+        {!compact && (
+          <div className="flex items-center text-[10px] text-muted-foreground">
+            {steps.map((step, index) => (
+              <div
+                key={step.id}
+                className={cn(
+                  'flex-1 text-center truncate px-1',
+                  index === currentStep && 'text-foreground font-medium',
+                  step.status === 'ready' && 'text-primary'
+                )}
+              >
+                {step.label}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* All Green Message */}
+        {allComplete && (
+          <Alert className="border-green-200 bg-green-50">
+            <Check className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-700 font-medium ml-2">
+              All systems green - Launch authorized
+            </AlertDescription>
+          </Alert>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

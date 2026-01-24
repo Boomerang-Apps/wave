@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 import { GatedTab } from '../components/GatedTab';
 import type { GatedTabProps } from '../components/GatedTab';
@@ -58,7 +58,7 @@ describe('GatedTab Component', () => {
       expect(button).toBeDisabled();
     });
 
-    it('should have title tooltip with blocker info when locked', () => {
+    it('should wrap button with tooltip trigger when locked with blockers', () => {
       render(
         <GatedTab
           {...defaultProps}
@@ -67,8 +67,9 @@ describe('GatedTab Component', () => {
         />
       );
 
+      // Tooltip trigger wrapper exists with data-state attribute (Radix UI pattern)
       const button = screen.getByRole('button');
-      expect(button).toHaveAttribute('title', 'Complete first: Mockup Design, PRD & Stories');
+      expect(button).toHaveAttribute('data-state', 'closed');
     });
 
     it('should not call onClick when clicked while locked', () => {
@@ -91,9 +92,9 @@ describe('GatedTab Component', () => {
     it('should show blocked status indicator when locked', () => {
       render(<GatedTab {...defaultProps} isLocked={true} status="blocked" />);
 
-      // Check for blocked status dot
+      // Check for blocked status dot - uses semantic color
       const statusDot = screen.getByTestId('status-dot');
-      expect(statusDot).toHaveClass('bg-red-500');
+      expect(statusDot).toHaveClass('bg-destructive');
     });
   });
 
@@ -138,11 +139,11 @@ describe('GatedTab Component', () => {
       expect(button).not.toHaveClass('opacity-40');
     });
 
-    it('should not have title tooltip when unlocked', () => {
+    it('should not have tooltip when unlocked', () => {
       render(<GatedTab {...defaultProps} isLocked={false} blockedBy={[]} />);
 
-      const button = screen.getByRole('button');
-      expect(button).not.toHaveAttribute('title');
+      // No tooltip content should be present for unlocked tabs
+      expect(screen.queryByText(/Complete first:/)).not.toBeInTheDocument();
     });
   });
 
@@ -155,7 +156,8 @@ describe('GatedTab Component', () => {
       render(<GatedTab {...defaultProps} isActive={true} />);
 
       const button = screen.getByRole('button');
-      expect(button).toHaveClass('bg-white');
+      // Active unlocked tab uses bg-background and shadow-sm
+      expect(button).toHaveClass('bg-background');
       expect(button).toHaveClass('shadow-sm');
     });
 
@@ -179,18 +181,18 @@ describe('GatedTab Component', () => {
       expect(statusDot).toHaveClass('bg-green-500');
     });
 
-    it('should show idle status (gray) when status is idle', () => {
+    it('should show idle status (muted) when status is idle', () => {
       render(<GatedTab {...defaultProps} status="idle" />);
 
       const statusDot = screen.getByTestId('status-dot');
-      expect(statusDot).toHaveClass('bg-gray-400');
+      expect(statusDot).toHaveClass('bg-muted-foreground');
     });
 
-    it('should show blocked status (red) when status is blocked', () => {
+    it('should show blocked status (destructive) when status is blocked', () => {
       render(<GatedTab {...defaultProps} status="blocked" />);
 
       const statusDot = screen.getByTestId('status-dot');
-      expect(statusDot).toHaveClass('bg-red-500');
+      expect(statusDot).toHaveClass('bg-destructive');
     });
   });
 
@@ -217,20 +219,23 @@ describe('GatedTab Component', () => {
   // ============================================
 
   describe('edge cases', () => {
-    it('should handle empty blockedBy array', () => {
+    it('should not show tooltip when blockedBy is empty', () => {
       render(<GatedTab {...defaultProps} isLocked={true} blockedBy={[]} />);
 
+      // With empty blockedBy, no tooltip is rendered
       const button = screen.getByRole('button');
-      expect(button).toHaveAttribute('title', 'Complete first: ');
+      expect(button).toBeDisabled();
+      // No tooltip content should be present
+      expect(screen.queryByText(/Complete first:/)).not.toBeInTheDocument();
     });
 
-    it('should handle long blocker list', () => {
+    it('should have tooltip trigger when locked with multiple blockers', () => {
       const manyBlockers = ['Step 1', 'Step 2', 'Step 3', 'Step 4', 'Step 5'];
       render(<GatedTab {...defaultProps} isLocked={true} blockedBy={manyBlockers} />);
 
+      // Tooltip trigger is present (content appears on hover in real browser)
       const button = screen.getByRole('button');
-      expect(button.getAttribute('title')).toContain('Step 1');
-      expect(button.getAttribute('title')).toContain('Step 5');
+      expect(button).toHaveAttribute('data-state', 'closed');
     });
 
     it('should call onClick with tab id', () => {

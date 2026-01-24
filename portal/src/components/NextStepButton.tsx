@@ -4,10 +4,12 @@
  * Prominent navigation button shown when current step is complete.
  * Guides users through the sequential launch flow.
  *
- * Design: Light Mode, Tailwind colors, Lucide icons
+ * Design: Shadcn UI, Light Mode, Tailwind colors, Lucide icons
  */
 
 import { ArrowRight, Check, Rocket } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 // ============================================
 // Types
@@ -51,32 +53,27 @@ export function NextStepButton({
   // Final step - show launch button
   if (isFinalStep) {
     return (
-      <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-2xl">
-        <div className="flex items-center justify-between">
-          <div>
-            <h4 className="font-semibold text-green-700 flex items-center gap-2">
-              <Check className="h-5 w-5" />
+      <Alert className="mt-6 border-green-200 bg-green-50">
+        <Check className="h-5 w-5 text-green-600" />
+        <div className="flex items-center justify-between w-full">
+          <div className="ml-2">
+            <AlertTitle className="text-green-700">
               All Pre-Flight Checks Passed
-            </h4>
-            <p className="text-sm text-gray-600 mt-1">
+            </AlertTitle>
+            <AlertDescription className="text-green-600">
               Launch sequence complete. Ready for autonomous agent execution.
-            </p>
+            </AlertDescription>
           </div>
-          <button
+          <Button
             onClick={onLaunch}
-            className="
-              flex items-center gap-2 px-6 py-3
-              bg-green-600 hover:bg-green-700
-              text-white font-semibold rounded-xl
-              transition-colors duration-200
-              shadow-sm
-            "
+            size="lg"
+            className="bg-green-600 hover:bg-green-700 ml-4"
           >
-            <Rocket className="h-5 w-5" />
+            <Rocket className="h-5 w-5 mr-2" />
             Launch Agents
-          </button>
+          </Button>
         </div>
-      </div>
+      </Alert>
     );
   }
 
@@ -87,19 +84,14 @@ export function NextStepButton({
 
   return (
     <div className="mt-6 flex justify-end">
-      <button
+      <Button
         onClick={() => onNavigate(nextStep.id)}
-        className="
-          flex items-center gap-2 px-6 py-3
-          bg-green-600 hover:bg-green-700
-          text-white font-medium rounded-xl
-          transition-colors duration-200
-          shadow-sm
-        "
+        size="lg"
+        className="bg-primary hover:bg-primary/90"
       >
         Continue to Step {nextStep.step}: {nextStep.label}
-        <ArrowRight className="h-4 w-4" />
-      </button>
+        <ArrowRight className="h-4 w-4 ml-2" />
+      </Button>
     </div>
   );
 }
