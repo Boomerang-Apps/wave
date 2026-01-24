@@ -1,0 +1,177 @@
+{
+  "id": "GAP-007",
+  "title": "Story Content Injection Scanning",
+  "domain": "security",
+  "agent": "be-dev-1",
+  "priority": "high",
+  "risk": "high",
+  "status": "completed",
+  "wave": null,
+  "description": "Story files contain text fields (acceptance_criteria, description, objective, implementation_hints) that are processed by AI agents. Malicious content in these fields could hijack agent behavior through prompt injection. All story files must be scanned for injection patterns before agent processing.",
+
+  "gate0_research": {
+    "sources": [
+      {
+        "name": "OWASP LLM01:2025 Prompt Injection",
+        "url": "https://owasp.org/www-project-top-10-for-large-language-model-applications/",
+        "key_findings": [
+          "Prompt injection manipulates LLM via crafted inputs",
+          "Direct injection overwrites system prompts",
+          "Indirect injection embeds malicious content in data",
+          "Defense requires input validation and sandboxing"
+        ]
+      },
+      {
+        "name": "Anthropic Prompt Injection Guidelines",
+        "url": "https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering",
+        "key_findings": [
+          "Separate user input from instructions",
+          "Use delimiters to mark untrusted content",
+          "Validate inputs before processing",
+          "Monitor for injection attempts"
+        ]
+      },
+      {
+        "name": "AutoGuard Research (arXiv:2511.13725)",
+        "url": "https://arxiv.org/abs/2511.13725",
+        "key_findings": [
+          "Pattern-based detection catches known attacks",
+          "Semantic analysis detects novel attacks",
+          "Multi-layer defense most effective",
+          "False positive management critical"
+        ]
+      },
+      {
+        "name": "NIST AI RMF - Input Validation",
+        "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+        "key_findings": [
+          "Validate all inputs to AI systems",
+          "Document validation rules",
+          "Monitor for adversarial inputs",
+          "Maintain audit trail"
+        ]
+      }
+    ],
+    "compliance_requirements": [
+      "All story files scanned before agent processing",
+      "Known injection patterns detected with 80%+ coverage",
+      "Suspicious content flagged for human review",
+      "Pre-flight validator includes story scanning",
+      "False positive rate below 5%"
+    ]
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "Story files scanned before agent processing",
+      "threshold": "scanStory() called for each story in pre-flight",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "Known injection patterns detected",
+      "threshold": "80%+ of test injection patterns caught",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "Suspicious stories flagged for human review",
+      "threshold": "Stories with score > 50 marked for review",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "Pre-flight validator includes story scanning",
+      "threshold": "scanStories() function added to validation",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "False positive rate below 5%",
+      "threshold": "Legitimate stories pass without flags",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "Scan results include field locations",
+      "threshold": "Report identifies which field contains injection",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/utils/story-scanner.js",
+      "portal/server/__tests__/story-scanner.test.js"
+    ],
+    "modify": [],
+    "existing": [
+      "portal/server/utils/prompt-injection-detector.js",
+      "core/scripts/pre-flight.sh"
+    ],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Injection patterns not detected",
+      "High false positive rate",
+      "Pre-flight not integrated"
+    ],
+    "escalation_triggers": [
+      "Malicious story bypasses scanner",
+      "Scanner causes false rejections"
+    ]
+  },
+
+  "dependencies": [],
+
+  "implementation_hints": [
+    "Use existing PromptInjectionDetector from prompt-injection-detector.js",
+    "Scan text fields: acceptance_criteria, description, objective, implementation_hints",
+    "Return scan results with field locations",
+    "Flag stories with score > 50 for human review",
+    "Integrate with pre-flight via API endpoint"
+  ],
+
+  "test_plan": {
+    "unit_tests": [
+      "scanStory detects injection in acceptance_criteria",
+      "scanStory detects injection in description",
+      "scanStory detects injection in objective",
+      "scanStory passes clean stories",
+      "scanStory reports correct field locations",
+      "scanStories scans multiple stories",
+      "getInjectionScore returns correct score",
+      "flagForReview correctly flags high-score stories"
+    ],
+    "integration_tests": [
+      "POST /api/scan-story scans single story",
+      "POST /api/scan-stories scans directory",
+      "Pre-flight includes story scanning"
+    ],
+    "security_tests": [
+      "Known injection patterns detected",
+      "Encoded injections detected",
+      "Legitimate stories not flagged"
+    ]
+  },
+
+  "existing_implementation": {
+    "PromptInjectionDetector": {
+      "file": "portal/server/utils/prompt-injection-detector.js",
+      "lines": 453,
+      "tests": 36,
+      "patterns": "8 categories, 50+ patterns"
+    }
+  },
+
+  "created_at": "2026-01-24T05:20:00Z",
+  "completed_at": "2026-01-24T07:24:00Z",
+  "tests_passed": 48,
+  "score": 100
+}
