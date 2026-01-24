@@ -87,11 +87,11 @@ type FoundationCheck = {
 // Status dot component
 function StatusDot({ status }: { status: CheckStatusType }) {
   const colors: Record<CheckStatusType, string> = {
-    pass: 'bg-green-500',
-    fail: 'bg-red-500',
+    pass: 'bg-green-500/100',
+    fail: 'bg-red-500/100',
     warn: 'bg-amber-400',
-    pending: 'bg-gray-400',
-    blocked: 'bg-red-500',
+    pending: 'bg-muted-foreground',
+    blocked: 'bg-red-500/100',
   }
   return <span className={cn('w-2 h-2 rounded-full inline-block', colors[status])} />
 }
@@ -99,11 +99,11 @@ function StatusDot({ status }: { status: CheckStatusType }) {
 // Status badge component
 function StatusBadge({ status }: { status: CheckStatusType }) {
   const styles: Record<CheckStatusType, string> = {
-    pass: 'bg-green-100 text-green-700',
-    fail: 'bg-red-100 text-red-700',
+    pass: 'bg-green-500/15 text-green-400',
+    fail: 'bg-red-500/15 text-red-400',
     warn: 'bg-zinc-100 text-zinc-600',
-    pending: 'bg-gray-100 text-gray-600',
-    blocked: 'bg-gray-100 text-gray-600',
+    pending: 'bg-muted text-muted-foreground',
+    blocked: 'bg-muted text-muted-foreground',
   }
   const labels: Record<CheckStatusType, string> = {
     pass: 'PASS',
@@ -149,7 +149,7 @@ function formatValidationTimestamp(isoString: string | null): string {
 // Section header with badge
 function SectionHeader({
   badge,
-  badgeColor = 'bg-gray-500',
+  badgeColor = 'bg-muted0',
   title,
   description,
   timestamp,
@@ -171,7 +171,7 @@ function SectionHeader({
   return (
     <div
       className={cn(
-        "flex items-center justify-between py-4 px-4 bg-white border border-border border-b-0 rounded-t-xl mt-6",
+        "flex items-center justify-between py-4 px-4 bg-card border border-border border-b-0 rounded-t-xl mt-6",
         isCollapsible && "cursor-pointer hover:bg-muted/30 transition-colors"
       )}
       onClick={isCollapsible ? onToggle : undefined}
@@ -222,7 +222,7 @@ function CheckItem({
     pass: <CheckCircle2 className="h-5 w-5 text-green-500" />,
     fail: <XCircle className="h-5 w-5 text-red-500" />,
     warn: <AlertTriangle className="h-5 w-5 text-amber-400" />,
-    pending: <Clock className="h-5 w-5 text-gray-400" />,
+    pending: <Clock className="h-5 w-5 text-muted-foreground" />,
     blocked: <XCircle className="h-5 w-5 text-red-500" />,
   }
 
@@ -239,7 +239,7 @@ function CheckItem({
   }
 
   return (
-    <div className="border-b border-border last:border-0 last:rounded-b-xl bg-white">
+    <div className="border-b border-border last:border-0 last:rounded-b-xl bg-card">
       <div
         className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors"
         onClick={() => setExpanded(!expanded)}
@@ -261,7 +261,7 @@ function CheckItem({
           )}
           {command && (
             <div className="flex items-center gap-2">
-              <code className="flex-1 bg-zinc-900 text-zinc-100 px-4 py-2.5 rounded-lg text-sm font-mono overflow-x-auto">
+              <code className="flex-1 bg-background text-zinc-100 px-4 py-2.5 rounded-lg text-sm font-mono overflow-x-auto">
                 {command}
               </code>
               <button
@@ -281,9 +281,9 @@ function CheckItem({
             </div>
           )}
           {fix && (status === 'fail' || status === 'warn') && (
-            <div className="flex items-start gap-2 px-3 py-2 bg-red-50 border border-red-100 rounded-lg">
+            <div className="flex items-start gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg">
               <span className="text-red-500 font-medium text-sm">Fix:</span>
-              <span className="text-sm text-red-600">{fix}</span>
+              <span className="text-sm text-red-400">{fix}</span>
             </div>
           )}
         </div>
@@ -297,7 +297,7 @@ function FileCard({ file, onCopy }: { file: FileCheck; onCopy: (path: string) =>
   return (
     <div className={cn(
       'p-4 rounded-xl border flex items-start justify-between',
-      file.status === 'found' ? 'bg-white border-border' : 'bg-red-50 border-red-100'
+      file.status === 'found' ? 'bg-card border-border' : 'bg-red-500/10 border-red-500/20'
     )}>
       <div className="flex items-start gap-3">
         {file.status === 'found' ? (
@@ -596,28 +596,28 @@ function ExecutionPlanTab({ project }: { project: Project | null }) {
 
   const getStatusColor = (status: Wave['status']) => {
     switch (status) {
-      case 'completed': return 'bg-green-600'
+      case 'completed': return 'bg-green-500'
       case 'active': return 'bg-zinc-700'
       case 'upcoming': return 'bg-zinc-300'
-      case 'blocked': return 'bg-red-500'
+      case 'blocked': return 'bg-red-500/100'
     }
   }
 
   const getStoryStatusIcon = (status: Story['status']) => {
     switch (status) {
-      case 'completed': return <CheckCircle2 className="h-5 w-5 text-green-600" />
+      case 'completed': return <CheckCircle2 className="h-5 w-5 text-green-400" />
       case 'in_progress': return <Clock className="h-5 w-5 text-zinc-600" />
-      case 'not_started': return <Clock className="h-5 w-5 text-zinc-300" />
+      case 'not_started': return <Clock className="h-5 w-5 text-muted-foreground" />
       case 'blocked': return <XCircle className="h-5 w-5 text-red-500" />
     }
   }
 
   const getStoryStatusLabel = (status: Story['status']) => {
     switch (status) {
-      case 'completed': return { text: 'Done', class: 'bg-green-100 text-green-700' }
-      case 'in_progress': return { text: 'In Progress', class: 'bg-zinc-200 text-zinc-700' }
+      case 'completed': return { text: 'Done', class: 'bg-green-500/15 text-green-400' }
+      case 'in_progress': return { text: 'In Progress', class: 'bg-border text-zinc-700' }
       case 'not_started': return { text: 'To Do', class: 'bg-zinc-100 text-zinc-500' }
-      case 'blocked': return { text: 'Blocked', class: 'bg-red-100 text-red-600' }
+      case 'blocked': return { text: 'Blocked', class: 'bg-red-500/15 text-red-400' }
     }
   }
 
@@ -628,7 +628,7 @@ function ExecutionPlanTab({ project }: { project: Project | null }) {
   return (
     <div className="space-y-6">
       {/* Header with Overview */}
-      <div className="bg-zinc-900 rounded-2xl p-6 text-white">
+      <div className="bg-background rounded-2xl p-6 text-white">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-2xl font-bold mb-2">Project Roadmap</h2>
@@ -664,7 +664,7 @@ function ExecutionPlanTab({ project }: { project: Project | null }) {
       </div>
 
       {/* How It Works */}
-      <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4">
+      <div className="bg-muted border border-border rounded-xl p-4">
         <div className="flex items-start gap-3">
           <Info className="h-5 w-5 text-zinc-500 mt-0.5" />
           <div>
@@ -682,12 +682,12 @@ function ExecutionPlanTab({ project }: { project: Project | null }) {
         {waves.map((wave) => (
           <div
             key={wave.id}
-            className="border border-zinc-200 rounded-xl overflow-hidden bg-white"
+            className="border border-border rounded-xl overflow-hidden bg-card"
           >
             {/* Wave Header - Always visible */}
             <button
               onClick={() => setExpandedWave(expandedWave === wave.id ? null : wave.id)}
-              className="w-full p-5 text-left hover:bg-zinc-50 transition-colors"
+              className="w-full p-5 text-left hover:bg-muted transition-colors"
             >
               <div className="flex items-start gap-4">
                 {/* Wave Number */}
@@ -704,9 +704,9 @@ function ExecutionPlanTab({ project }: { project: Project | null }) {
                     <h3 className="text-base font-semibold">Wave {wave.id}: {wave.name}</h3>
                     <span className={cn(
                       "text-xs px-2 py-0.5 rounded font-medium",
-                      wave.status === 'completed' ? 'bg-green-100 text-green-700' :
-                      wave.status === 'active' ? 'bg-zinc-200 text-zinc-700' :
-                      wave.status === 'blocked' ? 'bg-red-100 text-red-600' :
+                      wave.status === 'completed' ? 'bg-green-500/15 text-green-400' :
+                      wave.status === 'active' ? 'bg-border text-zinc-700' :
+                      wave.status === 'blocked' ? 'bg-red-500/15 text-red-400' :
                       'bg-zinc-100 text-zinc-500'
                     )}>
                       {wave.status === 'completed' ? 'Done' :
@@ -720,7 +720,7 @@ function ExecutionPlanTab({ project }: { project: Project | null }) {
                   <div className="flex items-center gap-3">
                     <div className="flex-1 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-zinc-900 rounded-full transition-all"
+                        className="h-full bg-background rounded-full transition-all"
                         style={{ width: `${wave.progress}%` }}
                       />
                     </div>
@@ -740,7 +740,7 @@ function ExecutionPlanTab({ project }: { project: Project | null }) {
 
             {/* Expanded Content */}
             {expandedWave === wave.id && (
-              <div className="border-t border-zinc-100 bg-zinc-50/50 p-5">
+              <div className="border-t border-zinc-100 bg-muted/50 p-5">
                 {/* Dependencies */}
                 {wave.dependencies && wave.dependencies.length > 0 && (
                   <div className="mb-4 flex items-center gap-2 text-sm">
@@ -754,10 +754,10 @@ function ExecutionPlanTab({ project }: { project: Project | null }) {
                   <h4 className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">Deliverables</h4>
                   <div className="grid grid-cols-2 gap-2">
                     {wave.deliverables.map((item, i) => (
-                      <div key={i} className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-zinc-200">
+                      <div key={i} className="flex items-center gap-2 bg-card rounded-lg px-3 py-2 border border-border">
                         <CheckCircle2 className={cn(
                           "h-4 w-4",
-                          wave.status === 'completed' ? 'text-green-600' : 'text-zinc-300'
+                          wave.status === 'completed' ? 'text-green-400' : 'text-muted-foreground'
                         )} />
                         <span className="text-sm">{item}</span>
                       </div>
@@ -772,11 +772,11 @@ function ExecutionPlanTab({ project }: { project: Project | null }) {
                   </h4>
                   <div className="space-y-2">
                     {wave.stories.map((story) => (
-                      <div key={story.id} className="bg-white rounded-lg border border-zinc-200 overflow-hidden">
+                      <div key={story.id} className="bg-card rounded-lg border border-border overflow-hidden">
                         {/* Story Header */}
                         <button
                           onClick={() => setExpandedStory(expandedStory === story.id ? null : story.id)}
-                          className="w-full p-3 text-left hover:bg-zinc-50 transition-colors"
+                          className="w-full p-3 text-left hover:bg-muted transition-colors"
                         >
                           <div className="flex items-center gap-3">
                             {getStoryStatusIcon(story.status)}
@@ -793,17 +793,17 @@ function ExecutionPlanTab({ project }: { project: Project | null }) {
                                 {story.risk && (
                                   <span className={cn(
                                     "text-xs px-1.5 py-0.5 rounded font-medium",
-                                    story.risk === 'critical' ? 'bg-red-100 text-red-700' :
-                                    story.risk === 'high' ? 'bg-orange-100 text-orange-700' :
-                                    story.risk === 'medium' ? 'bg-amber-100 text-amber-700' :
-                                    'bg-green-100 text-green-700'
+                                    story.risk === 'critical' ? 'bg-red-500/15 text-red-400' :
+                                    story.risk === 'high' ? 'bg-orange-500/15 text-orange-700' :
+                                    story.risk === 'medium' ? 'bg-amber-500/10 text-amber-700' :
+                                    'bg-green-500/15 text-green-400'
                                   )}>
                                     {story.risk.toUpperCase()} RISK
                                   </span>
                                 )}
                                 {/* Requires Review Badge */}
                                 {story.requires_review && (
-                                  <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-purple-100 text-purple-700">
+                                  <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-purple-500/15 text-purple-400">
                                     REVIEW
                                   </span>
                                 )}
@@ -824,7 +824,7 @@ function ExecutionPlanTab({ project }: { project: Project | null }) {
 
                         {/* Story Details */}
                         {expandedStory === story.id && (
-                          <div className="border-t border-zinc-100 p-3 bg-zinc-50">
+                          <div className="border-t border-zinc-100 p-3 bg-muted">
                             <p className="text-sm text-zinc-600 mb-3">{story.description}</p>
 
                             {story.acceptanceCriteria && (
@@ -837,7 +837,7 @@ function ExecutionPlanTab({ project }: { project: Project | null }) {
                                     <li key={i} className="flex items-start gap-2 text-sm">
                                       <CheckCircle2 className={cn(
                                         "h-4 w-4 mt-0.5 shrink-0",
-                                        story.status === 'completed' ? 'text-green-600' : 'text-zinc-300'
+                                        story.status === 'completed' ? 'text-green-400' : 'text-muted-foreground'
                                       )} />
                                       <span className="text-zinc-600">{criteria}</span>
                                     </li>
@@ -848,7 +848,7 @@ function ExecutionPlanTab({ project }: { project: Project | null }) {
 
                             {/* Risk Classification Section */}
                             {(story.risk || story.safety_tags?.length || story.approval_required) && (
-                              <div className="mb-3 p-2 rounded-lg bg-zinc-100 border border-zinc-200">
+                              <div className="mb-3 p-2 rounded-lg bg-zinc-100 border border-border">
                                 <h6 className="text-xs font-medium text-zinc-400 uppercase mb-2">
                                   Risk Classification
                                 </h6>
@@ -858,10 +858,10 @@ function ExecutionPlanTab({ project }: { project: Project | null }) {
                                       <span className="text-xs text-zinc-500">Risk:</span>
                                       <span className={cn(
                                         "text-xs px-1.5 py-0.5 rounded font-medium",
-                                        story.risk === 'critical' ? 'bg-red-100 text-red-700' :
-                                        story.risk === 'high' ? 'bg-orange-100 text-orange-700' :
-                                        story.risk === 'medium' ? 'bg-amber-100 text-amber-700' :
-                                        'bg-green-100 text-green-700'
+                                        story.risk === 'critical' ? 'bg-red-500/15 text-red-400' :
+                                        story.risk === 'high' ? 'bg-orange-500/15 text-orange-700' :
+                                        story.risk === 'medium' ? 'bg-amber-500/10 text-amber-700' :
+                                        'bg-green-500/15 text-green-400'
                                       )}>
                                         {story.risk.toUpperCase()}
                                       </span>
@@ -870,7 +870,7 @@ function ExecutionPlanTab({ project }: { project: Project | null }) {
                                   {story.approval_required && (
                                     <div className="flex items-center gap-1.5">
                                       <span className="text-xs text-zinc-500">Approval:</span>
-                                      <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-blue-100 text-blue-700">
+                                      <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-blue-500/15 text-blue-400">
                                         {story.approval_required}
                                       </span>
                                     </div>
@@ -879,7 +879,7 @@ function ExecutionPlanTab({ project }: { project: Project | null }) {
                                 {story.safety_tags && story.safety_tags.length > 0 && (
                                   <div className="mt-2 flex flex-wrap gap-1">
                                     {story.safety_tags.map(tag => (
-                                      <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-600 border border-red-200">
+                                      <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/30">
                                         {tag}
                                       </span>
                                     ))}
@@ -891,9 +891,9 @@ function ExecutionPlanTab({ project }: { project: Project | null }) {
                             <div className="flex items-center gap-3 text-xs text-zinc-500">
                               <span className={cn(
                                 "px-2 py-1 rounded",
-                                story.priority === 'high' ? 'bg-zinc-200 text-zinc-700' :
+                                story.priority === 'high' ? 'bg-border text-zinc-700' :
                                 story.priority === 'medium' ? 'bg-zinc-100 text-zinc-600' :
-                                'bg-zinc-50 text-zinc-500'
+                                'bg-muted text-zinc-500'
                               )}>
                                 {story.priority.charAt(0).toUpperCase() + story.priority.slice(1)} Priority
                               </span>
@@ -3064,11 +3064,11 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
   // Get severity color
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'critical': return 'text-red-600 bg-red-50'
-      case 'error': return 'text-red-500 bg-red-50'
+      case 'critical': return 'text-red-400 bg-red-500/10'
+      case 'error': return 'text-red-500 bg-red-500/10'
       case 'warn': return 'text-amber-600 bg-amber-50'
-      case 'info': return 'text-blue-600 bg-blue-50'
-      default: return 'text-gray-600 bg-gray-50'
+      case 'info': return 'text-blue-400 bg-blue-500/10'
+      default: return 'text-muted-foreground bg-muted'
     }
   }
 
@@ -3418,11 +3418,11 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
   const getAgentColor = (color: string) => {
     switch (color) {
       case 'violet': return 'bg-violet-100 text-violet-600'
-      case 'blue': return 'bg-blue-100 text-blue-600'
-      case 'green': return 'bg-green-100 text-green-600'
-      case 'amber': return 'bg-amber-100 text-amber-600'
+      case 'blue': return 'bg-blue-500/15 text-blue-400'
+      case 'green': return 'bg-green-500/15 text-green-400'
+      case 'amber': return 'bg-amber-500/10 text-amber-600'
       case 'cyan': return 'bg-cyan-100 text-cyan-600'
-      case 'red': return 'bg-red-100 text-red-600'
+      case 'red': return 'bg-red-500/15 text-red-400'
       default: return 'bg-zinc-100 text-zinc-600'
     }
   }
@@ -3535,7 +3535,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
       {validationMode !== 'strict' && (
         <div className={cn(
           "px-4 py-2 text-center text-sm font-semibold",
-          validationMode === 'dev' ? "bg-amber-500 text-white" : "bg-blue-500 text-white"
+          validationMode === 'dev' ? "bg-amber-500 text-white" : "bg-blue-500/100 text-white"
         )}>
           {validationMode === 'dev' ? (
             <>⚠️ DEV MODE - Behavioral probes & drift checks DISABLED - NOT FOR PRODUCTION</>
@@ -3560,10 +3560,10 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               className={cn(
                 "appearance-none pl-3 pr-8 py-1.5 rounded-full text-xs font-medium border cursor-pointer",
                 validationMode === 'strict'
-                  ? "bg-green-50 border-green-200 text-green-700"
+                  ? "bg-green-500/10 border-green-500/30 text-green-400"
                   : validationMode === 'dev'
                   ? "bg-amber-50 border-amber-200 text-amber-700"
-                  : "bg-blue-50 border-blue-200 text-blue-700"
+                  : "bg-blue-500/10 border-blue-500/30 text-blue-400"
               )}
             >
               <option value="strict">🛡️ Strict Mode</option>
@@ -3581,24 +3581,24 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
           </a>
           {/* Dynamic Ready/Not Ready status based on analysis */}
           {analysisReport && analysisReport.summary.readiness_score >= 100 && analysisReport.summary.total_gaps === 0 ? (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-100 rounded-full">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-100 rounded-full">
               <CheckCircle2 className="h-4 w-4 text-green-500" />
-              <span className="text-sm font-medium text-green-600">Ready</span>
+              <span className="text-sm font-medium text-green-400">Ready</span>
               <span className="text-xs text-muted-foreground">Phase 1</span>
             </div>
           ) : (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-100 rounded-full">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-full">
               <AlertTriangle className="h-4 w-4 text-red-500" />
-              <span className="text-sm font-medium text-red-600">Not Ready</span>
+              <span className="text-sm font-medium text-red-400">Not Ready</span>
               <span className="text-xs text-muted-foreground">Phase 1</span>
             </div>
           )}
-          <button className="px-3 py-1.5 bg-white border border-border rounded-full text-xs font-medium hover:bg-muted flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+          <button className="px-3 py-1.5 bg-card border border-border rounded-full text-xs font-medium hover:bg-muted flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500/100" />
             Circuit Breaker
           </button>
-          <button className="px-3 py-1.5 bg-white border border-border rounded-full text-xs font-medium hover:bg-muted flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+          <button className="px-3 py-1.5 bg-card border border-border rounded-full text-xs font-medium hover:bg-muted flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500/100" />
             Emergency Stop
           </button>
         </div>
@@ -3619,7 +3619,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             className={cn(
               'flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 text-sm font-medium transition-all rounded-xl whitespace-nowrap',
               activeTab === tab.id
-                ? 'bg-white text-foreground shadow-sm'
+                ? 'bg-card text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -3635,7 +3635,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
         {activeTab === 'project-overview' && (
           <>
             {/* Project Card */}
-            <div className="bg-white border border-border rounded-2xl mb-6 overflow-hidden">
+            <div className="bg-card border border-border rounded-2xl mb-6 overflow-hidden">
               {/* Project Section Header */}
               <div className="flex items-center justify-between p-6 border-b border-border">
                 <div className="flex items-center gap-6">
@@ -3691,7 +3691,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                 </div>
                 {folderExpanded && (
                   <div className="mt-4">
-                    <div className="bg-zinc-900 rounded-xl p-6 font-mono text-sm text-zinc-100 overflow-x-auto">
+                    <div className="bg-background rounded-xl p-6 font-mono text-sm text-zinc-100 overflow-x-auto">
                       {analysisReport?.file_structure?.tree ? (
                         <pre className="whitespace-pre leading-relaxed">
                           <span className="text-yellow-400">📁</span> {project.name}/
@@ -3702,7 +3702,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                           <p className="mb-2">Run analysis to scan the actual project structure</p>
                           <button
                             onClick={runAnalysis}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium"
+                            className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium"
                           >
                             Run Analysis
                           </button>
@@ -3733,9 +3733,9 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                 <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">Data Sources</label>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 bg-muted/30 rounded-xl border border-border">
-                    <p className="text-xs font-semibold text-green-600 uppercase mb-2">Source of Truth</p>
+                    <p className="text-xs font-semibold text-green-400 uppercase mb-2">Source of Truth</p>
                     <div className="flex items-center gap-2">
-                      <Database className="h-5 w-5 text-green-600" />
+                      <Database className="h-5 w-5 text-green-400" />
                       <span className="font-semibold">Supabase</span>
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">wave_stories table</p>
@@ -3764,7 +3764,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                 <button
                   onClick={runAnalysis}
                   disabled={analysisRunning}
-                  className="px-6 py-3 bg-white text-blue-600 rounded-xl font-semibold hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-6 py-3 bg-card text-blue-400 rounded-xl font-semibold hover:bg-blue-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {analysisRunning ? (
                     <>
@@ -3785,7 +3785,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             {analysisComplete && analysisReport && (
               <div className="mt-6 space-y-6">
                 {/* Summary Card */}
-                <div className="bg-white border border-border rounded-2xl overflow-hidden">
+                <div className="bg-card border border-border rounded-2xl overflow-hidden">
                   <div className="p-6 bg-gradient-to-r from-zinc-900 to-zinc-800 text-white">
                     <div className="flex items-center justify-between">
                       <div>
@@ -3798,15 +3798,15 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-4 mt-6">
-                      <div className="bg-white/10 rounded-lg p-3">
+                      <div className="bg-card/10 rounded-lg p-3">
                         <div className="text-2xl font-bold text-red-400">{analysisReport.summary.total_issues}</div>
                         <div className="text-xs text-zinc-400">Issues Found</div>
                       </div>
-                      <div className="bg-white/10 rounded-lg p-3">
+                      <div className="bg-card/10 rounded-lg p-3">
                         <div className="text-2xl font-bold text-yellow-400">{analysisReport.summary.total_gaps}</div>
                         <div className="text-xs text-zinc-400">Gaps Identified</div>
                       </div>
-                      <div className="bg-white/10 rounded-lg p-3">
+                      <div className="bg-card/10 rounded-lg p-3">
                         <div className="text-2xl font-bold text-green-400">{analysisReport.improvement_plan.length}</div>
                         <div className="text-xs text-zinc-400">Improvement Steps</div>
                       </div>
@@ -3817,10 +3817,10 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                 {/* Analysis Details */}
                 <div className="grid grid-cols-2 gap-6">
                   {/* File Structure Analysis */}
-                  <div className="bg-white border border-border rounded-xl overflow-hidden">
+                  <div className="bg-card border border-border rounded-xl overflow-hidden">
                     <div className={cn("px-4 py-3 border-b font-semibold flex items-center gap-2",
-                      analysisReport.file_structure.status === 'pass' ? 'bg-green-50 text-green-700' :
-                      analysisReport.file_structure.status === 'warn' ? 'bg-zinc-50 text-zinc-600' : 'bg-red-50 text-red-700'
+                      analysisReport.file_structure.status === 'pass' ? 'bg-green-500/10 text-green-400' :
+                      analysisReport.file_structure.status === 'warn' ? 'bg-muted text-zinc-600' : 'bg-red-500/10 text-red-400'
                     )}>
                       <Layers className="h-4 w-4" />
                       File Structure
@@ -3837,9 +3837,9 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       </div>
                       {analysisReport.file_structure.issues.length > 0 && (
                         <div>
-                          <p className="text-xs font-medium text-red-600 mb-2">Issues</p>
+                          <p className="text-xs font-medium text-red-400 mb-2">Issues</p>
                           {analysisReport.file_structure.issues.map((issue, i) => (
-                            <div key={i} className="flex items-start gap-2 text-sm py-1 text-red-600">
+                            <div key={i} className="flex items-start gap-2 text-sm py-1 text-red-400">
                               <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
                               <span>{issue}</span>
                             </div>
@@ -3850,10 +3850,10 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                   </div>
 
                   {/* AI PRD Analysis */}
-                  <div className="bg-white border border-border rounded-xl overflow-hidden">
+                  <div className="bg-card border border-border rounded-xl overflow-hidden">
                     <div className={cn("px-4 py-3 border-b font-semibold flex items-center gap-2",
-                      analysisReport.ai_prd.status === 'pass' ? 'bg-green-50 text-green-700' :
-                      analysisReport.ai_prd.status === 'warn' ? 'bg-zinc-50 text-zinc-600' : 'bg-red-50 text-red-700'
+                      analysisReport.ai_prd.status === 'pass' ? 'bg-green-500/10 text-green-400' :
+                      analysisReport.ai_prd.status === 'warn' ? 'bg-muted text-zinc-600' : 'bg-red-500/10 text-red-400'
                     )}>
                       <ScrollText className="h-4 w-4" />
                       AI PRD Document
@@ -3870,9 +3870,9 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       </div>
                       {analysisReport.ai_prd.issues.length > 0 && (
                         <div>
-                          <p className="text-xs font-medium text-red-600 mb-2">Issues</p>
+                          <p className="text-xs font-medium text-red-400 mb-2">Issues</p>
                           {analysisReport.ai_prd.issues.map((issue, i) => (
-                            <div key={i} className="flex items-start gap-2 text-sm py-1 text-red-600">
+                            <div key={i} className="flex items-start gap-2 text-sm py-1 text-red-400">
                               <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
                               <span>{issue}</span>
                             </div>
@@ -3883,10 +3883,10 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                   </div>
 
                   {/* AI Stories Analysis */}
-                  <div className="bg-white border border-border rounded-xl overflow-hidden">
+                  <div className="bg-card border border-border rounded-xl overflow-hidden">
                     <div className={cn("px-4 py-3 border-b font-semibold flex items-center gap-2",
-                      analysisReport.ai_stories.status === 'pass' ? 'bg-green-50 text-green-700' :
-                      analysisReport.ai_stories.status === 'warn' ? 'bg-zinc-50 text-zinc-600' : 'bg-red-50 text-red-700'
+                      analysisReport.ai_stories.status === 'pass' ? 'bg-green-500/10 text-green-400' :
+                      analysisReport.ai_stories.status === 'warn' ? 'bg-muted text-zinc-600' : 'bg-red-500/10 text-red-400'
                     )}>
                       <Database className="h-4 w-4" />
                       AI Stories ({analysisReport.ai_stories.stories_found} found)
@@ -3903,9 +3903,9 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       </div>
                       {analysisReport.ai_stories.issues.length > 0 && (
                         <div>
-                          <p className="text-xs font-medium text-red-600 mb-2">Issues</p>
+                          <p className="text-xs font-medium text-red-400 mb-2">Issues</p>
                           {analysisReport.ai_stories.issues.map((issue, i) => (
-                            <div key={i} className="flex items-start gap-2 text-sm py-1 text-red-600">
+                            <div key={i} className="flex items-start gap-2 text-sm py-1 text-red-400">
                               <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
                               <span>{issue}</span>
                             </div>
@@ -3916,10 +3916,10 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                   </div>
 
                   {/* HTML Prototype Analysis */}
-                  <div className="bg-white border border-border rounded-xl overflow-hidden">
+                  <div className="bg-card border border-border rounded-xl overflow-hidden">
                     <div className={cn("px-4 py-3 border-b font-semibold flex items-center gap-2",
-                      analysisReport.html_prototype.status === 'pass' ? 'bg-green-50 text-green-700' :
-                      analysisReport.html_prototype.status === 'warn' ? 'bg-zinc-50 text-zinc-600' : 'bg-red-50 text-red-700'
+                      analysisReport.html_prototype.status === 'pass' ? 'bg-green-500/10 text-green-400' :
+                      analysisReport.html_prototype.status === 'warn' ? 'bg-muted text-zinc-600' : 'bg-red-500/10 text-red-400'
                     )}>
                       <Layers className="h-4 w-4" />
                       HTML Prototypes
@@ -3936,9 +3936,9 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       </div>
                       {analysisReport.html_prototype.issues.length > 0 && (
                         <div>
-                          <p className="text-xs font-medium text-red-600 mb-2">Issues</p>
+                          <p className="text-xs font-medium text-red-400 mb-2">Issues</p>
                           {analysisReport.html_prototype.issues.map((issue, i) => (
-                            <div key={i} className="flex items-start gap-2 text-sm py-1 text-red-600">
+                            <div key={i} className="flex items-start gap-2 text-sm py-1 text-red-400">
                               <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
                               <span>{issue}</span>
                             </div>
@@ -3950,8 +3950,8 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                 </div>
 
                 {/* Gap Analysis Table */}
-                <div className="bg-white border border-border rounded-xl overflow-hidden">
-                  <div className="px-6 py-4 bg-zinc-50 border-b border-zinc-200">
+                <div className="bg-card border border-border rounded-xl overflow-hidden">
+                  <div className="px-6 py-4 bg-muted border-b border-border">
                     <h3 className="font-bold text-zinc-700 flex items-center gap-2">
                       <Info className="h-5 w-5" />
                       Identified Gaps
@@ -3974,8 +3974,8 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                             <td className="px-6 py-4">{gap.description}</td>
                             <td className="px-6 py-4">
                               <span className={cn("px-2 py-1 rounded-full text-xs font-medium",
-                                gap.priority === 'high' ? 'bg-red-100 text-red-700' :
-                                gap.priority === 'medium' ? 'bg-zinc-100 text-zinc-600' : 'bg-green-100 text-green-700'
+                                gap.priority === 'high' ? 'bg-red-500/15 text-red-400' :
+                                gap.priority === 'medium' ? 'bg-zinc-100 text-zinc-600' : 'bg-green-500/15 text-green-400'
                               )}>
                                 {gap.priority.toUpperCase()}
                               </span>
@@ -3989,13 +3989,13 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                 </div>
 
                 {/* Improvement Plan */}
-                <div className="bg-white border border-border rounded-xl overflow-hidden">
-                  <div className="px-6 py-4 bg-green-50 border-b border-green-100">
-                    <h3 className="font-bold text-green-800 flex items-center gap-2">
+                <div className="bg-card border border-border rounded-xl overflow-hidden">
+                  <div className="px-6 py-4 bg-green-500/10 border-b border-green-100">
+                    <h3 className="font-bold text-green-400 flex items-center gap-2">
                       <ArrowRight className="h-5 w-5" />
                       Step-by-Step Improvement Plan
                     </h3>
-                    <p className="text-sm text-green-600 mt-1">Follow these steps to prepare your project for WAVE automation</p>
+                    <p className="text-sm text-green-400 mt-1">Follow these steps to prepare your project for WAVE automation</p>
                   </div>
                   <div className="p-6 space-y-4">
                     {analysisReport.improvement_plan.map((step) => (
@@ -4008,7 +4008,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                           <p className="text-sm text-muted-foreground mt-1">{step.description}</p>
                         </div>
                         <span className={cn("px-3 py-1 rounded-full text-xs font-medium",
-                          step.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                          step.status === 'completed' ? 'bg-green-500/15 text-green-400' : 'bg-muted text-muted-foreground'
                         )}>
                           {step.status === 'completed' ? 'Done' : 'Pending'}
                         </span>
@@ -4020,7 +4020,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             )}
 
             {/* PRD Section */}
-            <SectionHeader badge="PRD" badgeColor="bg-gray-500" title="AI PRD Vision" description="Product requirements that decompose into AI Stories" timestamp={lastUpdate} status={analysisReport?.ai_prd?.status === 'pass' ? 'pass' : 'warn'} />
+            <SectionHeader badge="PRD" badgeColor="bg-muted0" title="AI PRD Vision" description="Product requirements that decompose into AI Stories" timestamp={lastUpdate} status={analysisReport?.ai_prd?.status === 'pass' ? 'pass' : 'warn'} />
             <div className="border-x border-b border-border rounded-b-xl">
               <CheckItem
                 label="AI PRD Vision Document"
@@ -4033,7 +4033,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             </div>
 
             {/* Supabase Section */}
-            <SectionHeader badge="DB" badgeColor="bg-blue-500" title="Supabase (SOURCE OF TRUTH)" description="Database connection - all state lives here, JSON signals are speed layer" timestamp={lastUpdate} status={supabaseConnected ? 'pass' : 'fail'} />
+            <SectionHeader badge="DB" badgeColor="bg-blue-500/100" title="Supabase (SOURCE OF TRUTH)" description="Database connection - all state lives here, JSON signals are speed layer" timestamp={lastUpdate} status={supabaseConnected ? 'pass' : 'fail'} />
             <div className="border-x border-b border-border rounded-b-xl">
               <CheckItem
                 label="Supabase Connection"
@@ -4046,7 +4046,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             </div>
 
             {/* Waves Section */}
-            <div className="bg-white border border-border rounded-xl mt-6 overflow-hidden">
+            <div className="bg-card border border-border rounded-xl mt-6 overflow-hidden">
               <div className="flex items-center justify-between p-5 border-b border-border">
                 <div className="flex items-center gap-4">
                   <span className="text-sm font-medium text-muted-foreground">WAVES</span>
@@ -4057,14 +4057,14 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                 </div>
                 <div className="flex items-center gap-3">
                   {syncMessage && (
-                    <span className={`text-xs ${syncMessage.includes('error') || syncMessage.includes('failed') ? 'text-red-500' : 'text-green-600'}`}>
+                    <span className={`text-xs ${syncMessage.includes('error') || syncMessage.includes('failed') ? 'text-red-500' : 'text-green-400'}`}>
                       {syncMessage}
                     </span>
                   )}
                   <button
                     onClick={syncStories}
                     disabled={syncingStories || !supabaseConnected}
-                    className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                    className="px-3 py-1.5 bg-blue-500/100 text-white rounded-lg text-xs font-medium hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                   >
                     {syncingStories ? (
                       <>
@@ -4095,7 +4095,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             </div>
 
             {/* Phase 0: Story Validation */}
-            <SectionHeader badge="0" badgeColor="bg-blue-500" title="Phase 0: Story Validation" description="Validate current wave stories are complete and ready" timestamp={lastUpdate} status="pass" />
+            <SectionHeader badge="0" badgeColor="bg-blue-500/100" title="Phase 0: Story Validation" description="Validate current wave stories are complete and ready" timestamp={lastUpdate} status="pass" />
             <div className="border-x border-b border-border rounded-b-xl">
               <CheckItem
                 label="Stories Validated (0/0)"
@@ -4139,21 +4139,21 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
         {activeTab === 'infrastructure' && (
           <>
             {/* Infrastructure Info Box */}
-            <div className="p-5 bg-blue-50 border border-blue-200 rounded-2xl mb-6">
+            <div className="p-5 bg-blue-500/10 border border-blue-500/30 rounded-2xl mb-6">
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                  <Info className="h-5 w-5 text-blue-600" />
+                <div className="w-10 h-10 rounded-lg bg-blue-500/15 flex items-center justify-center flex-shrink-0">
+                  <Info className="h-5 w-5 text-blue-400" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-blue-900 mb-1">Infrastructure Validation</h3>
-                  <p className="text-sm text-blue-700 leading-relaxed">
+                  <p className="text-sm text-blue-400 leading-relaxed">
                     This section validates your development environment before starting WAVE automation.
                     It checks <strong>Foundation</strong> requirements (Git, environment variables, build tools, WAVE config)
                     and <strong>Infrastructure</strong> requirements (git worktrees for parallel agent isolation,
                     Docker containers, signal files, and Gate -1 pre-validation checks).
                     All checks must pass before agents can safely develop in isolated worktrees.
                   </p>
-                  <p className="text-xs text-blue-600 mt-2">
+                  <p className="text-xs text-blue-400 mt-2">
                     Click on any check to expand and see the terminal command you can run to verify or fix issues.
                   </p>
                 </div>
@@ -4161,22 +4161,22 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             </div>
 
             {/* Validate Infrastructure Button & Status */}
-            <div className="p-6 border border-zinc-200 rounded-2xl mb-6 bg-white">
+            <div className="p-6 border border-border rounded-2xl mb-6 bg-card">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className={cn(
                     "w-12 h-12 rounded-xl flex items-center justify-center",
-                    foundationStatus === 'ready' ? "bg-green-100" :
-                    foundationStatus === 'blocked' ? "bg-red-100" :
-                    foundationStatus === 'validating' ? "bg-blue-100" :
+                    foundationStatus === 'ready' ? "bg-green-500/15" :
+                    foundationStatus === 'blocked' ? "bg-red-500/15" :
+                    foundationStatus === 'validating' ? "bg-blue-500/15" :
                     "bg-zinc-100"
                   )}>
                     {foundationStatus === 'ready' ? (
-                      <CheckCircle2 className="h-6 w-6 text-green-600" />
+                      <CheckCircle2 className="h-6 w-6 text-green-400" />
                     ) : foundationStatus === 'blocked' ? (
                       <XCircle className="h-6 w-6 text-red-500" />
                     ) : foundationStatus === 'validating' ? (
-                      <Loader2 className="h-6 w-6 text-blue-600 animate-spin" />
+                      <Loader2 className="h-6 w-6 text-blue-400 animate-spin" />
                     ) : (
                       <Play className="h-6 w-6 text-zinc-500" />
                     )}
@@ -4217,10 +4217,10 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       foundationValidating
                         ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
                         : foundationStatus === 'ready'
-                        ? "bg-green-600 hover:bg-green-700 text-white"
+                        ? "bg-green-500 hover:bg-green-600 text-white"
                         : foundationStatus === 'blocked'
-                        ? "bg-zinc-900 hover:bg-zinc-800 text-white"
-                        : "bg-zinc-900 hover:bg-zinc-800 text-white"
+                        ? "bg-background hover:bg-zinc-800 text-white"
+                        : "bg-background hover:bg-zinc-800 text-white"
                     )}
                   >
                     {foundationValidating ? (
@@ -4250,29 +4250,29 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                 return (
                   <div className="mt-6 pt-6 border-t border-border/50 space-y-4">
                     {/* Summary Bar */}
-                    <div className="flex items-center gap-6 p-4 bg-zinc-50 rounded-xl">
+                    <div className="flex items-center gap-6 p-4 bg-muted rounded-xl">
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm font-medium text-zinc-600">Validation Progress</span>
                           <span className="text-sm font-semibold">{progressPercent}%</span>
                         </div>
-                        <div className="h-2.5 bg-zinc-200 rounded-full overflow-hidden">
+                        <div className="h-2.5 bg-border rounded-full overflow-hidden">
                           <div
                             className={cn(
                               "h-full rounded-full transition-all duration-500",
-                              failed.length > 0 ? "bg-red-500" : warnings.length > 0 ? "bg-amber-400" : "bg-green-500"
+                              failed.length > 0 ? "bg-red-500/100" : warnings.length > 0 ? "bg-amber-400" : "bg-green-500/100"
                             )}
                             style={{ width: `${progressPercent}%` }}
                           />
                         </div>
                       </div>
-                      <div className="flex items-center gap-4 pl-4 border-l border-zinc-200">
+                      <div className="flex items-center gap-4 pl-4 border-l border-border">
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-green-600">{passed.length}</div>
+                          <div className="text-2xl font-bold text-green-400">{passed.length}</div>
                           <div className="text-xs text-zinc-500">Passed</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-red-600">{failed.length}</div>
+                          <div className="text-2xl font-bold text-red-400">{failed.length}</div>
                           <div className="text-xs text-zinc-500">Failed</div>
                         </div>
                         <div className="text-center">
@@ -4284,16 +4284,16 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
                     {/* Blockers Section - Failed Checks */}
                     {failed.length > 0 && (
-                      <div className="border-2 border-red-200 rounded-xl overflow-hidden bg-red-50">
-                        <div className="px-4 py-3 bg-red-100 border-b border-red-200">
+                      <div className="border-2 border-red-500/30 rounded-xl overflow-hidden bg-red-500/10">
+                        <div className="px-4 py-3 bg-red-500/15 border-b border-red-500/30">
                           <div className="flex items-center gap-2">
-                            <XCircle className="h-5 w-5 text-red-600" />
-                            <span className="font-semibold text-red-800">Blockers - Fix These First ({failed.length})</span>
+                            <XCircle className="h-5 w-5 text-red-400" />
+                            <span className="font-semibold text-red-400">Blockers - Fix These First ({failed.length})</span>
                           </div>
                         </div>
                         <div className="divide-y divide-red-200">
                           {failed.map(check => (
-                            <div key={check.id} className="p-4 bg-white">
+                            <div key={check.id} className="p-4 bg-card">
                               <div className="flex items-start gap-3">
                                 <XCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
                                 <div className="flex-1 min-w-0">
@@ -4301,21 +4301,21 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                                     <span className="font-medium text-zinc-900">{check.name}</span>
                                     <span className="text-xs text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded">{check.category}</span>
                                   </div>
-                                  <p className="text-sm text-red-600 mt-1">{check.message}</p>
+                                  <p className="text-sm text-red-400 mt-1">{check.message}</p>
                                   {check.recommendation && (
-                                    <div className="mt-2 p-2.5 bg-red-50 border border-red-100 rounded-lg">
-                                      <span className="text-xs font-semibold text-red-700 block mb-1">How to fix:</span>
-                                      <span className="text-sm text-red-800">{check.recommendation}</span>
+                                    <div className="mt-2 p-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
+                                      <span className="text-xs font-semibold text-red-400 block mb-1">How to fix:</span>
+                                      <span className="text-sm text-red-400">{check.recommendation}</span>
                                     </div>
                                   )}
                                   {check.command && (
                                     <div className="mt-2 flex items-center gap-2">
-                                      <code className="flex-1 bg-zinc-900 text-zinc-100 px-3 py-2 rounded-lg text-xs font-mono overflow-x-auto">
+                                      <code className="flex-1 bg-background text-zinc-100 px-3 py-2 rounded-lg text-xs font-mono overflow-x-auto">
                                         {check.command}
                                       </code>
                                       <button
                                         onClick={() => navigator.clipboard.writeText(check.command || '')}
-                                        className="px-2 py-1.5 bg-zinc-100 hover:bg-zinc-200 rounded text-xs font-medium shrink-0"
+                                        className="px-2 py-1.5 bg-zinc-100 hover:bg-border rounded text-xs font-medium shrink-0"
                                       >
                                         Copy
                                       </button>
@@ -4332,7 +4332,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                     {/* Warnings Section */}
                     {warnings.length > 0 && (
                       <div className="border border-amber-200 rounded-xl overflow-hidden bg-amber-50">
-                        <div className="px-4 py-3 bg-amber-100 border-b border-amber-200">
+                        <div className="px-4 py-3 bg-amber-500/10 border-b border-amber-200">
                           <div className="flex items-center gap-2">
                             <AlertTriangle className="h-5 w-5 text-amber-600" />
                             <span className="font-semibold text-amber-800">Warnings - Should Fix ({warnings.length})</span>
@@ -4340,7 +4340,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                         </div>
                         <div className="divide-y divide-amber-200">
                           {warnings.map(check => (
-                            <div key={check.id} className="p-3 bg-white flex items-center justify-between">
+                            <div key={check.id} className="p-3 bg-card flex items-center justify-between">
                               <div className="flex items-center gap-3 min-w-0">
                                 <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
                                 <div className="min-w-0">
@@ -4357,21 +4357,21 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
                     {/* Passed Section - Collapsible */}
                     {passed.length > 0 && (
-                      <div className="border border-green-200 rounded-xl overflow-hidden">
+                      <div className="border border-green-500/30 rounded-xl overflow-hidden">
                         <button
                           onClick={() => setExpandedSections(prev => ({ ...prev, 'validation-passed': !prev['validation-passed'] }))}
-                          className="w-full px-4 py-3 bg-green-50 border-b border-green-200 flex items-center justify-between hover:bg-green-100 transition-colors"
+                          className="w-full px-4 py-3 bg-green-500/10 border-b border-green-500/30 flex items-center justify-between hover:bg-green-500/15 transition-colors"
                         >
                           <div className="flex items-center gap-2">
-                            <CheckCircle2 className="h-5 w-5 text-green-600" />
-                            <span className="font-semibold text-green-800">Ready - All Good ({passed.length})</span>
+                            <CheckCircle2 className="h-5 w-5 text-green-400" />
+                            <span className="font-semibold text-green-400">Ready - All Good ({passed.length})</span>
                           </div>
-                          <ChevronDown className={cn("h-4 w-4 text-green-600 transition-transform", showPassedSection && "rotate-180")} />
+                          <ChevronDown className={cn("h-4 w-4 text-green-400 transition-transform", showPassedSection && "rotate-180")} />
                         </button>
                         {showPassedSection && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-green-100">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-green-500/15">
                             {passed.map(check => (
-                              <div key={check.id} className="p-2.5 bg-white flex items-center gap-2">
+                              <div key={check.id} className="p-2.5 bg-card flex items-center gap-2">
                                 <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
                                 <span className="text-sm text-zinc-700 truncate">{check.name}</span>
                                 <span className="text-xs text-zinc-400 ml-auto">{check.category}</span>
@@ -4384,14 +4384,14 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
                     {/* Next Steps */}
                     {failed.length > 0 && (
-                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                      <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
                         <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                            <ArrowRight className="h-4 w-4 text-blue-600" />
+                          <div className="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center flex-shrink-0">
+                            <ArrowRight className="h-4 w-4 text-blue-400" />
                           </div>
                           <div>
                             <h4 className="font-semibold text-blue-900 mb-1">Next Steps</h4>
-                            <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                            <ol className="text-sm text-blue-400 space-y-1 list-decimal list-inside">
                               <li>Fix the {failed.length} blocker{failed.length > 1 ? 's' : ''} shown above (red items)</li>
                               {warnings.length > 0 && <li>Address the {warnings.length} warning{warnings.length > 1 ? 's' : ''} (optional but recommended)</li>}
                               <li>Click "Re-validate" to verify fixes</li>
@@ -4404,14 +4404,14 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
                     {/* All Good Message */}
                     {failed.length === 0 && warnings.length === 0 && (
-                      <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
+                      <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                            <CheckCircle2 className="h-6 w-6 text-green-600" />
+                          <div className="w-10 h-10 rounded-full bg-green-500/15 flex items-center justify-center">
+                            <CheckCircle2 className="h-6 w-6 text-green-400" />
                           </div>
                           <div>
-                            <h4 className="font-semibold text-green-800">All Systems Ready!</h4>
-                            <p className="text-sm text-green-700">All {passed.length} checks passed. Your environment is fully configured for WAVE development.</p>
+                            <h4 className="font-semibold text-green-400">All Systems Ready!</h4>
+                            <p className="text-sm text-green-400">All {passed.length} checks passed. Your environment is fully configured for WAVE development.</p>
                           </div>
                         </div>
                       </div>
@@ -4422,7 +4422,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             </div>
 
             {/* Foundation Category Sections */}
-            <div className="flex items-center justify-between p-6 border border-border bg-white rounded-2xl mb-6">
+            <div className="flex items-center justify-between p-6 border border-border bg-card rounded-2xl mb-6">
               <div className="flex items-center gap-6">
                 <span className="text-sm font-medium text-muted-foreground">FOUNDATION</span>
                 <span className="font-semibold">Git, Environment & Deployment</span>
@@ -4434,7 +4434,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
             <SectionHeader
               badge="GIT"
-              badgeColor="bg-orange-500"
+              badgeColor="bg-orange-500/100"
               title="Git Repository"
               description="Version control foundation - required for worktrees"
               timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
@@ -4474,7 +4474,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
             <SectionHeader
               badge="ENV"
-              badgeColor="bg-blue-500"
+              badgeColor="bg-blue-500/100"
               title="Environment Variables"
               description="API keys and configuration"
               timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
@@ -4513,7 +4513,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
             <SectionHeader
               badge="BUILD"
-              badgeColor="bg-purple-500"
+              badgeColor="bg-purple-500/100"
               title="Build & Dependencies"
               description="Package configuration and node modules"
               timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
@@ -4591,7 +4591,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             )}
 
             {/* Infrastructure Category Sections */}
-            <div className="flex items-center justify-between p-6 border border-border bg-white rounded-2xl mb-6 mt-8">
+            <div className="flex items-center justify-between p-6 border border-border bg-card rounded-2xl mb-6 mt-8">
               <div className="flex items-center gap-6">
                 <span className="text-sm font-medium text-muted-foreground">INFRASTRUCTURE</span>
                 <span className="font-semibold">Git Worktrees, Docker, Signals & Pre-Validation</span>
@@ -4603,7 +4603,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
             <SectionHeader
               badge="WORKTREE"
-              badgeColor="bg-orange-500"
+              badgeColor="bg-orange-500/100"
               title="Git Worktrees"
               description="Isolated worktrees for parallel agent development"
               timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
@@ -4640,7 +4640,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               </div>
             )}
 
-            <SectionHeader badge="DOCKER" badgeColor="bg-blue-500" title="Docker Build" description="Container infrastructure for deployment" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
+            <SectionHeader badge="DOCKER" badgeColor="bg-blue-500/100" title="Docker Build" description="Container infrastructure for deployment" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
               foundationChecks.filter(c => c.category === 'Docker Build').every(c => c.status === 'pass') ? 'pass' :
               foundationChecks.filter(c => c.category === 'Docker Build').some(c => c.status === 'fail') ? 'fail' :
               foundationChecks.filter(c => c.category === 'Docker Build').some(c => c.status === 'warn') ? 'warn' : 'pending'
@@ -4720,7 +4720,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               )}
             </div>
 
-            <SectionHeader badge="CI/CD" badgeColor="bg-orange-500" title="CI/CD Pipelines" description="GitHub Actions and Vercel deployments" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
+            <SectionHeader badge="CI/CD" badgeColor="bg-orange-500/100" title="CI/CD Pipelines" description="GitHub Actions and Vercel deployments" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
               foundationChecks.filter(c => c.category === 'CI/CD').every(c => c.status === 'pass') ? 'pass' :
               foundationChecks.filter(c => c.category === 'CI/CD').some(c => c.status === 'fail') ? 'fail' :
               foundationChecks.filter(c => c.category === 'CI/CD').some(c => c.status === 'warn') ? 'warn' : 'pending'
@@ -4771,7 +4771,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               )}
             </div>
 
-            <SectionHeader badge="SIGNAL" badgeColor="bg-purple-500" title="Signal Files (Speed Layer)" description="Signal JSON files for agent coordination" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
+            <SectionHeader badge="SIGNAL" badgeColor="bg-purple-500/100" title="Signal Files (Speed Layer)" description="Signal JSON files for agent coordination" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
               foundationChecks.filter(c => c.category === 'Signal Files (Speed Layer)').every(c => c.status === 'pass') ? 'pass' :
               foundationChecks.filter(c => c.category === 'Signal Files (Speed Layer)').some(c => c.status === 'fail') ? 'fail' :
               foundationChecks.filter(c => c.category === 'Signal Files (Speed Layer)').some(c => c.status === 'warn') ? 'warn' : 'pending'
@@ -4837,7 +4837,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
             <SectionHeader
               badge="DEPLOY"
-              badgeColor="bg-blue-600"
+              badgeColor="bg-primary"
               title="Deployment"
               description="Vercel, GitHub, and CI/CD configuration"
               timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
@@ -4949,7 +4949,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
         {/* TAB 6: Build QA */}
         {activeTab === 'build-qa' && (
           <>
-            <div className="flex items-center justify-between p-6 border border-border bg-white rounded-2xl mb-6">
+            <div className="flex items-center justify-between p-6 border border-border bg-card rounded-2xl mb-6">
               <div className="flex items-center gap-6">
                 <span className="text-sm font-medium text-muted-foreground">BUILD & QA</span>
                 <span className="font-semibold">Build Validation & Quality Assurance</span>
@@ -4969,7 +4969,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                   className={cn(
                     "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2",
                     validatingBuildQa
-                      ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                      ? "bg-muted text-muted-foreground cursor-not-allowed"
                       : "bg-primary text-primary-foreground hover:opacity-90"
                   )}
                 >
@@ -4997,7 +4997,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
             {/* Quality Thresholds Configuration Panel */}
             {showBuildQaConfig && buildQaThresholds && (
-              <div className="p-5 bg-zinc-50 border border-zinc-200 rounded-2xl mb-6">
+              <div className="p-5 bg-muted border border-border rounded-2xl mb-6">
                 <div className="flex items-center gap-3 mb-4">
                   <Settings className="h-5 w-5 text-zinc-600" />
                   <h3 className="font-semibold">Quality Thresholds Configuration</h3>
@@ -5167,33 +5167,33 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             {/* Build QA Status Summary */}
             {buildQaChecks.length > 0 && (
               <div className="grid grid-cols-4 gap-4 mb-6">
-                <div className={cn("p-4 rounded-xl border", buildQaChecks.filter(c => c.status === 'pass').length > 0 ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200")}>
+                <div className={cn("p-4 rounded-xl border", buildQaChecks.filter(c => c.status === 'pass').length > 0 ? "bg-green-500/10 border-green-500/30" : "bg-muted border-gray-200")}>
                   <div className="flex items-center gap-2 mb-1">
                     <CheckCircle2 className="h-5 w-5 text-green-500" />
                     <span className="font-medium text-sm">Passed</span>
                   </div>
-                  <p className="text-2xl font-bold text-green-700">{buildQaChecks.filter(c => c.status === 'pass').length}</p>
+                  <p className="text-2xl font-bold text-green-400">{buildQaChecks.filter(c => c.status === 'pass').length}</p>
                 </div>
-                <div className={cn("p-4 rounded-xl border", buildQaChecks.filter(c => c.status === 'fail').length > 0 ? "bg-red-50 border-red-200" : "bg-gray-50 border-gray-200")}>
+                <div className={cn("p-4 rounded-xl border", buildQaChecks.filter(c => c.status === 'fail').length > 0 ? "bg-red-500/10 border-red-500/30" : "bg-muted border-gray-200")}>
                   <div className="flex items-center gap-2 mb-1">
                     <XCircle className="h-5 w-5 text-red-500" />
                     <span className="font-medium text-sm">Failed</span>
                   </div>
-                  <p className="text-2xl font-bold text-red-700">{buildQaChecks.filter(c => c.status === 'fail').length}</p>
+                  <p className="text-2xl font-bold text-red-400">{buildQaChecks.filter(c => c.status === 'fail').length}</p>
                 </div>
-                <div className={cn("p-4 rounded-xl border", "bg-gray-50 border-gray-200")}>
+                <div className={cn("p-4 rounded-xl border", "bg-muted border-gray-200")}>
                   <div className="flex items-center gap-2 mb-1">
-                    <MinusCircle className="h-5 w-5 text-gray-400" />
+                    <MinusCircle className="h-5 w-5 text-muted-foreground" />
                     <span className="font-medium text-sm">Skipped</span>
                   </div>
                   <p className="text-2xl font-bold text-gray-700">{buildQaChecks.filter(c => c.status === 'skipped').length}</p>
                 </div>
-                <div className={cn("p-4 rounded-xl border", "bg-blue-50 border-blue-200")}>
+                <div className={cn("p-4 rounded-xl border", "bg-blue-500/10 border-blue-500/30")}>
                   <div className="flex items-center gap-2 mb-1">
                     <Clock className="h-5 w-5 text-blue-500" />
                     <span className="font-medium text-sm">Last Run</span>
                   </div>
-                  <p className="text-sm font-medium text-blue-700">{buildQaLastChecked || 'Never'}</p>
+                  <p className="text-sm font-medium text-blue-400">{buildQaLastChecked || 'Never'}</p>
                 </div>
               </div>
             )}
@@ -5201,7 +5201,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             {/* Build QA Checks Section */}
             <SectionHeader
               badge="A"
-              badgeColor="bg-blue-500"
+              badgeColor="bg-blue-500/100"
               title="Section A: Build & Compilation"
               description="TypeScript compilation and production build"
               timestamp={buildQaLastChecked || lastUpdate}
@@ -5233,7 +5233,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             {/* Test & Lint Section */}
             <SectionHeader
               badge="B"
-              badgeColor="bg-purple-500"
+              badgeColor="bg-purple-500/100"
               title="Section B: Tests & Linting"
               description="Unit tests and code quality checks"
               timestamp={buildQaLastChecked || lastUpdate}
@@ -5265,7 +5265,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             {/* Security Section */}
             <SectionHeader
               badge="C"
-              badgeColor="bg-red-500"
+              badgeColor="bg-red-500/100"
               title="Section C: Security"
               description="Dependency vulnerability scanning"
               timestamp={buildQaLastChecked || lastUpdate}
@@ -5290,7 +5290,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             {/* Terminal Setup Section */}
             <SectionHeader
               badge="TMUX"
-              badgeColor="bg-purple-500"
+              badgeColor="bg-purple-500/100"
               title="Terminal Setup"
               description="Copy command to set up WAVE terminal session"
               timestamp={lastUpdate}
@@ -5298,7 +5298,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             />
             <div className="border-x border-b border-border rounded-b-xl p-4">
               <div className="mb-3">
-                <p className="text-sm text-gray-600 mb-2">
+                <p className="text-sm text-muted-foreground mb-2">
                   Run this command to create a 4-pane tmux session with merge-watcher, portal, and agent terminals:
                 </p>
                 <div className="relative">
@@ -5319,9 +5319,9 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                   </button>
                 </div>
               </div>
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mt-3">
+              <div className="bg-purple-500/10 border border-purple-200 rounded-lg p-3 mt-3">
                 <p className="text-sm font-medium text-purple-800 mb-1">Layout Created:</p>
-                <pre className="text-xs text-purple-700 font-mono">
+                <pre className="text-xs text-purple-400 font-mono">
 {`┌─────────────────────┬─────────────────────┐
 │   MERGE WATCHER     │   FE-DEV AGENT      │
 │   (auto-starts)     │   (ready)           │
@@ -5330,7 +5330,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 │   (auto-starts)     │   (ready)           │
 └─────────────────────┴─────────────────────┘`}
                 </pre>
-                <p className="text-xs text-purple-600 mt-2">
+                <p className="text-xs text-purple-400 mt-2">
                   <strong>Keys:</strong> Ctrl+b arrow (navigate) | Ctrl+b d (detach) | Ctrl+b z (zoom) | tmux attach -t wave (reattach)
                 </p>
               </div>
@@ -5338,7 +5338,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
             {/* Results Detail */}
             {buildQaChecks.length > 0 && buildQaChecks.some(c => c.duration_ms) && (
-              <div className="mt-6 p-4 bg-zinc-50 border border-zinc-200 rounded-xl">
+              <div className="mt-6 p-4 bg-muted border border-border rounded-xl">
                 <h4 className="font-medium text-sm mb-3">Execution Details</h4>
                 <div className="space-y-2">
                   {buildQaChecks.filter(c => c.duration_ms).map((check, i) => (
@@ -5386,18 +5386,18 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             </div>
 
             {/* Validate RLM Button */}
-            <div className="p-6 border border-zinc-200 rounded-2xl mb-6 bg-white">
+            <div className="p-6 border border-border rounded-2xl mb-6 bg-card">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className={cn(
                     "w-12 h-12 rounded-xl flex items-center justify-center",
-                    rlmStatus === 'ready' ? "bg-green-100" :
-                    rlmStatus === 'blocked' ? "bg-red-100" :
+                    rlmStatus === 'ready' ? "bg-green-500/15" :
+                    rlmStatus === 'blocked' ? "bg-red-500/15" :
                     rlmStatus === 'validating' ? "bg-violet-100" :
                     "bg-zinc-100"
                   )}>
                     {rlmStatus === 'ready' ? (
-                      <CheckCircle2 className="h-6 w-6 text-green-600" />
+                      <CheckCircle2 className="h-6 w-6 text-green-400" />
                     ) : rlmStatus === 'blocked' ? (
                       <XCircle className="h-6 w-6 text-red-500" />
                     ) : rlmStatus === 'validating' ? (
@@ -5455,13 +5455,13 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                     <p className="text-2xl font-bold text-violet-700">97%</p>
                     <p className="text-xs text-violet-600">Token Reduction</p>
                   </div>
-                  <div className="bg-green-50 rounded-xl p-4 text-center">
-                    <p className="text-2xl font-bold text-green-700">P</p>
-                    <p className="text-xs text-green-600">External Context</p>
+                  <div className="bg-green-500/10 rounded-xl p-4 text-center">
+                    <p className="text-2xl font-bold text-green-400">P</p>
+                    <p className="text-xs text-green-400">External Context</p>
                   </div>
-                  <div className="bg-blue-50 rounded-xl p-4 text-center">
-                    <p className="text-2xl font-bold text-blue-700">4</p>
-                    <p className="text-xs text-blue-600">Agent Memories</p>
+                  <div className="bg-blue-500/10 rounded-xl p-4 text-center">
+                    <p className="text-2xl font-bold text-blue-400">4</p>
+                    <p className="text-xs text-blue-400">Agent Memories</p>
                   </div>
                   <div className="bg-amber-50 rounded-xl p-4 text-center">
                     <p className="text-2xl font-bold text-amber-700">6</p>
@@ -5515,7 +5515,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
             <SectionHeader
               badge="MEM"
-              badgeColor="bg-blue-600"
+              badgeColor="bg-primary"
               title="Agent Memory Persistence"
               description="Decisions and patterns survive context resets"
               timestamp={rlmLastChecked || lastUpdate}
@@ -5597,7 +5597,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
             <SectionHeader
               badge="SCRIPTS"
-              badgeColor="bg-green-600"
+              badgeColor="bg-green-500"
               title="RLM Scripts"
               description="Required scripts for RLM operations"
               timestamp={rlmLastChecked || lastUpdate}
@@ -5684,18 +5684,18 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             )}
 
             {/* Drift Monitoring Section (Phase 1.3.5) */}
-            <div className="mt-6 p-5 bg-white border border-border rounded-2xl">
+            <div className="mt-6 p-5 bg-card border border-border rounded-2xl">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className={cn(
                     "w-10 h-10 rounded-xl flex items-center justify-center",
-                    driftReport?.overall_status === 'healthy' ? "bg-green-100" :
-                    driftReport?.overall_status === 'drift_detected' ? "bg-amber-100" :
+                    driftReport?.overall_status === 'healthy' ? "bg-green-500/15" :
+                    driftReport?.overall_status === 'drift_detected' ? "bg-amber-500/10" :
                     "bg-zinc-100"
                   )}>
                     <Brain className={cn(
                       "h-5 w-5",
-                      driftReport?.overall_status === 'healthy' ? "text-green-600" :
+                      driftReport?.overall_status === 'healthy' ? "text-green-400" :
                       driftReport?.overall_status === 'drift_detected' ? "text-amber-600" :
                       "text-zinc-600"
                     )} />
@@ -5709,8 +5709,8 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                   {driftReport && (
                     <span className={cn(
                       "px-3 py-1 rounded-full text-sm",
-                      driftReport.overall_status === 'healthy' ? "bg-green-100 text-green-700" :
-                      "bg-amber-100 text-amber-700"
+                      driftReport.overall_status === 'healthy' ? "bg-green-500/15 text-green-400" :
+                      "bg-amber-500/10 text-amber-700"
                     )}>
                       {driftReport.overall_status === 'healthy' ? 'No Drift' :
                        `${driftReport.summary.drifted + driftReport.summary.stale} Agents Affected`}
@@ -5735,9 +5735,9 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       key={i}
                       className={cn(
                         "px-4 py-3 rounded-lg flex items-start gap-3",
-                        rec.priority === 'high' ? "bg-red-50 border border-red-200" :
+                        rec.priority === 'high' ? "bg-red-500/10 border border-red-500/30" :
                         rec.priority === 'medium' ? "bg-amber-50 border border-amber-200" :
-                        "bg-blue-50 border border-blue-200"
+                        "bg-blue-500/10 border border-blue-500/30"
                       )}
                     >
                       {rec.priority === 'high' ? (
@@ -5750,9 +5750,9 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       <div>
                         <p className={cn(
                           "text-sm font-medium",
-                          rec.priority === 'high' ? "text-red-700" :
+                          rec.priority === 'high' ? "text-red-400" :
                           rec.priority === 'medium' ? "text-amber-700" :
-                          "text-blue-700"
+                          "text-blue-400"
                         )}>
                           {rec.message}
                         </p>
@@ -5770,15 +5770,15 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               {/* Drift Summary */}
               {driftReport && (
                 <div className="grid grid-cols-5 gap-3 mb-4">
-                  <div className="p-3 bg-green-50 rounded-lg text-center">
-                    <p className="text-xl font-bold text-green-700">{driftReport.summary.healthy}</p>
-                    <p className="text-xs text-green-600">Healthy</p>
+                  <div className="p-3 bg-green-500/10 rounded-lg text-center">
+                    <p className="text-xl font-bold text-green-400">{driftReport.summary.healthy}</p>
+                    <p className="text-xs text-green-400">Healthy</p>
                   </div>
                   <div className="p-3 bg-amber-50 rounded-lg text-center">
                     <p className="text-xl font-bold text-amber-700">{driftReport.summary.drifted}</p>
                     <p className="text-xs text-amber-600">Drifted</p>
                   </div>
-                  <div className="p-3 bg-orange-50 rounded-lg text-center">
+                  <div className="p-3 bg-orange-500/10 rounded-lg text-center">
                     <p className="text-xl font-bold text-orange-700">{driftReport.summary.stale}</p>
                     <p className="text-xs text-orange-600">Stale</p>
                   </div>
@@ -5796,7 +5796,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               {/* Agent Drift Details */}
               {driftReport && (
                 <div className="border rounded-xl overflow-hidden">
-                  <div className="px-4 py-2 bg-zinc-50 border-b text-sm font-medium">
+                  <div className="px-4 py-2 bg-muted border-b text-sm font-medium">
                     Agent Memory Status
                   </div>
                   <div className="divide-y">
@@ -5805,18 +5805,18 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                         <div className="flex items-center gap-3">
                           <div className={cn(
                             "w-2 h-2 rounded-full",
-                            agent.status === 'healthy' ? "bg-green-500" :
+                            agent.status === 'healthy' ? "bg-green-500/100" :
                             agent.status === 'drifted' ? "bg-amber-500" :
-                            agent.status === 'stale' ? "bg-orange-500" :
+                            agent.status === 'stale' ? "bg-orange-500/100" :
                             "bg-zinc-300"
                           )} />
                           <div>
                             <span className="font-medium text-sm">{agent.agent}</span>
                             <span className={cn(
                               "ml-2 text-xs px-2 py-0.5 rounded",
-                              agent.status === 'healthy' ? "bg-green-100 text-green-700" :
-                              agent.status === 'drifted' ? "bg-amber-100 text-amber-700" :
-                              agent.status === 'stale' ? "bg-orange-100 text-orange-700" :
+                              agent.status === 'healthy' ? "bg-green-500/15 text-green-400" :
+                              agent.status === 'drifted' ? "bg-amber-500/10 text-amber-700" :
+                              agent.status === 'stale' ? "bg-orange-500/15 text-orange-700" :
                               "bg-zinc-100 text-zinc-600"
                             )}>
                               {agent.status}
@@ -5846,7 +5846,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                           ) : (agent.status === 'drifted' || agent.status === 'stale') && (
                             <button
                               onClick={() => resetAgentMemory(agent.agent)}
-                              className="px-2 py-1 text-xs bg-amber-100 text-amber-700 rounded hover:bg-amber-200"
+                              className="px-2 py-1 text-xs bg-amber-500/10 text-amber-700 rounded hover:bg-amber-200"
                             >
                               Reset Memory
                             </button>
@@ -5873,7 +5873,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
         {/* TAB 5: Aerospace Safety */}
         {activeTab === 'compliance-safety' && (
           <>
-            <div className="flex items-center justify-between p-6 border border-border bg-white rounded-2xl mb-6">
+            <div className="flex items-center justify-between p-6 border border-border bg-card rounded-2xl mb-6">
               <div className="flex items-center gap-6">
                 <span className="text-sm font-medium text-muted-foreground">AEROSPACE</span>
                 <span className="font-semibold">DO-178C Inspired Safety Protocol</span>
@@ -5882,7 +5882,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                 <button
                   onClick={validateSafety}
                   disabled={validatingSafety}
-                  className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-4 py-2 bg-orange-500/100 text-white rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {validatingSafety ? (
                     <>
@@ -5905,7 +5905,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               </div>
             </div>
 
-            <SectionHeader badge="A" badgeColor="bg-gray-400" title="Section A: Safety Documentation" description="CLAUDE.md and forbidden operations" timestamp={lastUpdate} status="warn" />
+            <SectionHeader badge="A" badgeColor="bg-muted-foreground" title="Section A: Safety Documentation" description="CLAUDE.md and forbidden operations" timestamp={lastUpdate} status="warn" />
             <div className="border-x border-b border-border rounded-b-xl">
               <CheckItem
                 label="Safety Markers (20+)"
@@ -5933,7 +5933,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               />
             </div>
 
-            <SectionHeader badge="B" badgeColor="bg-gray-400" title="Section B: Docker Configuration" description="Container safety settings" timestamp={lastUpdate} status="pass" />
+            <SectionHeader badge="B" badgeColor="bg-muted-foreground" title="Section B: Docker Configuration" description="Container safety settings" timestamp={lastUpdate} status="pass" />
             <div className="border-x border-b border-border rounded-b-xl">
               <CheckItem
                 label="--dangerously-skip-permissions"
@@ -5949,7 +5949,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               />
             </div>
 
-            <SectionHeader badge="C" badgeColor="bg-gray-400" title="Section C: Signal Protocol" description="Agent communication mechanism" timestamp={lastUpdate} status="pass" />
+            <SectionHeader badge="C" badgeColor="bg-muted-foreground" title="Section C: Signal Protocol" description="Agent communication mechanism" timestamp={lastUpdate} status="pass" />
             <div className="border-x border-b border-border rounded-b-xl">
               <CheckItem
                 label="Signal File Schema"
@@ -5968,7 +5968,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             {/* Section D: Real validation results from API */}
             <SectionHeader
               badge="D"
-              badgeColor="bg-gray-400"
+              badgeColor="bg-muted-foreground"
               title="Section D: Aerospace Safety (DO-178C)"
               description="Design Assurance and FMEA compliance"
               timestamp={formatValidationTimestamp(safetyLastChecked) || lastUpdate}
@@ -6022,7 +6022,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             {/* Section E: Real validation results from API */}
             <SectionHeader
               badge="E"
-              badgeColor="bg-gray-400"
+              badgeColor="bg-muted-foreground"
               title="Section E: Operational Safety"
               description="Validation scripts and PM agent"
               timestamp={formatValidationTimestamp(safetyLastChecked) || lastUpdate}
@@ -6111,14 +6111,14 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               </div>
 
               {/* Run Probes Button */}
-              <div className="p-4 border-b border-border bg-white">
+              <div className="p-4 border-b border-border bg-card">
                 <button
                   onClick={validateBehavioralProbes}
                   disabled={validatingBehavioral}
                   className={cn(
                     "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2",
                     validatingBehavioral
-                      ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                      ? "bg-muted text-muted-foreground cursor-not-allowed"
                       : "bg-amber-600 text-white hover:bg-amber-700"
                   )}
                 >
@@ -6143,7 +6143,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               {behavioralProbes.length > 0 ? (
                 <div className="divide-y divide-border">
                   {/* Summary */}
-                  <div className="p-4 bg-white">
+                  <div className="p-4 bg-card">
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
                         <CheckCircle2 className="h-5 w-5 text-green-500" />
@@ -6164,7 +6164,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <MinusCircle className="h-5 w-5 text-gray-400" />
+                        <MinusCircle className="h-5 w-5 text-muted-foreground" />
                         <span className="text-sm font-medium">
                           {behavioralProbes.filter(p => p.status === 'skipped').length} Skipped
                         </span>
@@ -6174,23 +6174,23 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
                   {/* Individual Probes */}
                   {behavioralProbes.map((probe) => (
-                    <div key={probe.probe_id} className="p-4 bg-white hover:bg-zinc-50">
+                    <div key={probe.probe_id} className="p-4 bg-card hover:bg-muted">
                       <div className="flex items-start gap-3">
                         <div className={cn(
                           "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
-                          probe.status === 'validated' || probe.status === 'pass' ? "bg-green-100" :
-                          probe.status === 'fail' ? "bg-red-100" :
-                          probe.status === 'pending' ? "bg-blue-100" :
-                          "bg-gray-100"
+                          probe.status === 'validated' || probe.status === 'pass' ? "bg-green-500/15" :
+                          probe.status === 'fail' ? "bg-red-500/15" :
+                          probe.status === 'pending' ? "bg-blue-500/15" :
+                          "bg-muted"
                         )}>
                           {probe.status === 'validated' || probe.status === 'pass' ? (
-                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                            <CheckCircle2 className="h-4 w-4 text-green-400" />
                           ) : probe.status === 'fail' ? (
-                            <XCircle className="h-4 w-4 text-red-600" />
+                            <XCircle className="h-4 w-4 text-red-400" />
                           ) : probe.status === 'pending' ? (
-                            <Clock className="h-4 w-4 text-blue-600" />
+                            <Clock className="h-4 w-4 text-blue-400" />
                           ) : (
-                            <MinusCircle className="h-4 w-4 text-gray-400" />
+                            <MinusCircle className="h-4 w-4 text-muted-foreground" />
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -6198,10 +6198,10 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                             <span className="font-medium text-sm">{probe.name}</span>
                             <span className={cn(
                               "text-xs px-2 py-0.5 rounded-full",
-                              probe.severity === 'critical' ? "bg-red-100 text-red-700" :
-                              probe.severity === 'high' ? "bg-orange-100 text-orange-700" :
+                              probe.severity === 'critical' ? "bg-red-500/15 text-red-400" :
+                              probe.severity === 'high' ? "bg-orange-500/15 text-orange-700" :
                               probe.severity === 'medium' ? "bg-yellow-100 text-yellow-700" :
-                              "bg-gray-100 text-gray-700"
+                              "bg-muted text-gray-700"
                             )}>
                               {probe.severity}
                             </span>
@@ -6236,7 +6236,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             {/* Section G: Safety Traceability Matrix (Phase 3.2) */}
             <SectionHeader
               badge="G"
-              badgeColor="bg-blue-500"
+              badgeColor="bg-blue-500/100"
               title="Section G: Safety Traceability Matrix"
               description="Story-to-safety-control mapping for audit compliance"
               timestamp={lastUpdate}
@@ -6248,7 +6248,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             />
             <div className="border-x border-b border-border rounded-b-xl">
               {/* Generate Button */}
-              <div className="p-4 border-b border-border bg-white">
+              <div className="p-4 border-b border-border bg-card">
                 <div className="flex items-center justify-between">
                   <div>
                     <button
@@ -6257,8 +6257,8 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       className={cn(
                         "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2",
                         traceabilityLoading
-                          ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                          : "bg-blue-600 text-white hover:bg-blue-700"
+                          ? "bg-muted text-muted-foreground cursor-not-allowed"
+                          : "bg-primary text-white hover:bg-primary/90"
                       )}
                     >
                       {traceabilityLoading ? (
@@ -6281,9 +6281,9 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                     <div className="flex items-center gap-2">
                       <span className={cn(
                         "px-3 py-1 rounded-full text-sm font-medium",
-                        traceabilityReport.summary.coverage_percent >= 80 ? "bg-green-100 text-green-700" :
-                        traceabilityReport.summary.coverage_percent >= 50 ? "bg-amber-100 text-amber-700" :
-                        "bg-red-100 text-red-700"
+                        traceabilityReport.summary.coverage_percent >= 80 ? "bg-green-500/15 text-green-400" :
+                        traceabilityReport.summary.coverage_percent >= 50 ? "bg-amber-500/10 text-amber-700" :
+                        "bg-red-500/15 text-red-400"
                       )}>
                         {traceabilityReport.summary.coverage_percent}% Coverage
                       </span>
@@ -6296,13 +6296,13 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               {traceabilityReport ? (
                 <>
                   {/* Summary Stats */}
-                  <div className="grid grid-cols-4 gap-4 p-4 bg-white border-b border-border">
+                  <div className="grid grid-cols-4 gap-4 p-4 bg-card border-b border-border">
                     <div className="text-center">
                       <div className="text-2xl font-bold">{traceabilityReport.summary.total_stories}</div>
                       <div className="text-xs text-muted-foreground">Total Stories</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-red-600">{traceabilityReport.summary.critical_risk_stories}</div>
+                      <div className="text-2xl font-bold text-red-400">{traceabilityReport.summary.critical_risk_stories}</div>
                       <div className="text-xs text-muted-foreground">Critical Risk</div>
                     </div>
                     <div className="text-center">
@@ -6310,25 +6310,25 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       <div className="text-xs text-muted-foreground">High Risk</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-purple-600">{traceabilityReport.summary.stories_requiring_review}</div>
+                      <div className="text-2xl font-bold text-purple-400">{traceabilityReport.summary.stories_requiring_review}</div>
                       <div className="text-xs text-muted-foreground">Need Review</div>
                     </div>
                   </div>
 
                   {/* Risk Distribution Bar */}
-                  <div className="p-4 bg-white border-b border-border">
+                  <div className="p-4 bg-card border-b border-border">
                     <div className="text-xs font-medium text-muted-foreground mb-2">Risk Distribution</div>
                     <div className="flex h-4 rounded-full overflow-hidden bg-zinc-100">
                       {traceabilityReport.risk_distribution.critical > 0 && (
                         <div
-                          className="bg-red-500"
+                          className="bg-red-500/100"
                           style={{ width: `${(traceabilityReport.risk_distribution.critical / traceabilityReport.summary.total_stories) * 100}%` }}
                           title={`Critical: ${traceabilityReport.risk_distribution.critical}`}
                         />
                       )}
                       {traceabilityReport.risk_distribution.high > 0 && (
                         <div
-                          className="bg-orange-500"
+                          className="bg-orange-500/100"
                           style={{ width: `${(traceabilityReport.risk_distribution.high / traceabilityReport.summary.total_stories) * 100}%` }}
                           title={`High: ${traceabilityReport.risk_distribution.high}`}
                         />
@@ -6349,8 +6349,8 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       )}
                     </div>
                     <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" /> Critical</span>
-                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500" /> High</span>
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500/100" /> Critical</span>
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500/100" /> High</span>
                       <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" /> Medium</span>
                       <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-400" /> Low</span>
                     </div>
@@ -6359,7 +6359,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                   {/* Traceability Matrix Table */}
                   <div className="max-h-80 overflow-y-auto">
                     <table className="w-full text-sm">
-                      <thead className="bg-zinc-50 sticky top-0">
+                      <thead className="bg-muted sticky top-0">
                         <tr>
                           <th className="px-4 py-2 text-left font-medium text-muted-foreground">Story</th>
                           <th className="px-4 py-2 text-left font-medium text-muted-foreground">Wave</th>
@@ -6370,7 +6370,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       </thead>
                       <tbody className="divide-y divide-border">
                         {traceabilityReport.traceability_matrix.map((item) => (
-                          <tr key={item.story_id} className="hover:bg-zinc-50">
+                          <tr key={item.story_id} className="hover:bg-muted">
                             <td className="px-4 py-2">
                               <div className="font-mono text-xs text-muted-foreground">{item.story_id}</div>
                               <div className="text-sm truncate max-w-[200px]" title={item.title}>{item.title}</div>
@@ -6381,10 +6381,10 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                             <td className="px-4 py-2">
                               <span className={cn(
                                 "px-2 py-0.5 rounded text-xs font-medium",
-                                item.risk === 'critical' ? 'bg-red-100 text-red-700' :
-                                item.risk === 'high' ? 'bg-orange-100 text-orange-700' :
-                                item.risk === 'medium' ? 'bg-amber-100 text-amber-700' :
-                                'bg-green-100 text-green-700'
+                                item.risk === 'critical' ? 'bg-red-500/15 text-red-400' :
+                                item.risk === 'high' ? 'bg-orange-500/15 text-orange-700' :
+                                item.risk === 'medium' ? 'bg-amber-500/10 text-amber-700' :
+                                'bg-green-500/15 text-green-400'
                               )}>
                                 {item.risk?.toUpperCase() || 'LOW'}
                               </span>
@@ -6392,7 +6392,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                             <td className="px-4 py-2">
                               <div className="flex flex-wrap gap-1">
                                 {item.safety_tags?.length > 0 ? item.safety_tags.map(tag => (
-                                  <span key={tag} className="px-1.5 py-0.5 bg-red-50 text-red-600 rounded text-[10px] border border-red-200">
+                                  <span key={tag} className="px-1.5 py-0.5 bg-red-500/10 text-red-400 rounded text-[10px] border border-red-500/30">
                                     {tag}
                                   </span>
                                 )) : (
@@ -6434,20 +6434,20 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
         {/* TAB 5: Configurations - API Keys & Environment Variables */}
         {activeTab === 'system-config' && (
           <>
-            <div className="flex items-center justify-between p-6 border border-border bg-white rounded-2xl mb-6">
+            <div className="flex items-center justify-between p-6 border border-border bg-card rounded-2xl mb-6">
               <div className="flex items-center gap-6">
                 <span className="text-sm font-medium text-muted-foreground">CONFIGURATION</span>
                 <span className="font-semibold">API Keys & Environment Variables</span>
               </div>
               <div className="flex items-center gap-3">
                 {configLoadedFromDb && (
-                  <span className="text-xs text-blue-600 flex items-center gap-1 bg-blue-50 px-2 py-1 rounded">
+                  <span className="text-xs text-blue-400 flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded">
                     <Database className="h-3 w-3" />
                     Loaded from DB
                   </span>
                 )}
                 {configSaved && (
-                  <span className="text-sm text-green-600 flex items-center gap-1">
+                  <span className="text-sm text-green-400 flex items-center gap-1">
                     <CheckCircle2 className="h-4 w-4" />
                     Synced
                   </span>
@@ -6482,28 +6482,28 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
             {/* API Keys Status Summary */}
             <div className="grid grid-cols-4 gap-4 mb-6">
-              <div className={cn("p-4 rounded-xl border", hasAnthropicKey ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200")}>
+              <div className={cn("p-4 rounded-xl border", hasAnthropicKey ? "bg-green-500/10 border-green-500/30" : "bg-red-500/10 border-red-500/30")}>
                 <div className="flex items-center gap-2 mb-1">
                   {hasAnthropicKey ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />}
                   <span className="font-medium text-sm">Anthropic</span>
                 </div>
                 <p className="text-xs text-muted-foreground">{hasAnthropicKey ? "Configured" : "Missing"}</p>
               </div>
-              <div className={cn("p-4 rounded-xl border", hasSupabaseUrl ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200")}>
+              <div className={cn("p-4 rounded-xl border", hasSupabaseUrl ? "bg-green-500/10 border-green-500/30" : "bg-red-500/10 border-red-500/30")}>
                 <div className="flex items-center gap-2 mb-1">
                   {hasSupabaseUrl ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />}
                   <span className="font-medium text-sm">Supabase URL</span>
                 </div>
                 <p className="text-xs text-muted-foreground">{hasSupabaseUrl ? "Configured" : "Missing"}</p>
               </div>
-              <div className={cn("p-4 rounded-xl border", hasSupabaseKey ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200")}>
+              <div className={cn("p-4 rounded-xl border", hasSupabaseKey ? "bg-green-500/10 border-green-500/30" : "bg-red-500/10 border-red-500/30")}>
                 <div className="flex items-center gap-2 mb-1">
                   {hasSupabaseKey ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />}
                   <span className="font-medium text-sm">Supabase Key</span>
                 </div>
                 <p className="text-xs text-muted-foreground">{hasSupabaseKey ? "Configured" : "Missing"}</p>
               </div>
-              <div className={cn("p-4 rounded-xl border", hasBudgetLimit ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200")}>
+              <div className={cn("p-4 rounded-xl border", hasBudgetLimit ? "bg-green-500/10 border-green-500/30" : "bg-red-500/10 border-red-500/30")}>
                 <div className="flex items-center gap-2 mb-1">
                   {hasBudgetLimit ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />}
                   <span className="font-medium text-sm">Budget Limit</span>
@@ -6513,38 +6513,38 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             </div>
 
             {/* Storage Info */}
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6">
+            <div className="bg-blue-500/10 border border-blue-100 rounded-xl p-4 mb-6">
               <div className="flex items-start gap-3">
                 <Info className="h-5 w-5 text-blue-500 mt-0.5" />
                 <div>
-                  <p className="font-medium text-blue-700">Configuration Storage</p>
-                  <p className="text-sm text-blue-600 mt-1">
+                  <p className="font-medium text-blue-400">Configuration Storage</p>
+                  <p className="text-sm text-blue-400 mt-1">
                     API keys are stored securely in the Supabase database (wave_project_config table).
-                    For local development, you can also copy these values to your <code className="bg-blue-100 px-1.5 py-0.5 rounded font-mono text-xs">.env</code> file.
+                    For local development, you can also copy these values to your <code className="bg-blue-500/15 px-1.5 py-0.5 rounded font-mono text-xs">.env</code> file.
                   </p>
                 </div>
               </div>
             </div>
 
             {/* Required Keys */}
-            <div className="bg-white border border-border rounded-xl overflow-hidden mb-6">
+            <div className="bg-card border border-border rounded-xl overflow-hidden mb-6">
               <div className={cn(
                 "px-6 py-4 border-b",
                 allRequiredKeysSet
-                  ? "bg-green-50 border-green-100"
-                  : "bg-zinc-50 border-zinc-100"
+                  ? "bg-green-500/10 border-green-100"
+                  : "bg-muted border-zinc-100"
               )}>
                 <h3 className={cn(
                   "font-semibold flex items-center gap-2",
-                  allRequiredKeysSet ? "text-green-700" : "text-zinc-700"
+                  allRequiredKeysSet ? "text-green-400" : "text-zinc-700"
                 )}>
                   {allRequiredKeysSet ? <CheckCircle2 className="h-5 w-5" /> : <Key className="h-5 w-5" />}
                   Required API Keys
-                  {allRequiredKeysSet && <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full ml-2">All Set</span>}
+                  {allRequiredKeysSet && <span className="text-xs bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full ml-2">All Set</span>}
                 </h3>
                 <p className={cn(
                   "text-sm mt-1",
-                  allRequiredKeysSet ? "text-green-600" : "text-zinc-500"
+                  allRequiredKeysSet ? "text-green-400" : "text-zinc-500"
                 )}>
                   {allRequiredKeysSet ? "All required keys are configured" : "These keys are required for WAVE to function"}
                 </p>
@@ -6573,9 +6573,9 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       <span className={cn(
                         "text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1",
                         isEmpty
-                          ? "bg-red-100 text-red-700"
+                          ? "bg-red-500/15 text-red-400"
                           : isValidFormat
-                            ? "bg-green-100 text-green-700"
+                            ? "bg-green-500/15 text-green-400"
                             : "bg-zinc-100 text-zinc-600"
                       )}>
                         {isEmpty ? (
@@ -6628,8 +6628,8 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                         disabled={pingStatus[field.key] === 'testing' || isEmpty}
                         className={cn(
                           "px-3 py-2 rounded-lg disabled:opacity-50 flex items-center gap-1.5",
-                          pingStatus[field.key] === 'success' ? 'bg-green-100 text-green-700' :
-                          pingStatus[field.key] === 'error' ? 'bg-red-100 text-red-700' :
+                          pingStatus[field.key] === 'success' ? 'bg-green-500/15 text-green-400' :
+                          pingStatus[field.key] === 'error' ? 'bg-red-500/15 text-red-400' :
                           'bg-muted hover:bg-muted/80'
                         )}
                         title="Test connection"
@@ -6651,7 +6651,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       {pingMessage[field.key] && (
                         <span className={cn(
                           "text-xs",
-                          pingStatus[field.key] === 'success' ? 'text-green-600' : 'text-red-600'
+                          pingStatus[field.key] === 'success' ? 'text-green-400' : 'text-red-400'
                         )}>
                           {pingMessage[field.key]}
                         </span>
@@ -6663,7 +6663,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             </div>
 
             {/* Optional Keys */}
-            <div className="bg-white border border-border rounded-xl overflow-hidden mb-6">
+            <div className="bg-card border border-border rounded-xl overflow-hidden mb-6">
               <div className="px-6 py-4 bg-muted/30 border-b border-border">
                 <h3 className="font-semibold flex items-center gap-2">
                   <Settings className="h-5 w-5" />
@@ -6694,9 +6694,9 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       <span className={cn(
                         "text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1",
                         isEmpty
-                          ? "bg-gray-100 text-gray-500"
+                          ? "bg-muted text-muted-foreground"
                           : isValidFormat
-                            ? "bg-green-100 text-green-700"
+                            ? "bg-green-500/15 text-green-400"
                             : "bg-zinc-100 text-zinc-600"
                       )}>
                         {isEmpty ? (
@@ -6749,8 +6749,8 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                         disabled={pingStatus[field.key] === 'testing' || isEmpty}
                         className={cn(
                           "px-3 py-2 rounded-lg disabled:opacity-50 flex items-center gap-1.5",
-                          pingStatus[field.key] === 'success' ? 'bg-green-100 text-green-700' :
-                          pingStatus[field.key] === 'error' ? 'bg-red-100 text-red-700' :
+                          pingStatus[field.key] === 'success' ? 'bg-green-500/15 text-green-400' :
+                          pingStatus[field.key] === 'error' ? 'bg-red-500/15 text-red-400' :
                           'bg-muted hover:bg-muted/80'
                         )}
                         title="Test connection"
@@ -6772,7 +6772,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       {pingMessage[field.key] && (
                         <span className={cn(
                           "text-xs",
-                          pingStatus[field.key] === 'success' ? 'text-green-600' : 'text-red-600'
+                          pingStatus[field.key] === 'success' ? 'text-green-400' : 'text-red-400'
                         )}>
                           {pingMessage[field.key]}
                         </span>
@@ -6784,15 +6784,15 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             </div>
 
             {/* Generate .env File */}
-            <div className="bg-white border border-border rounded-xl overflow-hidden">
-              <div className="px-6 py-4 bg-zinc-900 border-b border-zinc-700">
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              <div className="px-6 py-4 bg-background border-b border-zinc-700">
                 <h3 className="font-semibold text-white flex items-center gap-2">
                   <Database className="h-5 w-5" />
                   Export to .env File
                 </h3>
                 <p className="text-sm text-zinc-400 mt-1">Copy this content to your project's .env file</p>
               </div>
-              <div className="p-4 bg-zinc-900">
+              <div className="p-4 bg-background">
                 <div className="relative">
                   <pre className="text-sm font-mono text-zinc-100 p-4 bg-zinc-950 rounded-lg overflow-x-auto">
 {`# WAVE Configuration - Generated ${new Date().toISOString()}
@@ -6894,10 +6894,10 @@ WAVE_PROJECT_ROOT=${project?.root_path || ''}`
         {activeTab === 'notifications' && (
           <>
             {/* Info Box - Subtle gray bg, purple icon */}
-            <div className="p-5 bg-zinc-50 border border-zinc-200 rounded-2xl mb-6">
+            <div className="p-5 bg-muted border border-border rounded-2xl mb-6">
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
-                  <Bell className="h-5 w-5 text-purple-600" />
+                <div className="w-10 h-10 rounded-lg bg-purple-500/15 flex items-center justify-center flex-shrink-0">
+                  <Bell className="h-5 w-5 text-purple-400" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-zinc-900 mb-1">Slack Feedback Loop</h3>
@@ -6915,7 +6915,7 @@ WAVE_PROJECT_ROOT=${project?.root_path || ''}`
             </div>
 
             {/* Validation CTA with Progress */}
-            <div className="p-6 border border-zinc-200 rounded-2xl mb-6 bg-white">
+            <div className="p-6 border border-border rounded-2xl mb-6 bg-card">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className={cn(
@@ -6923,7 +6923,7 @@ WAVE_PROJECT_ROOT=${project?.root_path || ''}`
                     configValues.SLACK_WEBHOOK_URL ? "bg-zinc-100" : "bg-zinc-100"
                   )}>
                     {configValues.SLACK_WEBHOOK_URL ? (
-                      <CheckCircle2 className="h-6 w-6 text-green-600" />
+                      <CheckCircle2 className="h-6 w-6 text-green-400" />
                     ) : (
                       <AlertTriangle className="h-6 w-6 text-amber-500" />
                     )}
@@ -6996,7 +6996,7 @@ After setup, use the test buttons to verify each notification type.
                       document.body.removeChild(a)
                       URL.revokeObjectURL(url)
                     }}
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 border border-zinc-200 hover:border-zinc-300 rounded-xl transition-colors"
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 border border-border hover:border-zinc-300 rounded-xl transition-colors"
                   >
                     <Download className="h-4 w-4" />
                     Setup Guide (.md)
@@ -7004,7 +7004,7 @@ After setup, use the test buttons to verify each notification type.
                   {/* Primary button - black */}
                   <button
                     onClick={() => setActiveTab('system-config')}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-sm font-medium transition-colors"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-background hover:bg-zinc-800 text-white rounded-xl text-sm font-medium transition-colors"
                   >
                     <Settings className="h-4 w-4" />
                     Configure
@@ -7035,23 +7035,23 @@ After setup, use the test buttons to verify each notification type.
                           <span className="text-sm font-medium text-zinc-600">Configuration Status</span>
                           <span className="text-sm font-semibold text-zinc-900">{percent}%</span>
                         </div>
-                        <div className="h-2 bg-zinc-200 rounded-full overflow-hidden">
+                        <div className="h-2 bg-border rounded-full overflow-hidden">
                           <div
                             className={cn(
                               "h-full rounded-full transition-all duration-500",
-                              failed > 0 ? "bg-red-500" : "bg-green-500"
+                              failed > 0 ? "bg-red-500/100" : "bg-green-500/100"
                             )}
                             style={{ width: `${percent}%` }}
                           />
                         </div>
                       </div>
-                      <div className="flex items-center gap-4 pl-4 border-l border-zinc-200">
+                      <div className="flex items-center gap-4 pl-4 border-l border-border">
                         <div className="text-center">
-                          <div className="text-xl font-bold text-green-600">{passed}</div>
+                          <div className="text-xl font-bold text-green-400">{passed}</div>
                           <div className="text-xs text-zinc-500">Ready</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-xl font-bold text-red-600">{failed}</div>
+                          <div className="text-xl font-bold text-red-400">{failed}</div>
                           <div className="text-xs text-zinc-500">Missing</div>
                         </div>
                         <div className="text-center">
@@ -7066,7 +7066,7 @@ After setup, use the test buttons to verify each notification type.
             </div>
 
             {/* Test Notifications - Two columns: Info & Alerts */}
-            <div className="p-5 bg-white border border-zinc-200 rounded-2xl mb-6">
+            <div className="p-5 bg-card border border-border rounded-2xl mb-6">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-zinc-100 flex items-center justify-center">
                   <Zap className="h-5 w-5 text-zinc-600" />
@@ -7083,10 +7083,10 @@ After setup, use the test buttons to verify each notification type.
                   <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Info Notifications</h4>
                   <div className="space-y-3">
                     {/* Ping Test */}
-                    <div className="p-4 border border-zinc-200 rounded-xl">
+                    <div className="p-4 border border-border rounded-xl">
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                          <Send className="h-4 w-4 text-blue-600" />
+                        <div className="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center">
+                          <Send className="h-4 w-4 text-blue-400" />
                         </div>
                         <div>
                           <h5 className="font-medium text-zinc-900">Ping Test</h5>
@@ -7099,9 +7099,9 @@ After setup, use the test buttons to verify each notification type.
                         className={cn(
                           "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
                           slackTestStatus['info'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
-                          slackTestStatus['info'] === 'success' ? "bg-zinc-100 text-green-600 border border-green-200" :
-                          slackTestStatus['info'] === 'error' ? "bg-zinc-100 text-red-600 border border-red-200" :
-                          "bg-zinc-900 hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                          slackTestStatus['info'] === 'success' ? "bg-zinc-100 text-green-400 border border-green-500/30" :
+                          slackTestStatus['info'] === 'error' ? "bg-zinc-100 text-red-400 border border-red-500/30" :
+                          "bg-background hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
                         )}
                       >
                         {slackTestStatus['info'] === 'sending' ? 'Sending...' :
@@ -7111,10 +7111,10 @@ After setup, use the test buttons to verify each notification type.
                     </div>
 
                     {/* Story Started */}
-                    <div className="p-4 border border-zinc-200 rounded-xl">
+                    <div className="p-4 border border-border rounded-xl">
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-                          <Play className="h-4 w-4 text-green-600" />
+                        <div className="w-8 h-8 rounded-lg bg-green-500/15 flex items-center justify-center">
+                          <Play className="h-4 w-4 text-green-400" />
                         </div>
                         <div>
                           <h5 className="font-medium text-zinc-900">Story Started</h5>
@@ -7127,9 +7127,9 @@ After setup, use the test buttons to verify each notification type.
                         className={cn(
                           "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
                           slackTestStatus['story_start'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
-                          slackTestStatus['story_start'] === 'success' ? "bg-zinc-100 text-green-600 border border-green-200" :
-                          slackTestStatus['story_start'] === 'error' ? "bg-zinc-100 text-red-600 border border-red-200" :
-                          "bg-zinc-900 hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                          slackTestStatus['story_start'] === 'success' ? "bg-zinc-100 text-green-400 border border-green-500/30" :
+                          slackTestStatus['story_start'] === 'error' ? "bg-zinc-100 text-red-400 border border-red-500/30" :
+                          "bg-background hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
                         )}
                       >
                         {slackTestStatus['story_start'] === 'sending' ? 'Sending...' :
@@ -7139,7 +7139,7 @@ After setup, use the test buttons to verify each notification type.
                     </div>
 
                     {/* Story Complete */}
-                    <div className="p-4 border border-zinc-200 rounded-xl">
+                    <div className="p-4 border border-border rounded-xl">
                       <div className="flex items-center gap-3 mb-2">
                         <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
                           <CheckCircle2 className="h-4 w-4 text-emerald-600" />
@@ -7155,9 +7155,9 @@ After setup, use the test buttons to verify each notification type.
                         className={cn(
                           "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
                           slackTestStatus['story_complete'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
-                          slackTestStatus['story_complete'] === 'success' ? "bg-zinc-100 text-green-600 border border-green-200" :
-                          slackTestStatus['story_complete'] === 'error' ? "bg-zinc-100 text-red-600 border border-red-200" :
-                          "bg-zinc-900 hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                          slackTestStatus['story_complete'] === 'success' ? "bg-zinc-100 text-green-400 border border-green-500/30" :
+                          slackTestStatus['story_complete'] === 'error' ? "bg-zinc-100 text-red-400 border border-red-500/30" :
+                          "bg-background hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
                         )}
                       >
                         {slackTestStatus['story_complete'] === 'sending' ? 'Sending...' :
@@ -7167,9 +7167,9 @@ After setup, use the test buttons to verify each notification type.
                     </div>
 
                     {/* Gate Passed */}
-                    <div className="p-4 border border-zinc-200 rounded-xl">
+                    <div className="p-4 border border-border rounded-xl">
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
                           <Flag className="h-4 w-4 text-amber-600" />
                         </div>
                         <div>
@@ -7183,9 +7183,9 @@ After setup, use the test buttons to verify each notification type.
                         className={cn(
                           "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
                           slackTestStatus['gate_complete'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
-                          slackTestStatus['gate_complete'] === 'success' ? "bg-zinc-100 text-green-600 border border-green-200" :
-                          slackTestStatus['gate_complete'] === 'error' ? "bg-zinc-100 text-red-600 border border-red-200" :
-                          "bg-zinc-900 hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                          slackTestStatus['gate_complete'] === 'success' ? "bg-zinc-100 text-green-400 border border-green-500/30" :
+                          slackTestStatus['gate_complete'] === 'error' ? "bg-zinc-100 text-red-400 border border-red-500/30" :
+                          "bg-background hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
                         )}
                       >
                         {slackTestStatus['gate_complete'] === 'sending' ? 'Sending...' :
@@ -7201,10 +7201,10 @@ After setup, use the test buttons to verify each notification type.
                   <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Alert Notifications</h4>
                   <div className="space-y-3">
                     {/* Escalation */}
-                    <div className="p-4 border border-zinc-200 rounded-xl">
+                    <div className="p-4 border border-border rounded-xl">
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
-                          <AlertTriangle className="h-4 w-4 text-red-600" />
+                        <div className="w-8 h-8 rounded-lg bg-red-500/15 flex items-center justify-center">
+                          <AlertTriangle className="h-4 w-4 text-red-400" />
                         </div>
                         <div>
                           <h5 className="font-medium text-zinc-900">Escalation</h5>
@@ -7217,9 +7217,9 @@ After setup, use the test buttons to verify each notification type.
                         className={cn(
                           "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
                           slackTestStatus['escalation'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
-                          slackTestStatus['escalation'] === 'success' ? "bg-zinc-100 text-green-600 border border-green-200" :
-                          slackTestStatus['escalation'] === 'error' ? "bg-zinc-100 text-red-600 border border-red-200" :
-                          "bg-zinc-900 hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                          slackTestStatus['escalation'] === 'success' ? "bg-zinc-100 text-green-400 border border-green-500/30" :
+                          slackTestStatus['escalation'] === 'error' ? "bg-zinc-100 text-red-400 border border-red-500/30" :
+                          "bg-background hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
                         )}
                       >
                         {slackTestStatus['escalation'] === 'sending' ? 'Sending...' :
@@ -7229,9 +7229,9 @@ After setup, use the test buttons to verify each notification type.
                     </div>
 
                     {/* Budget Warning */}
-                    <div className="p-4 border border-zinc-200 rounded-xl">
+                    <div className="p-4 border border-border rounded-xl">
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-lg bg-orange-500/15 flex items-center justify-center">
                           <DollarSign className="h-4 w-4 text-orange-600" />
                         </div>
                         <div>
@@ -7245,9 +7245,9 @@ After setup, use the test buttons to verify each notification type.
                         className={cn(
                           "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
                           slackTestStatus['budget_warning'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
-                          slackTestStatus['budget_warning'] === 'success' ? "bg-zinc-100 text-green-600 border border-green-200" :
-                          slackTestStatus['budget_warning'] === 'error' ? "bg-zinc-100 text-red-600 border border-red-200" :
-                          "bg-zinc-900 hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                          slackTestStatus['budget_warning'] === 'success' ? "bg-zinc-100 text-green-400 border border-green-500/30" :
+                          slackTestStatus['budget_warning'] === 'error' ? "bg-zinc-100 text-red-400 border border-red-500/30" :
+                          "bg-background hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
                         )}
                       >
                         {slackTestStatus['budget_warning'] === 'sending' ? 'Sending...' :
@@ -7257,10 +7257,10 @@ After setup, use the test buttons to verify each notification type.
                     </div>
 
                     {/* Wave Summary */}
-                    <div className="p-4 border border-zinc-200 rounded-xl">
+                    <div className="p-4 border border-border rounded-xl">
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                          <BarChart3 className="h-4 w-4 text-purple-600" />
+                        <div className="w-8 h-8 rounded-lg bg-purple-500/15 flex items-center justify-center">
+                          <BarChart3 className="h-4 w-4 text-purple-400" />
                         </div>
                         <div>
                           <h5 className="font-medium text-zinc-900">Wave Summary</h5>
@@ -7273,9 +7273,9 @@ After setup, use the test buttons to verify each notification type.
                         className={cn(
                           "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
                           slackTestStatus['wave_complete'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
-                          slackTestStatus['wave_complete'] === 'success' ? "bg-zinc-100 text-green-600 border border-green-200" :
-                          slackTestStatus['wave_complete'] === 'error' ? "bg-zinc-100 text-red-600 border border-red-200" :
-                          "bg-zinc-900 hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                          slackTestStatus['wave_complete'] === 'success' ? "bg-zinc-100 text-green-400 border border-green-500/30" :
+                          slackTestStatus['wave_complete'] === 'error' ? "bg-zinc-100 text-red-400 border border-red-500/30" :
+                          "bg-background hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
                         )}
                       >
                         {slackTestStatus['wave_complete'] === 'sending' ? 'Sending...' :
@@ -7285,10 +7285,10 @@ After setup, use the test buttons to verify each notification type.
                     </div>
 
                     {/* E-STOP */}
-                    <div className="p-4 border border-zinc-200 rounded-xl">
+                    <div className="p-4 border border-border rounded-xl">
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
-                          <XOctagon className="h-4 w-4 text-red-600" />
+                        <div className="w-8 h-8 rounded-lg bg-red-500/15 flex items-center justify-center">
+                          <XOctagon className="h-4 w-4 text-red-400" />
                         </div>
                         <div>
                           <h5 className="font-medium text-zinc-900">E-STOP Alert</h5>
@@ -7301,9 +7301,9 @@ After setup, use the test buttons to verify each notification type.
                         className={cn(
                           "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
                           slackTestStatus['estop'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
-                          slackTestStatus['estop'] === 'success' ? "bg-zinc-100 text-green-600 border border-green-200" :
-                          slackTestStatus['estop'] === 'error' ? "bg-zinc-100 text-red-600 border border-red-200" :
-                          "bg-zinc-900 hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                          slackTestStatus['estop'] === 'success' ? "bg-zinc-100 text-green-400 border border-green-500/30" :
+                          slackTestStatus['estop'] === 'error' ? "bg-zinc-100 text-red-400 border border-red-500/30" :
+                          "bg-background hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
                         )}
                       >
                         {slackTestStatus['estop'] === 'sending' ? 'Sending...' :
@@ -7317,7 +7317,7 @@ After setup, use the test buttons to verify each notification type.
             </div>
 
             {/* Recent Notifications */}
-            <div className="p-5 bg-white border border-zinc-200 rounded-2xl mb-6">
+            <div className="p-5 bg-card border border-border rounded-2xl mb-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-zinc-100 flex items-center justify-center">
@@ -7340,7 +7340,7 @@ After setup, use the test buttons to verify each notification type.
 
               {slackNotificationHistory.length === 0 ? (
                 <div className="text-center py-8">
-                  <Bell className="h-8 w-8 mx-auto mb-2 text-zinc-300" />
+                  <Bell className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                   <p className="text-sm text-zinc-500">No notifications sent yet</p>
                   <p className="text-xs text-zinc-400 mt-1">Send a test notification to see it here</p>
                 </div>
@@ -7349,25 +7349,25 @@ After setup, use the test buttons to verify each notification type.
                   {slackNotificationHistory.map((notification) => (
                     <div
                       key={notification.id}
-                      className="flex items-center justify-between p-3 bg-zinc-50 rounded-lg"
+                      className="flex items-center justify-between p-3 bg-muted rounded-lg"
                     >
                       <div className="flex items-center gap-3">
                         {notification.success ? (
-                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          <CheckCircle2 className="h-4 w-4 text-green-400" />
                         ) : (
-                          <XCircle className="h-4 w-4 text-red-600" />
+                          <XCircle className="h-4 w-4 text-red-400" />
                         )}
                         <div>
                           <p className="text-sm font-medium text-zinc-900">{notification.type}</p>
                           {notification.message && (
-                            <p className="text-xs text-red-600">{notification.message}</p>
+                            <p className="text-xs text-red-400">{notification.message}</p>
                           )}
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
                         <span className={cn(
                           "px-2 py-0.5 rounded text-xs font-medium",
-                          notification.success ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                          notification.success ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400"
                         )}>
                           {notification.success ? 'Delivered' : 'Failed'}
                         </span>
@@ -7380,7 +7380,7 @@ After setup, use the test buttons to verify each notification type.
             </div>
 
             {/* Dozzle Section - Secondary, at bottom */}
-            <div className="p-5 bg-white border border-zinc-200 rounded-2xl">
+            <div className="p-5 bg-card border border-border rounded-2xl">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-cyan-100 flex items-center justify-center">
@@ -7392,14 +7392,14 @@ After setup, use the test buttons to verify each notification type.
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button className="px-4 py-2 border border-zinc-200 hover:border-zinc-300 text-zinc-600 hover:text-zinc-900 rounded-lg text-sm font-medium transition-colors">
+                  <button className="px-4 py-2 border border-border hover:border-zinc-300 text-zinc-600 hover:text-zinc-900 rounded-lg text-sm font-medium transition-colors">
                     Check Status
                   </button>
                   <a
                     href="http://localhost:8080"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2 border border-zinc-200 hover:border-zinc-300 text-zinc-600 hover:text-zinc-900 rounded-lg text-sm font-medium transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 border border-border hover:border-zinc-300 text-zinc-600 hover:text-zinc-900 rounded-lg text-sm font-medium transition-colors"
                   >
                     Open Dozzle
                     <ExternalLink className="h-4 w-4" />
@@ -7407,15 +7407,15 @@ After setup, use the test buttons to verify each notification type.
                 </div>
               </div>
 
-              <div className="p-4 bg-zinc-50 rounded-xl">
+              <div className="p-4 bg-muted rounded-xl">
                 <p className="text-xs text-zinc-500 mb-2">Start Dozzle if not running:</p>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 bg-zinc-900 text-zinc-100 px-3 py-2 rounded-lg text-xs font-mono overflow-x-auto">
+                  <code className="flex-1 bg-background text-zinc-100 px-3 py-2 rounded-lg text-xs font-mono overflow-x-auto">
                     docker run -d --name dozzle -p 8080:8080 -v /var/run/docker.sock:/var/run/docker.sock amir20/dozzle
                   </code>
                   <button
                     onClick={() => navigator.clipboard.writeText('docker run -d --name dozzle -p 8080:8080 -v /var/run/docker.sock:/var/run/docker.sock amir20/dozzle')}
-                    className="p-2 border border-zinc-200 hover:border-zinc-300 rounded-lg transition-colors"
+                    className="p-2 border border-border hover:border-zinc-300 rounded-lg transition-colors"
                   >
                     <Copy className="h-4 w-4 text-zinc-500" />
                   </button>
@@ -7429,10 +7429,10 @@ After setup, use the test buttons to verify each notification type.
         {activeTab === 'agent-dispatch' && (
           <>
             {/* Info Box - Subtle gray bg, blue icon */}
-            <div className="p-5 bg-zinc-50 border border-zinc-200 rounded-2xl mb-6">
+            <div className="p-5 bg-muted border border-border rounded-2xl mb-6">
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                  <Bot className="h-5 w-5 text-blue-600" />
+                <div className="w-10 h-10 rounded-lg bg-blue-500/15 flex items-center justify-center flex-shrink-0">
+                  <Bot className="h-5 w-5 text-blue-400" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-zinc-900 mb-1">Multi-Agent Orchestration</h3>
@@ -7449,14 +7449,14 @@ After setup, use the test buttons to verify each notification type.
             </div>
 
             {/* Validation CTA with Progress */}
-            <div className="p-6 border border-zinc-200 rounded-2xl mb-6 bg-white">
+            <div className="p-6 border border-border rounded-2xl mb-6 bg-card">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-zinc-100 flex items-center justify-center">
                     {validationReport?.overall_status === 'PASS' ? (
-                      <CheckCircle2 className="h-6 w-6 text-green-600" />
+                      <CheckCircle2 className="h-6 w-6 text-green-400" />
                     ) : validationReport?.overall_status === 'FAIL' ? (
-                      <XCircle className="h-6 w-6 text-red-600" />
+                      <XCircle className="h-6 w-6 text-red-400" />
                     ) : validationReport?.overall_status === 'WARN' ? (
                       <AlertTriangle className="h-6 w-6 text-amber-500" />
                     ) : (
@@ -7479,9 +7479,9 @@ After setup, use the test buttons to verify each notification type.
                   {watchdogStatus && (
                     <div className={cn(
                       "px-3 py-1.5 rounded-full text-sm flex items-center gap-1.5",
-                      watchdogStatus.overall_status === 'healthy' ? "bg-zinc-100 text-green-600" :
+                      watchdogStatus.overall_status === 'healthy' ? "bg-zinc-100 text-green-400" :
                       watchdogStatus.overall_status === 'warning' ? "bg-zinc-100 text-amber-600" :
-                      "bg-zinc-100 text-red-600"
+                      "bg-zinc-100 text-red-400"
                     )}>
                       {watchdogStatus.overall_status === 'healthy' ? (
                         <CheckCircle2 className="h-3.5 w-3.5" />
@@ -7499,7 +7499,7 @@ After setup, use the test buttons to verify each notification type.
                   <span className={cn(
                     "px-3 py-1.5 rounded-full text-sm",
                     agents.some(a => a.status === 'running')
-                      ? "bg-zinc-100 text-green-600"
+                      ? "bg-zinc-100 text-green-400"
                       : "bg-zinc-100 text-zinc-600"
                   )}>
                     {agents.filter(a => a.status === 'running').length} Active
@@ -7577,7 +7577,7 @@ Project: ${project?.name || 'Unknown'}
                       document.body.removeChild(a)
                       URL.revokeObjectURL(url)
                     }}
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 border border-zinc-200 hover:border-zinc-300 rounded-xl transition-colors"
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 border border-border hover:border-zinc-300 rounded-xl transition-colors"
                   >
                     <Download className="h-4 w-4" />
                     Setup Guide (.md)
@@ -7590,7 +7590,7 @@ Project: ${project?.name || 'Unknown'}
                       "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors",
                       validating
                         ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
-                        : "bg-zinc-900 hover:bg-zinc-800 text-white"
+                        : "bg-background hover:bg-zinc-800 text-white"
                     )}
                   >
                     {validating ? (
@@ -7603,7 +7603,7 @@ Project: ${project?.name || 'Unknown'}
                   {/* Refresh */}
                   <button
                     onClick={fetchAgents}
-                    className="p-2.5 rounded-xl border border-zinc-200 hover:border-zinc-300 text-zinc-600 hover:text-zinc-900 transition-colors"
+                    className="p-2.5 rounded-xl border border-border hover:border-zinc-300 text-zinc-600 hover:text-zinc-900 transition-colors"
                     title="Refresh agents"
                   >
                     <RefreshCw className={cn("h-4 w-4", loadingAgents && "animate-spin")} />
@@ -7622,24 +7622,24 @@ Project: ${project?.name || 'Unknown'}
                           {Math.round((validationReport.summary.passed / validationReport.summary.total) * 100)}%
                         </span>
                       </div>
-                      <div className="h-2 bg-zinc-200 rounded-full overflow-hidden">
+                      <div className="h-2 bg-border rounded-full overflow-hidden">
                         <div
                           className={cn(
                             "h-full rounded-full transition-all duration-500",
-                            validationReport.summary.failed > 0 ? "bg-red-500" :
-                            validationReport.summary.warnings > 0 ? "bg-amber-400" : "bg-green-500"
+                            validationReport.summary.failed > 0 ? "bg-red-500/100" :
+                            validationReport.summary.warnings > 0 ? "bg-amber-400" : "bg-green-500/100"
                           )}
                           style={{ width: `${(validationReport.summary.passed / validationReport.summary.total) * 100}%` }}
                         />
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 pl-4 border-l border-zinc-200">
+                    <div className="flex items-center gap-4 pl-4 border-l border-border">
                       <div className="text-center">
-                        <div className="text-xl font-bold text-green-600">{validationReport.summary.passed}</div>
+                        <div className="text-xl font-bold text-green-400">{validationReport.summary.passed}</div>
                         <div className="text-xs text-zinc-500">Passed</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-xl font-bold text-red-600">{validationReport.summary.failed}</div>
+                        <div className="text-xl font-bold text-red-400">{validationReport.summary.failed}</div>
                         <div className="text-xs text-zinc-500">Failed</div>
                       </div>
                       <div className="text-center">
@@ -7659,10 +7659,10 @@ Project: ${project?.name || 'Unknown'}
                   key={agent.agent_type}
                   className={cn(
                     "p-4 rounded-xl border transition-all",
-                    agent.status === 'running' ? "border-green-300 bg-green-50" :
-                    agent.status === 'error' ? "border-red-300 bg-red-50" :
-                    agent.status === 'starting' ? "border-blue-300 bg-blue-50" :
-                    "border-border bg-white hover:border-zinc-300"
+                    agent.status === 'running' ? "border-green-300 bg-green-500/10" :
+                    agent.status === 'error' ? "border-red-300 bg-red-500/10" :
+                    agent.status === 'starting' ? "border-blue-300 bg-blue-500/10" :
+                    "border-border bg-card hover:border-zinc-300"
                   )}
                 >
                   {/* Agent Header */}
@@ -7683,9 +7683,9 @@ Project: ${project?.name || 'Unknown'}
                   <div className="flex items-center gap-2 mb-3">
                     <div className={cn(
                       "w-2 h-2 rounded-full",
-                      agent.status === 'running' ? "bg-green-500 animate-pulse" :
-                      agent.status === 'error' ? "bg-red-500" :
-                      agent.status === 'starting' ? "bg-blue-500 animate-pulse" :
+                      agent.status === 'running' ? "bg-green-500/100 animate-pulse" :
+                      agent.status === 'error' ? "bg-red-500/100" :
+                      agent.status === 'starting' ? "bg-blue-500/100 animate-pulse" :
                       "bg-zinc-300"
                     )} />
                     <span className="text-sm capitalize">{agent.status}</span>
@@ -7701,9 +7701,9 @@ Project: ${project?.name || 'Unknown'}
                   {/* Wave/Gate Info */}
                   {agent.status === 'running' && agent.wave_number && (
                     <div className="flex items-center gap-2 mb-3 text-xs">
-                      <span className="px-2 py-0.5 bg-white rounded border">Wave {agent.wave_number}</span>
+                      <span className="px-2 py-0.5 bg-card rounded border">Wave {agent.wave_number}</span>
                       {agent.current_gate && (
-                        <span className="px-2 py-0.5 bg-white rounded border">Gate {agent.current_gate}</span>
+                        <span className="px-2 py-0.5 bg-card rounded border">Gate {agent.current_gate}</span>
                       )}
                     </div>
                   )}
@@ -7713,7 +7713,7 @@ Project: ${project?.name || 'Unknown'}
                     {agent.status === 'idle' ? (
                       <button
                         onClick={() => startAgent(agent.agent_type)}
-                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-sm font-medium transition-colors"
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-background hover:bg-zinc-800 text-white rounded-lg text-sm font-medium transition-colors"
                       >
                         <Play className="h-3.5 w-3.5" />
                         Start
@@ -7722,20 +7722,20 @@ Project: ${project?.name || 'Unknown'}
                       <>
                         <button
                           onClick={() => viewAgent(agent.agent_type)}
-                          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-border hover:bg-zinc-50 rounded-lg text-sm font-medium transition-colors"
+                          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-card border border-border hover:bg-muted rounded-lg text-sm font-medium transition-colors"
                         >
                           <Eye className="h-3.5 w-3.5" />
                           View
                         </button>
                         <button
                           onClick={() => stopAgent(agent.agent_type)}
-                          className="flex items-center justify-center gap-1.5 px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-sm font-medium transition-colors"
+                          className="flex items-center justify-center gap-1.5 px-3 py-2 bg-red-500/15 hover:bg-red-200 text-red-400 rounded-lg text-sm font-medium transition-colors"
                         >
                           <XCircle className="h-3.5 w-3.5" />
                         </button>
                       </>
                     ) : agent.status === 'starting' ? (
-                      <div className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm">
+                      <div className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-500/15 text-blue-400 rounded-lg text-sm">
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         Starting...
                       </div>
@@ -7762,22 +7762,22 @@ Project: ${project?.name || 'Unknown'}
 
             {/* Validation Results Section */}
             {(validationReport || validationError || validating) && (
-              <div className="p-5 bg-white border border-border rounded-2xl mb-6">
+              <div className="p-5 bg-card border border-border rounded-2xl mb-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className={cn(
                       "w-10 h-10 rounded-xl flex items-center justify-center",
-                      validationReport?.overall_status === 'PASS' ? "bg-green-100" :
-                      validationReport?.overall_status === 'FAIL' ? "bg-red-100" :
-                      validationReport?.overall_status === 'WARN' ? "bg-amber-100" :
+                      validationReport?.overall_status === 'PASS' ? "bg-green-500/15" :
+                      validationReport?.overall_status === 'FAIL' ? "bg-red-500/15" :
+                      validationReport?.overall_status === 'WARN' ? "bg-amber-500/10" :
                       "bg-zinc-100"
                     )}>
                       {validating ? (
                         <Loader2 className="h-5 w-5 animate-spin text-zinc-600" />
                       ) : validationReport?.overall_status === 'PASS' ? (
-                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                        <CheckCircle2 className="h-5 w-5 text-green-400" />
                       ) : validationReport?.overall_status === 'FAIL' ? (
-                        <XCircle className="h-5 w-5 text-red-600" />
+                        <XCircle className="h-5 w-5 text-red-400" />
                       ) : validationReport?.overall_status === 'WARN' ? (
                         <AlertTriangle className="h-5 w-5 text-amber-600" />
                       ) : (
@@ -7797,16 +7797,16 @@ Project: ${project?.name || 'Unknown'}
                   </div>
                   {validationReport && (
                     <div className="flex items-center gap-3">
-                      <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
+                      <span className="px-3 py-1 bg-green-500/15 text-green-400 rounded-full text-sm">
                         {validationReport.summary.passed} Passed
                       </span>
                       {validationReport.summary.failed > 0 && (
-                        <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm">
+                        <span className="px-3 py-1 bg-red-500/15 text-red-400 rounded-full text-sm">
                           {validationReport.summary.failed} Failed
                         </span>
                       )}
                       {validationReport.summary.warnings > 0 && (
-                        <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm">
+                        <span className="px-3 py-1 bg-amber-500/10 text-amber-700 rounded-full text-sm">
                           {validationReport.summary.warnings} Warnings
                         </span>
                       )}
@@ -7815,7 +7815,7 @@ Project: ${project?.name || 'Unknown'}
                 </div>
 
                 {validationError && (
-                  <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+                  <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
                     {validationError}
                   </div>
                 )}
@@ -7825,19 +7825,19 @@ Project: ${project?.name || 'Unknown'}
                     {validationReport.checks.map((check, i) => (
                       <div
                         key={i}
-                        className="px-4 py-3 border-b last:border-0 flex items-center gap-3 hover:bg-zinc-50"
+                        className="px-4 py-3 border-b last:border-0 flex items-center gap-3 hover:bg-muted"
                       >
                         <div className={cn(
                           "w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0",
-                          check.status === 'PASS' ? "bg-green-100" :
-                          check.status === 'FAIL' ? "bg-red-100" :
-                          check.status === 'WARN' ? "bg-amber-100" :
+                          check.status === 'PASS' ? "bg-green-500/15" :
+                          check.status === 'FAIL' ? "bg-red-500/15" :
+                          check.status === 'WARN' ? "bg-amber-500/10" :
                           "bg-zinc-100"
                         )}>
                           {check.status === 'PASS' ? (
-                            <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                            <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />
                           ) : check.status === 'FAIL' ? (
-                            <XCircle className="h-3.5 w-3.5 text-red-600" />
+                            <XCircle className="h-3.5 w-3.5 text-red-400" />
                           ) : (
                             <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
                           )}
@@ -7848,9 +7848,9 @@ Project: ${project?.name || 'Unknown'}
                         </div>
                         <span className={cn(
                           "px-2 py-0.5 rounded text-xs font-medium flex-shrink-0",
-                          check.status === 'PASS' ? "bg-green-100 text-green-700" :
-                          check.status === 'FAIL' ? "bg-red-100 text-red-700" :
-                          "bg-amber-100 text-amber-700"
+                          check.status === 'PASS' ? "bg-green-500/15 text-green-400" :
+                          check.status === 'FAIL' ? "bg-red-500/15 text-red-400" :
+                          "bg-amber-500/10 text-amber-700"
                         )}>
                           {check.status}
                         </span>
@@ -7862,7 +7862,7 @@ Project: ${project?.name || 'Unknown'}
             )}
 
             {/* Agent Activity Feed */}
-            <div className="p-5 bg-white border border-border rounded-2xl">
+            <div className="p-5 bg-card border border-border rounded-2xl">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-zinc-100 flex items-center justify-center">
@@ -7887,7 +7887,7 @@ Project: ${project?.name || 'Unknown'}
                   agentActivity.map((log, i) => (
                     <div
                       key={i}
-                      className="px-4 py-3 border-b last:border-0 flex items-center gap-3 hover:bg-zinc-50"
+                      className="px-4 py-3 border-b last:border-0 flex items-center gap-3 hover:bg-muted"
                     >
                       <span className="text-xs text-muted-foreground w-20 flex-shrink-0">
                         {new Date(log.timestamp).toLocaleTimeString()}
@@ -7895,11 +7895,11 @@ Project: ${project?.name || 'Unknown'}
                       <span className={cn(
                         "px-2 py-0.5 rounded text-xs font-medium flex-shrink-0",
                         log.agent === 'cto' ? "bg-violet-100 text-violet-700" :
-                        log.agent === 'pm' ? "bg-blue-100 text-blue-700" :
-                        log.agent.includes('fe-dev') ? "bg-green-100 text-green-700" :
-                        log.agent.includes('be-dev') ? "bg-amber-100 text-amber-700" :
+                        log.agent === 'pm' ? "bg-blue-500/15 text-blue-400" :
+                        log.agent.includes('fe-dev') ? "bg-green-500/15 text-green-400" :
+                        log.agent.includes('be-dev') ? "bg-amber-500/10 text-amber-700" :
                         log.agent === 'qa' ? "bg-cyan-100 text-cyan-700" :
-                        log.agent === 'dev-fix' ? "bg-red-100 text-red-700" :
+                        log.agent === 'dev-fix' ? "bg-red-500/15 text-red-400" :
                         "bg-zinc-100 text-zinc-700"
                       )}>
                         {log.agent}
@@ -7918,7 +7918,7 @@ Project: ${project?.name || 'Unknown'}
             </div>
 
             {/* Token Budget Governance Section */}
-            <div className="p-5 bg-white border border-border rounded-2xl mt-6">
+            <div className="p-5 bg-card border border-border rounded-2xl mt-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
@@ -7933,10 +7933,10 @@ Project: ${project?.name || 'Unknown'}
                   {budgetStatus && (
                     <span className={cn(
                       "px-3 py-1 rounded-full text-sm font-medium",
-                      budgetStatus.status.project.status === 'ok' ? "bg-green-100 text-green-700" :
-                      budgetStatus.status.project.status === 'warning' ? "bg-amber-100 text-amber-700" :
-                      budgetStatus.status.project.status === 'critical' ? "bg-orange-100 text-orange-700" :
-                      "bg-red-100 text-red-700"
+                      budgetStatus.status.project.status === 'ok' ? "bg-green-500/15 text-green-400" :
+                      budgetStatus.status.project.status === 'warning' ? "bg-amber-500/10 text-amber-700" :
+                      budgetStatus.status.project.status === 'critical' ? "bg-orange-500/15 text-orange-700" :
+                      "bg-red-500/15 text-red-400"
                     )}>
                       ${budgetStatus.status.project.spent.toFixed(2)} / ${budgetStatus.status.project.budget.toFixed(2)}
                     </span>
@@ -7966,9 +7966,9 @@ Project: ${project?.name || 'Unknown'}
                       key={i}
                       className={cn(
                         "px-4 py-3 rounded-lg flex items-center gap-3",
-                        alert.level === 'critical' ? "bg-red-50 border border-red-200" :
+                        alert.level === 'critical' ? "bg-red-500/10 border border-red-500/30" :
                         alert.level === 'warning' ? "bg-amber-50 border border-amber-200" :
-                        "bg-blue-50 border border-blue-200"
+                        "bg-blue-500/10 border border-blue-500/30"
                       )}
                     >
                       {alert.level === 'critical' ? (
@@ -7981,9 +7981,9 @@ Project: ${project?.name || 'Unknown'}
                       <div className="flex-1">
                         <p className={cn(
                           "text-sm font-medium",
-                          alert.level === 'critical' ? "text-red-700" :
+                          alert.level === 'critical' ? "text-red-400" :
                           alert.level === 'warning' ? "text-amber-700" :
-                          "text-blue-700"
+                          "text-blue-400"
                         )}>
                           {alert.message}
                         </p>
@@ -8006,9 +8006,9 @@ Project: ${project?.name || 'Unknown'}
                     <span className="font-medium">Project Budget</span>
                     <span className={cn(
                       "font-medium",
-                      budgetStatus.status.project.status === 'ok' ? "text-green-600" :
+                      budgetStatus.status.project.status === 'ok' ? "text-green-400" :
                       budgetStatus.status.project.status === 'warning' ? "text-amber-600" :
-                      "text-red-600"
+                      "text-red-400"
                     )}>
                       {budgetStatus.status.project.percent}%
                     </span>
@@ -8017,10 +8017,10 @@ Project: ${project?.name || 'Unknown'}
                     <div
                       className={cn(
                         "h-full rounded-full transition-all",
-                        budgetStatus.status.project.status === 'ok' ? "bg-green-500" :
+                        budgetStatus.status.project.status === 'ok' ? "bg-green-500/100" :
                         budgetStatus.status.project.status === 'warning' ? "bg-amber-500" :
-                        budgetStatus.status.project.status === 'critical' ? "bg-orange-500" :
-                        "bg-red-500"
+                        budgetStatus.status.project.status === 'critical' ? "bg-orange-500/100" :
+                        "bg-red-500/100"
                       )}
                       style={{ width: `${Math.min(budgetStatus.status.project.percent, 100)}%` }}
                     />
@@ -8029,7 +8029,7 @@ Project: ${project?.name || 'Unknown'}
                     <span>$0</span>
                     <span className="flex gap-3">
                       <span className="text-amber-600">Warning: ${(budgetStatus.config.project_budget * 0.75).toFixed(2)}</span>
-                      <span className="text-red-600">Critical: ${(budgetStatus.config.project_budget * 0.90).toFixed(2)}</span>
+                      <span className="text-red-400">Critical: ${(budgetStatus.config.project_budget * 0.90).toFixed(2)}</span>
                     </span>
                     <span>${budgetStatus.config.project_budget.toFixed(2)}</span>
                   </div>
@@ -8046,19 +8046,19 @@ Project: ${project?.name || 'Unknown'}
                         key={agent}
                         className={cn(
                           "p-3 rounded-lg border",
-                          status.status === 'ok' ? "border-zinc-200 bg-white" :
+                          status.status === 'ok' ? "border-border bg-card" :
                           status.status === 'warning' ? "border-amber-200 bg-amber-50" :
-                          status.status === 'critical' ? "border-orange-200 bg-orange-50" :
-                          "border-red-200 bg-red-50"
+                          status.status === 'critical' ? "border-orange-200 bg-orange-500/10" :
+                          "border-red-500/30 bg-red-500/10"
                         )}
                       >
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-xs font-medium">{agent}</span>
                           <span className={cn(
                             "text-xs",
-                            status.status === 'ok' ? "text-green-600" :
+                            status.status === 'ok' ? "text-green-400" :
                             status.status === 'warning' ? "text-amber-600" :
-                            "text-red-600"
+                            "text-red-400"
                           )}>
                             {status.percent}%
                           </span>
@@ -8067,9 +8067,9 @@ Project: ${project?.name || 'Unknown'}
                           <div
                             className={cn(
                               "h-full rounded-full",
-                              status.status === 'ok' ? "bg-green-500" :
+                              status.status === 'ok' ? "bg-green-500/100" :
                               status.status === 'warning' ? "bg-amber-500" :
-                              "bg-red-500"
+                              "bg-red-500/100"
                             )}
                             style={{ width: `${Math.min(status.percent, 100)}%` }}
                           />
@@ -8085,7 +8085,7 @@ Project: ${project?.name || 'Unknown'}
 
               {/* Budget Configuration Panel */}
               {showBudgetConfig && budgetStatus && (
-                <div className="mt-6 p-4 bg-zinc-50 rounded-xl border">
+                <div className="mt-6 p-4 bg-muted rounded-xl border">
                   <h4 className="font-medium mb-4 flex items-center gap-2">
                     <Settings className="h-4 w-4" />
                     Budget Configuration
@@ -8181,9 +8181,9 @@ Project: ${project?.name || 'Unknown'}
         {activeTab === 'audit-log' && (
           <>
             {/* Info Box - Subtle gray bg, orange icon */}
-            <div className="p-5 bg-zinc-50 border border-zinc-200 rounded-2xl mb-6">
+            <div className="p-5 bg-muted border border-border rounded-2xl mb-6">
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 rounded-lg bg-orange-500/15 flex items-center justify-center flex-shrink-0">
                   <FileText className="h-5 w-5 text-orange-600" />
                 </div>
                 <div>
@@ -8201,14 +8201,14 @@ Project: ${project?.name || 'Unknown'}
             </div>
 
             {/* Audit Status CTA */}
-            <div className="p-6 border border-zinc-200 rounded-2xl mb-6 bg-white">
+            <div className="p-6 border border-border rounded-2xl mb-6 bg-card">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-zinc-100 flex items-center justify-center">
                     {auditLogSummary?.requires_review > 0 ? (
                       <AlertTriangle className="h-6 w-6 text-amber-500" />
                     ) : auditLogs.length > 0 ? (
-                      <CheckCircle2 className="h-6 w-6 text-green-600" />
+                      <CheckCircle2 className="h-6 w-6 text-green-400" />
                     ) : (
                       <FileText className="h-6 w-6 text-zinc-600" />
                     )}
@@ -8230,7 +8230,7 @@ Project: ${project?.name || 'Unknown'}
                   {/* Event count badges */}
                   {auditLogSummary && (
                     <>
-                      <span className="px-3 py-1.5 bg-zinc-100 text-blue-600 rounded-full text-sm">
+                      <span className="px-3 py-1.5 bg-zinc-100 text-blue-400 rounded-full text-sm">
                         {auditLogSummary.total_events} Events
                       </span>
                       {auditLogSummary.requires_review > 0 && (
@@ -8312,7 +8312,7 @@ ${auditLogSummary ? `
                       document.body.removeChild(a)
                       URL.revokeObjectURL(url)
                     }}
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 border border-zinc-200 hover:border-zinc-300 rounded-xl transition-colors"
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 border border-border hover:border-zinc-300 rounded-xl transition-colors"
                   >
                     <Download className="h-4 w-4" />
                     Guide (.md)
@@ -8329,7 +8329,7 @@ ${auditLogSummary ? `
                           e.target.value = ''
                         }
                       }}
-                      className="appearance-none pl-4 pr-8 py-2.5 border border-zinc-200 hover:border-zinc-300 rounded-xl text-sm font-medium cursor-pointer bg-white text-zinc-600 hover:text-zinc-900 transition-colors"
+                      className="appearance-none pl-4 pr-8 py-2.5 border border-border hover:border-zinc-300 rounded-xl text-sm font-medium cursor-pointer bg-card text-zinc-600 hover:text-zinc-900 transition-colors"
                       defaultValue=""
                     >
                       <option value="" disabled>Export...</option>
@@ -8347,7 +8347,7 @@ ${auditLogSummary ? `
                       "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors",
                       auditLogsLoading
                         ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
-                        : "bg-zinc-900 hover:bg-zinc-800 text-white"
+                        : "bg-background hover:bg-zinc-800 text-white"
                     )}
                   >
                     {auditLogsLoading ? (
@@ -8371,12 +8371,12 @@ ${auditLogSummary ? `
                           {Math.round(((auditLogSummary.total_events - (auditLogSummary.by_severity?.error || 0) - (auditLogSummary.by_severity?.critical || 0)) / auditLogSummary.total_events) * 100)}% Clean
                         </span>
                       </div>
-                      <div className="h-2 bg-zinc-200 rounded-full overflow-hidden">
+                      <div className="h-2 bg-border rounded-full overflow-hidden">
                         <div
                           className={cn(
                             "h-full rounded-full transition-all duration-500",
-                            (auditLogSummary.by_severity?.error || 0) + (auditLogSummary.by_severity?.critical || 0) > 0 ? "bg-red-500" :
-                            (auditLogSummary.by_severity?.warn || 0) > 0 ? "bg-amber-400" : "bg-green-500"
+                            (auditLogSummary.by_severity?.error || 0) + (auditLogSummary.by_severity?.critical || 0) > 0 ? "bg-red-500/100" :
+                            (auditLogSummary.by_severity?.warn || 0) > 0 ? "bg-amber-400" : "bg-green-500/100"
                           )}
                           style={{
                             width: `${((auditLogSummary.total_events - (auditLogSummary.by_severity?.error || 0) - (auditLogSummary.by_severity?.critical || 0)) / auditLogSummary.total_events) * 100}%`
@@ -8384,9 +8384,9 @@ ${auditLogSummary ? `
                         />
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 pl-4 border-l border-zinc-200">
+                    <div className="flex items-center gap-4 pl-4 border-l border-border">
                       <div className="text-center">
-                        <div className="text-xl font-bold text-green-600">{auditLogSummary.by_severity?.info || 0}</div>
+                        <div className="text-xl font-bold text-green-400">{auditLogSummary.by_severity?.info || 0}</div>
                         <div className="text-xs text-zinc-500">Info</div>
                       </div>
                       <div className="text-center">
@@ -8394,7 +8394,7 @@ ${auditLogSummary ? `
                         <div className="text-xs text-zinc-500">Warn</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-xl font-bold text-red-600">{(auditLogSummary.by_severity?.error || 0) + (auditLogSummary.by_severity?.critical || 0)}</div>
+                        <div className="text-xl font-bold text-red-400">{(auditLogSummary.by_severity?.error || 0) + (auditLogSummary.by_severity?.critical || 0)}</div>
                         <div className="text-xs text-zinc-500">Error</div>
                       </div>
                     </div>
@@ -8406,29 +8406,29 @@ ${auditLogSummary ? `
             {/* Summary Cards */}
             {auditLogSummary && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="p-4 bg-white border border-border rounded-xl">
+                <div className="p-4 bg-card border border-border rounded-xl">
                   <div className="text-2xl font-bold">{auditLogSummary.by_event_type?.agent_action || 0}</div>
                   <div className="text-sm text-muted-foreground flex items-center gap-2">
                     <Bot className="h-4 w-4" />
                     Agent Actions
                   </div>
                 </div>
-                <div className="p-4 bg-white border border-border rounded-xl">
+                <div className="p-4 bg-card border border-border rounded-xl">
                   <div className="text-2xl font-bold">{auditLogSummary.by_event_type?.validation || 0}</div>
                   <div className="text-sm text-muted-foreground flex items-center gap-2">
                     <Shield className="h-4 w-4" />
                     Validations
                   </div>
                 </div>
-                <div className="p-4 bg-white border border-border rounded-xl">
+                <div className="p-4 bg-card border border-border rounded-xl">
                   <div className="text-2xl font-bold text-amber-600">{auditLogSummary.by_severity?.warn || 0}</div>
                   <div className="text-sm text-muted-foreground flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4" />
                     Warnings
                   </div>
                 </div>
-                <div className="p-4 bg-white border border-border rounded-xl">
-                  <div className="text-2xl font-bold text-red-600">{(auditLogSummary.by_severity?.error || 0) + (auditLogSummary.by_severity?.critical || 0)}</div>
+                <div className="p-4 bg-card border border-border rounded-xl">
+                  <div className="text-2xl font-bold text-red-400">{(auditLogSummary.by_severity?.error || 0) + (auditLogSummary.by_severity?.critical || 0)}</div>
                   <div className="text-sm text-muted-foreground flex items-center gap-2">
                     <XCircle className="h-4 w-4" />
                     Errors
@@ -8446,8 +8446,8 @@ ${auditLogSummary ? `
                   className={cn(
                     "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
                     auditLogFilter === filter
-                      ? "bg-zinc-900 text-white"
-                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                      ? "bg-background text-white"
+                      : "bg-zinc-100 text-zinc-600 hover:bg-border"
                   )}
                 >
                   {filter === 'all' ? 'All Events' :
@@ -8460,7 +8460,7 @@ ${auditLogSummary ? `
             </div>
 
             {/* Audit Log List */}
-            <div className="bg-white border border-border rounded-2xl overflow-hidden">
+            <div className="bg-card border border-border rounded-2xl overflow-hidden">
               <div className="max-h-[500px] overflow-y-auto">
                 {auditLogsLoading && auditLogs.length === 0 ? (
                   <div className="text-center py-12">
@@ -8474,7 +8474,7 @@ ${auditLogSummary ? `
                     <div
                       key={log.id}
                       className={cn(
-                        "px-4 py-3 border-b last:border-0 flex items-start gap-4 hover:bg-zinc-50",
+                        "px-4 py-3 border-b last:border-0 flex items-start gap-4 hover:bg-muted",
                         log.requires_review && "bg-amber-50/50"
                       )}
                     >
@@ -8487,9 +8487,9 @@ ${auditLogSummary ? `
                       <div className={cn(
                         "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
                         log.event_type === 'agent_action' ? "bg-violet-100 text-violet-600" :
-                        log.event_type === 'validation' ? "bg-blue-100 text-blue-600" :
-                        log.event_type === 'safety_event' ? "bg-red-100 text-red-600" :
-                        log.event_type === 'config_change' ? "bg-amber-100 text-amber-600" :
+                        log.event_type === 'validation' ? "bg-blue-500/15 text-blue-400" :
+                        log.event_type === 'safety_event' ? "bg-red-500/15 text-red-400" :
+                        log.event_type === 'config_change' ? "bg-amber-500/10 text-amber-600" :
                         "bg-zinc-100 text-zinc-600"
                       )}>
                         {getEventTypeIcon(log.event_type)}
@@ -8501,7 +8501,7 @@ ${auditLogSummary ? `
                           <span className={cn(
                             "px-2 py-0.5 rounded text-xs font-medium",
                             log.actor_type === 'agent' ? "bg-violet-100 text-violet-700" :
-                            log.actor_type === 'user' ? "bg-blue-100 text-blue-700" :
+                            log.actor_type === 'user' ? "bg-blue-500/15 text-blue-400" :
                             "bg-zinc-100 text-zinc-700"
                           )}>
                             {log.actor_id}
@@ -8513,7 +8513,7 @@ ${auditLogSummary ? `
                             </span>
                           )}
                           {log.requires_review && (
-                            <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs">
+                            <span className="px-2 py-0.5 bg-amber-500/10 text-amber-700 rounded text-xs">
                               Needs Review
                             </span>
                           )}
@@ -8527,7 +8527,7 @@ ${auditLogSummary ? `
                         {log.safety_tags && log.safety_tags.length > 0 && (
                           <div className="mt-1 flex gap-1">
                             {log.safety_tags.map(tag => (
-                              <span key={tag} className="px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-[10px]">
+                              <span key={tag} className="px-1.5 py-0.5 bg-red-500/15 text-red-400 rounded text-[10px]">
                                 {tag}
                               </span>
                             ))}
@@ -8551,7 +8551,7 @@ ${auditLogSummary ? `
                     <p className="text-sm mt-1">Events will be logged when agents run or validations occur</p>
                     <button
                       onClick={fetchAuditLogs}
-                      className="mt-4 px-4 py-2 bg-zinc-100 hover:bg-zinc-200 rounded-lg text-sm font-medium transition-colors"
+                      className="mt-4 px-4 py-2 bg-zinc-100 hover:bg-border rounded-lg text-sm font-medium transition-colors"
                     >
                       <RefreshCw className="h-4 w-4 inline mr-2" />
                       Check for Logs
@@ -8567,7 +8567,7 @@ ${auditLogSummary ? `
       {/* Agent Terminal Modal */}
       {showAgentModal && selectedAgent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-zinc-900 rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden">
+          <div className="bg-background rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-zinc-700 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -8576,7 +8576,7 @@ ${auditLogSummary ? `
                 <span className={cn(
                   "px-2 py-0.5 text-xs rounded",
                   agents.find(a => a.agent_type === selectedAgent)?.status === 'running'
-                    ? "bg-green-500/20 text-green-400"
+                    ? "bg-green-500/100/20 text-green-400"
                     : "bg-zinc-700 text-zinc-400"
                 )}>
                   {agents.find(a => a.agent_type === selectedAgent)?.status || 'Unknown'}
@@ -8596,7 +8596,7 @@ ${auditLogSummary ? `
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-3 border-t border-zinc-700 flex items-center justify-between bg-zinc-900">
+            <div className="px-6 py-3 border-t border-zinc-700 flex items-center justify-between bg-background">
               <div className="flex gap-4 text-xs text-zinc-400">
                 {agents.find(a => a.agent_type === selectedAgent)?.token_usage && (
                   <>
@@ -8613,7 +8613,7 @@ ${auditLogSummary ? `
               <div className="flex gap-2">
                 <button
                   onClick={() => viewAgent(selectedAgent)}
-                  className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                  className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-muted-foreground rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                 >
                   <RefreshCw className="h-4 w-4" />
                   Refresh
@@ -8636,21 +8636,21 @@ ${auditLogSummary ? `
       {/* Foundation Validation Modal */}
       {showFoundationModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl h-[80vh] flex flex-col overflow-hidden">
+          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-3xl h-[80vh] flex flex-col overflow-hidden">
             {/* Modal Header */}
             <div className={cn(
               "px-6 py-5 flex-shrink-0",
               foundationStatus === 'ready' ? "bg-gradient-to-r from-green-600 to-emerald-600 text-white" :
-              foundationStatus === 'blocked' ? "bg-white border-b border-zinc-200 text-zinc-900" :
+              foundationStatus === 'blocked' ? "bg-card border-b border-border text-zinc-900" :
               "bg-gradient-to-r from-zinc-700 to-zinc-800 text-white"
             )}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className={cn(
                     "w-10 h-10 rounded-lg flex items-center justify-center",
-                    foundationStatus === 'ready' ? "bg-white/20" :
-                    foundationStatus === 'blocked' ? "bg-red-100" :
-                    "bg-white/20"
+                    foundationStatus === 'ready' ? "bg-card/20" :
+                    foundationStatus === 'blocked' ? "bg-red-500/15" :
+                    "bg-card/20"
                   )}>
                     {foundationValidating ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
@@ -8684,7 +8684,7 @@ ${auditLogSummary ? `
                   onClick={() => setShowFoundationModal(false)}
                   className={cn(
                     "p-2 rounded-lg transition-colors",
-                    foundationStatus === 'blocked' ? "hover:bg-zinc-200 text-zinc-500" : "hover:bg-white/20"
+                    foundationStatus === 'blocked' ? "hover:bg-border text-zinc-500" : "hover:bg-card/20"
                   )}
                 >
                   <X className="h-5 w-5" />
@@ -8695,16 +8695,16 @@ ${auditLogSummary ? `
             {/* Modal Content - Scrollable */}
             <div className="p-6 overflow-y-auto flex-1">
               {/* Progress Summary */}
-              <div className="flex items-center justify-between mb-6 p-4 bg-zinc-50 rounded-xl">
+              <div className="flex items-center justify-between mb-6 p-4 bg-muted rounded-xl">
                 <div className="flex items-center gap-4">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">
+                    <div className="text-2xl font-bold text-green-400">
                       {foundationChecks.filter(c => c.status === 'pass').length}
                     </div>
                     <div className="text-xs text-muted-foreground">Passed</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-red-600">
+                    <div className="text-2xl font-bold text-red-400">
                       {foundationChecks.filter(c => c.status === 'fail').length}
                     </div>
                     <div className="text-xs text-muted-foreground">Failed</div>
@@ -8747,22 +8747,22 @@ ${auditLogSummary ? `
                             key={check.id}
                             className={cn(
                               "flex items-center gap-3 p-3 rounded-lg border transition-all",
-                              check.status === 'pass' ? "bg-green-50 border-green-200" :
-                              check.status === 'fail' ? "bg-red-50 border-red-200" :
-                              check.status === 'warn' ? "bg-zinc-50 border-zinc-200" :
-                              check.status === 'running' ? "bg-blue-50 border-blue-200" :
-                              "bg-zinc-50 border-zinc-200"
+                              check.status === 'pass' ? "bg-green-500/10 border-green-500/30" :
+                              check.status === 'fail' ? "bg-red-500/10 border-red-500/30" :
+                              check.status === 'warn' ? "bg-muted border-border" :
+                              check.status === 'running' ? "bg-blue-500/10 border-blue-500/30" :
+                              "bg-muted border-border"
                             )}
                           >
                             <div className="flex-shrink-0">
                               {check.status === 'pass' ? (
-                                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                <CheckCircle2 className="h-5 w-5 text-green-400" />
                               ) : check.status === 'fail' ? (
-                                <XCircle className="h-5 w-5 text-red-600" />
+                                <XCircle className="h-5 w-5 text-red-400" />
                               ) : check.status === 'warn' ? (
                                 <AlertTriangle className="h-5 w-5 text-zinc-500" />
                               ) : check.status === 'running' ? (
-                                <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+                                <Loader2 className="h-5 w-5 text-blue-400 animate-spin" />
                               ) : (
                                 <Clock className="h-5 w-5 text-zinc-400" />
                               )}
@@ -8771,17 +8771,17 @@ ${auditLogSummary ? `
                               <p className="font-medium text-sm">{check.name}</p>
                               <p className={cn(
                                 "text-xs",
-                                check.status === 'pass' ? "text-green-600" :
-                                check.status === 'fail' ? "text-red-600" :
+                                check.status === 'pass' ? "text-green-400" :
+                                check.status === 'fail' ? "text-red-400" :
                                 check.status === 'warn' ? "text-zinc-600" :
                                 "text-muted-foreground"
                               )}>{check.message}</p>
                             </div>
                             {check.status === 'pass' && (
-                              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">PASS</span>
+                              <span className="text-xs bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full">PASS</span>
                             )}
                             {check.status === 'fail' && (
-                              <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">FAIL</span>
+                              <span className="text-xs bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full">FAIL</span>
                             )}
                             {check.status === 'warn' && (
                               <span className="text-xs bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded-full">WARN</span>
@@ -8796,7 +8796,7 @@ ${auditLogSummary ? `
 
               {/* Recommendations for failed/warning items */}
               {!foundationValidating && foundationChecks.filter(c => c.status === 'fail' || c.status === 'warn').length > 0 && (
-                <div className="mt-6 p-4 bg-zinc-100 border border-zinc-200 rounded-xl">
+                <div className="mt-6 p-4 bg-zinc-100 border border-border rounded-xl">
                   <h4 className="font-semibold text-zinc-700 mb-2 flex items-center gap-2">
                     <Info className="h-4 w-4" />
                     Items Requiring Attention
@@ -8809,7 +8809,7 @@ ${auditLogSummary ? `
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-4 bg-zinc-50 border-t border-border flex items-center justify-between flex-shrink-0">
+            <div className="px-6 py-4 bg-muted border-t border-border flex items-center justify-between flex-shrink-0">
               <div className="text-sm text-muted-foreground">
                 {foundationLastChecked && `Last validated: ${formatValidationTimestamp(foundationLastChecked)}`}
               </div>
@@ -8817,7 +8817,7 @@ ${auditLogSummary ? `
                 {!foundationValidating && foundationChecks.length > 0 && (
                   <button
                     onClick={downloadFoundationReport}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-white border border-border rounded-lg hover:bg-zinc-100 transition-colors text-sm font-medium"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-card border border-border rounded-lg hover:bg-zinc-100 transition-colors text-sm font-medium"
                   >
                     <Download className="h-4 w-4" />
                     Download Report (.md)
@@ -8828,8 +8828,8 @@ ${auditLogSummary ? `
                   className={cn(
                     "px-5 py-2.5 rounded-lg text-sm font-medium transition-colors",
                     foundationStatus === 'ready'
-                      ? "bg-green-600 hover:bg-green-700 text-white"
-                      : "bg-zinc-900 hover:bg-zinc-800 text-white"
+                      ? "bg-green-500 hover:bg-green-600 text-white"
+                      : "bg-background hover:bg-zinc-800 text-white"
                   )}
                 >
                   {foundationStatus === 'ready' ? 'Start Developing' : 'Close'}
@@ -8843,21 +8843,21 @@ ${auditLogSummary ? `
       {/* Aerospace Safety Validation Modal */}
       {showSafetyModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl h-[80vh] flex flex-col overflow-hidden">
+          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-3xl h-[80vh] flex flex-col overflow-hidden">
             {/* Modal Header */}
             <div className={cn(
               "px-6 py-5 flex-shrink-0",
               safetyStatus === 'ready' ? "bg-gradient-to-r from-orange-600 to-amber-600 text-white" :
-              safetyStatus === 'blocked' ? "bg-white border-b border-zinc-200 text-zinc-900" :
+              safetyStatus === 'blocked' ? "bg-card border-b border-border text-zinc-900" :
               "bg-gradient-to-r from-orange-700 to-orange-800 text-white"
             )}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className={cn(
                     "w-10 h-10 rounded-lg flex items-center justify-center",
-                    safetyStatus === 'ready' ? "bg-white/20" :
-                    safetyStatus === 'blocked' ? "bg-red-100" :
-                    "bg-white/20"
+                    safetyStatus === 'ready' ? "bg-card/20" :
+                    safetyStatus === 'blocked' ? "bg-red-500/15" :
+                    "bg-card/20"
                   )}>
                     {validatingSafety ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
@@ -8891,7 +8891,7 @@ ${auditLogSummary ? `
                   onClick={() => setShowSafetyModal(false)}
                   className={cn(
                     "p-2 rounded-lg transition-colors",
-                    safetyStatus === 'blocked' ? "hover:bg-zinc-200 text-zinc-500" : "hover:bg-white/20"
+                    safetyStatus === 'blocked' ? "hover:bg-border text-zinc-500" : "hover:bg-card/20"
                   )}
                 >
                   <X className="h-5 w-5" />
@@ -8902,16 +8902,16 @@ ${auditLogSummary ? `
             {/* Modal Content - Scrollable */}
             <div className="p-6 overflow-y-auto flex-1">
               {/* Progress Summary */}
-              <div className="flex items-center justify-between mb-6 p-4 bg-zinc-50 rounded-xl">
+              <div className="flex items-center justify-between mb-6 p-4 bg-muted rounded-xl">
                 <div className="flex items-center gap-4">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">
+                    <div className="text-2xl font-bold text-green-400">
                       {safetyChecks.filter(c => c.status === 'pass').length}
                     </div>
                     <div className="text-xs text-muted-foreground">Passed</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-red-600">
+                    <div className="text-2xl font-bold text-red-400">
                       {safetyChecks.filter(c => c.status === 'fail').length}
                     </div>
                     <div className="text-xs text-muted-foreground">Failed</div>
@@ -8948,21 +8948,21 @@ ${auditLogSummary ? `
                           key={name}
                           className={cn(
                             "flex items-center gap-3 p-3 rounded-lg border transition-all",
-                            check?.status === 'pass' ? "bg-green-50 border-green-200" :
-                            check?.status === 'fail' ? "bg-red-50 border-red-200" :
-                            check?.status === 'warn' ? "bg-zinc-50 border-zinc-200" :
-                            "bg-zinc-50 border-zinc-200"
+                            check?.status === 'pass' ? "bg-green-500/10 border-green-500/30" :
+                            check?.status === 'fail' ? "bg-red-500/10 border-red-500/30" :
+                            check?.status === 'warn' ? "bg-muted border-border" :
+                            "bg-muted border-border"
                           )}
                         >
                           <div className="flex-shrink-0">
                             {check?.status === 'pass' ? (
-                              <CheckCircle2 className="h-5 w-5 text-green-600" />
+                              <CheckCircle2 className="h-5 w-5 text-green-400" />
                             ) : check?.status === 'fail' ? (
-                              <XCircle className="h-5 w-5 text-red-600" />
+                              <XCircle className="h-5 w-5 text-red-400" />
                             ) : check?.status === 'warn' ? (
                               <AlertTriangle className="h-5 w-5 text-zinc-500" />
                             ) : validatingSafety ? (
-                              <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+                              <Loader2 className="h-5 w-5 text-blue-400 animate-spin" />
                             ) : (
                               <Clock className="h-5 w-5 text-zinc-400" />
                             )}
@@ -8971,17 +8971,17 @@ ${auditLogSummary ? `
                             <p className="font-medium text-sm">{name}</p>
                             <p className={cn(
                               "text-xs",
-                              check?.status === 'pass' ? "text-green-600" :
-                              check?.status === 'fail' ? "text-red-600" :
+                              check?.status === 'pass' ? "text-green-400" :
+                              check?.status === 'fail' ? "text-red-400" :
                               check?.status === 'warn' ? "text-zinc-600" :
                               "text-muted-foreground"
                             )}>{check?.message || 'Pending...'}</p>
                           </div>
                           {check?.status === 'pass' && (
-                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">PASS</span>
+                            <span className="text-xs bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full">PASS</span>
                           )}
                           {check?.status === 'fail' && (
-                            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">FAIL</span>
+                            <span className="text-xs bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full">FAIL</span>
                           )}
                           {check?.status === 'warn' && (
                             <span className="text-xs bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded-full">WARN</span>
@@ -9007,21 +9007,21 @@ ${auditLogSummary ? `
                           key={name}
                           className={cn(
                             "flex items-center gap-3 p-3 rounded-lg border transition-all",
-                            check?.status === 'pass' ? "bg-green-50 border-green-200" :
-                            check?.status === 'fail' ? "bg-red-50 border-red-200" :
-                            check?.status === 'warn' ? "bg-zinc-50 border-zinc-200" :
-                            "bg-zinc-50 border-zinc-200"
+                            check?.status === 'pass' ? "bg-green-500/10 border-green-500/30" :
+                            check?.status === 'fail' ? "bg-red-500/10 border-red-500/30" :
+                            check?.status === 'warn' ? "bg-muted border-border" :
+                            "bg-muted border-border"
                           )}
                         >
                           <div className="flex-shrink-0">
                             {check?.status === 'pass' ? (
-                              <CheckCircle2 className="h-5 w-5 text-green-600" />
+                              <CheckCircle2 className="h-5 w-5 text-green-400" />
                             ) : check?.status === 'fail' ? (
-                              <XCircle className="h-5 w-5 text-red-600" />
+                              <XCircle className="h-5 w-5 text-red-400" />
                             ) : check?.status === 'warn' ? (
                               <AlertTriangle className="h-5 w-5 text-zinc-500" />
                             ) : validatingSafety ? (
-                              <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+                              <Loader2 className="h-5 w-5 text-blue-400 animate-spin" />
                             ) : (
                               <Clock className="h-5 w-5 text-zinc-400" />
                             )}
@@ -9030,17 +9030,17 @@ ${auditLogSummary ? `
                             <p className="font-medium text-sm">{name}</p>
                             <p className={cn(
                               "text-xs",
-                              check?.status === 'pass' ? "text-green-600" :
-                              check?.status === 'fail' ? "text-red-600" :
+                              check?.status === 'pass' ? "text-green-400" :
+                              check?.status === 'fail' ? "text-red-400" :
                               check?.status === 'warn' ? "text-zinc-600" :
                               "text-muted-foreground"
                             )}>{check?.message || 'Pending...'}</p>
                           </div>
                           {check?.status === 'pass' && (
-                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">PASS</span>
+                            <span className="text-xs bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full">PASS</span>
                           )}
                           {check?.status === 'fail' && (
-                            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">FAIL</span>
+                            <span className="text-xs bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full">FAIL</span>
                           )}
                           {check?.status === 'warn' && (
                             <span className="text-xs bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded-full">WARN</span>
@@ -9054,7 +9054,7 @@ ${auditLogSummary ? `
 
               {/* Recommendations for failed/warning items */}
               {!validatingSafety && safetyChecks.filter(c => c.status === 'fail' || c.status === 'warn').length > 0 && (
-                <div className="mt-6 p-4 bg-zinc-100 border border-zinc-200 rounded-xl">
+                <div className="mt-6 p-4 bg-zinc-100 border border-border rounded-xl">
                   <h4 className="font-semibold text-zinc-700 mb-2 flex items-center gap-2">
                     <Info className="h-4 w-4" />
                     Items Requiring Attention
@@ -9067,7 +9067,7 @@ ${auditLogSummary ? `
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-4 bg-zinc-50 border-t border-border flex items-center justify-between flex-shrink-0">
+            <div className="px-6 py-4 bg-muted border-t border-border flex items-center justify-between flex-shrink-0">
               <div className="text-sm text-muted-foreground">
                 {safetyLastChecked && `Last validated: ${formatValidationTimestamp(safetyLastChecked)}`}
               </div>
@@ -9075,7 +9075,7 @@ ${auditLogSummary ? `
                 {!validatingSafety && safetyChecks.length > 0 && (
                   <button
                     onClick={downloadSafetyReport}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-white border border-border rounded-lg hover:bg-zinc-100 transition-colors text-sm font-medium"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-card border border-border rounded-lg hover:bg-zinc-100 transition-colors text-sm font-medium"
                   >
                     <Download className="h-4 w-4" />
                     Download Report (.md)
@@ -9087,7 +9087,7 @@ ${auditLogSummary ? `
                     "px-5 py-2.5 rounded-lg text-sm font-medium transition-colors",
                     safetyStatus === 'ready'
                       ? "bg-orange-600 hover:bg-orange-700 text-white"
-                      : "bg-zinc-900 hover:bg-zinc-800 text-white"
+                      : "bg-background hover:bg-zinc-800 text-white"
                   )}
                 >
                   {safetyStatus === 'ready' ? 'Continue Development' : 'Close'}
@@ -9101,21 +9101,21 @@ ${auditLogSummary ? `
       {/* RLM Protocol Validation Modal */}
       {showRlmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl h-[80vh] flex flex-col overflow-hidden">
+          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-3xl h-[80vh] flex flex-col overflow-hidden">
             {/* Modal Header */}
             <div className={cn(
               "px-6 py-5 flex-shrink-0",
               rlmStatus === 'ready' ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white" :
-              rlmStatus === 'blocked' ? "bg-white border-b border-zinc-200 text-zinc-900" :
+              rlmStatus === 'blocked' ? "bg-card border-b border-border text-zinc-900" :
               "bg-gradient-to-r from-violet-700 to-violet-800 text-white"
             )}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className={cn(
                     "w-10 h-10 rounded-lg flex items-center justify-center",
-                    rlmStatus === 'ready' ? "bg-white/20" :
-                    rlmStatus === 'blocked' ? "bg-red-100" :
-                    "bg-white/20"
+                    rlmStatus === 'ready' ? "bg-card/20" :
+                    rlmStatus === 'blocked' ? "bg-red-500/15" :
+                    "bg-card/20"
                   )}>
                     {validatingRlm ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
@@ -9149,7 +9149,7 @@ ${auditLogSummary ? `
                   onClick={() => setShowRlmModal(false)}
                   className={cn(
                     "p-2 rounded-lg transition-colors",
-                    rlmStatus === 'blocked' ? "hover:bg-zinc-200 text-zinc-500" : "hover:bg-white/20"
+                    rlmStatus === 'blocked' ? "hover:bg-border text-zinc-500" : "hover:bg-card/20"
                   )}
                 >
                   <X className="h-5 w-5" />
@@ -9160,16 +9160,16 @@ ${auditLogSummary ? `
             {/* Modal Content - Scrollable */}
             <div className="p-6 overflow-y-auto flex-1">
               {/* Progress Summary */}
-              <div className="flex items-center justify-between mb-6 p-4 bg-zinc-50 rounded-xl">
+              <div className="flex items-center justify-between mb-6 p-4 bg-muted rounded-xl">
                 <div className="flex items-center gap-4">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">
+                    <div className="text-2xl font-bold text-green-400">
                       {rlmChecks.filter(c => c.status === 'pass').length}
                     </div>
                     <div className="text-xs text-muted-foreground">Passed</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-red-600">
+                    <div className="text-2xl font-bold text-red-400">
                       {rlmChecks.filter(c => c.status === 'fail').length}
                     </div>
                     <div className="text-xs text-muted-foreground">Failed</div>
@@ -9191,7 +9191,7 @@ ${auditLogSummary ? `
                   <div className="flex items-center gap-3">
                     <div className={cn(
                       "px-3 py-1 rounded-full text-xs font-medium",
-                      rlmValidationResult.docker_ready ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                      rlmValidationResult.docker_ready ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400"
                     )}>
                       Docker: {rlmValidationResult.docker_ready ? 'Ready' : 'Not Ready'}
                     </div>
@@ -9219,16 +9219,16 @@ ${auditLogSummary ? `
                         key={idx}
                         className={cn(
                           "flex items-center gap-3 p-3 rounded-lg border transition-all",
-                          check.status === 'pass' ? "bg-green-50 border-green-200" :
-                          check.status === 'fail' ? "bg-red-50 border-red-200" :
+                          check.status === 'pass' ? "bg-green-500/10 border-green-500/30" :
+                          check.status === 'fail' ? "bg-red-500/10 border-red-500/30" :
                           "bg-amber-50 border-amber-200"
                         )}
                       >
                         <div className="flex-shrink-0">
                           {check.status === 'pass' ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                            <CheckCircle2 className="h-5 w-5 text-green-400" />
                           ) : check.status === 'fail' ? (
-                            <XCircle className="h-5 w-5 text-red-600" />
+                            <XCircle className="h-5 w-5 text-red-400" />
                           ) : (
                             <AlertTriangle className="h-5 w-5 text-amber-600" />
                           )}
@@ -9237,23 +9237,23 @@ ${auditLogSummary ? `
                           <p className="font-medium text-sm">{check.name}</p>
                           <p className={cn(
                             "text-xs",
-                            check.status === 'pass' ? "text-green-600" :
-                            check.status === 'fail' ? "text-red-600" :
+                            check.status === 'pass' ? "text-green-400" :
+                            check.status === 'fail' ? "text-red-400" :
                             "text-amber-600"
                           )}>{check.message}</p>
                         </div>
                         <span className={cn(
                           "text-xs px-2 py-0.5 rounded-full",
-                          check.status === 'pass' ? "bg-green-100 text-green-700" :
-                          check.status === 'fail' ? "bg-red-100 text-red-700" :
-                          "bg-amber-100 text-amber-700"
+                          check.status === 'pass' ? "bg-green-500/15 text-green-400" :
+                          check.status === 'fail' ? "bg-red-500/15 text-red-400" :
+                          "bg-amber-500/10 text-amber-700"
                         )}>
                           {check.status.toUpperCase()}
                         </span>
                       </div>
                     ))}
                     {validatingRlm && rlmChecks.filter(c => c.category === 'P Variable').length === 0 && (
-                      <div className="flex items-center gap-3 p-3 rounded-lg border bg-zinc-50 border-zinc-200">
+                      <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted border-border">
                         <Loader2 className="h-5 w-5 text-violet-600 animate-spin" />
                         <span className="text-sm text-muted-foreground">Checking P Variable...</span>
                       </div>
@@ -9273,16 +9273,16 @@ ${auditLogSummary ? `
                         key={idx}
                         className={cn(
                           "flex items-center gap-3 p-3 rounded-lg border transition-all",
-                          check.status === 'pass' ? "bg-green-50 border-green-200" :
-                          check.status === 'fail' ? "bg-red-50 border-red-200" :
+                          check.status === 'pass' ? "bg-green-500/10 border-green-500/30" :
+                          check.status === 'fail' ? "bg-red-500/10 border-red-500/30" :
                           "bg-amber-50 border-amber-200"
                         )}
                       >
                         <div className="flex-shrink-0">
                           {check.status === 'pass' ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                            <CheckCircle2 className="h-5 w-5 text-green-400" />
                           ) : check.status === 'fail' ? (
-                            <XCircle className="h-5 w-5 text-red-600" />
+                            <XCircle className="h-5 w-5 text-red-400" />
                           ) : (
                             <AlertTriangle className="h-5 w-5 text-amber-600" />
                           )}
@@ -9291,23 +9291,23 @@ ${auditLogSummary ? `
                           <p className="font-medium text-sm">{check.name}</p>
                           <p className={cn(
                             "text-xs",
-                            check.status === 'pass' ? "text-green-600" :
-                            check.status === 'fail' ? "text-red-600" :
+                            check.status === 'pass' ? "text-green-400" :
+                            check.status === 'fail' ? "text-red-400" :
                             "text-amber-600"
                           )}>{check.message}</p>
                         </div>
                         <span className={cn(
                           "text-xs px-2 py-0.5 rounded-full",
-                          check.status === 'pass' ? "bg-green-100 text-green-700" :
-                          check.status === 'fail' ? "bg-red-100 text-red-700" :
-                          "bg-amber-100 text-amber-700"
+                          check.status === 'pass' ? "bg-green-500/15 text-green-400" :
+                          check.status === 'fail' ? "bg-red-500/15 text-red-400" :
+                          "bg-amber-500/10 text-amber-700"
                         )}>
                           {check.status.toUpperCase()}
                         </span>
                       </div>
                     ))}
                     {validatingRlm && rlmChecks.filter(c => c.category === 'Agent Memory').length === 0 && (
-                      <div className="flex items-center gap-3 p-3 rounded-lg border bg-zinc-50 border-zinc-200">
+                      <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted border-border">
                         <Loader2 className="h-5 w-5 text-violet-600 animate-spin" />
                         <span className="text-sm text-muted-foreground">Checking Agent Memory...</span>
                       </div>
@@ -9327,16 +9327,16 @@ ${auditLogSummary ? `
                         key={idx}
                         className={cn(
                           "flex items-center gap-3 p-3 rounded-lg border transition-all",
-                          check.status === 'pass' ? "bg-green-50 border-green-200" :
-                          check.status === 'fail' ? "bg-red-50 border-red-200" :
+                          check.status === 'pass' ? "bg-green-500/10 border-green-500/30" :
+                          check.status === 'fail' ? "bg-red-500/10 border-red-500/30" :
                           "bg-amber-50 border-amber-200"
                         )}
                       >
                         <div className="flex-shrink-0">
                           {check.status === 'pass' ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                            <CheckCircle2 className="h-5 w-5 text-green-400" />
                           ) : check.status === 'fail' ? (
-                            <XCircle className="h-5 w-5 text-red-600" />
+                            <XCircle className="h-5 w-5 text-red-400" />
                           ) : (
                             <AlertTriangle className="h-5 w-5 text-amber-600" />
                           )}
@@ -9345,23 +9345,23 @@ ${auditLogSummary ? `
                           <p className="font-medium text-sm">{check.name}</p>
                           <p className={cn(
                             "text-xs",
-                            check.status === 'pass' ? "text-green-600" :
-                            check.status === 'fail' ? "text-red-600" :
+                            check.status === 'pass' ? "text-green-400" :
+                            check.status === 'fail' ? "text-red-400" :
                             "text-amber-600"
                           )}>{check.message}</p>
                         </div>
                         <span className={cn(
                           "text-xs px-2 py-0.5 rounded-full",
-                          check.status === 'pass' ? "bg-green-100 text-green-700" :
-                          check.status === 'fail' ? "bg-red-100 text-red-700" :
-                          "bg-amber-100 text-amber-700"
+                          check.status === 'pass' ? "bg-green-500/15 text-green-400" :
+                          check.status === 'fail' ? "bg-red-500/15 text-red-400" :
+                          "bg-amber-500/10 text-amber-700"
                         )}>
                           {check.status.toUpperCase()}
                         </span>
                       </div>
                     ))}
                     {validatingRlm && rlmChecks.filter(c => c.category === 'Snapshots').length === 0 && (
-                      <div className="flex items-center gap-3 p-3 rounded-lg border bg-zinc-50 border-zinc-200">
+                      <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted border-border">
                         <Loader2 className="h-5 w-5 text-violet-600 animate-spin" />
                         <span className="text-sm text-muted-foreground">Checking Snapshots...</span>
                       </div>
@@ -9381,16 +9381,16 @@ ${auditLogSummary ? `
                         key={idx}
                         className={cn(
                           "flex items-center gap-3 p-3 rounded-lg border transition-all",
-                          check.status === 'pass' ? "bg-green-50 border-green-200" :
-                          check.status === 'fail' ? "bg-red-50 border-red-200" :
+                          check.status === 'pass' ? "bg-green-500/10 border-green-500/30" :
+                          check.status === 'fail' ? "bg-red-500/10 border-red-500/30" :
                           "bg-amber-50 border-amber-200"
                         )}
                       >
                         <div className="flex-shrink-0">
                           {check.status === 'pass' ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                            <CheckCircle2 className="h-5 w-5 text-green-400" />
                           ) : check.status === 'fail' ? (
-                            <XCircle className="h-5 w-5 text-red-600" />
+                            <XCircle className="h-5 w-5 text-red-400" />
                           ) : (
                             <AlertTriangle className="h-5 w-5 text-amber-600" />
                           )}
@@ -9399,23 +9399,23 @@ ${auditLogSummary ? `
                           <p className="font-medium text-sm">{check.name}</p>
                           <p className={cn(
                             "text-xs",
-                            check.status === 'pass' ? "text-green-600" :
-                            check.status === 'fail' ? "text-red-600" :
+                            check.status === 'pass' ? "text-green-400" :
+                            check.status === 'fail' ? "text-red-400" :
                             "text-amber-600"
                           )}>{check.message}</p>
                         </div>
                         <span className={cn(
                           "text-xs px-2 py-0.5 rounded-full",
-                          check.status === 'pass' ? "bg-green-100 text-green-700" :
-                          check.status === 'fail' ? "bg-red-100 text-red-700" :
-                          "bg-amber-100 text-amber-700"
+                          check.status === 'pass' ? "bg-green-500/15 text-green-400" :
+                          check.status === 'fail' ? "bg-red-500/15 text-red-400" :
+                          "bg-amber-500/10 text-amber-700"
                         )}>
                           {check.status.toUpperCase()}
                         </span>
                       </div>
                     ))}
                     {validatingRlm && rlmChecks.filter(c => c.category === 'RLM Scripts').length === 0 && (
-                      <div className="flex items-center gap-3 p-3 rounded-lg border bg-zinc-50 border-zinc-200">
+                      <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted border-border">
                         <Loader2 className="h-5 w-5 text-violet-600 animate-spin" />
                         <span className="text-sm text-muted-foreground">Checking RLM Scripts...</span>
                       </div>
@@ -9435,16 +9435,16 @@ ${auditLogSummary ? `
                         key={idx}
                         className={cn(
                           "flex items-center gap-3 p-3 rounded-lg border transition-all",
-                          check.status === 'pass' ? "bg-green-50 border-green-200" :
-                          check.status === 'fail' ? "bg-red-50 border-red-200" :
+                          check.status === 'pass' ? "bg-green-500/10 border-green-500/30" :
+                          check.status === 'fail' ? "bg-red-500/10 border-red-500/30" :
                           "bg-amber-50 border-amber-200"
                         )}
                       >
                         <div className="flex-shrink-0">
                           {check.status === 'pass' ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                            <CheckCircle2 className="h-5 w-5 text-green-400" />
                           ) : check.status === 'fail' ? (
-                            <XCircle className="h-5 w-5 text-red-600" />
+                            <XCircle className="h-5 w-5 text-red-400" />
                           ) : (
                             <AlertTriangle className="h-5 w-5 text-amber-600" />
                           )}
@@ -9453,23 +9453,23 @@ ${auditLogSummary ? `
                           <p className="font-medium text-sm">{check.name}</p>
                           <p className={cn(
                             "text-xs",
-                            check.status === 'pass' ? "text-green-600" :
-                            check.status === 'fail' ? "text-red-600" :
+                            check.status === 'pass' ? "text-green-400" :
+                            check.status === 'fail' ? "text-red-400" :
                             "text-amber-600"
                           )}>{check.message}</p>
                         </div>
                         <span className={cn(
                           "text-xs px-2 py-0.5 rounded-full",
-                          check.status === 'pass' ? "bg-green-100 text-green-700" :
-                          check.status === 'fail' ? "bg-red-100 text-red-700" :
-                          "bg-amber-100 text-amber-700"
+                          check.status === 'pass' ? "bg-green-500/15 text-green-400" :
+                          check.status === 'fail' ? "bg-red-500/15 text-red-400" :
+                          "bg-amber-500/10 text-amber-700"
                         )}>
                           {check.status.toUpperCase()}
                         </span>
                       </div>
                     ))}
                     {validatingRlm && rlmChecks.filter(c => c.category === 'Token Budget').length === 0 && (
-                      <div className="flex items-center gap-3 p-3 rounded-lg border bg-zinc-50 border-zinc-200">
+                      <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted border-border">
                         <Loader2 className="h-5 w-5 text-violet-600 animate-spin" />
                         <span className="text-sm text-muted-foreground">Checking Token Budget...</span>
                       </div>
@@ -9480,7 +9480,7 @@ ${auditLogSummary ? `
 
               {/* Recommendations for failed/warning items */}
               {!validatingRlm && rlmChecks.filter(c => c.status === 'fail' || c.status === 'warn').length > 0 && (
-                <div className="mt-6 p-4 bg-zinc-100 border border-zinc-200 rounded-xl">
+                <div className="mt-6 p-4 bg-zinc-100 border border-border rounded-xl">
                   <h4 className="font-semibold text-zinc-700 mb-2 flex items-center gap-2">
                     <Info className="h-4 w-4" />
                     Items Requiring Attention
@@ -9493,7 +9493,7 @@ ${auditLogSummary ? `
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-4 bg-zinc-50 border-t border-border flex items-center justify-between flex-shrink-0">
+            <div className="px-6 py-4 bg-muted border-t border-border flex items-center justify-between flex-shrink-0">
               <div className="text-sm text-muted-foreground">
                 {rlmLastChecked && `Last validated: ${rlmLastChecked}`}
               </div>
@@ -9501,7 +9501,7 @@ ${auditLogSummary ? `
                 {!validatingRlm && rlmChecks.length > 0 && (
                   <button
                     onClick={downloadRlmReport}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-white border border-border rounded-lg hover:bg-zinc-100 transition-colors text-sm font-medium"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-card border border-border rounded-lg hover:bg-zinc-100 transition-colors text-sm font-medium"
                   >
                     <Download className="h-4 w-4" />
                     Download Report (.md)
@@ -9513,7 +9513,7 @@ ${auditLogSummary ? `
                     "px-5 py-2.5 rounded-lg text-sm font-medium transition-colors",
                     rlmStatus === 'ready'
                       ? "bg-violet-600 hover:bg-violet-700 text-white"
-                      : "bg-zinc-900 hover:bg-zinc-800 text-white"
+                      : "bg-background hover:bg-zinc-800 text-white"
                   )}
                 >
                   {rlmStatus === 'ready' ? 'Continue to Docker' : 'Close'}
@@ -9527,7 +9527,7 @@ ${auditLogSummary ? `
       {/* Analysis Progress Modal */}
       {showAnalysisModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
             {/* Modal Header */}
             <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
               <div className="flex items-center justify-between">
@@ -9553,7 +9553,7 @@ ${auditLogSummary ? `
                 {analysisComplete && (
                   <button
                     onClick={() => setShowAnalysisModal(false)}
-                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                    className="p-2 hover:bg-card/20 rounded-lg transition-colors"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -9569,20 +9569,20 @@ ${auditLogSummary ? `
                     key={step.step}
                     className={cn(
                       "border rounded-xl overflow-hidden transition-all",
-                      step.status === 'running' ? 'border-blue-300 bg-blue-50' :
-                      step.status === 'complete' ? 'border-green-200 bg-green-50' :
-                      step.status === 'failed' ? 'border-red-200 bg-red-50' :
-                      'border-gray-200 bg-gray-50'
+                      step.status === 'running' ? 'border-blue-300 bg-blue-500/10' :
+                      step.status === 'complete' ? 'border-green-500/30 bg-green-500/10' :
+                      step.status === 'failed' ? 'border-red-500/30 bg-red-500/10' :
+                      'border-gray-200 bg-muted'
                     )}
                   >
                     <div className="px-4 py-3 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className={cn(
                           "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
-                          step.status === 'running' ? 'bg-blue-500 text-white' :
-                          step.status === 'complete' ? 'bg-green-500 text-white' :
-                          step.status === 'failed' ? 'bg-red-500 text-white' :
-                          'bg-gray-300 text-gray-600'
+                          step.status === 'running' ? 'bg-blue-500/100 text-white' :
+                          step.status === 'complete' ? 'bg-green-500/100 text-white' :
+                          step.status === 'failed' ? 'bg-red-500/100 text-white' :
+                          'bg-gray-300 text-muted-foreground'
                         )}>
                           {step.status === 'running' ? (
                             <RefreshCw className="h-4 w-4 animate-spin" />
@@ -9603,10 +9603,10 @@ ${auditLogSummary ? `
                       </div>
                       <span className={cn(
                         "text-xs font-medium px-2 py-1 rounded-full",
-                        step.status === 'running' ? 'bg-blue-200 text-blue-700' :
-                        step.status === 'complete' ? 'bg-green-200 text-green-700' :
-                        step.status === 'failed' ? 'bg-red-200 text-red-700' :
-                        'bg-gray-200 text-gray-600'
+                        step.status === 'running' ? 'bg-blue-200 text-blue-400' :
+                        step.status === 'complete' ? 'bg-green-200 text-green-400' :
+                        step.status === 'failed' ? 'bg-red-200 text-red-400' :
+                        'bg-muted text-muted-foreground'
                       )}>
                         {step.status === 'running' ? 'Running...' :
                          step.status === 'complete' ? 'Complete' :
@@ -9617,7 +9617,7 @@ ${auditLogSummary ? `
                     {/* Proof of file reading */}
                     {step.proof && step.status === 'complete' && (
                       <div className="px-4 pb-3">
-                        <div className="bg-zinc-900 rounded-lg p-3 text-xs font-mono text-zinc-100 overflow-x-auto max-h-32 overflow-y-auto">
+                        <div className="bg-background rounded-lg p-3 text-xs font-mono text-zinc-100 overflow-x-auto max-h-32 overflow-y-auto">
                           <pre className="whitespace-pre-wrap">{step.proof}</pre>
                         </div>
                       </div>
@@ -9628,15 +9628,15 @@ ${auditLogSummary ? `
 
               {/* Report File Link */}
               {analysisComplete && reportFilePath && (
-                <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+                <div className="mt-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
                   <div className="flex items-start gap-3">
-                    <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
+                    <CheckCircle2 className="h-5 w-5 text-green-400 mt-0.5" />
                     <div className="flex-1">
-                      <p className="font-semibold text-green-800">Markdown Report Generated</p>
-                      <p className="text-sm text-green-600 mt-1">
+                      <p className="font-semibold text-green-400">Markdown Report Generated</p>
+                      <p className="text-sm text-green-400 mt-1">
                         Report saved to:
                       </p>
-                      <code className="block mt-2 px-3 py-2 bg-green-100 rounded-lg text-xs font-mono text-green-800 break-all">
+                      <code className="block mt-2 px-3 py-2 bg-green-500/15 rounded-lg text-xs font-mono text-green-400 break-all">
                         {reportFilePath}
                       </code>
                     </div>
@@ -9647,7 +9647,7 @@ ${auditLogSummary ? `
 
             {/* Modal Footer */}
             {analysisComplete && (
-              <div className="px-6 py-4 bg-gray-50 border-t flex justify-between items-center">
+              <div className="px-6 py-4 bg-muted border-t flex justify-between items-center">
                 <div className="text-sm text-muted-foreground">
                   Analysis completed in {analysisSteps.length} steps
                 </div>
@@ -9665,7 +9665,7 @@ ${auditLogSummary ? `
                         document.body.removeChild(a)
                         URL.revokeObjectURL(url)
                       }}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center gap-2"
+                      className="px-4 py-2 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600 transition-colors flex items-center gap-2"
                     >
                       <ArrowRight className="h-4 w-4" />
                       Download Report (.md)
@@ -9687,9 +9687,9 @@ ${auditLogSummary ? `
       {/* Help Modal */}
       {helpModal && setupGuides[helpModal] && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
             {/* Modal Header */}
-            <div className="px-6 py-4 bg-zinc-900 text-white">
+            <div className="px-6 py-4 bg-background text-white">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">{setupGuides[helpModal].title}</h3>
                 <button
@@ -9729,7 +9729,7 @@ ${auditLogSummary ? `
                         href={link.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-3 bg-zinc-50 hover:bg-zinc-100 rounded-lg transition-colors group"
+                        className="flex items-center gap-2 px-4 py-3 bg-muted hover:bg-zinc-100 rounded-lg transition-colors group"
                       >
                         <ExternalLink className="h-4 w-4 text-zinc-400 group-hover:text-zinc-600" />
                         <span className="text-sm font-medium text-zinc-700 group-hover:text-zinc-900">{link.label}</span>
@@ -9742,10 +9742,10 @@ ${auditLogSummary ? `
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-4 bg-zinc-50 border-t flex justify-end">
+            <div className="px-6 py-4 bg-muted border-t flex justify-end">
               <button
                 onClick={() => setHelpModal(null)}
-                className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors"
+                className="px-4 py-2 bg-background text-white rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors"
               >
                 Got it
               </button>
@@ -9761,10 +9761,10 @@ ${auditLogSummary ? `
 
       {/* WAVE Architecture Full Page */}
       {showWaveInfo && (
-        <div className="fixed inset-0 z-50 bg-zinc-50 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-muted overflow-y-auto">
           <div className="min-h-screen">
             {/* Full Page Header */}
-            <div className="sticky top-0 z-10 bg-white border-b border-border px-8 py-4 flex items-center justify-between shadow-sm">
+            <div className="sticky top-0 z-10 bg-card border-b border-border px-8 py-4 flex items-center justify-between shadow-sm">
               <div className="flex items-center gap-6">
                 <button
                   onClick={() => setShowWaveInfo(false)}
@@ -9785,8 +9785,8 @@ ${auditLogSummary ? `
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">v1.0.0</span>
-                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">DO-178C Inspired</span>
+                <span className="px-3 py-1 bg-green-500/15 text-green-400 rounded-full text-xs font-medium">v1.0.0</span>
+                <span className="px-3 py-1 bg-blue-500/15 text-blue-400 rounded-full text-xs font-medium">DO-178C Inspired</span>
               </div>
             </div>
 
@@ -9798,28 +9798,28 @@ ${auditLogSummary ? `
                 <div className="flex items-start justify-between">
                   <div className="max-w-2xl">
                     <h1 className="text-3xl font-bold mb-4">WAVE Architecture Overview</h1>
-                    <p className="text-zinc-300 text-lg leading-relaxed mb-6">
+                    <p className="text-muted-foreground text-lg leading-relaxed mb-6">
                       <strong className="text-white">WAVE</strong> (Workflow Automation & Validation Engine) is an <strong className="text-blue-400">Air Traffic Controller</strong> for AI agents.
                       Just like ATC coordinates multiple aircraft through takeoff, flight, and landing, WAVE orchestrates autonomous AI agents
                       through development phases with <strong className="text-green-400">aerospace-grade safety protocols</strong>.
                     </p>
                     <div className="flex items-center gap-4">
-                      <div className="px-4 py-2 bg-white/10 rounded-lg flex items-center gap-2">
+                      <div className="px-4 py-2 bg-card/10 rounded-lg flex items-center gap-2">
                         <CheckCircle2 className="h-4 w-4 text-green-400" />
                         <span className="text-sm">Phase-Gate Model</span>
                       </div>
-                      <div className="px-4 py-2 bg-white/10 rounded-lg flex items-center gap-2">
+                      <div className="px-4 py-2 bg-card/10 rounded-lg flex items-center gap-2">
                         <Shield className="h-4 w-4 text-blue-400" />
                         <span className="text-sm">DO-178C Inspired</span>
                       </div>
-                      <div className="px-4 py-2 bg-white/10 rounded-lg flex items-center gap-2">
+                      <div className="px-4 py-2 bg-card/10 rounded-lg flex items-center gap-2">
                         <Bot className="h-4 w-4 text-purple-400" />
                         <span className="text-sm">Multi-Agent System</span>
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="inline-block bg-white/10 rounded-xl p-4">
+                    <div className="inline-block bg-card/10 rounded-xl p-4">
                       <p className="text-xs text-zinc-400 uppercase tracking-wide mb-1">Current Status</p>
                       <p className="text-2xl font-bold text-green-400">Operational</p>
                       <p className="text-sm text-zinc-400 mt-1">Phase 0 Ready</p>
@@ -9831,11 +9831,11 @@ ${auditLogSummary ? `
               {/* Quick Stats */}
               <div className="grid grid-cols-5 gap-4">
                 {[
-                  { label: 'Phases', value: '5', icon: Layers, color: 'text-blue-500', bg: 'bg-blue-50' },
-                  { label: 'Gates', value: '8', icon: Target, color: 'text-purple-500', bg: 'bg-purple-50' },
-                  { label: 'Agents', value: '4', icon: Bot, color: 'text-green-500', bg: 'bg-green-50' },
-                  { label: 'Safety Checks', value: '108', icon: Shield, color: 'text-red-500', bg: 'bg-red-50' },
-                  { label: 'Worktrees', value: '4', icon: GitBranch, color: 'text-orange-500', bg: 'bg-orange-50' },
+                  { label: 'Phases', value: '5', icon: Layers, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+                  { label: 'Gates', value: '8', icon: Target, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+                  { label: 'Agents', value: '4', icon: Bot, color: 'text-green-500', bg: 'bg-green-500/10' },
+                  { label: 'Safety Checks', value: '108', icon: Shield, color: 'text-red-500', bg: 'bg-red-500/10' },
+                  { label: 'Worktrees', value: '4', icon: GitBranch, color: 'text-orange-500', bg: 'bg-orange-500/10' },
                 ].map((stat) => (
                   <div key={stat.label} className={cn("p-4 rounded-xl border border-border", stat.bg)}>
                     <stat.icon className={cn("h-6 w-6 mb-2", stat.color)} />
@@ -9850,15 +9850,15 @@ ${auditLogSummary ? `
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-2xl font-bold flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                        <Layers className="h-5 w-5 text-blue-600" />
+                      <div className="w-10 h-10 bg-blue-500/15 rounded-xl flex items-center justify-center">
+                        <Layers className="h-5 w-5 text-blue-400" />
                       </div>
                       System Architecture (BPMN Swimlanes)
                     </h2>
                     <p className="text-muted-foreground mt-1">Visual representation of the WAVE orchestration layers and flow</p>
                   </div>
                 </div>
-                <div className="bg-zinc-50 rounded-xl p-6 border border-zinc-200 overflow-x-auto">
+                <div className="bg-muted rounded-xl p-6 border border-border overflow-x-auto">
                   {/* Swimlanes */}
                   <div className="min-w-[900px]">
                     {/* Header */}
@@ -9876,14 +9876,14 @@ ${auditLogSummary ? `
 
                     {/* Human Layer */}
                     <div className="flex items-stretch mb-2">
-                      <div className="w-24 shrink-0 bg-amber-100 rounded-l-lg p-2 flex items-center">
+                      <div className="w-24 shrink-0 bg-amber-500/10 rounded-l-lg p-2 flex items-center">
                         <span className="text-xs font-semibold text-amber-700 [writing-mode:vertical-lr] rotate-180">HUMAN</span>
                       </div>
                       <div className="flex-1 bg-amber-50 rounded-r-lg p-3 grid grid-cols-6 gap-2 items-center border-2 border-amber-200">
                         {/* Start Event */}
                         <div className="flex justify-center">
-                          <div className="w-8 h-8 rounded-full border-2 border-green-600 bg-green-100 flex items-center justify-center">
-                            <div className="w-3 h-3 rounded-full bg-green-600" />
+                          <div className="w-8 h-8 rounded-full border-2 border-green-600 bg-green-500/15 flex items-center justify-center">
+                            <div className="w-3 h-3 rounded-full bg-green-500" />
                           </div>
                         </div>
                         {/* Green Light */}
@@ -9908,7 +9908,7 @@ ${auditLogSummary ? `
                         </div>
                         {/* End Event */}
                         <div className="flex justify-center">
-                          <div className="w-8 h-8 rounded-full border-4 border-red-600 bg-red-100 flex items-center justify-center">
+                          <div className="w-8 h-8 rounded-full border-4 border-red-600 bg-red-500/15 flex items-center justify-center">
                             <div className="w-3 h-3 rounded-full bg-red-600" />
                           </div>
                         </div>
@@ -9917,10 +9917,10 @@ ${auditLogSummary ? `
 
                     {/* Orchestrator Layer */}
                     <div className="flex items-stretch mb-2">
-                      <div className="w-24 shrink-0 bg-blue-100 rounded-l-lg p-2 flex items-center">
-                        <span className="text-xs font-semibold text-blue-700 [writing-mode:vertical-lr] rotate-180">WAVE</span>
+                      <div className="w-24 shrink-0 bg-blue-500/15 rounded-l-lg p-2 flex items-center">
+                        <span className="text-xs font-semibold text-blue-400 [writing-mode:vertical-lr] rotate-180">WAVE</span>
                       </div>
-                      <div className="flex-1 bg-blue-50 rounded-r-lg p-3 grid grid-cols-6 gap-2 items-center border-2 border-blue-200">
+                      <div className="flex-1 bg-blue-500/10 rounded-r-lg p-3 grid grid-cols-6 gap-2 items-center border-2 border-blue-500/30">
                         {/* Trigger */}
                         <div className="flex justify-center">
                           <div className="px-3 py-2 bg-blue-200 rounded border border-blue-400 text-xs font-medium">
@@ -9929,28 +9929,28 @@ ${auditLogSummary ? `
                         </div>
                         {/* Gate 0 */}
                         <div className="flex justify-center">
-                          <div className="w-10 h-10 bg-blue-500 rotate-45 flex items-center justify-center">
+                          <div className="w-10 h-10 bg-blue-500/100 rotate-45 flex items-center justify-center">
                             <span className="text-white text-xs font-bold -rotate-45">G0</span>
                           </div>
                         </div>
                         {/* Gate 1-2 */}
                         <div className="flex justify-center gap-2">
-                          <div className="w-8 h-8 bg-blue-500 rotate-45 flex items-center justify-center">
+                          <div className="w-8 h-8 bg-blue-500/100 rotate-45 flex items-center justify-center">
                             <span className="text-white text-[10px] font-bold -rotate-45">G1</span>
                           </div>
-                          <div className="w-8 h-8 bg-blue-500 rotate-45 flex items-center justify-center">
+                          <div className="w-8 h-8 bg-blue-500/100 rotate-45 flex items-center justify-center">
                             <span className="text-white text-[10px] font-bold -rotate-45">G2</span>
                           </div>
                         </div>
                         {/* Gate 3 */}
                         <div className="flex justify-center">
-                          <div className="w-10 h-10 bg-blue-500 rotate-45 flex items-center justify-center">
+                          <div className="w-10 h-10 bg-blue-500/100 rotate-45 flex items-center justify-center">
                             <span className="text-white text-xs font-bold -rotate-45">G3</span>
                           </div>
                         </div>
                         {/* Gate 4 */}
                         <div className="flex justify-center">
-                          <div className="w-10 h-10 bg-green-500 rotate-45 flex items-center justify-center">
+                          <div className="w-10 h-10 bg-green-500/100 rotate-45 flex items-center justify-center">
                             <span className="text-white text-xs font-bold -rotate-45">G4</span>
                           </div>
                         </div>
@@ -9965,10 +9965,10 @@ ${auditLogSummary ? `
 
                     {/* Agents Layer */}
                     <div className="flex items-stretch mb-2">
-                      <div className="w-24 shrink-0 bg-purple-100 rounded-l-lg p-2 flex items-center">
-                        <span className="text-xs font-semibold text-purple-700 [writing-mode:vertical-lr] rotate-180">AGENTS</span>
+                      <div className="w-24 shrink-0 bg-purple-500/15 rounded-l-lg p-2 flex items-center">
+                        <span className="text-xs font-semibold text-purple-400 [writing-mode:vertical-lr] rotate-180">AGENTS</span>
                       </div>
-                      <div className="flex-1 bg-purple-50 rounded-r-lg p-3 grid grid-cols-6 gap-2 items-center border-2 border-purple-200">
+                      <div className="flex-1 bg-purple-500/10 rounded-r-lg p-3 grid grid-cols-6 gap-2 items-center border-2 border-purple-200">
                         <div />
                         {/* Validate */}
                         <div className="flex justify-center">
@@ -9986,10 +9986,10 @@ ${auditLogSummary ? `
                         <div className="flex justify-center">
                           <div className="border-2 border-dashed border-purple-400 rounded-lg p-2">
                             <div className="flex gap-1">
-                              <div className="w-8 h-8 bg-blue-500 rounded text-white text-[10px] font-bold flex items-center justify-center">FE</div>
-                              <div className="w-8 h-8 bg-green-500 rounded text-white text-[10px] font-bold flex items-center justify-center">BE</div>
+                              <div className="w-8 h-8 bg-blue-500/100 rounded text-white text-[10px] font-bold flex items-center justify-center">FE</div>
+                              <div className="w-8 h-8 bg-green-500/100 rounded text-white text-[10px] font-bold flex items-center justify-center">BE</div>
                             </div>
-                            <p className="text-[9px] text-center mt-1 text-purple-600">Parallel</p>
+                            <p className="text-[9px] text-center mt-1 text-purple-400">Parallel</p>
                           </div>
                         </div>
                         {/* QA Agent */}
@@ -10004,15 +10004,15 @@ ${auditLogSummary ? `
 
                     {/* Data Layer */}
                     <div className="flex items-stretch">
-                      <div className="w-24 shrink-0 bg-green-100 rounded-l-lg p-2 flex items-center">
-                        <span className="text-xs font-semibold text-green-700 [writing-mode:vertical-lr] rotate-180">DATA</span>
+                      <div className="w-24 shrink-0 bg-green-500/15 rounded-l-lg p-2 flex items-center">
+                        <span className="text-xs font-semibold text-green-400 [writing-mode:vertical-lr] rotate-180">DATA</span>
                       </div>
-                      <div className="flex-1 bg-green-50 rounded-r-lg p-3 grid grid-cols-6 gap-2 items-center border-2 border-green-200">
+                      <div className="flex-1 bg-green-500/10 rounded-r-lg p-3 grid grid-cols-6 gap-2 items-center border-2 border-green-500/30">
                         <div />
                         {/* Stories */}
                         <div className="flex justify-center">
                           <div className="flex items-center gap-1">
-                            <Database className="h-4 w-4 text-green-600" />
+                            <Database className="h-4 w-4 text-green-400" />
                             <span className="text-xs">Stories</span>
                           </div>
                         </div>
@@ -10048,11 +10048,11 @@ ${auditLogSummary ? `
                     {/* Flow Arrows */}
                     <div className="mt-4 flex items-center justify-center gap-2 text-xs text-zinc-500">
                       <div className="flex items-center gap-1">
-                        <div className="w-4 h-4 rounded-full border-2 border-green-600 bg-green-100" />
+                        <div className="w-4 h-4 rounded-full border-2 border-green-600 bg-green-500/15" />
                         <span>Start</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <div className="w-4 h-4 bg-blue-500 rotate-45" />
+                        <div className="w-4 h-4 bg-blue-500/100 rotate-45" />
                         <span>Gate (Decision)</span>
                       </div>
                       <div className="flex items-center gap-1">
@@ -10060,7 +10060,7 @@ ${auditLogSummary ? `
                         <span>Task</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <div className="w-4 h-4 rounded-full border-4 border-red-600 bg-red-100" />
+                        <div className="w-4 h-4 rounded-full border-4 border-red-600 bg-red-500/15" />
                         <span>End</span>
                       </div>
                       <div className="flex items-center gap-1">
@@ -10077,15 +10077,15 @@ ${auditLogSummary ? `
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-2xl font-bold flex items-center gap-3">
-                      <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-                        <Radio className="h-5 w-5 text-purple-600" />
+                      <div className="w-10 h-10 bg-purple-500/15 rounded-xl flex items-center justify-center">
+                        <Radio className="h-5 w-5 text-purple-400" />
                       </div>
                       Autonomous Execution Flow
                     </h2>
                     <p className="text-muted-foreground mt-1">How WAVE executes phases autonomously with drift detection</p>
                   </div>
                 </div>
-                <div className="bg-zinc-900 rounded-xl p-6 text-zinc-100 font-mono text-xs overflow-x-auto">
+                <div className="bg-background rounded-xl p-6 text-zinc-100 font-mono text-xs overflow-x-auto">
                   <pre className="whitespace-pre">{`
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
 │                           WAVE AUTONOMOUS EXECUTION FLOW                                 │
@@ -10138,8 +10138,8 @@ ${auditLogSummary ? `
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-2xl font-bold flex items-center gap-3">
-                      <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
-                        <ArrowRight className="h-5 w-5 text-green-600" />
+                      <div className="w-10 h-10 bg-green-500/15 rounded-xl flex items-center justify-center">
+                        <ArrowRight className="h-5 w-5 text-green-400" />
                       </div>
                       Phase-Gate Process (Building Blocks)
                     </h2>
@@ -10148,16 +10148,16 @@ ${auditLogSummary ? `
                 </div>
                 <div className="grid grid-cols-5 gap-3">
                   {[
-                    { phase: '0', name: 'Stories', desc: 'Validate AI Stories', color: 'bg-blue-500', status: 'pass' },
-                    { phase: '1', name: 'Environment', desc: 'Setup worktrees', color: 'bg-purple-500', status: 'pending' },
-                    { phase: '2', name: 'Smoke Test', desc: 'Build, lint, test', color: 'bg-orange-500', status: 'pending' },
-                    { phase: '3', name: 'Development', desc: 'Agents execute', color: 'bg-green-500', status: 'pending' },
-                    { phase: '4', name: 'QA & Merge', desc: 'Validate & deploy', color: 'bg-red-500', status: 'pending' },
+                    { phase: '0', name: 'Stories', desc: 'Validate AI Stories', color: 'bg-blue-500/100', status: 'pass' },
+                    { phase: '1', name: 'Environment', desc: 'Setup worktrees', color: 'bg-purple-500/100', status: 'pending' },
+                    { phase: '2', name: 'Smoke Test', desc: 'Build, lint, test', color: 'bg-orange-500/100', status: 'pending' },
+                    { phase: '3', name: 'Development', desc: 'Agents execute', color: 'bg-green-500/100', status: 'pending' },
+                    { phase: '4', name: 'QA & Merge', desc: 'Validate & deploy', color: 'bg-red-500/100', status: 'pending' },
                   ].map((p, i) => (
                     <div key={p.phase} className="relative">
                       <div className={cn(
                         "p-4 rounded-xl border-2 text-center transition-all",
-                        p.status === 'pass' ? "border-green-500 bg-green-50" : "border-border bg-white"
+                        p.status === 'pass' ? "border-green-500 bg-green-500/10" : "border-border bg-card"
                       )}>
                         <div className={cn("w-8 h-8 rounded-lg mx-auto mb-2 flex items-center justify-center text-white font-bold text-sm", p.color)}>
                           {p.phase}
@@ -10186,7 +10186,7 @@ ${auditLogSummary ? `
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-2xl font-bold flex items-center gap-3">
-                      <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
+                      <div className="w-10 h-10 bg-orange-500/15 rounded-xl flex items-center justify-center">
                         <Database className="h-5 w-5 text-orange-600" />
                       </div>
                       Core Infrastructure Components
@@ -10195,16 +10195,16 @@ ${auditLogSummary ? `
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-white border border-border rounded-xl">
+                  <div className="p-4 bg-card border border-border rounded-xl">
                     <div className="flex items-center gap-3 mb-2">
-                      <Database className="h-5 w-5 text-green-600" />
+                      <Database className="h-5 w-5 text-green-400" />
                       <span className="font-semibold">Supabase (Source of Truth)</span>
                     </div>
                     <p className="text-sm text-muted-foreground">
                       All persistent state lives here: projects, waves, stories, audit logs. Single source of truth for all agents.
                     </p>
                   </div>
-                  <div className="p-4 bg-white border border-border rounded-xl">
+                  <div className="p-4 bg-card border border-border rounded-xl">
                     <div className="flex items-center gap-3 mb-2">
                       <Zap className="h-5 w-5 text-amber-400" />
                       <span className="font-semibold">JSON Signals (Speed Layer)</span>
@@ -10213,7 +10213,7 @@ ${auditLogSummary ? `
                       Fast coordination between agents via .claude/*.json files. Used for real-time status updates and gate transitions.
                     </p>
                   </div>
-                  <div className="p-4 bg-white border border-border rounded-xl">
+                  <div className="p-4 bg-card border border-border rounded-xl">
                     <div className="flex items-center gap-3 mb-2">
                       <GitBranch className="h-5 w-5 text-orange-500" />
                       <span className="font-semibold">Git Worktrees</span>
@@ -10222,7 +10222,7 @@ ${auditLogSummary ? `
                       Isolated environments (fe-dev, be-dev, qa, dev-fix) for parallel agent work without merge conflicts.
                     </p>
                   </div>
-                  <div className="p-4 bg-white border border-border rounded-xl">
+                  <div className="p-4 bg-card border border-border rounded-xl">
                     <div className="flex items-center gap-3 mb-2">
                       <Shield className="h-5 w-5 text-red-500" />
                       <span className="font-semibold">Safety Protocols</span>
@@ -10249,12 +10249,12 @@ ${auditLogSummary ? `
                 </div>
                 <div className="grid grid-cols-4 gap-4">
                   {[
-                    { name: 'FE-Dev', color: 'bg-blue-500', role: 'Frontend Development', desc: 'Implements UI components, pages, and client-side logic in isolated fe-dev worktree', worktree: 'worktrees/fe-dev' },
-                    { name: 'BE-Dev', color: 'bg-green-500', role: 'Backend Development', desc: 'Builds APIs, database schemas, and server-side logic in isolated be-dev worktree', worktree: 'worktrees/be-dev' },
-                    { name: 'QA', color: 'bg-purple-500', role: 'Quality Assurance', desc: 'Runs tests, validates acceptance criteria, and approves changes for merge', worktree: 'worktrees/qa' },
-                    { name: 'Dev-Fix', color: 'bg-orange-500', role: 'Bug Fixes & Patches', desc: 'Handles urgent fixes and patches that arise during development cycles', worktree: 'worktrees/dev-fix' },
+                    { name: 'FE-Dev', color: 'bg-blue-500/100', role: 'Frontend Development', desc: 'Implements UI components, pages, and client-side logic in isolated fe-dev worktree', worktree: 'worktrees/fe-dev' },
+                    { name: 'BE-Dev', color: 'bg-green-500/100', role: 'Backend Development', desc: 'Builds APIs, database schemas, and server-side logic in isolated be-dev worktree', worktree: 'worktrees/be-dev' },
+                    { name: 'QA', color: 'bg-purple-500/100', role: 'Quality Assurance', desc: 'Runs tests, validates acceptance criteria, and approves changes for merge', worktree: 'worktrees/qa' },
+                    { name: 'Dev-Fix', color: 'bg-orange-500/100', role: 'Bug Fixes & Patches', desc: 'Handles urgent fixes and patches that arise during development cycles', worktree: 'worktrees/dev-fix' },
                   ].map((agent) => (
-                    <div key={agent.name} className="p-5 bg-white rounded-xl border border-border hover:border-primary/50 transition-colors">
+                    <div key={agent.name} className="p-5 bg-card rounded-xl border border-border hover:border-primary/50 transition-colors">
                       <div className={cn("w-12 h-12 rounded-xl mb-4 flex items-center justify-center text-white text-sm font-bold", agent.color)}>
                         {agent.name.split('-')[0]}
                       </div>
@@ -10283,7 +10283,7 @@ ${auditLogSummary ? `
                     <p className="text-muted-foreground mt-1">Real-time status of the WAVE orchestration system</p>
                   </div>
                 </div>
-                <div className="bg-zinc-900 text-zinc-100 rounded-xl p-5 font-mono text-sm">
+                <div className="bg-background text-zinc-100 rounded-xl p-5 font-mono text-sm">
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-zinc-400">WAVE Version:</span>
@@ -10330,17 +10330,17 @@ ${auditLogSummary ? `
                 </div>
                 <div className="grid grid-cols-8 gap-3">
                   {[
-                    { gate: '-1', name: 'Pre-Validation', desc: 'Zero Error Launch Protocol', color: 'border-gray-300 bg-gray-50' },
-                    { gate: '0', name: 'Stories', desc: 'Schema & coverage validation', color: 'border-blue-300 bg-blue-50' },
-                    { gate: '1', name: 'Environment', desc: 'Worktrees & deps ready', color: 'border-purple-300 bg-purple-50' },
-                    { gate: '2', name: 'Smoke Test', desc: 'Build, lint, test pass', color: 'border-orange-300 bg-orange-50' },
-                    { gate: '3', name: 'Development', desc: 'Agents executing', color: 'border-green-300 bg-green-50' },
+                    { gate: '-1', name: 'Pre-Validation', desc: 'Zero Error Launch Protocol', color: 'border-border bg-muted' },
+                    { gate: '0', name: 'Stories', desc: 'Schema & coverage validation', color: 'border-blue-300 bg-blue-500/10' },
+                    { gate: '1', name: 'Environment', desc: 'Worktrees & deps ready', color: 'border-purple-300 bg-purple-500/10' },
+                    { gate: '2', name: 'Smoke Test', desc: 'Build, lint, test pass', color: 'border-orange-300 bg-orange-500/10' },
+                    { gate: '3', name: 'Development', desc: 'Agents executing', color: 'border-green-300 bg-green-500/10' },
                     { gate: '4', name: 'QA Review', desc: 'Tests & validation', color: 'border-indigo-300 bg-indigo-50' },
-                    { gate: '5', name: 'Merge', desc: 'Merge to main', color: 'border-cyan-300 bg-cyan-50' },
+                    { gate: '5', name: 'Merge', desc: 'Merge to main', color: 'border-cyan-300 bg-cyan-500/10' },
                     { gate: '6+', name: 'Deploy', desc: 'Deploy & monitor', color: 'border-rose-300 bg-rose-50' },
                   ].map((g) => (
                     <div key={g.gate} className={cn("p-4 rounded-xl border-2 text-center", g.color)}>
-                      <div className="w-10 h-10 bg-white rounded-lg mx-auto mb-2 flex items-center justify-center border border-border">
+                      <div className="w-10 h-10 bg-card rounded-lg mx-auto mb-2 flex items-center justify-center border border-border">
                         <span className="font-mono font-bold text-sm">G{g.gate}</span>
                       </div>
                       <p className="font-semibold text-sm">{g.name}</p>
@@ -10351,22 +10351,22 @@ ${auditLogSummary ? `
               </div>
 
               {/* Safety & Compliance */}
-              <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-2xl p-8 border border-red-100">
+              <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-2xl p-8 border border-red-500/20">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h2 className="text-2xl font-bold flex items-center gap-3 text-red-700">
+                    <h2 className="text-2xl font-bold flex items-center gap-3 text-red-400">
                       <Shield className="h-6 w-6" />
                       Safety & Compliance (DO-178C Inspired)
                     </h2>
-                    <p className="text-red-600/80 mt-2 max-w-2xl">
+                    <p className="text-red-400/80 mt-2 max-w-2xl">
                       WAVE implements aerospace-grade safety protocols inspired by DO-178C certification standards.
                       All operations are validated, audited, and can be halted instantly via emergency stop.
                     </p>
                   </div>
                   <div className="text-right">
-                    <div className="inline-block bg-white rounded-xl p-4 border border-red-200">
-                      <p className="text-xs text-red-600 uppercase tracking-wide mb-1">Forbidden Operations</p>
-                      <p className="text-3xl font-bold text-red-700">108</p>
+                    <div className="inline-block bg-card rounded-xl p-4 border border-red-500/30">
+                      <p className="text-xs text-red-400 uppercase tracking-wide mb-1">Forbidden Operations</p>
+                      <p className="text-3xl font-bold text-red-400">108</p>
                       <p className="text-xs text-muted-foreground">Protected actions</p>
                     </div>
                   </div>
@@ -10378,7 +10378,7 @@ ${auditLogSummary ? `
                     { icon: '💰', title: 'Budget Limits', desc: 'API cost caps per wave' },
                     { icon: '📋', title: 'Audit Trail', desc: 'Every action logged to Supabase' },
                   ].map((item) => (
-                    <div key={item.title} className="bg-white/80 rounded-xl p-4 border border-red-100">
+                    <div key={item.title} className="bg-card/80 rounded-xl p-4 border border-red-500/20">
                       <span className="text-2xl">{item.icon}</span>
                       <p className="font-semibold mt-2">{item.title}</p>
                       <p className="text-sm text-muted-foreground">{item.desc}</p>

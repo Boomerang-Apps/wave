@@ -48,10 +48,10 @@ export interface MockupDesignTabProps {
 
 function StatusIndicator({ status }: { status: 'idle' | 'ready' | 'blocked' | 'validating' }) {
   const colorClass = {
-    idle: 'bg-gray-400',
+    idle: 'bg-muted-foreground',
     validating: 'bg-yellow-500',
-    ready: 'bg-green-500',
-    blocked: 'bg-red-500'
+    ready: 'bg-green-500/100',
+    blocked: 'bg-red-500/100'
   }[status];
 
   return (
@@ -68,7 +68,7 @@ function StatusIndicator({ status }: { status: 'idle' | 'ready' | 'blocked' | 'v
 
 function LoadingSpinner() {
   return (
-    <div data-testid="loading-spinner" className="animate-spin h-4 w-4 border-2 border-gray-300 border-t-blue-600 rounded-full" />
+    <div data-testid="loading-spinner" className="animate-spin h-4 w-4 border-2 border-border border-t-blue-600 rounded-full" />
   );
 }
 
@@ -162,7 +162,7 @@ export function MockupDesignTab({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold">Mockup Design</h2>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Step 0: Validate HTML mockups in <span className="font-mono">{projectName}</span>
           </p>
         </div>
@@ -170,8 +170,8 @@ export function MockupDesignTab({
       </div>
 
       {/* Info Box */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <p className="text-sm text-blue-800">
+      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+        <p className="text-sm text-blue-400">
           Before launching the WAVE agent system, you must validate your HTML mockups.
           Place your design files in the <code className="bg-blue-100 px-1 rounded">design_mockups</code> folder.
         </p>
@@ -182,7 +182,7 @@ export function MockupDesignTab({
         <button
           onClick={handleValidate}
           disabled={isValidating}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           {isValidating && <LoadingSpinner />}
           Validate Mockups
@@ -191,10 +191,10 @@ export function MockupDesignTab({
 
       {/* Progress Bar (shown during validation) */}
       {isValidating && (
-        <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className="w-full bg-muted rounded-full h-2">
           <div
             role="progressbar"
-            className="bg-blue-600 h-2 rounded-full animate-pulse"
+            className="bg-primary h-2 rounded-full animate-pulse"
             style={{ width: '60%' }}
           />
         </div>
@@ -202,8 +202,8 @@ export function MockupDesignTab({
 
       {/* Error Display */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-sm text-red-800">
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+          <p className="text-sm text-red-400">
             Error: {error}
           </p>
         </div>
@@ -214,7 +214,7 @@ export function MockupDesignTab({
         <div className="space-y-4">
           {/* Checks List */}
           <div className="border rounded-lg divide-y">
-            <div className="px-4 py-2 bg-gray-50 font-medium">
+            <div className="px-4 py-2 bg-muted font-medium">
               Validation Checks
             </div>
             {validationResult.checks.map((check, index) => (
@@ -225,7 +225,7 @@ export function MockupDesignTab({
                   {check.status === 'warn' && <CheckWarnIcon />}
                   <span>{check.name}</span>
                 </div>
-                <span className="text-sm text-gray-500">{check.message}</span>
+                <span className="text-sm text-muted-foreground">{check.message}</span>
               </div>
             ))}
           </div>
@@ -233,13 +233,13 @@ export function MockupDesignTab({
           {/* Screens List */}
           {validationResult.screens.length > 0 && (
             <div className="border rounded-lg divide-y">
-              <div className="px-4 py-2 bg-gray-50 font-medium">
+              <div className="px-4 py-2 bg-muted font-medium">
                 Detected Screens
               </div>
               {validationResult.screens.map((screen, index) => (
                 <div key={index} className="px-4 py-3">
                   <div className="font-medium">{screen.name}</div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-muted-foreground">
                     {screen.title} - {screen.summary}
                   </div>
                 </div>
@@ -251,7 +251,7 @@ export function MockupDesignTab({
           {currentStatus === 'ready' && (
             <button
               onClick={handleLockMockups}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
+              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-2"
             >
               Lock Mockups
             </button>

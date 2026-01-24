@@ -53,21 +53,21 @@ export function NextStepButton({
   // Final step - show launch button
   if (isFinalStep) {
     return (
-      <Alert className="mt-6 border-green-200 bg-green-50">
-        <Check className="h-5 w-5 text-green-600" />
+      <Alert className="mt-6 border-green-500/30 bg-green-500/10">
+        <Check className="h-5 w-5 text-green-400" />
         <div className="flex items-center justify-between w-full">
           <div className="ml-2">
-            <AlertTitle className="text-green-700">
+            <AlertTitle className="text-green-400">
               All Pre-Flight Checks Passed
             </AlertTitle>
-            <AlertDescription className="text-green-600">
+            <AlertDescription className="text-green-400">
               Launch sequence complete. Ready for autonomous agent execution.
             </AlertDescription>
           </div>
           <Button
             onClick={onLaunch}
             size="lg"
-            className="bg-green-600 hover:bg-green-700 ml-4"
+            className="bg-green-500 hover:bg-green-600 ml-4"
           >
             <Rocket className="h-5 w-5 mr-2" />
             Launch Agents

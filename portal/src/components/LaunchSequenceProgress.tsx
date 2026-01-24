@@ -115,7 +115,7 @@ export function LaunchSequenceProgress({
               {completedCount}/{steps.length} Complete
             </span>
             {allComplete && (
-              <Badge variant="default" className="bg-green-500 hover:bg-green-600">
+              <Badge variant="default" className="bg-green-500/100 hover:bg-green-500">
                 READY
               </Badge>
             )}
@@ -164,9 +164,9 @@ export function LaunchSequenceProgress({
 
         {/* All Green Message */}
         {allComplete && (
-          <Alert className="border-green-200 bg-green-50">
-            <Check className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-700 font-medium ml-2">
+          <Alert className="border-green-500/30 bg-green-500/10">
+            <Check className="h-4 w-4 text-green-400" />
+            <AlertDescription className="text-green-400 font-medium ml-2">
               All systems green - Launch authorized
             </AlertDescription>
           </Alert>
