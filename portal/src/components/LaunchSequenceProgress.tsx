@@ -3,6 +3,8 @@
  *
  * Visual progress indicator for the 10-step launch sequence.
  * Shows completion status with step circles and connecting lines.
+ *
+ * Design: Light Mode, Tailwind colors, Lucide icons
  */
 
 import { Check, Rocket } from 'lucide-react';
@@ -39,14 +41,14 @@ interface StepCircleProps {
 
 function StepCircle({ stepNumber, status, isCurrent, isLast }: StepCircleProps) {
   const getBackgroundClass = () => {
-    if (status === 'ready') return 'bg-green-500';
-    if (status === 'blocked') return 'bg-red-500';
-    if (status === 'validating') return 'bg-yellow-500 animate-pulse';
-    return 'bg-zinc-700';
+    if (status === 'ready') return 'bg-green-500 text-white';
+    if (status === 'blocked') return 'bg-red-500 text-white';
+    if (status === 'validating') return 'bg-amber-500 text-white animate-pulse';
+    return 'bg-gray-200 text-gray-600';
   };
 
   const getRingClass = () => {
-    if (isCurrent) return 'ring-2 ring-white ring-offset-2 ring-offset-zinc-900';
+    if (isCurrent) return 'ring-2 ring-green-500 ring-offset-2 ring-offset-white';
     return '';
   };
 
@@ -86,7 +88,7 @@ function ConnectingLine({ isComplete }: ConnectingLineProps) {
     <div
       className={`
         flex-1 h-1 mx-1 rounded-full transition-colors duration-300
-        ${isComplete ? 'bg-green-500' : 'bg-zinc-700'}
+        ${isComplete ? 'bg-green-500' : 'bg-gray-200'}
       `}
     />
   );
@@ -105,19 +107,19 @@ export function LaunchSequenceProgress({
   const allComplete = completedCount === steps.length;
 
   return (
-    <div className="bg-zinc-900 text-white rounded-xl p-4 mb-6">
+    <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Rocket className={`h-5 w-5 ${allComplete ? 'text-green-400' : 'text-zinc-400'}`} />
-          <h3 className="font-bold">Launch Sequence</h3>
+          <Rocket className={`h-5 w-5 ${allComplete ? 'text-green-500' : 'text-gray-400'}`} />
+          <h3 className="font-semibold text-gray-900">Launch Sequence</h3>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`text-sm ${allComplete ? 'text-green-400' : 'text-zinc-400'}`}>
+          <span className={`text-sm ${allComplete ? 'text-green-600' : 'text-gray-500'}`}>
             {completedCount}/{steps.length} Complete
           </span>
           {allComplete && (
-            <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full font-medium">
+            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
               READY
             </span>
           )}
@@ -143,14 +145,14 @@ export function LaunchSequenceProgress({
 
       {/* Step Labels (non-compact mode) */}
       {!compact && (
-        <div className="flex items-center mt-2 text-[10px] text-zinc-500">
+        <div className="flex items-center mt-2 text-[10px] text-gray-400">
           {steps.map((step, index) => (
             <div
               key={step.id}
               className={`
                 flex-1 text-center truncate px-1
-                ${index === currentStep ? 'text-white font-medium' : ''}
-                ${step.status === 'ready' ? 'text-green-400' : ''}
+                ${index === currentStep ? 'text-gray-900 font-medium' : ''}
+                ${step.status === 'ready' ? 'text-green-600' : ''}
               `}
             >
               {step.label}
@@ -161,8 +163,8 @@ export function LaunchSequenceProgress({
 
       {/* All Green Message */}
       {allComplete && (
-        <div className="mt-4 p-3 bg-green-500/20 border border-green-500/30 rounded-lg text-center">
-          <span className="text-green-400 font-medium">
+        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-xl text-center">
+          <span className="text-green-700 font-medium">
             All systems green - Launch authorized
           </span>
         </div>

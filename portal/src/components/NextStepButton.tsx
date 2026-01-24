@@ -3,6 +3,8 @@
  *
  * Prominent navigation button shown when current step is complete.
  * Guides users through the sequential launch flow.
+ *
+ * Design: Light Mode, Tailwind colors, Lucide icons
  */
 
 import { ArrowRight, Check, Rocket } from 'lucide-react';
@@ -49,14 +51,14 @@ export function NextStepButton({
   // Final step - show launch button
   if (isFinalStep) {
     return (
-      <div className="mt-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
+      <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-2xl">
         <div className="flex items-center justify-between">
           <div>
-            <h4 className="font-bold text-green-400 flex items-center gap-2">
+            <h4 className="font-semibold text-green-700 flex items-center gap-2">
               <Check className="h-5 w-5" />
               All Pre-Flight Checks Passed
             </h4>
-            <p className="text-sm text-zinc-400 mt-1">
+            <p className="text-sm text-gray-600 mt-1">
               Launch sequence complete. Ready for autonomous agent execution.
             </p>
           </div>
@@ -65,9 +67,9 @@ export function NextStepButton({
             className="
               flex items-center gap-2 px-6 py-3
               bg-green-600 hover:bg-green-700
-              text-white font-bold rounded-xl
+              text-white font-semibold rounded-xl
               transition-colors duration-200
-              shadow-lg shadow-green-500/20
+              shadow-sm
             "
           >
             <Rocket className="h-5 w-5" />
@@ -92,6 +94,7 @@ export function NextStepButton({
           bg-green-600 hover:bg-green-700
           text-white font-medium rounded-xl
           transition-colors duration-200
+          shadow-sm
         "
       >
         Continue to Step {nextStep.step}: {nextStep.label}
