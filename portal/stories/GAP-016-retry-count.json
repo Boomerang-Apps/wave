@@ -1,0 +1,213 @@
+{
+  "id": "GAP-016",
+  "title": "Retry Count Persistence",
+  "domain": "consistency",
+  "agent": "be-dev-1",
+  "priority": "medium",
+  "risk": "low",
+  "status": "completed",
+  "wave": null,
+  "description": "Retry count stored only in signal files can be reset by file deletion, potentially bypassing escalation. Implement durable retry count tracking with atomic persistence, backup redundancy, and cross-session survival.",
+
+  "gate0_research": {
+    "sources": [
+      {
+        "name": "Idempotency Key Patterns",
+        "url": "https://stripe.com/docs/api/idempotent_requests",
+        "key_findings": [
+          "Store idempotency keys with request results",
+          "Keys should survive across retries",
+          "Use deterministic key generation",
+          "Include timestamp for expiration"
+        ]
+      },
+      {
+        "name": "State Machine Design Patterns",
+        "url": "https://martinfowler.com/eaaDev/state.html",
+        "key_findings": [
+          "State transitions should be atomic",
+          "Persist state before acting on it",
+          "Recovery should restore last known state",
+          "Audit trail for state changes"
+        ]
+      },
+      {
+        "name": "Distributed Counter Patterns",
+        "url": "https://redis.io/docs/data-types/counters/",
+        "key_findings": [
+          "Atomic increment operations",
+          "Persistence options for durability",
+          "Multiple storage locations for redundancy",
+          "Compare-and-swap for consistency"
+        ]
+      },
+      {
+        "name": "Existing Retry Implementation",
+        "url": "file://core/scripts/wave-orchestrator.sh",
+        "key_findings": [
+          "rejection_count stored in signal files",
+          "No backup mechanism",
+          "File deletion resets count",
+          "Single point of failure"
+        ]
+      }
+    ],
+    "compliance_requirements": [
+      "Retry count persisted atomically (temp + rename)",
+      "Backup location prevents reset by single file deletion",
+      "Cross-session persistence survives restarts",
+      "Max retries enforced using highest count from any source",
+      "Audit trail of all retry increments"
+    ]
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "Atomic persistence",
+      "threshold": "incrementRetryCount() uses atomic write (temp file + rename)",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "Backup redundancy",
+      "threshold": "Count stored in both primary and backup location",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "Deletion protection",
+      "threshold": "getRetryCount() returns highest of primary/backup",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "Cross-session persistence",
+      "threshold": "Count survives process restart",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "Max retries enforcement",
+      "threshold": "isMaxRetriesExceeded() checks all sources",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "Story-level tracking",
+      "threshold": "Counts tracked per story ID with wave context",
+      "testable": true
+    },
+    {
+      "id": "AC7",
+      "description": "Audit trail",
+      "threshold": "getRetryHistory() returns all increments with timestamps",
+      "testable": true
+    },
+    {
+      "id": "AC8",
+      "description": "Reset with confirmation",
+      "threshold": "resetRetryCount() requires explicit confirmation",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/utils/retry-count-tracker.js",
+      "portal/server/__tests__/retry-count-tracker.test.js"
+    ],
+    "modify": [],
+    "existing": [
+      "core/scripts/wave-orchestrator.sh",
+      ".claudecode/workflows/retry-loop.md"
+    ],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Retry count returns 0 when should be non-zero",
+      "Backup mechanism fails silently",
+      "Max retries bypassed"
+    ],
+    "escalation_triggers": [
+      "Inconsistent counts between primary and backup",
+      "Unable to persist count"
+    ]
+  },
+
+  "dependencies": [],
+
+  "implementation_hints": [
+    "Use fs.promises for async atomic writes",
+    "Store primary in .claude/retry-counts/",
+    "Store backup in .claude/backup/retry-counts/",
+    "Use Math.max() to get highest count from sources",
+    "Include wave, storyId, timestamp in each record",
+    "Support optional Supabase remote backup"
+  ],
+
+  "file_structure": {
+    "primary": ".claude/retry-counts/{storyId}.json",
+    "backup": ".claude/backup/retry-counts/{storyId}.json",
+    "format": {
+      "storyId": "string",
+      "wave": "number",
+      "count": "number",
+      "maxRetries": "number",
+      "history": [
+        {
+          "timestamp": "ISO string",
+          "count": "number",
+          "reason": "string"
+        }
+      ],
+      "createdAt": "ISO string",
+      "updatedAt": "ISO string"
+    }
+  },
+
+  "test_plan": {
+    "unit_tests": [
+      "DEFAULT_MAX_RETRIES is 3",
+      "incrementRetryCount creates primary file",
+      "incrementRetryCount creates backup file",
+      "incrementRetryCount uses atomic write",
+      "incrementRetryCount increments existing count",
+      "incrementRetryCount records history entry",
+      "getRetryCount returns count from primary",
+      "getRetryCount returns count from backup if primary missing",
+      "getRetryCount returns highest of primary/backup",
+      "getRetryCount returns 0 for unknown story",
+      "isMaxRetriesExceeded returns false below limit",
+      "isMaxRetriesExceeded returns true at limit",
+      "isMaxRetriesExceeded checks all sources",
+      "getRetryHistory returns all increments",
+      "getRetryHistory includes timestamps",
+      "resetRetryCount requires confirmation",
+      "resetRetryCount removes primary file",
+      "resetRetryCount removes backup file",
+      "resetRetryCount records reset in history",
+      "getAllRetryCounts returns all tracked stories",
+      "setMaxRetries configures limit per story",
+      "cleanup removes expired counts"
+    ],
+    "integration_tests": [
+      "Full retry cycle from 0 to max",
+      "Recovery after primary file deletion"
+    ],
+    "security_tests": [
+      "Invalid story ID rejected",
+      "Negative count rejected"
+    ]
+  },
+
+  "created_at": "2026-01-24T09:20:00Z",
+  "completed_at": "2026-01-24T09:23:00Z",
+  "tests_passed": 32,
+  "score": 100
+}
