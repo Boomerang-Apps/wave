@@ -29,7 +29,8 @@ const KEY_LENGTH = 32; // 256-bit key
 const SALT_LENGTH = 16; // 128-bit salt
 const PBKDF2_ITERATIONS = 100000;
 const PBKDF2_DIGEST = 'sha256';
-const MIN_PASSPHRASE_LENGTH = 8;
+// SEC-009: Increased from 8 to 12 for stronger key derivation
+const MIN_PASSPHRASE_LENGTH = 12;
 const VERSION = '1.0';
 
 // ─────────────────────────────────────────────────────────────────────────────

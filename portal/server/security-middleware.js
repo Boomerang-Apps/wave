@@ -96,7 +96,9 @@ function securityHeaders(options = {}) {
     }
 
     // Strict-Transport-Security - Force HTTPS
-    if (defaultOptions.hsts && req.secure) {
+    // SEC-008: Always set HSTS when enabled (not just on HTTPS requests)
+    // This ensures browsers remember to use HTTPS even if they first connect via HTTP
+    if (defaultOptions.hsts) {
       res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     }
 
