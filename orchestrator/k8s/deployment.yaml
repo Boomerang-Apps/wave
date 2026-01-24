@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wave-orchestrator
+  namespace: wave-orchestrator
+  labels:
+    app: wave
+    component: orchestrator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wave
+      component: orchestrator
+  template:
+    metadata:
+      labels:
+        app: wave
+        component: orchestrator
+    spec:
+      serviceAccountName: wave-orchestrator
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+
+      containers:
+        - name: orchestrator
+          image: wave-orchestrator:latest
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+            - name: health
+              containerPort: 8001
+              protocol: TCP
+
+          env:
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: wave-secrets
+                  key: anthropic-api-key
+            - name: XAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: wave-secrets
+                  key: xai-api-key
+            - name: POSTGRES_URL
+              valueFrom:
+                secretKeyRef:
+                  name: wave-secrets
+                  key: postgres-url
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: wave-config
+                  key: redis-url
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: wave-secrets
+                  key: slack-webhook-url
+                  optional: true
+
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          volumeMounts:
+            - name: workspace
+              mountPath: /workspace
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+      volumes:
+        - name: workspace
+          emptyDir:
+            sizeLimit: 10Gi
+        - name: config
+          configMap:
+            name: wave-config
+
+      # Pod disruption budget
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: wave
+                    component: orchestrator
+                topologyKey: kubernetes.io/hostname
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: wave-orchestrator
+  namespace: wave-orchestrator
+  labels:
+    app: wave
+    component: orchestrator

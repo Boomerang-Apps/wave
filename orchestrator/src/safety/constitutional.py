@@ -498,6 +498,45 @@ def create_constitutional_node(
 # EXPORTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# EMERGENCY STOP (E-STOP)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class ESTOP:
+    """
+    Emergency Stop system for immediate workflow termination.
+
+    Can be triggered by:
+    - Critical safety violations
+    - Budget exceeded
+    - Manual intervention
+    """
+    _triggered: bool = False
+    _reason: str = ""
+
+    @classmethod
+    def trigger(cls, reason: str = "Manual E-STOP"):
+        """Trigger emergency stop."""
+        cls._triggered = True
+        cls._reason = reason
+
+    @classmethod
+    def reset(cls):
+        """Reset emergency stop (for testing)."""
+        cls._triggered = False
+        cls._reason = ""
+
+    @classmethod
+    def is_triggered(cls) -> bool:
+        """Check if E-STOP is active."""
+        return cls._triggered
+
+    @classmethod
+    def get_reason(cls) -> str:
+        """Get E-STOP reason."""
+        return cls._reason
+
+
 __all__ = [
     "SafetyCategory",
     "SafetyPrinciple",
@@ -507,4 +546,5 @@ __all__ = [
     "WAVE_PRINCIPLES",
     "check_action_safety",
     "create_constitutional_node",
+    "ESTOP",
 ]
