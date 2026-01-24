@@ -1,0 +1,177 @@
+{
+  "id": "GAP-009",
+  "title": "Content-Based Drift Detection",
+  "domain": "security",
+  "agent": "be-dev-1",
+  "priority": "medium",
+  "risk": "medium",
+  "status": "completed",
+  "wave": null,
+  "description": "Current drift detection relies on file checksums which miss uncommitted changes and untracked files. All drift detection must use git diff for actual content changes, detect untracked files, and support lock invalidation with cascade to downstream locks.",
+
+  "gate0_research": {
+    "sources": [
+      {
+        "name": "Git Internals - Content Addressable Storage",
+        "url": "https://git-scm.com/book/en/v2/Git-Internals-Git-Objects",
+        "key_findings": [
+          "Git uses SHA-1/SHA-256 hashes to identify content uniquely",
+          "If blob SHA changes, content changed; if tree SHA changes, directory changed",
+          "Comparing SHAs is O(1) for detecting changes",
+          "git diff compares working tree against index or commits"
+        ]
+      },
+      {
+        "name": "Infrastructure as Code Drift Detection",
+        "url": "https://spacelift.io/blog/drift-detection",
+        "key_findings": [
+          "Drift occurs when actual state deviates from intended state",
+          "Continuous drift detection catches unauthorized changes",
+          "Audit trails record drift events for compliance",
+          "Auto-remediation can revert drift or alert operators"
+        ]
+      },
+      {
+        "name": "Pulumi Drift Detection",
+        "url": "https://www.pulumi.com/blog/drift-detection/",
+        "key_findings": [
+          "Detects by comparing resource state with expected configurations",
+          "Reports discrepancies with details of what changed",
+          "Supports scheduled continuous detection",
+          "Alerts via webhooks, Slack, or Microsoft Teams"
+        ]
+      },
+      {
+        "name": "Git Documentation - git diff",
+        "url": "https://git-scm.com/docs/git-diff",
+        "key_findings": [
+          "git diff shows changes between working tree and index",
+          "git diff --cached shows staged changes",
+          "git diff HEAD shows all uncommitted changes",
+          "git status --porcelain provides machine-parseable output"
+        ]
+      }
+    ],
+    "compliance_requirements": [
+      "Use git diff for detecting actual content changes",
+      "Detect untracked files using git status",
+      "Support lock invalidation based on content hash",
+      "Cascade invalidation to dependent downstream locks",
+      "Log all drift events to audit trail"
+    ]
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "Uses git diff for actual content changes",
+      "threshold": "detectContentDrift() uses git diff HEAD to find changes",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "Untracked changes detected",
+      "threshold": "detectUntrackedFiles() finds files not in git index",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "Lock invalidation based on content hash",
+      "threshold": "invalidateLock() sets lock status to INVALIDATED with reason",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "Cascade invalidation to downstream locks",
+      "threshold": "Invalidating Phase N invalidates Phases N+1 to 4",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "Returns detailed drift report",
+      "threshold": "Report includes changed files, untracked files, and affected locks",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "Drift events logged to audit trail",
+      "threshold": "All drift detections logged with timestamp and details",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/utils/content-drift-detector.js",
+      "portal/server/__tests__/content-drift-detector.test.js"
+    ],
+    "modify": [],
+    "existing": [
+      "core/scripts/building-blocks/drift-detector.sh",
+      "core/scripts/building-blocks/lock-manager.sh"
+    ],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Drift not detected when files change",
+      "Cascade invalidation breaks valid locks",
+      "Git commands fail silently"
+    ],
+    "escalation_triggers": [
+      "Drift detected in production branch",
+      "Lock corruption from cascade"
+    ]
+  },
+
+  "dependencies": [],
+
+  "implementation_hints": [
+    "Use child_process.execSync for git commands",
+    "git diff --name-only HEAD for changed files",
+    "git status --porcelain for untracked files",
+    "Parse lock files from .claude/locks/PHASE*.lock",
+    "Cascade: PHASE_DEPENDENCIES[N] defines upstream",
+    "Log to audit with action: 'drift_detected'"
+  ],
+
+  "phase_dependencies": {
+    "0": [],
+    "1": [0],
+    "2": [0],
+    "3": [2],
+    "4": [3]
+  },
+
+  "test_plan": {
+    "unit_tests": [
+      "detectContentDrift returns changed files from git diff",
+      "detectUntrackedFiles returns untracked files from git status",
+      "checkLockDrift compares current hash to stored hash",
+      "invalidateLock updates lock file with INVALIDATED status",
+      "cascadeInvalidation invalidates all downstream locks",
+      "getDriftReport returns complete drift summary",
+      "Handles non-git directories gracefully",
+      "Handles missing lock files gracefully"
+    ],
+    "integration_tests": [
+      "Detects changed file and invalidates correct lock",
+      "Detects untracked file and reports in drift",
+      "Cascade invalidates Phase 3 when Phase 2 drifts",
+      "Drift events logged to audit trail"
+    ],
+    "security_tests": [
+      "Cannot bypass drift detection",
+      "Lock files cannot be corrupted by drift check"
+    ]
+  },
+
+  "created_at": "2026-01-24T07:40:00Z",
+  "completed_at": "2026-01-24T08:38:00Z",
+  "tests_passed": 40,
+  "score": 100
+}
