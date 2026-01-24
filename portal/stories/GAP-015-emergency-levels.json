@@ -1,0 +1,239 @@
+{
+  "id": "GAP-015",
+  "title": "Emergency Level Automation",
+  "domain": "safety",
+  "agent": "be-dev-1",
+  "priority": "high",
+  "risk": "medium",
+  "status": "completed",
+  "wave": null,
+  "description": "Implement programmatic emergency level control (E1-E4) in the portal server. Provides unified API for triggering emergency stops at agent, domain, wave, or system level with proper escalation chain.",
+
+  "gate0_research": {
+    "sources": [
+      {
+        "name": "WAVE Emergency Levels Documentation",
+        "url": "file://.claudecode/safety/EMERGENCY-LEVELS.md",
+        "key_findings": [
+          "E1: Agent Stop - single agent, auto-retry possible",
+          "E2: Domain Stop - all agents in FE or BE domain",
+          "E3: Wave Stop - all agents in current wave",
+          "E4: System Stop - all agents across all waves",
+          "E5: Emergency Halt - security breach, no auto-restart"
+        ]
+      },
+      {
+        "name": "WAVE Safe Termination Script",
+        "url": "file://core/scripts/safe-termination.sh",
+        "key_findings": [
+          "Implements all E1-E5 levels in bash",
+          "Creates signal files for agent communication",
+          "Supports grace period before forced stop",
+          "Backs up agent state before termination",
+          "Creates EMERGENCY-STOP file for E4/E5"
+        ]
+      },
+      {
+        "name": "PagerDuty Incident Response Best Practices",
+        "url": "https://www.pagerduty.com/resources/learn/incident-response-best-practices/",
+        "key_findings": [
+          "Define clear escalation paths",
+          "Automate routine response actions",
+          "Document runbooks for each incident type",
+          "Track incident state and history",
+          "Enable quick rollback mechanisms"
+        ]
+      },
+      {
+        "name": "Existing Budget Enforcer",
+        "url": "file://portal/server/utils/budget-enforcer.js",
+        "key_findings": [
+          "Creates EMERGENCY-STOP file on budget exceeded",
+          "Uses atomic file writes (temp + rename)",
+          "Supports notification and logging callbacks",
+          "Has isEmergencyStopped() check method"
+        ]
+      }
+    ],
+    "compliance_requirements": [
+      "E1 (Agent Stop) automated via API",
+      "E2 (Domain Stop) automated via API",
+      "E3 (Wave Stop) automated via API",
+      "E4 (System Stop) automated via API",
+      "Escalation chain from E1 to E4 documented",
+      "Integration with heartbeat manager",
+      "Signal file creation for agent communication"
+    ]
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "Emergency levels defined",
+      "threshold": "EMERGENCY_LEVELS constant exports E1-E5 with descriptions",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "E1 Agent Stop implemented",
+      "threshold": "triggerE1(agentId, reason) creates stop signal for specific agent",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "E2 Domain Stop implemented",
+      "threshold": "triggerE2(domain, reason) stops all agents in domain",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "E3 Wave Stop implemented",
+      "threshold": "triggerE3(waveNumber, reason) stops all agents in wave",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "E4 System Stop implemented",
+      "threshold": "triggerE4(reason) creates EMERGENCY-STOP file",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "Escalation tracking",
+      "threshold": "getEscalationHistory() returns chronological list of emergency events",
+      "testable": true
+    },
+    {
+      "id": "AC7",
+      "description": "Current status retrieval",
+      "threshold": "getEmergencyStatus() returns current emergency level and affected agents",
+      "testable": true
+    },
+    {
+      "id": "AC8",
+      "description": "Clear emergency",
+      "threshold": "clearEmergency(level, confirmation) removes stop signals with safety check",
+      "testable": true
+    },
+    {
+      "id": "AC9",
+      "description": "Callback support",
+      "threshold": "onEmergency callback invoked with level and details",
+      "testable": true
+    },
+    {
+      "id": "AC10",
+      "description": "Domain agent mapping",
+      "threshold": "getAgentsInDomain(domain) returns correct agent list",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/utils/emergency-handler.js",
+      "portal/server/__tests__/emergency-handler.test.js"
+    ],
+    "modify": [],
+    "existing": [
+      ".claudecode/safety/EMERGENCY-LEVELS.md",
+      "core/scripts/safe-termination.sh",
+      "core/scripts/check-kill-switch.sh",
+      "portal/server/utils/budget-enforcer.js"
+    ],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Emergency handler causes false positives",
+      "Escalation creates infinite loops",
+      "Clear operation without proper confirmation"
+    ],
+    "escalation_triggers": [
+      "Multiple E3 or higher events in short period",
+      "Clear fails to remove signals"
+    ]
+  },
+
+  "dependencies": [],
+
+  "implementation_hints": [
+    "Mirror safe-termination.sh logic in Node.js",
+    "Use fs.promises for async file operations",
+    "Create signal files in .claude directory",
+    "Support grace period before force termination",
+    "Track escalation history in memory",
+    "Integrate with heartbeat manager for agent status"
+  ],
+
+  "domain_mapping": {
+    "frontend": ["fe-dev-1", "fe-dev-2"],
+    "backend": ["be-dev-1", "be-dev-2"],
+    "qa": ["qa"],
+    "devfix": ["dev-fix"],
+    "management": ["cto", "pm"]
+  },
+
+  "wave_mapping": {
+    "1": ["fe-dev-1", "be-dev-1"],
+    "2": ["fe-dev-2", "be-dev-2"]
+  },
+
+  "test_plan": {
+    "unit_tests": [
+      "EMERGENCY_LEVELS constant has E1-E5 entries",
+      "EMERGENCY_LEVELS entries have level, name, description",
+      "getAgentsInDomain returns frontend agents",
+      "getAgentsInDomain returns backend agents",
+      "getAgentsInDomain returns qa agents",
+      "getAgentsInDomain returns null for unknown domain",
+      "getAgentsInWave returns wave 1 agents",
+      "getAgentsInWave returns wave 2 agents",
+      "getAgentsInWave returns null for unknown wave",
+      "triggerE1 creates agent stop signal file",
+      "triggerE1 records event in history",
+      "triggerE1 invokes callback with details",
+      "triggerE1 returns affected agent list",
+      "triggerE2 creates stop signals for domain agents",
+      "triggerE2 records domain in history",
+      "triggerE2 returns all affected agents",
+      "triggerE3 creates stop signals for wave agents",
+      "triggerE3 creates wave stop signal file",
+      "triggerE3 returns all affected agents",
+      "triggerE4 creates EMERGENCY-STOP file",
+      "triggerE4 creates stop signals for all agents",
+      "triggerE4 records system stop in history",
+      "getEmergencyStatus returns current level",
+      "getEmergencyStatus returns affected agents",
+      "getEmergencyStatus returns isActive boolean",
+      "getEscalationHistory returns events in order",
+      "getEscalationHistory entries have timestamp",
+      "clearEmergency requires confirmation object",
+      "clearEmergency removes agent stop signal for E1",
+      "clearEmergency removes domain signals for E2",
+      "clearEmergency removes wave signals for E3",
+      "clearEmergency removes EMERGENCY-STOP for E4",
+      "clearEmergency updates history with clear event",
+      "isEmergencyActive returns true when E4 triggered",
+      "isEmergencyActive returns false when cleared",
+      "reset clears all state and history"
+    ],
+    "integration_tests": [
+      "Full escalation from E1 to E4",
+      "Clear and resume after E3"
+    ],
+    "security_tests": [
+      "Reject empty reason for E4",
+      "Require confirmation to clear E4"
+    ]
+  },
+
+  "created_at": "2026-01-24T09:15:00Z",
+  "completed_at": "2026-01-24T09:17:00Z",
+  "tests_passed": 44,
+  "score": 100
+}
