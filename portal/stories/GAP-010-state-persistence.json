@@ -1,0 +1,209 @@
+{
+  "id": "GAP-010",
+  "title": "Agent State Persistence",
+  "domain": "infrastructure",
+  "agent": "be-dev-1",
+  "priority": "medium",
+  "risk": "medium",
+  "status": "completed",
+  "wave": null,
+  "description": "Decisions and context are lost on context window reset. Implement persistent state management that saves key decisions, restores context on session start, provides queryable decision history, and prunes old decisions to manage storage.",
+
+  "gate0_research": {
+    "sources": [
+      {
+        "name": "LangChain Memory Patterns",
+        "url": "https://docs.langchain.com/oss/python/langchain/short-term-memory",
+        "key_findings": [
+          "Short-term memory provides immediate context for current session",
+          "Long-term memory stores information for future use",
+          "Hybrid architectures combine short-term and long-term memory",
+          "Memory pruning/trimming required to manage token limits",
+          "Checkpointing systems enable persistence across restarts"
+        ]
+      },
+      {
+        "name": "OpenAI Assistants API Threads",
+        "url": "https://platform.openai.com/docs/guides/conversation-state",
+        "key_findings": [
+          "Threads store message history and truncate when too long",
+          "Server-side persistence removes burden from developers",
+          "previous_response_id chains responses together",
+          "Conversations store items including messages, tool calls, outputs"
+        ]
+      },
+      {
+        "name": "Anthropic Context Management",
+        "url": "https://anthropic.com/news/context-management",
+        "key_findings": [
+          "File-based memory persists across conversations",
+          "Context editing removes stale content automatically",
+          "Memory tool creates, reads, updates, deletes memory files",
+          "Compaction summarizes context when approaching limits",
+          "Token budget awareness enables effective context management"
+        ]
+      },
+      {
+        "name": "LangGraph Checkpointing",
+        "url": "https://www.mongodb.com/company/blog/product-release-announcements/powering-long-term-memory-for-agents-langgraph",
+        "key_findings": [
+          "Checkpointers persist and restore conversation states",
+          "SqliteSaver for persistent storage across restarts",
+          "Entity extraction stores focused information",
+          "Message trimming functions avoid token limits"
+        ]
+      }
+    ],
+    "compliance_requirements": [
+      "Persist key decisions to memory file",
+      "Restore context on session start",
+      "Provide queryable decision history",
+      "Implement memory pruning for old decisions",
+      "Support multiple agents and waves"
+    ]
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "description": "Key decisions persisted to memory file",
+      "threshold": "saveDecision() writes to .claude/agent-memory/{agent}-wave{N}.json",
+      "testable": true
+    },
+    {
+      "id": "AC2",
+      "description": "Context restored on session start",
+      "threshold": "loadMemory() returns all decisions, constraints, and patterns",
+      "testable": true
+    },
+    {
+      "id": "AC3",
+      "description": "Decision history queryable",
+      "threshold": "queryDecisions() filters by agent, wave, date range, keyword",
+      "testable": true
+    },
+    {
+      "id": "AC4",
+      "description": "Memory pruning for old decisions",
+      "threshold": "pruneMemory() removes decisions older than threshold",
+      "testable": true
+    },
+    {
+      "id": "AC5",
+      "description": "Supports constraints and patterns",
+      "threshold": "addConstraint() and addPattern() persist metadata",
+      "testable": true
+    },
+    {
+      "id": "AC6",
+      "description": "Memory summary available",
+      "threshold": "getMemorySummary() returns decision count, constraint count, age",
+      "testable": true
+    }
+  ],
+
+  "files": {
+    "create": [
+      "portal/server/utils/state-persistence.js",
+      "portal/server/__tests__/state-persistence.test.js"
+    ],
+    "modify": [],
+    "existing": [
+      "core/scripts/rlm/memory-manager.sh",
+      "core/scripts/rlm/schemas/memory.schema.json"
+    ],
+    "forbidden": [
+      "*.env",
+      "**/secrets/**"
+    ]
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Memory file corruption on write",
+      "Memory not restored correctly",
+      "Pruning deletes recent decisions"
+    ],
+    "escalation_triggers": [
+      "Memory file exceeds size limit",
+      "Critical decision lost"
+    ]
+  },
+
+  "dependencies": [],
+
+  "implementation_hints": [
+    "Use JSON schema from core/scripts/rlm/schemas/memory.schema.json",
+    "Memory file path: .claude/agent-memory/{agent}-wave{N}.json",
+    "Decision IDs: DEC-001, DEC-002, etc.",
+    "Include timestamp on all operations",
+    "Pruning threshold configurable (default 30 days)",
+    "Support export/import for backup"
+  ],
+
+  "memory_schema": {
+    "agent": "string (fe-dev, be-dev, qa, etc.)",
+    "wave": "integer",
+    "created_at": "ISO 8601 timestamp",
+    "updated_at": "ISO 8601 timestamp",
+    "decisions": [
+      {
+        "id": "DEC-001",
+        "timestamp": "ISO 8601",
+        "decision": "string",
+        "reason": "string"
+      }
+    ],
+    "constraints": ["string"],
+    "patterns_used": [
+      {
+        "name": "string",
+        "file": "string",
+        "added_at": "ISO 8601"
+      }
+    ],
+    "context_hashes": [
+      {
+        "hash": "string",
+        "timestamp": "ISO 8601"
+      }
+    ]
+  },
+
+  "test_plan": {
+    "unit_tests": [
+      "saveDecision creates new memory file if not exists",
+      "saveDecision appends decision to existing file",
+      "saveDecision generates sequential decision IDs",
+      "loadMemory returns empty object for missing file",
+      "loadMemory returns all data from existing file",
+      "addConstraint adds unique constraint",
+      "addConstraint ignores duplicate constraints",
+      "addPattern adds pattern with timestamp",
+      "queryDecisions filters by agent",
+      "queryDecisions filters by wave",
+      "queryDecisions filters by date range",
+      "queryDecisions filters by keyword",
+      "pruneMemory removes old decisions",
+      "pruneMemory keeps recent decisions",
+      "getMemorySummary returns correct counts",
+      "clearMemory removes memory file",
+      "exportMemory returns JSON string",
+      "importMemory restores from JSON string"
+    ],
+    "integration_tests": [
+      "Full workflow: save, load, query, prune",
+      "Multiple agents with separate memory",
+      "Memory persists across function calls"
+    ],
+    "security_tests": [
+      "Memory file cannot be written outside project",
+      "Invalid JSON handled gracefully"
+    ]
+  },
+
+  "created_at": "2026-01-24T08:45:00Z",
+  "completed_at": "2026-01-24T08:45:00Z",
+  "tests_passed": 49,
+  "score": 100
+}
