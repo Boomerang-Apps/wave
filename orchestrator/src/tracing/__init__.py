@@ -5,6 +5,7 @@
 # Phase LangSmith-1: Configuration
 # Phase LangSmith-2: Core Tracing Infrastructure
 # Phase LangSmith-3: Node Instrumentation
+# Phase LangSmith-4: Metrics & Export
 
 from .config import (
     TracingConfig,
@@ -34,6 +35,14 @@ from .node_wrapper import (
     clear_trace_info,
 )
 
+from .metrics import (
+    RunMetrics,
+    MetricsCollector,
+    export_metrics_json,
+    get_run_summary,
+    attach_metrics_to_trace,
+)
+
 __all__ = [
     # Config (Phase 1)
     "TracingConfig",
@@ -55,4 +64,10 @@ __all__ = [
     "wrap_node",
     "get_last_trace_info",
     "clear_trace_info",
+    # Metrics & Export (Phase 4)
+    "RunMetrics",
+    "MetricsCollector",
+    "export_metrics_json",
+    "get_run_summary",
+    "attach_metrics_to_trace",
 ]
