@@ -48,6 +48,12 @@ class ParallelState(TypedDict):
     failed_domains: List[str]
     partial_failure: bool
 
+    # Phase 7: Dependency support
+    domain_dependencies: Dict[str, List[str]]  # {domain: [depends_on_domains]}
+    sorted_domains: List[str]                   # Topologically sorted
+    execution_layers: List[List[str]]           # [[layer0], [layer1], ...]
+    current_layer: int                          # Currently executing layer
+
 
 def create_parallel_state(
     parent_run_id: str,
@@ -77,6 +83,49 @@ def create_parallel_state(
         execution_completed=False,
         failed_domains=[],
         partial_failure=False,
+        # Phase 7: Dependency fields
+        domain_dependencies={},
+        sorted_domains=[],
+        execution_layers=[],
+        current_layer=0,
+    )
+
+
+def create_parallel_state_with_deps(
+    parent_run_id: str,
+    task: str,
+    domains: List[str],
+    dependencies: Dict[str, List[str]],
+) -> ParallelState:
+    """
+    Factory function to create parallel state with dependencies.
+
+    Args:
+        parent_run_id: ID of parent workflow run
+        task: Task description
+        domains: List of domains to process in parallel
+        dependencies: Dict mapping domain to list of domains it depends on
+
+    Returns:
+        Initialized ParallelState with dependency info
+    """
+    return ParallelState(
+        parent_run_id=parent_run_id,
+        task=task,
+        domains=domains,
+        domain_results=[],
+        aggregated_files=[],
+        all_tests_passed=False,
+        total_budget_used=0.0,
+        execution_started=False,
+        execution_completed=False,
+        failed_domains=[],
+        partial_failure=False,
+        # Phase 7: Dependency fields
+        domain_dependencies=dependencies,
+        sorted_domains=[],
+        execution_layers=[],
+        current_layer=0,
     )
 
 
@@ -84,4 +133,5 @@ __all__ = [
     "ParallelState",
     "DomainResult",
     "create_parallel_state",
+    "create_parallel_state_with_deps",
 ]
