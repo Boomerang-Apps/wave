@@ -64,7 +64,6 @@ class TestCoreDependencies:
 class TestOptionalDependencies:
     """Test optional dependencies (may skip if not needed yet)"""
 
-    @pytest.mark.skip(reason="pygit2 requires system libgit2 - install in Phase B")
     def test_pygit2_import(self):
         """pygit2 should be importable"""
         import pygit2
