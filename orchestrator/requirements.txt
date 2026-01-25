@@ -6,6 +6,9 @@ langgraph>=0.2.0
 langchain-anthropic>=0.3.0
 langchain-core>=0.3.0
 
+# Observability (LangSmith Tracing)
+langsmith>=0.1.0
+
 # State & Validation
 pydantic>=2.0.0
 pydantic-settings>=2.0.0

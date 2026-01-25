@@ -1,5 +1,11 @@
 # WAVE v2 Orchestrator
 
+from .tracing import (
+    TracingConfig,
+    get_tracing_config,
+    is_tracing_enabled,
+)
+
 from .multi_llm import (
     MultiLLMClient,
     MultiLLMOrchestrator,
@@ -27,6 +33,10 @@ from .graph import (
 )
 
 __all__ = [
+    # Tracing
+    "TracingConfig",
+    "get_tracing_config",
+    "is_tracing_enabled",
     # Multi-LLM
     "MultiLLMClient",
     "MultiLLMOrchestrator",
