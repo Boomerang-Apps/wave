@@ -12,9 +12,9 @@ import { useState, useCallback, useEffect } from 'react';
 import {
   FileCode, Layout, CheckCircle2, XCircle, AlertTriangle,
   Lock, Database, FileText, Building2, Users, BookOpen, Bot,
-  Rocket, Settings, File, ExternalLink, Play, Eye, Quote
+  Rocket, Settings, File, ExternalLink, Play, Eye, Quote, Palette
 } from 'lucide-react';
-import { KPICards, ActionBar, ResultSummary, ExpandableCard, TabContainer, SectionDivider } from './TabLayout';
+import { InfoBox, KPICards, ActionBar, ResultSummary, ExpandableCard, TabContainer, SectionDivider } from './TabLayout';
 import { cn } from '@/lib/utils';
 
 // ============================================
@@ -112,34 +112,35 @@ interface ProjectHeaderProps {
 
 function ProjectHeader({ name, tagline, vision, techStack }: ProjectHeaderProps) {
   return (
-    <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-8 mb-6 border border-slate-700/50">
-      {/* Project Name */}
-      <h1 className="text-4xl font-bold text-white mb-2">{name}</h1>
-
-      {/* Tagline */}
-      {tagline && (
-        <p className="text-lg text-slate-300 mb-4">{tagline}</p>
-      )}
+    <div className="bg-card border border-border rounded-xl p-6 mb-6">
+      {/* Project Name & Tagline */}
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground mb-1">{name}</h1>
+          {tagline && (
+            <p className="text-sm text-muted-foreground">{tagline}</p>
+          )}
+        </div>
+        {/* Tech Stack Badges */}
+        {techStack.length > 0 && (
+          <div className="flex flex-wrap gap-2 justify-end">
+            {techStack.map((tech, index) => (
+              <span
+                key={index}
+                className="px-2.5 py-1 bg-muted text-muted-foreground rounded-lg text-xs font-medium"
+              >
+                {tech}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Vision Statement */}
       {vision && (
-        <div className="flex items-start gap-3 bg-slate-800/50 rounded-xl p-4 mb-4">
-          <Quote className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" />
-          <p className="text-blue-200 italic text-sm leading-relaxed">"{vision}"</p>
-        </div>
-      )}
-
-      {/* Tech Stack Badges */}
-      {techStack.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {techStack.map((tech, index) => (
-            <span
-              key={index}
-              className="px-3 py-1 bg-slate-700/50 text-slate-300 rounded-full text-xs font-medium"
-            >
-              {tech}
-            </span>
-          ))}
+        <div className="flex items-start gap-3 bg-blue-500/10 rounded-lg p-4">
+          <Quote className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
+          <p className="text-blue-500 text-sm leading-relaxed">"{vision}"</p>
         </div>
       )}
     </div>
@@ -430,7 +431,14 @@ export function MockupDesignTab({
 
   return (
     <TabContainer>
-      {/* PROJECT HEADER */}
+      {/* 1. INFO BOX */}
+      <InfoBox
+        title="Gate 0: Design Validation"
+        description="Review project documentation and validate HTML mockups before development begins. Lock your design to ensure agents build exactly what you envisioned."
+        icon={<Palette className="h-4 w-4 text-blue-500" />}
+      />
+
+      {/* PROJECT INFO */}
       <ProjectHeader
         name={projectName}
         tagline={projectMetadata?.tagline || ''}
