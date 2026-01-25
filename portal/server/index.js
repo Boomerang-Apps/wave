@@ -13,6 +13,7 @@ import { AgentRateLimiter } from './utils/rate-limiter.js';
 import { securityMiddleware, generateOWASPReport } from './security-middleware.js';
 import { createValidator, validateSchema, VALIDATION_ERRORS } from './middleware/validation.js';
 import { createRateLimitEnforcer, RATE_LIMIT_ERRORS } from './middleware/rate-limit-enforcer.js';
+import { discoverProject } from './utils/project-discovery.js';
 import {
   budgetSchema,
   budgetTrackSchema,
@@ -6726,10 +6727,51 @@ async function notifySlackForAudit(auditEntry) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// PROJECT DISCOVERY ENDPOINT
+// Gate 0: Discover project metadata from folder structure
+// ═══════════════════════════════════════════════════════════════════════════════
+
+app.post('/api/discover-project', async (req, res) => {
+  const { projectPath } = req.body;
+
+  if (!projectPath || typeof projectPath !== 'string') {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath is required'
+    });
+  }
+
+  try {
+    // Check if path exists
+    if (!exists(projectPath)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Project path not found'
+      });
+    }
+
+    const metadata = await discoverProject(projectPath);
+
+    return res.json({
+      success: true,
+      data: metadata
+    });
+
+  } catch (err) {
+    console.error('[ProjectDiscovery] Error:', err.message);
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`\n🚀 WAVE Portal Analysis Server running on http://localhost:${PORT}`);
   console.log(`   POST /api/analyze - Analyze a project`);
   console.log(`   POST /api/sync-stories - Sync stories from JSON to database`);
+  console.log(`   POST /api/discover-project - Discover project metadata`);
   console.log(`   GET /api/health - Health check\n`);
 });

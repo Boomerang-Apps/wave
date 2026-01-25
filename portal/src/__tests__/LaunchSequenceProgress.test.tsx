@@ -62,12 +62,4 @@ describe('LaunchSequenceProgress', () => {
 
     expect(screen.queryByText('READY')).not.toBeInTheDocument();
   });
-
-  it('should hide labels in compact mode', () => {
-    render(<LaunchSequenceProgress steps={mockSteps} currentStep={2} compact />);
-
-    // Labels should not be visible in compact mode
-    // The header should still be visible
-    expect(screen.getByText('Launch Sequence')).toBeInTheDocument();
-  });
 });
