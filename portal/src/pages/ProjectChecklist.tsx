@@ -2933,7 +2933,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
       {/* Compact Header */}
       <div className="flex items-center justify-between py-4 mb-6 border-b border-border">
         <div>
-          <h1 className="text-lg font-semibold">WAVE Pre-Launch Checklist</h1>
+          <h1 className="text-lg font-semibold">{project?.name || 'Project'} - Automated Checklist</h1>
           <p className="text-sm text-muted-foreground">Aerospace-Grade Validation · {lastUpdate}</p>
         </div>
         <div className="flex items-center gap-3">
