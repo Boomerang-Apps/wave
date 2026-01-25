@@ -6800,6 +6800,161 @@ app.post('/api/validate-mockups', async (req, res) => {
   }
 });
 
+// POST /api/browse-folders - Browse directory structure for folder picker
+app.post('/api/browse-folders', async (req, res) => {
+  const { path: dirPath } = req.body;
+
+  // Default to user's home directory or common project locations
+  const os = await import('os');
+  const targetPath = dirPath || os.default.homedir();
+
+  try {
+    // Check if path exists
+    if (!exists(targetPath)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Path not found'
+      });
+    }
+
+    // Get directory stats
+    const stats = fs.statSync(targetPath);
+    if (!stats.isDirectory()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Path is not a directory'
+      });
+    }
+
+    // Read directory contents
+    const entries = fs.readdirSync(targetPath, { withFileTypes: true });
+
+    // Filter to only directories and sort
+    const folders = entries
+      .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
+      .map(entry => ({
+        name: entry.name,
+        path: path.join(targetPath, entry.name),
+        isDirectory: true
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    // Get parent directory
+    const parentPath = path.dirname(targetPath);
+    const hasParent = parentPath !== targetPath;
+
+    // Check for common project indicators
+    const hasPackageJson = exists(path.join(targetPath, 'package.json'));
+    const hasDesignMockups = exists(path.join(targetPath, 'design_mockups'));
+    const hasDocs = exists(path.join(targetPath, 'docs'));
+    const isProject = hasPackageJson || hasDesignMockups || hasDocs;
+
+    return res.json({
+      success: true,
+      data: {
+        currentPath: targetPath,
+        parentPath: hasParent ? parentPath : null,
+        folders,
+        isProject,
+        indicators: {
+          hasPackageJson,
+          hasDesignMockups,
+          hasDocs
+        }
+      }
+    });
+
+  } catch (err) {
+    console.error('[BrowseFolders] Error:', err.message);
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// POST /api/open-folder-picker - Open native macOS Finder folder picker dialog
+app.post('/api/open-folder-picker', async (req, res) => {
+  try {
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
+    const execAsync = promisify(exec);
+
+    // Use separate -e flags for each AppleScript line (avoids escaping issues)
+    const command = `osascript -e 'tell application "System Events" to activate' -e 'set selectedFolder to choose folder with prompt "Select your project folder"' -e 'return POSIX path of selectedFolder'`;
+
+    console.log('[FolderPicker] Opening native folder picker...');
+
+    const { stdout, stderr } = await execAsync(command, {
+      timeout: 120000 // 2 minute timeout for user to select
+    });
+
+    if (stderr) {
+      console.error('[FolderPicker] stderr:', stderr);
+    }
+
+    const selectedPath = stdout.trim().replace(/\/$/, ''); // Remove trailing slash
+    console.log('[FolderPicker] Selected:', selectedPath);
+
+    if (selectedPath) {
+      return res.json({
+        success: true,
+        path: selectedPath
+      });
+    } else {
+      return res.json({
+        success: false,
+        cancelled: true
+      });
+    }
+
+  } catch (err) {
+    // User cancelled or error occurred
+    console.error('[FolderPicker] Error:', err.message);
+
+    if (err.message?.includes('User canceled') || err.message?.includes('-128') || err.killed) {
+      return res.json({
+        success: false,
+        cancelled: true
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// GET /api/serve-mockup - Serve HTML mockup file for preview
+app.get('/api/serve-mockup', (req, res) => {
+  const { path: filePath } = req.query;
+
+  if (!filePath) {
+    return res.status(400).send('File path is required');
+  }
+
+  // Security: Only allow HTML files from design_mockups folders
+  if (!filePath.includes('design_mockups') || !filePath.match(/\.(html|htm)$/i)) {
+    return res.status(403).send('Access denied: Only HTML mockups are allowed');
+  }
+
+  // Check file exists
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).send('File not found');
+  }
+
+  // Read and serve the file
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    res.setHeader('Content-Type', 'text/html');
+    res.send(content);
+  } catch (err) {
+    console.error('[ServeMockup] Error:', err.message);
+    res.status(500).send('Error reading file');
+  }
+});
+
 // POST /api/update-project-path - Update project's root_path in database
 app.post('/api/update-project-path', async (req, res) => {
   const { projectId, rootPath } = req.body;
