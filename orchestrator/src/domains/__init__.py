@@ -5,6 +5,8 @@ Provides domain-specific sub-graphs for hierarchical multi-agent execution.
 Each domain (auth, payments, profile, etc.) has its own isolated workflow.
 
 Based on Grok's Hierarchical Supervisor Pattern from LANGGRAPH-ENHANCEMENT-PLAN.md
+
+Phase 8 Enhancement: Parallel Dev Agents (fe-dev/be-dev)
 """
 
 from .domain_graph import (
@@ -26,6 +28,23 @@ from .domain_router import (
     get_primary_domain,
     DOMAIN_PATTERNS,
 )
+# Phase 8: Parallel Dev Agents
+from .dev_agent_state import (
+    DevAgentState,
+    DevAgentResult,
+    DomainDevState,
+    create_dev_agent_state,
+    create_domain_dev_state,
+)
+from .dev_merger import (
+    merge_dev_results,
+    aggregate_dev_files,
+    aggregate_dev_tests,
+)
+from .parallel_dev_graph import (
+    create_parallel_dev_graph,
+    compile_parallel_dev_graph,
+)
 
 __all__ = [
     # State
@@ -45,4 +64,17 @@ __all__ = [
     "route_to_domain",
     "get_primary_domain",
     "DOMAIN_PATTERNS",
+    # Phase 8: Dev Agent State
+    "DevAgentState",
+    "DevAgentResult",
+    "DomainDevState",
+    "create_dev_agent_state",
+    "create_domain_dev_state",
+    # Phase 8: Dev Merger
+    "merge_dev_results",
+    "aggregate_dev_files",
+    "aggregate_dev_tests",
+    # Phase 8: Parallel Dev Graph
+    "create_parallel_dev_graph",
+    "compile_parallel_dev_graph",
 ]

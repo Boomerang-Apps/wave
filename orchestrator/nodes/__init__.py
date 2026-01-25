@@ -1,6 +1,8 @@
 """
 WAVE Orchestrator Agent Nodes
 Multi-agent system with CTO, PM, Dev, QA, Supervisor, and Safety Gate
+
+Phase 8 Enhancement: Parallel Dev Agents (fe-dev/be-dev)
 """
 
 from typing import Dict, Any
@@ -11,6 +13,8 @@ from .qa import qa_node, QA_SYSTEM_PROMPT
 from .supervisor import supervisor_node, SUPERVISOR_SYSTEM_PROMPT, route_to_agent
 from .safety_gate import safety_gate_node, check_safety_and_decide
 from tools.constitutional_scorer import evaluate_tool_call
+# Phase 8: Parallel Dev Agents
+from .dev_agents import fe_dev_node, be_dev_node, dev_agent_node
 
 # All agent roles in the system
 AGENT_ROLES = ("cto", "pm", "dev", "qa", "supervisor", "safety_gate")
@@ -89,4 +93,8 @@ __all__ = [
     "DEV_SYSTEM_PROMPT",
     "QA_SYSTEM_PROMPT",
     "SUPERVISOR_SYSTEM_PROMPT",
+    # Phase 8: Parallel Dev Agents
+    "fe_dev_node",
+    "be_dev_node",
+    "dev_agent_node",
 ]
