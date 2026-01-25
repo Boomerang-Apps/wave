@@ -6,6 +6,7 @@
 # Phase LangSmith-2: Core Tracing Infrastructure
 # Phase LangSmith-3: Node Instrumentation
 # Phase LangSmith-4: Metrics & Export
+# Phase LangSmith-5: Portal Integration
 
 from .config import (
     TracingConfig,
@@ -43,6 +44,13 @@ from .metrics import (
     attach_metrics_to_trace,
 )
 
+from .api import (
+    router as tracing_router,
+    store_run_metrics,
+    get_stored_metrics,
+    clear_stored_metrics,
+)
+
 __all__ = [
     # Config (Phase 1)
     "TracingConfig",
@@ -70,4 +78,9 @@ __all__ = [
     "export_metrics_json",
     "get_run_summary",
     "attach_metrics_to_trace",
+    # Portal Integration (Phase 5)
+    "tracing_router",
+    "store_run_metrics",
+    "get_stored_metrics",
+    "clear_stored_metrics",
 ]
