@@ -14,6 +14,7 @@ import { securityMiddleware, generateOWASPReport } from './security-middleware.j
 import { createValidator, validateSchema, VALIDATION_ERRORS } from './middleware/validation.js';
 import { createRateLimitEnforcer, RATE_LIMIT_ERRORS } from './middleware/rate-limit-enforcer.js';
 import { discoverProject } from './utils/project-discovery.js';
+import { validateMockups } from './utils/mockup-endpoint.js';
 import {
   budgetSchema,
   budgetTrackSchema,
@@ -6767,11 +6768,44 @@ app.post('/api/discover-project', async (req, res) => {
   }
 });
 
+// POST /api/validate-mockups - Validate HTML mockups for a project
+app.post('/api/validate-mockups', async (req, res) => {
+  const { projectPath, projectId } = req.body;
+
+  if (!projectPath || !projectId) {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath and projectId are required'
+    });
+  }
+
+  try {
+    const result = await validateMockups(projectPath, projectId);
+
+    if (result.error) {
+      return res.status(result.status).json({
+        success: false,
+        error: result.error
+      });
+    }
+
+    return res.status(result.status).json(result.data);
+
+  } catch (err) {
+    console.error('[ValidateMockups] Error:', err.message);
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`\n🚀 WAVE Portal Analysis Server running on http://localhost:${PORT}`);
   console.log(`   POST /api/analyze - Analyze a project`);
   console.log(`   POST /api/sync-stories - Sync stories from JSON to database`);
   console.log(`   POST /api/discover-project - Discover project metadata`);
+  console.log(`   POST /api/validate-mockups - Validate HTML mockups`);
   console.log(`   GET /api/health - Health check\n`);
 });
