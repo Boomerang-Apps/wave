@@ -1,11 +1,17 @@
 """
 Supervisor Node
 Orchestration decisions and routing
+
+Enhanced with Hierarchical Supervisor Pattern (Phase 1):
+- Analyzes tasks to detect relevant domains
+- Delegates to domain sub-graphs when appropriate
+- Coordinates multi-domain execution
 """
 
 from datetime import datetime, timezone
-from typing import Dict, Any, Literal
+from typing import Dict, Any, Literal, List
 from state import WAVEState, AgentAction
+from src.domains.domain_router import analyze_story_domains
 
 
 SUPERVISOR_SYSTEM_PROMPT = """You are the Supervisor agent in a multi-agent software development system.
@@ -91,21 +97,28 @@ def supervisor_node(state: WAVEState) -> Dict[str, Any]:
     """
     Supervisor decides next action based on state.
 
-    This is a skeleton implementation that will be enhanced with
-    LLM integration in Phase B.
+    Enhanced with Hierarchical Supervisor Pattern (Phase 1):
+    - Analyzes task to detect relevant domains
+    - Includes domain information in routing decisions
+    - Sets domain field for downstream processing
 
     Args:
         state: Current WAVE state
 
     Returns:
-        Dict with state updates including routing decision
+        Dict with state updates including routing decision and domain analysis
     """
     timestamp = datetime.now(timezone.utc).isoformat()
+
+    # Analyze task to detect relevant domains (Phase 1: Hierarchical Supervisor)
+    task = state.get("task", "")
+    detected_domains: List[str] = analyze_story_domains(task)
+    primary_domain = detected_domains[0] if detected_domains else ""
 
     # Determine next agent
     next_agent = route_to_agent(state)
 
-    # Create action record
+    # Create action record with domain analysis
     action = AgentAction(
         agent="supervisor",
         action_type="route",
@@ -113,12 +126,15 @@ def supervisor_node(state: WAVEState) -> Dict[str, Any]:
         details={
             "next_agent": next_agent,
             "current_agent": state.get("current_agent"),
-            "status": "skeleton_implementation"
+            "domains_detected": detected_domains,
+            "primary_domain": primary_domain,
+            "status": "hierarchical_supervisor"
         }
     )
 
-    # Return state updates
+    # Return state updates including domain
     return {
         "current_agent": "supervisor",
+        "domain": primary_domain,
         "actions": state.get("actions", []) + [action]
     }

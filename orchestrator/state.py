@@ -74,6 +74,9 @@ class WAVEState(TypedDict):
     # Current agent in execution
     current_agent: Optional[str]
 
+    # Domain tracking (Phase 1: Hierarchical Supervisor)
+    domain: str
+
     # Nested state objects
     git: GitState
     budget: BudgetState
@@ -85,6 +88,15 @@ class WAVEState(TypedDict):
 
     # Run status
     status: RunStatus
+
+    # Retry tracking (Phase 1: Hierarchical Supervisor)
+    retry_count: int
+
+    # Human-in-the-loop flag (Phase 1: Hierarchical Supervisor)
+    needs_human: bool
+
+    # LLM-generated summary (Phase 1: Hierarchical Supervisor)
+    rlm_summary: str
 
 
 def create_initial_state(
@@ -114,6 +126,7 @@ def create_initial_state(
         task=task,
         messages=[],
         current_agent=None,
+        domain="",
         git=GitState(
             repo_path=repo_path,
             branch=branch,
@@ -133,5 +146,8 @@ def create_initial_state(
         ),
         gates=[],
         actions=[],
-        status="pending"
+        status="pending",
+        retry_count=0,
+        needs_human=False,
+        rlm_summary=""
     )
