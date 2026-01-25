@@ -96,9 +96,9 @@ class TestAgentRoles:
         assert isinstance(AGENT_ROLES, (list, tuple))
 
     def test_all_roles_present(self):
-        """All five roles should be defined"""
+        """All six roles should be defined (including safety_gate)"""
         from nodes import AGENT_ROLES
-        expected_roles = {"cto", "pm", "dev", "qa", "supervisor"}
+        expected_roles = {"cto", "pm", "dev", "qa", "supervisor", "safety_gate"}
         assert set(AGENT_ROLES) == expected_roles
 
 

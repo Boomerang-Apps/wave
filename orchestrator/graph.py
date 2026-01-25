@@ -1,9 +1,10 @@
 """
 WAVE LangGraph Definition
-Multi-agent graph with checkpointing
+Multi-agent graph with checkpointing and safety gate
 
-Nodes: Supervisor -> PM -> CTO -> Dev -> QA -> END
+Nodes: Supervisor -> PM -> CTO -> Dev -> Safety Gate -> QA -> END
 Conditional routing based on supervisor decisions
+Safety gate validates constitutional AI compliance
 """
 
 from langgraph.graph import StateGraph, END
@@ -15,6 +16,7 @@ from nodes.cto import cto_node
 from nodes.pm import pm_node
 from nodes.dev import dev_node
 from nodes.qa import qa_node
+from nodes.safety_gate import safety_gate_node
 
 
 def create_wave_graph() -> StateGraph:
@@ -26,8 +28,9 @@ def create_wave_graph() -> StateGraph:
     2. PM creates/updates plan
     3. CTO reviews architecture
     4. Dev implements code
-    5. QA validates implementation
-    6. Loop back to supervisor or END
+    5. Safety Gate validates constitutional compliance
+    6. QA validates implementation
+    7. Loop back to supervisor or END
 
     Returns:
         StateGraph configured with all nodes and edges
@@ -40,6 +43,7 @@ def create_wave_graph() -> StateGraph:
     graph.add_node("cto", cto_node)
     graph.add_node("pm", pm_node)
     graph.add_node("dev", dev_node)
+    graph.add_node("safety_gate", safety_gate_node)
     graph.add_node("qa", qa_node)
 
     # Set entry point - supervisor decides first action
@@ -58,10 +62,17 @@ def create_wave_graph() -> StateGraph:
         }
     )
 
-    # Each agent routes back to supervisor for next decision
+    # PM and CTO route back to supervisor
     graph.add_edge("pm", "supervisor")
     graph.add_edge("cto", "supervisor")
-    graph.add_edge("dev", "supervisor")
+
+    # Dev routes through safety gate
+    graph.add_edge("dev", "safety_gate")
+
+    # Safety gate routes to QA (or could route to END if blocked)
+    graph.add_edge("safety_gate", "qa")
+
+    # QA routes back to supervisor
     graph.add_edge("qa", "supervisor")
 
     return graph
