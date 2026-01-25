@@ -14,6 +14,8 @@ Classes:
 from typing import TypedDict, List, Optional, Any, Literal
 from langchain_core.messages import BaseMessage
 
+from src.retry.retry_state import RetryState, create_retry_state
+
 
 class GitState(TypedDict):
     """Git repository state tracking"""
@@ -98,6 +100,13 @@ class WAVEState(TypedDict):
     # LLM-generated summary (Phase 1: Hierarchical Supervisor)
     rlm_summary: str
 
+    # Retry state (Phase 3: Dev-Fix Loop)
+    retry: RetryState
+
+    # QA result tracking (Phase 3: Dev-Fix Loop)
+    qa_passed: bool
+    qa_feedback: str
+
 
 def create_initial_state(
     run_id: str,
@@ -149,5 +158,8 @@ def create_initial_state(
         status="pending",
         retry_count=0,
         needs_human=False,
-        rlm_summary=""
+        rlm_summary="",
+        retry=create_retry_state(),
+        qa_passed=False,
+        qa_feedback=""
     )
