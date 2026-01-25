@@ -7,6 +7,97 @@
 
 ---
 
+## MANDATORY: Gate 0 Process for Every Phase
+
+**CRITICAL:** Every enhancement phase MUST follow the Gate 0 validation process. No code may be written until research, documentation, and TDD tests are complete.
+
+### Gate 0 Checklist (Required for Each Phase)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     GATE 0 VALIDATION PROCESS                           │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  STEP 1: RESEARCH (No code written)                                     │
+│  ├── [ ] Read Grok's recommendations for this phase                     │
+│  ├── [ ] Analyze current implementation gaps                            │
+│  ├── [ ] Identify all components needed                                 │
+│  └── [ ] List all dependencies and interactions                         │
+│                                                                          │
+│  STEP 2: DOCUMENTATION (No code written)                                │
+│  ├── [ ] Create docs/PHASE{N}-GATE0-VALIDATION.md                       │
+│  ├── [ ] Document requirements from Grok's plan                         │
+│  ├── [ ] Document gap analysis (current vs required)                    │
+│  ├── [ ] List all test categories with descriptions                     │
+│  └── [ ] Define success criteria                                        │
+│                                                                          │
+│  STEP 3: TDD TESTS FIRST (No implementation yet)                        │
+│  ├── [ ] Create tests/test_c{N}_{phase_name}.py                         │
+│  ├── [ ] Write ALL tests before any implementation                      │
+│  ├── [ ] Run tests - ALL must FAIL (proves TDD)                         │
+│  └── [ ] Commit test file separately if needed                          │
+│                                                                          │
+│  STEP 4: IMPLEMENTATION (Only after Steps 1-3)                          │
+│  ├── [ ] Implement minimum code to pass tests                           │
+│  ├── [ ] Run phase tests - all must pass                                │
+│  ├── [ ] Run FULL test suite - no regressions                           │
+│  └── [ ] Update Gate 0 doc with completion status                       │
+│                                                                          │
+│  STEP 5: COMMIT & PUSH                                                  │
+│  ├── [ ] Commit with descriptive message                                │
+│  ├── [ ] Include "Co-Authored-By: Claude" footer                        │
+│  └── [ ] Push to remote                                                 │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Gate 0 Document Template
+
+Each phase requires a `docs/PHASE{N}-GATE0-VALIDATION.md` with:
+
+```markdown
+# Phase {N}: {Name} - Gate 0 Validation
+
+**Date:** YYYY-MM-DD
+**Phase:** {N} of 11
+**Pattern:** {Pattern Name}
+
+---
+
+## Requirements from Grok's Recommendations
+{What Grok said to implement}
+
+## Gap Analysis
+{Current state vs required state}
+
+## Components to Implement
+{List of files/functions/classes}
+
+## Test Categories (TDD)
+{Numbered list of test categories with test counts}
+
+## Success Criteria
+{Checkboxes for completion}
+
+## Implementation Order
+{Sequence of implementation steps}
+```
+
+### TDD Enforcement
+
+```
+RULE: Tests MUST be written BEFORE implementation code.
+
+Verification Process:
+1. Create test file with all tests
+2. Run pytest - expect 100% FAILURE
+3. Screenshot/log the failures (proof of TDD)
+4. ONLY THEN write implementation
+5. Run pytest - expect 100% PASS
+```
+
+---
+
 ## Executive Summary
 
 This plan extends the WAVE orchestrator to implement **true LangGraph native parallelism** using the `.map()` pattern, replacing our current `asyncio.gather` approach. This provides:
@@ -70,6 +161,17 @@ Human Review (escalate)
 ### Phase 7: Native LangGraph `.map()` Pattern
 
 **Objective:** Replace `asyncio.gather` with LangGraph's native `.map()` for fan-out.
+
+#### Gate 0 Requirements for Phase 7
+
+| Step | Deliverable | Status |
+|------|-------------|--------|
+| Research | Read LangGraph `.map()` docs, analyze current parallel impl | ⬜ |
+| Documentation | Create `docs/PHASE7-GATE0-VALIDATION.md` | ⬜ |
+| TDD Tests | Create `tests/test_c7_native_parallel.py` (24 tests) | ⬜ |
+| Verify TDD | Run tests, confirm 24/24 FAIL | ⬜ |
+| Implement | Write code to pass tests | ⬜ |
+| Validate | 24/24 pass, full suite passes | ⬜ |
 
 #### 7.1 Update Parallel State
 
@@ -166,6 +268,17 @@ def create_native_parallel_graph() -> StateGraph:
 
 **Objective:** Run frontend and backend developers in parallel within each domain.
 
+#### Gate 0 Requirements for Phase 8
+
+| Step | Deliverable | Status |
+|------|-------------|--------|
+| Research | Analyze domain sub-graph, plan fe/be parallel execution | ⬜ |
+| Documentation | Create `docs/PHASE8-GATE0-VALIDATION.md` | ⬜ |
+| TDD Tests | Create `tests/test_c8_parallel_dev.py` (19 tests) | ⬜ |
+| Verify TDD | Run tests, confirm 19/19 FAIL | ⬜ |
+| Implement | Write code to pass tests | ⬜ |
+| Validate | 19/19 pass, full suite passes | ⬜ |
+
 #### 8.1 Enhanced Domain Sub-graph
 
 ```python
@@ -256,6 +369,17 @@ def dev_agent_node(state: DevAgentState) -> Dict[str, Any]:
 ### Phase 9: Per-Domain Worktrees
 
 **Objective:** Integrate GitTools to create isolated worktrees per domain.
+
+#### Gate 0 Requirements for Phase 9
+
+| Step | Deliverable | Status |
+|------|-------------|--------|
+| Research | Analyze GitTools, plan per-domain worktree isolation | ⬜ |
+| Documentation | Create `docs/PHASE9-GATE0-VALIDATION.md` | ⬜ |
+| TDD Tests | Create `tests/test_c9_domain_worktrees.py` (18 tests) | ⬜ |
+| Verify TDD | Run tests, confirm 18/18 FAIL | ⬜ |
+| Implement | Write code to pass tests | ⬜ |
+| Validate | 18/18 pass, full suite passes | ⬜ |
 
 #### 9.1 Domain Worktree Manager
 
@@ -349,6 +473,17 @@ def domain_dev_node_with_worktree(state: DomainState) -> Dict[str, Any]:
 
 **Objective:** Implement supervisor consensus for final cross-domain merge.
 
+#### Gate 0 Requirements for Phase 10
+
+| Step | Deliverable | Status |
+|------|-------------|--------|
+| Research | Analyze consensus patterns, conflict detection needs | ⬜ |
+| Documentation | Create `docs/PHASE10-GATE0-VALIDATION.md` | ⬜ |
+| TDD Tests | Create `tests/test_c10_cross_domain.py` (20 tests) | ⬜ |
+| Verify TDD | Run tests, confirm 20/20 FAIL | ⬜ |
+| Implement | Write code to pass tests | ⬜ |
+| Validate | 20/20 pass, full suite passes | ⬜ |
+
 #### 10.1 Cross-Domain Consensus
 
 ```python
@@ -437,6 +572,17 @@ def check_cross_domain_conflicts(domain_results: Dict) -> ConflictResult:
 ### Phase 11: Portal Integration
 
 **Objective:** Connect with Portal's dependency-graph.js and real-time updates.
+
+#### Gate 0 Requirements for Phase 11
+
+| Step | Deliverable | Status |
+|------|-------------|--------|
+| Research | Analyze Portal API contract, Redis pub/sub patterns | ⬜ |
+| Documentation | Create `docs/PHASE11-GATE0-VALIDATION.md` | ⬜ |
+| TDD Tests | Create `tests/test_c11_portal_integration.py` (18 tests) | ⬜ |
+| Verify TDD | Run tests, confirm 18/18 FAIL | ⬜ |
+| Implement | Write code to pass tests | ⬜ |
+| Validate | 18/18 pass, full suite passes | ⬜ |
 
 #### 11.1 API Endpoint Updates
 
