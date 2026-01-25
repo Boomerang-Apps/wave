@@ -6800,6 +6800,62 @@ app.post('/api/validate-mockups', async (req, res) => {
   }
 });
 
+// POST /api/update-project-path - Update project's root_path in database
+app.post('/api/update-project-path', async (req, res) => {
+  const { projectId, rootPath } = req.body;
+
+  if (!projectId || !rootPath) {
+    return res.status(400).json({
+      success: false,
+      error: 'projectId and rootPath are required'
+    });
+  }
+
+  // Get Supabase credentials
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    return res.status(500).json({
+      success: false,
+      error: 'Supabase not configured'
+    });
+  }
+
+  try {
+    // Update project root_path in database
+    const response = await fetch(`${supabaseUrl}/rest/v1/wave_projects?id=eq.${projectId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({ root_path: rootPath })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to update project: ${error}`);
+    }
+
+    const updated = await response.json();
+
+    return res.json({
+      success: true,
+      data: updated[0] || { root_path: rootPath }
+    });
+
+  } catch (err) {
+    console.error('[UpdateProjectPath] Error:', err.message);
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`\n🚀 WAVE Portal Analysis Server running on http://localhost:${PORT}`);
@@ -6807,5 +6863,6 @@ app.listen(PORT, () => {
   console.log(`   POST /api/sync-stories - Sync stories from JSON to database`);
   console.log(`   POST /api/discover-project - Discover project metadata`);
   console.log(`   POST /api/validate-mockups - Validate HTML mockups`);
+  console.log(`   POST /api/update-project-path - Update project folder path`);
   console.log(`   GET /api/health - Health check\n`);
 });

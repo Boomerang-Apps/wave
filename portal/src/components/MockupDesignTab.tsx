@@ -118,10 +118,49 @@ const getDocColor = (type: string) => {
 interface FolderStatusProps {
   paths?: ProjectMetadata['paths'];
   connection?: ProjectMetadata['connection'];
+  currentPath: string;
+  projectId: string;
+  onPathUpdate: (newPath: string) => void;
 }
 
-function FolderStatus({ paths, connection }: FolderStatusProps) {
+function FolderStatus({ paths, connection, currentPath, projectId, onPathUpdate }: FolderStatusProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [newPath, setNewPath] = useState(currentPath || '');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+
   const isConnected = connection?.status === 'connected';
+  const needsSetup = !currentPath || currentPath === '';
+
+  const handleConnect = async () => {
+    if (!newPath.trim()) {
+      setUpdateError('Please enter a valid path');
+      return;
+    }
+
+    setIsUpdating(true);
+    setUpdateError(null);
+
+    try {
+      const response = await fetch('/api/update-project-path', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, rootPath: newPath.trim() })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to update path');
+      }
+
+      onPathUpdate(newPath.trim());
+      setIsEditing(false);
+    } catch (err) {
+      setUpdateError(err instanceof Error ? err.message : 'Failed to update path');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   return (
     <div className={cn(
@@ -131,82 +170,140 @@ function FolderStatus({ paths, connection }: FolderStatusProps) {
         : "bg-red-500/10 border-red-500/20"
     )}>
       {/* Connection Status Header */}
-      <div className="flex items-center gap-2 mb-3">
-        {isConnected ? (
-          <>
-            <PlugZap className="h-4 w-4 text-green-500" />
-            <span className="text-sm font-medium text-green-500">Connected to Project</span>
-          </>
-        ) : (
-          <>
-            <Plug className="h-4 w-4 text-red-500" />
-            <span className="text-sm font-medium text-red-500">Disconnected - Folder Not Found</span>
-          </>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          {isConnected ? (
+            <>
+              <PlugZap className="h-4 w-4 text-green-500" />
+              <span className="text-sm font-medium text-green-500">Connected to Project</span>
+            </>
+          ) : (
+            <>
+              <Plug className="h-4 w-4 text-red-500" />
+              <span className="text-sm font-medium text-red-500">
+                {needsSetup ? 'Not Connected - Set Project Folder' : 'Disconnected - Folder Not Found'}
+              </span>
+            </>
+          )}
+        </div>
+        {!isEditing && !needsSetup && (
+          <button
+            onClick={() => { setIsEditing(true); setNewPath(currentPath); }}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Change Path
+          </button>
         )}
       </div>
 
-      {/* Folder Paths */}
-      <div className="space-y-2">
-        {/* Root Folder */}
-        <div className="flex items-center gap-2">
-          {connection?.rootExists ? (
-            <FolderOpen className="h-4 w-4 text-green-500" />
-          ) : (
-            <FolderX className="h-4 w-4 text-red-500" />
+      {/* Path Input (show when editing or needs setup) */}
+      {(isEditing || needsSetup) && (
+        <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+          <label className="text-xs font-medium text-muted-foreground block mb-2">
+            Project Root Folder Path
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newPath}
+              onChange={(e) => setNewPath(e.target.value)}
+              placeholder="/path/to/your/project"
+              className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={handleConnect}
+              disabled={isUpdating || !newPath.trim()}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isUpdating ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+              ) : (
+                <FolderOpen className="h-4 w-4" />
+              )}
+              Connect
+            </button>
+            {isEditing && !needsSetup && (
+              <button
+                onClick={() => { setIsEditing(false); setUpdateError(null); }}
+                className="px-3 py-2 bg-muted text-muted-foreground rounded-lg text-sm hover:bg-muted/80"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+          {updateError && (
+            <p className="text-xs text-red-500 mt-2">{updateError}</p>
           )}
-          <span className="text-xs text-muted-foreground">Root:</span>
-          <code className="text-xs bg-muted px-2 py-0.5 rounded font-mono flex-1 truncate">
-            {paths?.root || 'Not set'}
-          </code>
-          <span className={cn(
-            "text-xs px-2 py-0.5 rounded",
-            connection?.rootExists ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
-          )}>
-            {connection?.rootExists ? 'Found' : 'Missing'}
-          </span>
+          <p className="text-xs text-muted-foreground mt-2">
+            Enter the full path to your project folder (e.g., /Users/you/Projects/footprint)
+          </p>
         </div>
+      )}
 
-        {/* Mockups Folder */}
-        <div className="flex items-center gap-2">
-          {connection?.mockupsFolderExists ? (
-            <FolderOpen className="h-4 w-4 text-green-500" />
-          ) : (
-            <FolderX className="h-4 w-4 text-amber-500" />
-          )}
-          <span className="text-xs text-muted-foreground">Mockups:</span>
-          <code className="text-xs bg-muted px-2 py-0.5 rounded font-mono flex-1 truncate">
-            {paths?.mockups || 'design_mockups/'}
-          </code>
-          <span className={cn(
-            "text-xs px-2 py-0.5 rounded",
-            connection?.mockupsFolderExists ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"
-          )}>
-            {connection?.mockupsFolderExists ? 'Found' : 'Not Found'}
-          </span>
+      {/* Folder Paths (only show when not in setup mode) */}
+      {!needsSetup && (
+        <div className="space-y-2">
+          {/* Root Folder */}
+          <div className="flex items-center gap-2">
+            {connection?.rootExists ? (
+              <FolderOpen className="h-4 w-4 text-green-500" />
+            ) : (
+              <FolderX className="h-4 w-4 text-red-500" />
+            )}
+            <span className="text-xs text-muted-foreground">Root:</span>
+            <code className="text-xs bg-muted px-2 py-0.5 rounded font-mono flex-1 truncate">
+              {paths?.root || currentPath || 'Not set'}
+            </code>
+            <span className={cn(
+              "text-xs px-2 py-0.5 rounded",
+              connection?.rootExists ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
+            )}>
+              {connection?.rootExists ? 'Found' : 'Missing'}
+            </span>
+          </div>
+
+          {/* Mockups Folder */}
+          <div className="flex items-center gap-2">
+            {connection?.mockupsFolderExists ? (
+              <FolderOpen className="h-4 w-4 text-green-500" />
+            ) : (
+              <FolderX className="h-4 w-4 text-amber-500" />
+            )}
+            <span className="text-xs text-muted-foreground">Mockups:</span>
+            <code className="text-xs bg-muted px-2 py-0.5 rounded font-mono flex-1 truncate">
+              {paths?.mockups || `${currentPath}/design_mockups`}
+            </code>
+            <span className={cn(
+              "text-xs px-2 py-0.5 rounded",
+              connection?.mockupsFolderExists ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"
+            )}>
+              {connection?.mockupsFolderExists ? 'Found' : 'Not Found'}
+            </span>
+          </div>
+
+          {/* Docs Folder */}
+          <div className="flex items-center gap-2">
+            {connection?.docsFolderExists ? (
+              <FolderOpen className="h-4 w-4 text-green-500" />
+            ) : (
+              <FolderX className="h-4 w-4 text-amber-500" />
+            )}
+            <span className="text-xs text-muted-foreground">Docs:</span>
+            <code className="text-xs bg-muted px-2 py-0.5 rounded font-mono flex-1 truncate">
+              {paths?.docs || `${currentPath}/docs`}
+            </code>
+            <span className={cn(
+              "text-xs px-2 py-0.5 rounded",
+              connection?.docsFolderExists ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"
+            )}>
+              {connection?.docsFolderExists ? 'Found' : 'Not Found'}
+            </span>
+          </div>
         </div>
+      )}
 
-        {/* Docs Folder */}
-        <div className="flex items-center gap-2">
-          {connection?.docsFolderExists ? (
-            <FolderOpen className="h-4 w-4 text-green-500" />
-          ) : (
-            <FolderX className="h-4 w-4 text-amber-500" />
-          )}
-          <span className="text-xs text-muted-foreground">Docs:</span>
-          <code className="text-xs bg-muted px-2 py-0.5 rounded font-mono flex-1 truncate">
-            {paths?.docs || 'docs/'}
-          </code>
-          <span className={cn(
-            "text-xs px-2 py-0.5 rounded",
-            connection?.docsFolderExists ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"
-          )}>
-            {connection?.docsFolderExists ? 'Found' : 'Not Found'}
-          </span>
-        </div>
-      </div>
-
-      {/* Warning for disconnected */}
-      {!isConnected && (
+      {/* Warning for disconnected (only when path is set but not found) */}
+      {!isConnected && !needsSetup && !isEditing && (
         <div className="mt-3 p-3 bg-red-500/10 rounded-lg">
           <div className="flex items-start gap-2">
             <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
@@ -453,15 +550,29 @@ export function MockupDesignTab({
   const [projectMetadata, setProjectMetadata] = useState<ProjectMetadata | null>(null);
   const [selectedMockup, setSelectedMockup] = useState<MockupScreen | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [currentPath, setCurrentPath] = useState(projectPath);
 
-  // Discover project metadata on mount
+  // Handler for path updates
+  const handlePathUpdate = useCallback((newPath: string) => {
+    setCurrentPath(newPath);
+    setIsDiscovering(true);
+    // Re-trigger discovery with new path
+    window.location.reload(); // Simple reload to refresh with new path
+  }, []);
+
+  // Discover project metadata on mount or when path changes
   useEffect(() => {
     async function discoverProject() {
+      if (!currentPath) {
+        setIsDiscovering(false);
+        return;
+      }
+
       try {
         const response = await fetch('/api/discover-project', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ projectPath })
+          body: JSON.stringify({ projectPath: currentPath })
         });
 
         if (response.ok) {
@@ -562,6 +673,9 @@ export function MockupDesignTab({
       <FolderStatus
         paths={projectMetadata?.paths}
         connection={projectMetadata?.connection}
+        currentPath={currentPath}
+        projectId={projectId}
+        onPathUpdate={handlePathUpdate}
       />
 
       {/* PROJECT INFO */}
