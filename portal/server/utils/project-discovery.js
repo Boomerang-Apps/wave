@@ -30,6 +30,9 @@ import path from 'path';
  * @property {string} path - Full path to file
  * @property {string} type - Type: 'prd' | 'architecture' | 'user-stories' | 'readme' | 'other'
  * @property {string} icon - Icon name for UI
+ * @property {string} modifiedAt - ISO timestamp of last modification
+ * @property {string} version - Version string extracted from filename or default
+ * @property {number} size - File size in bytes
  */
 
 /**
@@ -38,6 +41,9 @@ import path from 'path';
  * @property {string} filename - File name
  * @property {string} path - Full path to file
  * @property {number} order - Sort order (from numeric prefix)
+ * @property {string} modifiedAt - ISO timestamp of last modification
+ * @property {string} version - Version string extracted from filename or default
+ * @property {number} size - File size in bytes
  */
 
 // Common documentation file patterns
@@ -354,6 +360,9 @@ async function discoverDocumentation(projectPath) {
         // Determine doc type
         const docType = categorizeDocument(file);
 
+        // Extract version from filename (e.g., "PRD-v2.md" -> "v2")
+        const version = extractVersion(file);
+
         docs.push({
           title: formatDocTitle(file),
           filename: file,
@@ -361,6 +370,9 @@ async function discoverDocumentation(projectPath) {
           relativePath: prefix + file,
           type: docType,
           icon: DOC_ICONS[docType] || DOC_ICONS.other,
+          modifiedAt: stat.mtime.toISOString(),
+          version,
+          size: stat.size,
         });
       }
     } catch {}
@@ -402,6 +414,19 @@ function formatDocTitle(filename) {
 }
 
 /**
+ * Extract version from filename
+ * Examples: "PRD-v2.md" -> "v2", "Architecture_V3.md" -> "v3", "README.md" -> "v1"
+ */
+function extractVersion(filename) {
+  // Try to match version patterns: v1, V2, version-3, etc.
+  const versionMatch = filename.match(/[_-]?v(?:ersion)?[_-]?(\d+)/i);
+  if (versionMatch) {
+    return `v${versionMatch[1]}`;
+  }
+  return 'v1';
+}
+
+/**
  * Discover mockup files in design_mockups folder
  */
 async function discoverMockups(projectPath) {
@@ -428,11 +453,17 @@ async function discoverMockups(projectPath) {
       // Extract screen name
       const name = formatMockupName(file);
 
+      // Extract version from filename
+      const version = extractVersion(file);
+
       mockups.push({
         name,
         filename: file,
         path: filePath,
         order,
+        modifiedAt: stat.mtime.toISOString(),
+        version,
+        size: stat.size,
       });
     }
 

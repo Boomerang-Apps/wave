@@ -14,9 +14,11 @@ import {
   FolderOpen, FileText, Layout, CheckCircle2, AlertTriangle,
   Building2, Users, BookOpen, ExternalLink, Play, RefreshCw,
   Loader2, Sparkles, Folder, ChevronRight, Home, X, ArrowLeft,
-  Palette, Target
+  Palette, Target, LayoutGrid, List
 } from 'lucide-react';
 import { InfoBox, KPICards, ActionBar, ExpandableCard, TabContainer } from './TabLayout';
+import { BestPracticesSection } from './BestPracticesSection';
+import { FileListView } from './FileListView';
 import { cn } from '@/lib/utils';
 
 // ============================================
@@ -256,6 +258,35 @@ interface ProjectData {
   };
 }
 
+interface StructureValidation {
+  deviations: Array<{
+    type: string;
+    path: string;
+    severity: 'error' | 'warning';
+    message: string;
+    suggestion: string;
+    suggestedLocation?: string;
+  }>;
+  complianceScore: number;
+  reorganizationPlan: {
+    actions: Array<{
+      action: 'create' | 'move';
+      folder?: string;
+      file?: string;
+      destination?: string;
+      priority: string;
+    }>;
+    isOrganized: boolean;
+    estimatedMinutes: number;
+    duplicates: {
+      prd: string[];
+      architecture: string[];
+      hasDuplicates: boolean;
+      suggestion?: string;
+    };
+  };
+}
+
 export interface MockupDesignTabProps {
   projectPath: string;
   projectId: string;
@@ -464,15 +495,18 @@ function ConnectedState({
   projectPath,
   onRefresh,
   onChangePath,
-  isRefreshing
+  isRefreshing,
+  structureValidation
 }: {
   project: ProjectData;
   projectPath: string;
   onRefresh: () => void;
   onChangePath: () => void;
   isRefreshing: boolean;
+  structureValidation: StructureValidation | null;
 }) {
   const [previewMockup, setPreviewMockup] = useState<MockupFile | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
   const handleOpenDoc = (doc: DocumentFile) => {
     window.open(`vscode://file${doc.path}`, '_blank');
@@ -574,6 +608,46 @@ function ConnectedState({
         </div>
       )}
 
+      {/* Best Practices Section */}
+      {structureValidation && (
+        <div className="mb-6">
+          <BestPracticesSection
+            deviations={structureValidation.deviations}
+            reorganizationPlan={structureValidation.reorganizationPlan}
+            complianceScore={structureValidation.complianceScore}
+          />
+        </div>
+      )}
+
+      {/* View Toggle */}
+      <div className="flex items-center justify-end gap-1 mb-4">
+        <span className="text-xs text-muted-foreground mr-2">View:</span>
+        <button
+          onClick={() => setViewMode('list')}
+          className={cn(
+            "p-2 rounded-lg transition-colors",
+            viewMode === 'list'
+              ? "bg-blue-500/10 text-blue-500"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          )}
+          aria-label="List view"
+        >
+          <List className="h-4 w-4" />
+        </button>
+        <button
+          onClick={() => setViewMode('grid')}
+          className={cn(
+            "p-2 rounded-lg transition-colors",
+            viewMode === 'grid'
+              ? "bg-blue-500/10 text-blue-500"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          )}
+          aria-label="Grid view"
+        >
+          <LayoutGrid className="h-4 w-4" />
+        </button>
+      </div>
+
       {/* 4. EXPANDABLE CARDS */}
 
       {/* Documentation */}
@@ -586,21 +660,38 @@ function ConnectedState({
         badge={`${project.documentation.length} files`}
       >
         {project.documentation.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-            {project.documentation.map((doc, i) => (
-              <button
-                key={i}
-                onClick={() => handleOpenDoc(doc)}
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors text-left group"
-              >
-                <span className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", getDocColor(doc.type))}>
-                  {getDocIcon(doc.type)}
-                </span>
-                <span className="flex-1 text-sm font-medium truncate">{doc.title}</span>
-                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-              </button>
-            ))}
-          </div>
+          viewMode === 'list' ? (
+            <FileListView
+              files={project.documentation.map(doc => ({
+                id: doc.path,
+                title: doc.title,
+                filename: doc.filename,
+                path: doc.path,
+                type: doc.type,
+                modifiedAt: (doc as any).modifiedAt,
+                version: (doc as any).version,
+                size: (doc as any).size,
+              }))}
+              onOpen={(file) => handleOpenDoc(file as DocumentFile)}
+              fileType="document"
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+              {project.documentation.map((doc, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleOpenDoc(doc)}
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors text-left group"
+                >
+                  <span className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", getDocColor(doc.type))}>
+                    {getDocIcon(doc.type)}
+                  </span>
+                  <span className="flex-1 text-sm font-medium truncate">{doc.title}</span>
+                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                </button>
+              ))}
+            </div>
+          )
         ) : (
           <div className="text-center py-8">
             <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto mb-2" />
@@ -620,21 +711,38 @@ function ConnectedState({
         badge={`${project.mockups.length} screens`}
       >
         {project.mockups.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-            {project.mockups.map((mockup, i) => (
-              <button
-                key={i}
-                onClick={() => setPreviewMockup(mockup)}
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors text-left group"
-              >
-                <span className="w-8 h-8 rounded-lg flex items-center justify-center bg-purple-500/10 text-purple-500 shrink-0">
-                  <Layout className="h-4 w-4" />
-                </span>
-                <span className="flex-1 text-sm font-medium truncate">{mockup.name}</span>
-                <Play className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-              </button>
-            ))}
-          </div>
+          viewMode === 'list' ? (
+            <FileListView
+              files={project.mockups.map(mockup => ({
+                id: mockup.path,
+                name: mockup.name,
+                filename: mockup.filename,
+                path: mockup.path,
+                order: mockup.order,
+                modifiedAt: (mockup as any).modifiedAt,
+                version: (mockup as any).version,
+                size: (mockup as any).size,
+              }))}
+              onOpen={(file) => setPreviewMockup(file as MockupFile)}
+              fileType="mockup"
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+              {project.mockups.map((mockup, i) => (
+                <button
+                  key={i}
+                  onClick={() => setPreviewMockup(mockup)}
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors text-left group"
+                >
+                  <span className="w-8 h-8 rounded-lg flex items-center justify-center bg-purple-500/10 text-purple-500 shrink-0">
+                    <Layout className="h-4 w-4" />
+                  </span>
+                  <span className="flex-1 text-sm font-medium truncate">{mockup.name}</span>
+                  <Play className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                </button>
+              ))}
+            </div>
+          )
         ) : (
           <div className="text-center py-8">
             <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto mb-2" />
@@ -684,6 +792,7 @@ export function MockupDesignTab({
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [currentPath, setCurrentPath] = useState(projectPath);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [structureValidation, setStructureValidation] = useState<StructureValidation | null>(null);
 
   // Discover project when path is set
   const discoverProject = useCallback(async (path: string) => {
@@ -695,14 +804,22 @@ export function MockupDesignTab({
     setState('discovering');
 
     try {
-      const response = await fetch('/api/discover-project', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectPath: path })
-      });
+      // Fetch project data and structure validation in parallel
+      const [projectResponse, structureResponse] = await Promise.all([
+        fetch('/api/discover-project', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ projectPath: path })
+        }),
+        fetch('/api/validate-structure', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ projectPath: path })
+        })
+      ]);
 
-      if (response.ok) {
-        const { data } = await response.json();
+      if (projectResponse.ok) {
+        const { data } = await projectResponse.json();
         setProjectData(data);
 
         if (data.connection?.status === 'connected') {
@@ -712,6 +829,21 @@ export function MockupDesignTab({
         }
       } else {
         setState('not-connected');
+      }
+
+      // Handle structure validation separately (don't block on errors)
+      if (structureResponse.ok) {
+        const { data: structData } = await structureResponse.json();
+        setStructureValidation({
+          deviations: structData.deviations || [],
+          complianceScore: structData.complianceScore || 0,
+          reorganizationPlan: structData.reorganizationPlan || {
+            actions: [],
+            isOrganized: true,
+            estimatedMinutes: 0,
+            duplicates: { prd: [], architecture: [], hasDuplicates: false }
+          }
+        });
       }
     } catch (err) {
       console.error('Failed to discover project:', err);
@@ -782,6 +914,7 @@ export function MockupDesignTab({
           onRefresh={handleRefresh}
           onChangePath={handleChangePath}
           isRefreshing={false}
+          structureValidation={structureValidation}
         />
       )}
     </TabContainer>

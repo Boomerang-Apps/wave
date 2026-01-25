@@ -15,6 +15,8 @@ import { createValidator, validateSchema, VALIDATION_ERRORS } from './middleware
 import { createRateLimitEnforcer, RATE_LIMIT_ERRORS } from './middleware/rate-limit-enforcer.js';
 import { discoverProject } from './utils/project-discovery.js';
 import { validateMockups } from './utils/mockup-endpoint.js';
+import { validateFolderStructure, getStructureDeviations, calculateStructureComplianceScore } from './utils/folder-structure-validator.js';
+import { generateReorganizationPlan } from './utils/folder-reorganization.js';
 import {
   budgetSchema,
   budgetTrackSchema,
@@ -6793,6 +6795,82 @@ app.post('/api/validate-mockups', async (req, res) => {
 
   } catch (err) {
     console.error('[ValidateMockups] Error:', err.message);
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// POST /api/validate-structure - Validate folder structure and get recommendations
+app.post('/api/validate-structure', async (req, res) => {
+  const { projectPath } = req.body;
+
+  if (!projectPath || typeof projectPath !== 'string') {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath is required'
+    });
+  }
+
+  try {
+    // Check if path exists
+    if (!exists(projectPath)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Project path not found'
+      });
+    }
+
+    // Get all files and folders in project
+    const existingPaths = [];
+
+    function collectPaths(dir, prefix = '') {
+      try {
+        const items = listDir(dir);
+        items.forEach(item => {
+          // Skip node_modules, .git, etc.
+          if (['node_modules', '.git', 'dist', '.next', 'coverage'].includes(item)) return;
+
+          const itemPath = prefix ? `${prefix}/${item}` : item;
+          existingPaths.push(itemPath);
+
+          const fullPath = path.join(dir, item);
+          try {
+            const stat = fs.statSync(fullPath);
+            if (stat.isDirectory()) {
+              collectPaths(fullPath, itemPath);
+            }
+          } catch (e) {
+            // Skip files we can't stat
+          }
+        });
+      } catch (e) {
+        // Skip directories we can't read
+      }
+    }
+
+    collectPaths(projectPath);
+
+    // Validate structure
+    const validation = validateFolderStructure(existingPaths, 'nextjs');
+    const deviations = getStructureDeviations(existingPaths, 'nextjs');
+    const complianceScore = calculateStructureComplianceScore(existingPaths, 'nextjs');
+    const reorganizationPlan = generateReorganizationPlan(existingPaths);
+
+    return res.json({
+      success: true,
+      data: {
+        validation,
+        deviations,
+        complianceScore,
+        reorganizationPlan,
+        existingPaths: existingPaths.slice(0, 100) // Limit for response size
+      }
+    });
+
+  } catch (err) {
+    console.error('[ValidateStructure] Error:', err.message);
     return res.status(500).json({
       success: false,
       error: err.message
