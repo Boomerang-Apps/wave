@@ -4,6 +4,7 @@
 #
 # Phase LangSmith-1: Configuration
 # Phase LangSmith-2: Core Tracing Infrastructure
+# Phase LangSmith-3: Node Instrumentation
 
 from .config import (
     TracingConfig,
@@ -27,6 +28,12 @@ from .decorators import (
     get_trace_context,
 )
 
+from .node_wrapper import (
+    wrap_node,
+    get_last_trace_info,
+    clear_trace_info,
+)
+
 __all__ = [
     # Config (Phase 1)
     "TracingConfig",
@@ -44,4 +51,8 @@ __all__ = [
     "trace_llm_call",
     "with_trace_context",
     "get_trace_context",
+    # Node Wrapper (Phase 3)
+    "wrap_node",
+    "get_last_trace_info",
+    "clear_trace_info",
 ]
