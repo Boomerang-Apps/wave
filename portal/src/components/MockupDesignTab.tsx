@@ -12,7 +12,8 @@ import { useState, useCallback, useEffect } from 'react';
 import {
   FileCode, Layout, CheckCircle2, XCircle, AlertTriangle,
   Lock, Database, FileText, Building2, Users, BookOpen, Bot,
-  Rocket, Settings, File, ExternalLink, Play, Eye, Quote, Palette
+  Rocket, Settings, File, ExternalLink, Play, Eye, Quote, Palette,
+  FolderOpen, FolderX, Plug, PlugZap
 } from 'lucide-react';
 import { InfoBox, KPICards, ActionBar, ResultSummary, ExpandableCard, TabContainer, SectionDivider } from './TabLayout';
 import { cn } from '@/lib/utils';
@@ -62,6 +63,17 @@ export interface ProjectMetadata {
   documentation: DocumentationFile[];
   mockups: MockupScreen[];
   techStack: string[];
+  paths?: {
+    root: string;
+    mockups: string;
+    docs: string;
+  };
+  connection?: {
+    rootExists: boolean;
+    mockupsFolderExists: boolean;
+    docsFolderExists: boolean;
+    status: 'connected' | 'disconnected';
+  };
 }
 
 export interface MockupDesignTabProps {
@@ -102,6 +114,114 @@ const getDocColor = (type: string) => {
 // ============================================
 // Sub-components
 // ============================================
+
+interface FolderStatusProps {
+  paths?: ProjectMetadata['paths'];
+  connection?: ProjectMetadata['connection'];
+}
+
+function FolderStatus({ paths, connection }: FolderStatusProps) {
+  const isConnected = connection?.status === 'connected';
+
+  return (
+    <div className={cn(
+      "rounded-xl p-4 mb-6 border",
+      isConnected
+        ? "bg-green-500/5 border-green-500/20"
+        : "bg-red-500/10 border-red-500/20"
+    )}>
+      {/* Connection Status Header */}
+      <div className="flex items-center gap-2 mb-3">
+        {isConnected ? (
+          <>
+            <PlugZap className="h-4 w-4 text-green-500" />
+            <span className="text-sm font-medium text-green-500">Connected to Project</span>
+          </>
+        ) : (
+          <>
+            <Plug className="h-4 w-4 text-red-500" />
+            <span className="text-sm font-medium text-red-500">Disconnected - Folder Not Found</span>
+          </>
+        )}
+      </div>
+
+      {/* Folder Paths */}
+      <div className="space-y-2">
+        {/* Root Folder */}
+        <div className="flex items-center gap-2">
+          {connection?.rootExists ? (
+            <FolderOpen className="h-4 w-4 text-green-500" />
+          ) : (
+            <FolderX className="h-4 w-4 text-red-500" />
+          )}
+          <span className="text-xs text-muted-foreground">Root:</span>
+          <code className="text-xs bg-muted px-2 py-0.5 rounded font-mono flex-1 truncate">
+            {paths?.root || 'Not set'}
+          </code>
+          <span className={cn(
+            "text-xs px-2 py-0.5 rounded",
+            connection?.rootExists ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
+          )}>
+            {connection?.rootExists ? 'Found' : 'Missing'}
+          </span>
+        </div>
+
+        {/* Mockups Folder */}
+        <div className="flex items-center gap-2">
+          {connection?.mockupsFolderExists ? (
+            <FolderOpen className="h-4 w-4 text-green-500" />
+          ) : (
+            <FolderX className="h-4 w-4 text-amber-500" />
+          )}
+          <span className="text-xs text-muted-foreground">Mockups:</span>
+          <code className="text-xs bg-muted px-2 py-0.5 rounded font-mono flex-1 truncate">
+            {paths?.mockups || 'design_mockups/'}
+          </code>
+          <span className={cn(
+            "text-xs px-2 py-0.5 rounded",
+            connection?.mockupsFolderExists ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"
+          )}>
+            {connection?.mockupsFolderExists ? 'Found' : 'Not Found'}
+          </span>
+        </div>
+
+        {/* Docs Folder */}
+        <div className="flex items-center gap-2">
+          {connection?.docsFolderExists ? (
+            <FolderOpen className="h-4 w-4 text-green-500" />
+          ) : (
+            <FolderX className="h-4 w-4 text-amber-500" />
+          )}
+          <span className="text-xs text-muted-foreground">Docs:</span>
+          <code className="text-xs bg-muted px-2 py-0.5 rounded font-mono flex-1 truncate">
+            {paths?.docs || 'docs/'}
+          </code>
+          <span className={cn(
+            "text-xs px-2 py-0.5 rounded",
+            connection?.docsFolderExists ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"
+          )}>
+            {connection?.docsFolderExists ? 'Found' : 'Not Found'}
+          </span>
+        </div>
+      </div>
+
+      {/* Warning for disconnected */}
+      {!isConnected && (
+        <div className="mt-3 p-3 bg-red-500/10 rounded-lg">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm text-red-500 font-medium">Project folder not accessible</p>
+              <p className="text-xs text-red-500/70 mt-1">
+                Please verify the project path exists and is accessible. Check if the drive is mounted.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface ProjectHeaderProps {
   name: string;
@@ -436,6 +556,12 @@ export function MockupDesignTab({
         title="Gate 0: Design Validation"
         description="Review project documentation and validate HTML mockups before development begins. Lock your design to ensure agents build exactly what you envisioned."
         icon={<Palette className="h-4 w-4 text-blue-500" />}
+      />
+
+      {/* 2. FOLDER CONNECTION STATUS */}
+      <FolderStatus
+        paths={projectMetadata?.paths}
+        connection={projectMetadata?.connection}
       />
 
       {/* PROJECT INFO */}

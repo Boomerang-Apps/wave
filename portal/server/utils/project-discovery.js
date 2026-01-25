@@ -64,11 +64,33 @@ const DOC_ICONS = {
 };
 
 /**
+ * Check if a path exists
+ * @param {string} filePath - Path to check
+ * @returns {Promise<boolean>}
+ */
+async function pathExists(filePath) {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Discover project metadata from a folder path
  * @param {string} projectPath - Path to the project root
  * @returns {Promise<ProjectMetadata>}
  */
 export async function discoverProject(projectPath) {
+  const mockupsPath = path.join(projectPath, 'design_mockups');
+  const docsPath = path.join(projectPath, 'docs');
+
+  // Check folder existence
+  const rootExists = await pathExists(projectPath);
+  const mockupsFolderExists = await pathExists(mockupsPath);
+  const docsFolderExists = await pathExists(docsPath);
+
   const metadata = {
     name: '',
     tagline: '',
@@ -77,7 +99,25 @@ export async function discoverProject(projectPath) {
     documentation: [],
     mockups: [],
     techStack: [],
+    // Add paths and connection status
+    paths: {
+      root: projectPath,
+      mockups: mockupsPath,
+      docs: docsPath,
+    },
+    connection: {
+      rootExists,
+      mockupsFolderExists,
+      docsFolderExists,
+      status: rootExists ? 'connected' : 'disconnected',
+    },
   };
+
+  // If root doesn't exist, return early with disconnected status
+  if (!rootExists) {
+    metadata.name = path.basename(projectPath);
+    return metadata;
+  }
 
   try {
     // 1. Get project name from various sources
