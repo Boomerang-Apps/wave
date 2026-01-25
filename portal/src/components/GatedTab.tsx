@@ -68,7 +68,7 @@ function StatusDot({ status }: StatusDotProps) {
 export function GatedTab({
   id,
   label,
-  shortLabel,
+  shortLabel: _shortLabel,
   stepNumber,
   isLocked,
   isActive,

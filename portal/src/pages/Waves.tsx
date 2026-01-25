@@ -9,7 +9,7 @@ import {
   RefreshCw
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
-import { cn, getGateName, formatRelativeTime } from '../lib/utils'
+import { cn, getGateName, formatRelativeTime, getStatusBadgeClasses } from '../lib/utils'
 import type { Story } from '../types/database'
 
 interface WaveData {
@@ -30,7 +30,7 @@ function GateProgress({ currentGate }: { currentGate: number }) {
             className={cn(
               'w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium',
               gate < currentGate
-                ? 'bg-success text-success-foreground'
+                ? 'bg-green-500 text-white'
                 : gate === currentGate
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-muted text-muted-foreground'
@@ -42,7 +42,7 @@ function GateProgress({ currentGate }: { currentGate: number }) {
             <div
               className={cn(
                 'w-4 h-0.5',
-                gate < currentGate ? 'bg-success' : 'bg-muted'
+                gate < currentGate ? 'bg-green-500' : 'bg-muted'
               )}
             />
           )}
@@ -133,11 +133,11 @@ export function Waves() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle2 className="h-5 w-5 text-success" />
+        return <CheckCircle2 className="h-5 w-5 text-green-500" />
       case 'in_progress':
         return <Clock className="h-5 w-5 text-blue-500 animate-pulse" />
       case 'failed':
-        return <AlertCircle className="h-5 w-5 text-destructive" />
+        return <AlertCircle className="h-5 w-5 text-red-500" />
       default:
         return <Clock className="h-5 w-5 text-muted-foreground" />
     }
@@ -286,11 +286,7 @@ export function Waves() {
                           <span className="font-mono text-xs text-muted-foreground">{story.story_id}</span>
                           <span className={cn(
                             'px-2 py-0.5 text-xs rounded-full',
-                            story.status === 'completed' || story.status === 'done'
-                              ? 'bg-success/10 text-green-600'
-                              : story.status === 'in_progress' || story.status === 'active'
-                              ? 'bg-blue-500/10 text-blue-600'
-                              : 'bg-muted text-muted-foreground'
+                            getStatusBadgeClasses(story.status)
                           )}>
                             {story.status}
                           </span>

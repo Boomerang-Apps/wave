@@ -8,7 +8,6 @@ import {
   Copy,
   Database,
   Zap,
-  ChevronRight,
   ChevronDown,
   ChevronLeft,
   Info,
@@ -24,11 +23,9 @@ import {
   EyeOff,
   Settings,
   Key,
-  Save,
   RefreshCw,
   ScrollText,
   Rocket,
-  Calendar,
   Download,
   Wifi,
   WifiOff,
@@ -48,11 +45,26 @@ import {
   DollarSign,
   BarChart3,
   XOctagon,
+  GitFork,
+  Container,
+  Workflow,
+  Package,
+  Waves,
+  ShieldCheck,
+  Cpu,
+  TestTube,
+  Lock,
+  Camera,
+  Gauge,
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { cn } from '../lib/utils'
 import { LaunchSequenceProgress } from '../components/LaunchSequenceProgress'
 import type { LaunchStep } from '../components/LaunchSequenceProgress'
+import { MockupDesignTab } from '../components/MockupDesignTab'
+import { PRDStoriesTab } from '../components/PRDStoriesTab'
+import { ExecutionPlanTab } from '../components/ExecutionPlanTab'
+import { InfoBox, KPICards, ActionBar, ResultSummary, ExpandableCard, TabContainer } from '../components/TabLayout'
 
 // Types
 type CheckStatusType = 'pass' | 'fail' | 'warn' | 'pending' | 'blocked'
@@ -87,11 +99,11 @@ type FoundationCheck = {
 // Status dot component
 function StatusDot({ status }: { status: CheckStatusType }) {
   const colors: Record<CheckStatusType, string> = {
-    pass: 'bg-green-500/100',
-    fail: 'bg-red-500/100',
-    warn: 'bg-amber-400',
+    pass: 'bg-green-500',
+    fail: 'bg-red-500',
+    warn: 'bg-amber-500',
     pending: 'bg-muted-foreground',
-    blocked: 'bg-red-500/100',
+    blocked: 'bg-red-500',
   }
   return <span className={cn('w-2 h-2 rounded-full inline-block', colors[status])} />
 }
@@ -99,11 +111,11 @@ function StatusDot({ status }: { status: CheckStatusType }) {
 // Status badge component
 function StatusBadge({ status }: { status: CheckStatusType }) {
   const styles: Record<CheckStatusType, string> = {
-    pass: 'bg-green-500/15 text-green-400',
-    fail: 'bg-red-500/15 text-red-400',
-    warn: 'bg-zinc-100 text-zinc-600',
+    pass: 'bg-green-500/10 text-green-500',
+    fail: 'bg-red-500/10 text-red-500',
+    warn: 'bg-amber-500/10 text-amber-500',
     pending: 'bg-muted text-muted-foreground',
-    blocked: 'bg-muted text-muted-foreground',
+    blocked: 'bg-red-500/10 text-red-500',
   }
   const labels: Record<CheckStatusType, string> = {
     pass: 'PASS',
@@ -113,7 +125,7 @@ function StatusBadge({ status }: { status: CheckStatusType }) {
     blocked: 'BLOCKED',
   }
   return (
-    <span className={cn('px-2.5 py-1 text-xs font-semibold rounded-md', styles[status])}>
+    <span className={cn('px-2.5 py-1 text-xs font-medium rounded-full', styles[status])}>
       {labels[status]}
     </span>
   )
@@ -158,7 +170,7 @@ function SectionHeader({
   isExpanded = true,
   onToggle,
 }: {
-  badge: string
+  badge: React.ReactNode
   badgeColor?: string
   title: string
   description: string
@@ -171,13 +183,13 @@ function SectionHeader({
   return (
     <div
       className={cn(
-        "flex items-center justify-between py-4 px-4 bg-card border border-border border-b-0 rounded-t-xl mt-6",
+        "flex items-center justify-between pt-4 pb-2 px-4 bg-card border border-border border-b-0 rounded-t-xl",
         isCollapsible && "cursor-pointer hover:bg-muted/30 transition-colors"
       )}
       onClick={isCollapsible ? onToggle : undefined}
     >
       <div className="flex items-center gap-3">
-        <span className={cn('w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold', badgeColor)}>
+        <span className={cn('w-8 h-8 rounded-lg flex items-center justify-center', badgeColor)}>
           {badge}
         </span>
         <div>
@@ -226,32 +238,24 @@ function CheckItem({
     blocked: <XCircle className="h-5 w-5 text-red-500" />,
   }
 
-  const statusLabels: Record<CheckStatusType, string> = {
-    pass: 'Passed',
-    fail: 'Failed',
-    warn: 'Warning',
-    pending: 'Pending',
-    blocked: 'Blocked',
-  }
-
   const copyCommand = (cmd: string) => {
     navigator.clipboard.writeText(cmd)
   }
 
   return (
-    <div className="border-b border-border last:border-0 last:rounded-b-xl bg-card">
+    <div className="bg-muted/50 rounded-lg overflow-hidden">
       <div
-        className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors"
+        className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted transition-colors"
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-3">
           {statusIcon[status]}
           <span>{label}</span>
         </div>
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          {timestamp && <span className="text-xs">{timestamp}</span>}
-          <span>{statusLabels[status]}</span>
-          <ChevronDown className={cn("h-4 w-4 transition-transform", expanded && "rotate-180")} />
+        <div className="flex items-center gap-3">
+          {timestamp && <span className="text-xs text-muted-foreground">{timestamp}</span>}
+          <StatusBadge status={status} />
+          <ChevronDown className={cn("h-4 w-4 transition-transform text-muted-foreground", expanded && "rotate-180")} />
         </div>
       </div>
       {expanded && (
@@ -261,7 +265,7 @@ function CheckItem({
           )}
           {command && (
             <div className="flex items-center gap-2">
-              <code className="flex-1 bg-background text-zinc-100 px-4 py-2.5 rounded-lg text-sm font-mono overflow-x-auto">
+              <code className="flex-1 bg-background text-foreground px-4 py-2.5 rounded-lg text-sm font-mono overflow-x-auto">
                 {command}
               </code>
               <button
@@ -283,7 +287,7 @@ function CheckItem({
           {fix && (status === 'fail' || status === 'warn') && (
             <div className="flex items-start gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg">
               <span className="text-red-500 font-medium text-sm">Fix:</span>
-              <span className="text-sm text-red-400">{fix}</span>
+              <span className="text-sm text-red-500">{fix}</span>
             </div>
           )}
         </div>
@@ -292,629 +296,9 @@ function CheckItem({
   )
 }
 
-// File card component
-function FileCard({ file, onCopy }: { file: FileCheck; onCopy: (path: string) => void }) {
-  return (
-    <div className={cn(
-      'p-4 rounded-xl border flex items-start justify-between',
-      file.status === 'found' ? 'bg-card border-border' : 'bg-red-500/10 border-red-500/20'
-    )}>
-      <div className="flex items-start gap-3">
-        {file.status === 'found' ? (
-          <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5" />
-        ) : (
-          <XCircle className="h-5 w-5 text-red-500 mt-0.5" />
-        )}
-        <div>
-          <p className="font-medium text-sm">{file.name}</p>
-          <p className="text-xs text-muted-foreground">{file.status === 'found' ? file.path : 'Not found'}</p>
-        </div>
-      </div>
-      {file.status === 'found' && file.path && (
-        <button onClick={() => onCopy(file.path!)} className="p-1.5 hover:bg-muted rounded">
-          <Copy className="h-4 w-4 text-muted-foreground" />
-        </button>
-      )}
-    </div>
-  )
-}
 
-// Story interface for execution plan
-interface Story {
-  id: string
-  title: string
-  description: string
-  status: 'not_started' | 'in_progress' | 'completed' | 'blocked'
-  priority: 'high' | 'medium' | 'low'
-  assignedTo?: string
-  acceptanceCriteria?: string[]
-  estimatedHours?: number
-  // Risk classification fields (Phase 3.1)
-  risk?: 'low' | 'medium' | 'high' | 'critical'
-  approval_required?: 'L0' | 'L1' | 'L2' | 'L3' | 'L4' | 'L5'
-  safety_tags?: string[]
-  requires_review?: boolean
-}
-
-// Wave interface for execution plan
-interface Wave {
-  id: number
-  name: string
-  description: string
-  goal: string
-  status: 'completed' | 'active' | 'upcoming' | 'blocked'
-  progress: number
-  stories: Story[]
-  deliverables: string[]
-  dependencies?: string[]
-}
-
-// Execution Plan Tab Component
-function ExecutionPlanTab({ project }: { project: Project | null }) {
-  const [expandedWave, setExpandedWave] = useState<number | null>(2)
-  const [expandedStory, setExpandedStory] = useState<string | null>(null)
-
-  // Sample waves data - in production this would come from the database
-  const waves: Wave[] = [
-    {
-      id: 1,
-      name: 'Core AI Features',
-      description: 'Set up the foundation and integrate AI capabilities',
-      goal: 'Users can upload images and get AI-transformed results',
-      status: 'completed',
-      progress: 100,
-      deliverables: [
-        'AI Style Picker interface',
-        'Nano Banana LLM integration',
-        'Before/After preview component',
-        'Image upload & processing'
-      ],
-      stories: [
-        {
-          id: 'STORY-001',
-          title: 'Create AI Style Picker UI',
-          description: 'Build the interface where users select transformation styles',
-          status: 'completed',
-          priority: 'high',
-          acceptanceCriteria: [
-            'User can see available AI styles',
-            'User can select a style',
-            'Selected style is highlighted',
-            'Style description is shown'
-          ],
-          estimatedHours: 8
-        },
-        {
-          id: 'STORY-002',
-          title: 'Integrate Nano Banana API',
-          description: 'Connect to Nano Banana LLM for image transformations',
-          status: 'completed',
-          priority: 'high',
-          acceptanceCriteria: [
-            'API connection established',
-            'Images are sent for processing',
-            'Results are returned correctly',
-            'Error handling in place'
-          ],
-          estimatedHours: 12
-        },
-        {
-          id: 'STORY-003',
-          title: 'Build Before/After Preview',
-          description: 'Create side-by-side comparison of original and transformed images',
-          status: 'completed',
-          priority: 'medium',
-          acceptanceCriteria: [
-            'Original image displayed',
-            'Transformed image displayed',
-            'Slider comparison works',
-            'Responsive on all devices'
-          ],
-          estimatedHours: 6
-        }
-      ]
-    },
-    {
-      id: 2,
-      name: 'Identity & Data',
-      description: 'User authentication and database foundation',
-      goal: 'Users can sign up, log in, and their data is securely stored',
-      status: 'active',
-      progress: 35,
-      dependencies: ['Wave 1 must be complete'],
-      deliverables: [
-        'User registration & login',
-        'Supabase authentication',
-        'Database schema setup',
-        'Row Level Security policies'
-      ],
-      stories: [
-        {
-          id: 'STORY-004',
-          title: 'Set Up Supabase Auth',
-          description: 'Configure Supabase authentication with email/password',
-          status: 'completed',
-          priority: 'high',
-          acceptanceCriteria: [
-            'Supabase project created',
-            'Auth configured for email/password',
-            'Environment variables set',
-            'Auth hook working'
-          ],
-          estimatedHours: 4
-        },
-        {
-          id: 'STORY-005',
-          title: 'Create Registration Flow',
-          description: 'Build the user sign-up experience',
-          status: 'in_progress',
-          priority: 'high',
-          assignedTo: 'FE-Dev Agent',
-          acceptanceCriteria: [
-            'Registration form with validation',
-            'Email verification sent',
-            'User created in database',
-            'Redirect to dashboard'
-          ],
-          estimatedHours: 8
-        },
-        {
-          id: 'STORY-006',
-          title: 'Create Login Flow',
-          description: 'Build the user login experience',
-          status: 'not_started',
-          priority: 'high',
-          acceptanceCriteria: [
-            'Login form with validation',
-            'Session management',
-            'Remember me functionality',
-            'Password reset option'
-          ],
-          estimatedHours: 6
-        },
-        {
-          id: 'STORY-007',
-          title: 'Database Schema & RLS',
-          description: 'Create tables and security policies',
-          status: 'not_started',
-          priority: 'high',
-          acceptanceCriteria: [
-            'Users table with profile data',
-            'Orders table structure',
-            'RLS policies for all tables',
-            'Migrations documented'
-          ],
-          estimatedHours: 10
-        }
-      ]
-    },
-    {
-      id: 3,
-      name: 'Checkout & Payments',
-      description: 'Payment processing and order management',
-      goal: 'Users can purchase transformations and receive receipts',
-      status: 'upcoming',
-      progress: 0,
-      dependencies: ['Wave 2 must be complete'],
-      deliverables: [
-        'Shopping cart',
-        'PayPlus integration',
-        'Order confirmation emails',
-        'Payment receipts'
-      ],
-      stories: [
-        {
-          id: 'STORY-008',
-          title: 'Build Shopping Cart',
-          description: 'Create cart for collecting items before checkout',
-          status: 'not_started',
-          priority: 'high',
-          acceptanceCriteria: [
-            'Add items to cart',
-            'Update quantities',
-            'Remove items',
-            'Cart persists across sessions'
-          ],
-          estimatedHours: 10
-        },
-        {
-          id: 'STORY-009',
-          title: 'Integrate PayPlus',
-          description: 'Connect PayPlus payment gateway',
-          status: 'not_started',
-          priority: 'high',
-          acceptanceCriteria: [
-            'PayPlus SDK integrated',
-            'Secure payment form',
-            'Webhook for confirmations',
-            'Error handling for failures'
-          ],
-          estimatedHours: 16
-        },
-        {
-          id: 'STORY-010',
-          title: 'Order Confirmation Emails',
-          description: 'Send email receipts after successful orders',
-          status: 'not_started',
-          priority: 'medium',
-          acceptanceCriteria: [
-            'Email template created',
-            'Order details included',
-            'Sent automatically',
-            'Receipt downloadable'
-          ],
-          estimatedHours: 6
-        }
-      ]
-    },
-    {
-      id: 4,
-      name: 'Admin & Polish',
-      description: 'Administration tools and final refinements',
-      goal: 'Admins can manage orders and the app is production-ready',
-      status: 'upcoming',
-      progress: 0,
-      dependencies: ['Wave 3 must be complete'],
-      deliverables: [
-        'Admin dashboard',
-        'Order management',
-        'Analytics dashboard',
-        'Performance optimization'
-      ],
-      stories: [
-        {
-          id: 'STORY-011',
-          title: 'Build Admin Dashboard',
-          description: 'Create administrative interface for managing the platform',
-          status: 'not_started',
-          priority: 'high',
-          acceptanceCriteria: [
-            'Admin-only access',
-            'Overview statistics',
-            'User management',
-            'Order list view'
-          ],
-          estimatedHours: 12
-        },
-        {
-          id: 'STORY-012',
-          title: 'Order Management System',
-          description: 'Allow admins to view and manage all orders',
-          status: 'not_started',
-          priority: 'high',
-          acceptanceCriteria: [
-            'List all orders',
-            'Filter by status',
-            'Update order status',
-            'Issue refunds'
-          ],
-          estimatedHours: 10
-        }
-      ]
-    }
-  ]
-
-  const getStatusColor = (status: Wave['status']) => {
-    switch (status) {
-      case 'completed': return 'bg-green-500'
-      case 'active': return 'bg-zinc-700'
-      case 'upcoming': return 'bg-zinc-300'
-      case 'blocked': return 'bg-red-500/100'
-    }
-  }
-
-  const getStoryStatusIcon = (status: Story['status']) => {
-    switch (status) {
-      case 'completed': return <CheckCircle2 className="h-5 w-5 text-green-400" />
-      case 'in_progress': return <Clock className="h-5 w-5 text-zinc-600" />
-      case 'not_started': return <Clock className="h-5 w-5 text-muted-foreground" />
-      case 'blocked': return <XCircle className="h-5 w-5 text-red-500" />
-    }
-  }
-
-  const getStoryStatusLabel = (status: Story['status']) => {
-    switch (status) {
-      case 'completed': return { text: 'Done', class: 'bg-green-500/15 text-green-400' }
-      case 'in_progress': return { text: 'In Progress', class: 'bg-border text-zinc-700' }
-      case 'not_started': return { text: 'To Do', class: 'bg-zinc-100 text-zinc-500' }
-      case 'blocked': return { text: 'Blocked', class: 'bg-red-500/15 text-red-400' }
-    }
-  }
-
-  const totalStories = waves.reduce((sum, w) => sum + w.stories.length, 0)
-  const completedStories = waves.reduce((sum, w) => sum + w.stories.filter(s => s.status === 'completed').length, 0)
-  const inProgressStories = waves.reduce((sum, w) => sum + w.stories.filter(s => s.status === 'in_progress').length, 0)
-
-  return (
-    <div className="space-y-6">
-      {/* Header with Overview */}
-      <div className="bg-background rounded-2xl p-6 text-white">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-2xl font-bold mb-2">Project Roadmap</h2>
-            <p className="text-zinc-400 mb-4">
-              Your project is divided into {waves.length} phases called "Waves". Each wave builds on the previous one.
-            </p>
-          </div>
-          <div className="text-right">
-            <div className="text-4xl font-bold">{Math.round((completedStories / totalStories) * 100)}%</div>
-            <div className="text-zinc-400 text-sm">Overall Progress</div>
-          </div>
-        </div>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-4 gap-4 mt-6">
-          <div className="bg-zinc-800 rounded-xl p-4">
-            <div className="text-3xl font-bold">{waves.length}</div>
-            <div className="text-zinc-400 text-sm">Total Waves</div>
-          </div>
-          <div className="bg-zinc-800 rounded-xl p-4">
-            <div className="text-3xl font-bold">{totalStories}</div>
-            <div className="text-zinc-400 text-sm">Total Stories</div>
-          </div>
-          <div className="bg-zinc-800 rounded-xl p-4">
-            <div className="text-3xl font-bold">{completedStories}</div>
-            <div className="text-zinc-400 text-sm">Completed</div>
-          </div>
-          <div className="bg-zinc-800 rounded-xl p-4">
-            <div className="text-3xl font-bold">{inProgressStories}</div>
-            <div className="text-zinc-400 text-sm">In Progress</div>
-          </div>
-        </div>
-      </div>
-
-      {/* How It Works */}
-      <div className="bg-muted border border-border rounded-xl p-4">
-        <div className="flex items-start gap-3">
-          <Info className="h-5 w-5 text-zinc-500 mt-0.5" />
-          <div>
-            <h4 className="font-semibold text-zinc-800">How does this work?</h4>
-            <p className="text-sm text-zinc-600 mt-1">
-              Each <strong>Wave</strong> is a development phase with specific goals. Inside each wave are <strong>Stories</strong> -
-              individual tasks that need to be completed. Click on any wave to see its stories and details.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Waves */}
-      <div className="space-y-3">
-        {waves.map((wave) => (
-          <div
-            key={wave.id}
-            className="border border-border rounded-xl overflow-hidden bg-card"
-          >
-            {/* Wave Header - Always visible */}
-            <button
-              onClick={() => setExpandedWave(expandedWave === wave.id ? null : wave.id)}
-              className="w-full p-5 text-left hover:bg-muted transition-colors"
-            >
-              <div className="flex items-start gap-4">
-                {/* Wave Number */}
-                <div className={cn(
-                  "w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold shrink-0",
-                  getStatusColor(wave.status)
-                )}>
-                  {wave.status === 'completed' ? <CheckCircle2 className="h-5 w-5" /> : wave.id}
-                </div>
-
-                {/* Wave Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 mb-1">
-                    <h3 className="text-base font-semibold">Wave {wave.id}: {wave.name}</h3>
-                    <span className={cn(
-                      "text-xs px-2 py-0.5 rounded font-medium",
-                      wave.status === 'completed' ? 'bg-green-500/15 text-green-400' :
-                      wave.status === 'active' ? 'bg-border text-zinc-700' :
-                      wave.status === 'blocked' ? 'bg-red-500/15 text-red-400' :
-                      'bg-zinc-100 text-zinc-500'
-                    )}>
-                      {wave.status === 'completed' ? 'Done' :
-                       wave.status === 'active' ? 'Active' :
-                       wave.status === 'blocked' ? 'Blocked' : 'Upcoming'}
-                    </span>
-                  </div>
-                  <p className="text-zinc-500 text-sm mb-2">{wave.goal}</p>
-
-                  {/* Progress Bar */}
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-background rounded-full transition-all"
-                        style={{ width: `${wave.progress}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-zinc-500">
-                      {wave.stories.filter(s => s.status === 'completed').length}/{wave.stories.length} stories
-                    </span>
-                  </div>
-                </div>
-
-                {/* Expand Icon */}
-                <ChevronDown className={cn(
-                  "h-5 w-5 text-zinc-400 transition-transform shrink-0",
-                  expandedWave === wave.id && "rotate-180"
-                )} />
-              </div>
-            </button>
-
-            {/* Expanded Content */}
-            {expandedWave === wave.id && (
-              <div className="border-t border-zinc-100 bg-muted/50 p-5">
-                {/* Dependencies */}
-                {wave.dependencies && wave.dependencies.length > 0 && (
-                  <div className="mb-4 flex items-center gap-2 text-sm">
-                    <AlertTriangle className="h-4 w-4 text-zinc-400" />
-                    <span className="text-zinc-600">Requires: {wave.dependencies.join(', ')}</span>
-                  </div>
-                )}
-
-                {/* What We'll Build */}
-                <div className="mb-5">
-                  <h4 className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">Deliverables</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    {wave.deliverables.map((item, i) => (
-                      <div key={i} className="flex items-center gap-2 bg-card rounded-lg px-3 py-2 border border-border">
-                        <CheckCircle2 className={cn(
-                          "h-4 w-4",
-                          wave.status === 'completed' ? 'text-green-400' : 'text-muted-foreground'
-                        )} />
-                        <span className="text-sm">{item}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Stories List */}
-                <div>
-                  <h4 className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">
-                    Stories ({wave.stories.length})
-                  </h4>
-                  <div className="space-y-2">
-                    {wave.stories.map((story) => (
-                      <div key={story.id} className="bg-card rounded-lg border border-border overflow-hidden">
-                        {/* Story Header */}
-                        <button
-                          onClick={() => setExpandedStory(expandedStory === story.id ? null : story.id)}
-                          className="w-full p-3 text-left hover:bg-muted transition-colors"
-                        >
-                          <div className="flex items-center gap-3">
-                            {getStoryStatusIcon(story.status)}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-xs font-mono text-zinc-400">{story.id}</span>
-                                <span className={cn(
-                                  "text-xs px-1.5 py-0.5 rounded font-medium",
-                                  getStoryStatusLabel(story.status).class
-                                )}>
-                                  {getStoryStatusLabel(story.status).text}
-                                </span>
-                                {/* Risk Badge */}
-                                {story.risk && (
-                                  <span className={cn(
-                                    "text-xs px-1.5 py-0.5 rounded font-medium",
-                                    story.risk === 'critical' ? 'bg-red-500/15 text-red-400' :
-                                    story.risk === 'high' ? 'bg-orange-500/15 text-orange-700' :
-                                    story.risk === 'medium' ? 'bg-amber-500/10 text-amber-700' :
-                                    'bg-green-500/15 text-green-400'
-                                  )}>
-                                    {story.risk.toUpperCase()} RISK
-                                  </span>
-                                )}
-                                {/* Requires Review Badge */}
-                                {story.requires_review && (
-                                  <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-purple-500/15 text-purple-400">
-                                    REVIEW
-                                  </span>
-                                )}
-                                {story.assignedTo && (
-                                  <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-600">
-                                    {story.assignedTo}
-                                  </span>
-                                )}
-                              </div>
-                              <h5 className="font-medium text-sm mt-1">{story.title}</h5>
-                            </div>
-                            <ChevronRight className={cn(
-                              "h-4 w-4 text-zinc-400 transition-transform",
-                              expandedStory === story.id && "rotate-90"
-                            )} />
-                          </div>
-                        </button>
-
-                        {/* Story Details */}
-                        {expandedStory === story.id && (
-                          <div className="border-t border-zinc-100 p-3 bg-muted">
-                            <p className="text-sm text-zinc-600 mb-3">{story.description}</p>
-
-                            {story.acceptanceCriteria && (
-                              <div className="mb-3">
-                                <h6 className="text-xs font-medium text-zinc-400 uppercase mb-2">
-                                  Acceptance Criteria
-                                </h6>
-                                <ul className="space-y-1">
-                                  {story.acceptanceCriteria.map((criteria, i) => (
-                                    <li key={i} className="flex items-start gap-2 text-sm">
-                                      <CheckCircle2 className={cn(
-                                        "h-4 w-4 mt-0.5 shrink-0",
-                                        story.status === 'completed' ? 'text-green-400' : 'text-muted-foreground'
-                                      )} />
-                                      <span className="text-zinc-600">{criteria}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-
-                            {/* Risk Classification Section */}
-                            {(story.risk || story.safety_tags?.length || story.approval_required) && (
-                              <div className="mb-3 p-2 rounded-lg bg-zinc-100 border border-border">
-                                <h6 className="text-xs font-medium text-zinc-400 uppercase mb-2">
-                                  Risk Classification
-                                </h6>
-                                <div className="flex flex-wrap gap-2">
-                                  {story.risk && (
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="text-xs text-zinc-500">Risk:</span>
-                                      <span className={cn(
-                                        "text-xs px-1.5 py-0.5 rounded font-medium",
-                                        story.risk === 'critical' ? 'bg-red-500/15 text-red-400' :
-                                        story.risk === 'high' ? 'bg-orange-500/15 text-orange-700' :
-                                        story.risk === 'medium' ? 'bg-amber-500/10 text-amber-700' :
-                                        'bg-green-500/15 text-green-400'
-                                      )}>
-                                        {story.risk.toUpperCase()}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {story.approval_required && (
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="text-xs text-zinc-500">Approval:</span>
-                                      <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-blue-500/15 text-blue-400">
-                                        {story.approval_required}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                                {story.safety_tags && story.safety_tags.length > 0 && (
-                                  <div className="mt-2 flex flex-wrap gap-1">
-                                    {story.safety_tags.map(tag => (
-                                      <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/30">
-                                        {tag}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            <div className="flex items-center gap-3 text-xs text-zinc-500">
-                              <span className={cn(
-                                "px-2 py-1 rounded",
-                                story.priority === 'high' ? 'bg-border text-zinc-700' :
-                                story.priority === 'medium' ? 'bg-zinc-100 text-zinc-600' :
-                                'bg-muted text-zinc-500'
-                              )}>
-                                {story.priority.charAt(0).toUpperCase() + story.priority.slice(1)} Priority
-                              </span>
-                              {story.estimatedHours && (
-                                <span>Est: {story.estimatedHours}h</span>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
+// Note: ExecutionPlanTab has been moved to src/components/ExecutionPlanTab.tsx
+// _OldExecutionPlanTab removed - see new component file
 
 export function ProjectChecklist() {
   const { projectId } = useParams<{ projectId: string }>()
@@ -941,7 +325,7 @@ export function ProjectChecklist() {
     docker_ready: boolean,
     gate0_certified: boolean
   } | null>(null)
-  const [folderExpanded, setFolderExpanded] = useState(false)
+  const [_folderExpanded, _setFolderExpanded] = useState(false)
   const [showWaveInfo, setShowWaveInfo] = useState(false)
 
   // Agent Dispatch state
@@ -1000,6 +384,7 @@ export function ProjectChecklist() {
     SUPABASE_ANON_KEY: '',
     SUPABASE_SERVICE_ROLE_KEY: '',
     SLACK_WEBHOOK_URL: '',
+    SLACK_BOT_TOKEN: '',
     GITHUB_TOKEN: '',
     GITHUB_REPO_URL: '',
     VERCEL_TOKEN: '',
@@ -1194,6 +579,9 @@ export function ProjectChecklist() {
     }, 5000)
   }
 
+  // Mockup Design validation state (Step 0)
+  const [mockupStatus, setMockupStatus] = useState<'idle' | 'validating' | 'ready' | 'blocked'>('idle')
+
   // Foundation validation state
   const [foundationValidating, setFoundationValidating] = useState(false)
   const [foundationStatus, setFoundationStatus] = useState<'idle' | 'validating' | 'ready' | 'blocked'>('idle')
@@ -1286,7 +674,7 @@ export function ProjectChecklist() {
     }>
   }
   const [watchdogStatus, setWatchdogStatus] = useState<WatchdogStatus | null>(null)
-  const [watchdogLoading, setWatchdogLoading] = useState(false)
+  const [_watchdogLoading, setWatchdogLoading] = useState(false)
 
   // Safety Traceability state (Phase 3.2)
   interface TraceabilityReport {
@@ -1924,29 +1312,25 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
     safetyStatus === 'validating' ? 'pending' :
     'warn' // idle state shows warning to prompt validation
 
-  // Tab order follows logical dependency chain:
-  // 1. Understand WHAT (Project Overview)
-  // 2. Understand HOW (Execution Plan)
-  // 3. Get ACCESS (Configurations) - credentials needed before infra validation
-  // 4. Validate PLATFORM (Infrastructure) - uses credentials from step 3
-  // 5-9. Safety, RLM, Build, Notifications, Launch
+  // WAVE 10-Step Launch Sequence (Steps 0-9)
+  // Based on aerospace pre-flight checklist - sequential gates, no skipping
   const tabs = [
-    { id: 'project-overview', label: 'Project Overview', shortLabel: '1', status: (analysisReport ? 'pass' : 'warn') as CheckStatusType },
-    { id: 'execution-plan', label: 'Execution Plan', shortLabel: '2', status: 'pass' as CheckStatusType },
+    { id: 'mockup-design', label: 'Design', shortLabel: '0', status: (mockupStatus === 'ready' ? 'pass' : mockupStatus === 'blocked' ? 'fail' : 'pending') as CheckStatusType },
+    { id: 'project-overview', label: 'PRD', shortLabel: '1', status: (analysisReport ? 'pass' : 'warn') as CheckStatusType },
+    { id: 'execution-plan', label: 'Execution', shortLabel: '2', status: 'pass' as CheckStatusType },
     { id: 'system-config', label: 'Configurations', shortLabel: '3', status: (allRequiredKeysSet ? 'pass' : someRequiredKeysSet ? 'warn' : 'fail') as CheckStatusType },
     { id: 'infrastructure', label: 'Infrastructure', shortLabel: '4', status: foundationTabStatus },
-    { id: 'compliance-safety', label: 'Aerospace Safety', shortLabel: '5', status: safetyTabStatus },
-    { id: 'rlm-protocol', label: 'RLM Protocol', shortLabel: '6', status: rlmTabStatus },
-    { id: 'build-qa', label: 'Build QA', shortLabel: '7', status: (buildQaStatus === 'ready' ? 'pass' : buildQaStatus === 'blocked' ? 'fail' : buildQaStatus === 'validating' ? 'pending' : 'warn') as CheckStatusType },
-    { id: 'notifications', label: 'Notifications', shortLabel: '8', status: 'pending' as CheckStatusType },
-    { id: 'agent-dispatch', label: 'Agent Dispatch', shortLabel: '9', status: (agents.some(a => a.status === 'running') ? 'pass' : 'pending') as CheckStatusType },
-    { id: 'audit-log', label: 'Audit Log', shortLabel: '10', status: ((auditLogSummary?.requires_review || 0) > 0 ? 'warn' : 'pass') as CheckStatusType },
+    { id: 'compliance-safety', label: 'Aerospace', shortLabel: '5', status: safetyTabStatus },
+    { id: 'rlm-protocol', label: 'RLM', shortLabel: '6', status: rlmTabStatus },
+    { id: 'notifications', label: 'Notifications', shortLabel: '7', status: 'pending' as CheckStatusType },
+    { id: 'build-qa', label: 'Build', shortLabel: '8', status: (buildQaStatus === 'ready' ? 'pass' : buildQaStatus === 'blocked' ? 'fail' : buildQaStatus === 'validating' ? 'pending' : 'warn') as CheckStatusType },
+    { id: 'agent-dispatch', label: 'Launch', shortLabel: '9', status: (agents.some(a => a.status === 'running') ? 'pass' : 'pending') as CheckStatusType },
   ]
 
   // Convert tabs to LaunchStep format for progress visualization
-  const launchSteps: LaunchStep[] = tabs.slice(0, 10).map(tab => ({
+  const launchSteps: LaunchStep[] = tabs.map(tab => ({
     id: tab.id,
-    label: tab.label.split(' ')[0], // Short label for progress bar
+    label: tab.label,
     status: tab.status === 'pass' ? 'ready' : tab.status === 'fail' ? 'blocked' : 'idle'
   }))
 
@@ -2026,6 +1410,7 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
         SUPABASE_ANON_KEY: config.SUPABASE_ANON_KEY || '',
         SUPABASE_SERVICE_ROLE_KEY: config.SUPABASE_SERVICE_ROLE_KEY || '',
         SLACK_WEBHOOK_URL: config.SLACK_WEBHOOK_URL || '',
+        SLACK_BOT_TOKEN: config.SLACK_BOT_TOKEN || '',
         GITHUB_TOKEN: config.GITHUB_TOKEN || '',
         GITHUB_REPO_URL: config.GITHUB_REPO_URL || '',
         VERCEL_TOKEN: config.VERCEL_TOKEN || '',
@@ -3064,10 +2449,10 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
   // Get severity color
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'critical': return 'text-red-400 bg-red-500/10'
+      case 'critical': return 'text-red-500 bg-red-500/10'
       case 'error': return 'text-red-500 bg-red-500/10'
-      case 'warn': return 'text-amber-600 bg-amber-50'
-      case 'info': return 'text-blue-400 bg-blue-500/10'
+      case 'warn': return 'text-amber-500 bg-amber-500/10'
+      case 'info': return 'text-blue-500 bg-blue-500/10'
       default: return 'text-muted-foreground bg-muted'
     }
   }
@@ -3417,13 +2802,13 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
   const getAgentColor = (color: string) => {
     switch (color) {
-      case 'violet': return 'bg-violet-100 text-violet-600'
-      case 'blue': return 'bg-blue-500/15 text-blue-400'
-      case 'green': return 'bg-green-500/15 text-green-400'
-      case 'amber': return 'bg-amber-500/10 text-amber-600'
-      case 'cyan': return 'bg-cyan-100 text-cyan-600'
-      case 'red': return 'bg-red-500/15 text-red-400'
-      default: return 'bg-zinc-100 text-zinc-600'
+      case 'violet': return 'bg-violet-500/100/10 text-violet-500'
+      case 'blue': return 'bg-blue-500/15 text-blue-500'
+      case 'green': return 'bg-green-500/15 text-green-500'
+      case 'amber': return 'bg-amber-500/100/10 text-amber-500'
+      case 'cyan': return 'bg-cyan-500/15 text-cyan-600'
+      case 'red': return 'bg-red-500/15 text-red-500'
+      default: return 'bg-muted text-muted-foreground'
     }
   }
 
@@ -3535,7 +2920,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
       {validationMode !== 'strict' && (
         <div className={cn(
           "px-4 py-2 text-center text-sm font-semibold",
-          validationMode === 'dev' ? "bg-amber-500 text-white" : "bg-blue-500/100 text-white"
+          validationMode === 'dev' ? "bg-amber-500/100 text-white" : "bg-blue-500/100 text-white"
         )}>
           {validationMode === 'dev' ? (
             <>⚠️ DEV MODE - Behavioral probes & drift checks DISABLED - NOT FOR PRODUCTION</>
@@ -3558,12 +2943,12 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               value={validationMode}
               onChange={(e) => setValidationMode(e.target.value as 'strict' | 'dev' | 'ci')}
               className={cn(
-                "appearance-none pl-3 pr-8 py-1.5 rounded-full text-xs font-medium border cursor-pointer",
+                "appearance-none pl-3 pr-8 py-1.5 rounded-full text-xs font-medium cursor-pointer",
                 validationMode === 'strict'
-                  ? "bg-green-500/10 border-green-500/30 text-green-400"
+                  ? "bg-green-500/10 text-green-500"
                   : validationMode === 'dev'
-                  ? "bg-amber-50 border-amber-200 text-amber-700"
-                  : "bg-blue-500/10 border-blue-500/30 text-blue-400"
+                  ? "bg-amber-500/10 text-amber-500"
+                  : "bg-blue-500/10 text-blue-500"
               )}
             >
               <option value="strict">🛡️ Strict Mode</option>
@@ -3581,24 +2966,24 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
           </a>
           {/* Dynamic Ready/Not Ready status based on analysis */}
           {analysisReport && analysisReport.summary.readiness_score >= 100 && analysisReport.summary.total_gaps === 0 ? (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-100 rounded-full">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 rounded-full">
               <CheckCircle2 className="h-4 w-4 text-green-500" />
-              <span className="text-sm font-medium text-green-400">Ready</span>
+              <span className="text-sm font-medium text-green-500">Ready</span>
               <span className="text-xs text-muted-foreground">Phase 1</span>
             </div>
           ) : (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-full">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 rounded-full">
               <AlertTriangle className="h-4 w-4 text-red-500" />
-              <span className="text-sm font-medium text-red-400">Not Ready</span>
+              <span className="text-sm font-medium text-red-500">Not Ready</span>
               <span className="text-xs text-muted-foreground">Phase 1</span>
             </div>
           )}
           <button className="px-3 py-1.5 bg-card border border-border rounded-full text-xs font-medium hover:bg-muted flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500/100" />
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
             Circuit Breaker
           </button>
           <button className="px-3 py-1.5 bg-card border border-border rounded-full text-xs font-medium hover:bg-muted flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-red-500/100" />
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
             Emergency Stop
           </button>
         </div>
@@ -3631,503 +3016,33 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
       {/* Main Content */}
       <div>
+        {/* TAB 0: Mockup Design */}
+        {activeTab === 'mockup-design' && (
+          <MockupDesignTab
+            projectPath={project.root_path}
+            projectId={project.id}
+            validationStatus={mockupStatus}
+            onValidationComplete={(status) => setMockupStatus(status)}
+          />
+        )}
+
         {/* TAB 1: AI PRD & Stories */}
         {activeTab === 'project-overview' && (
-          <>
-            {/* Project Card */}
-            <div className="bg-card border border-border rounded-2xl mb-6 overflow-hidden">
-              {/* Project Section Header */}
-              <div className="flex items-center justify-between p-6 border-b border-border">
-                <div className="flex items-center gap-6">
-                  <span className="text-sm font-medium text-muted-foreground">PROJECT</span>
-                  <div>
-                    <span className="font-semibold">Project Structure Overview</span>
-                    <span className="text-muted-foreground ml-3">File structure, documentation locations, and best practices</span>
-                  </div>
-                </div>
-                <div className="text-sm text-muted-foreground">{lastUpdate} <span className="ml-2 font-semibold">3/6</span></div>
-              </div>
-
-              {/* Project Name */}
-              <div className="p-6 border-b border-border">
-                <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Project Name</label>
-                <div className="flex gap-3">
-                  <input
-                    type="text"
-                    value={project.name}
-                    readOnly
-                    className="flex-1 px-4 py-3 bg-muted/30 border border-border rounded-xl text-sm"
-                  />
-                  <button className="px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:opacity-90">
-                    Save & Analyze
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">Saving will scan the project and suggest structure improvements if needed.</p>
-              </div>
-
-              {/* Folder Structure */}
-              <div className="p-6 border-b border-border">
-                <div
-                  className="flex items-center justify-between cursor-pointer"
-                  onClick={() => setFolderExpanded(!folderExpanded)}
-                >
-                  <div className="flex items-center gap-3">
-                    {folderExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-                    <span className="text-lg">📁</span>
-                    <div>
-                      <p className="font-semibold">Folder Structure</p>
-                      <p className="text-sm text-muted-foreground">Click to expand and view project tree</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <code className="text-sm text-muted-foreground font-mono">{project.root_path}</code>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); copyPath(project.root_path); }}
-                      className="px-3 py-1.5 bg-muted hover:bg-muted/80 rounded-lg flex items-center gap-2 text-sm"
-                    >
-                      <Copy className="h-4 w-4" /> Copy
-                    </button>
-                  </div>
-                </div>
-                {folderExpanded && (
-                  <div className="mt-4">
-                    <div className="bg-background rounded-xl p-6 font-mono text-sm text-zinc-100 overflow-x-auto">
-                      {analysisReport?.file_structure?.tree ? (
-                        <pre className="whitespace-pre leading-relaxed">
-                          <span className="text-yellow-400">📁</span> {project.name}/
-{'\n'}{analysisReport.file_structure.tree}
-                        </pre>
-                      ) : (
-                        <div className="text-zinc-400 text-center py-8">
-                          <p className="mb-2">Run analysis to scan the actual project structure</p>
-                          <button
-                            onClick={runAnalysis}
-                            className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium"
-                          >
-                            Run Analysis
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    {analysisReport?.file_structure?.tree && (
-                      <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
-                        <span>✓</span> Tree structure from actual file system scan
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Key Files Status */}
-              <div className="p-6 border-b border-border">
-                <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">Key Files Status</label>
-                <div className="grid grid-cols-3 gap-3">
-                  {fileChecks.map((file) => (
-                    <FileCard key={file.name} file={file} onCopy={copyPath} />
-                  ))}
-                </div>
-              </div>
-
-              {/* Data Sources */}
-              <div className="p-6">
-                <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">Data Sources</label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-muted/30 rounded-xl border border-border">
-                    <p className="text-xs font-semibold text-green-400 uppercase mb-2">Source of Truth</p>
-                    <div className="flex items-center gap-2">
-                      <Database className="h-5 w-5 text-green-400" />
-                      <span className="font-semibold">Supabase</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">wave_stories table</p>
-                  </div>
-                  <div className="p-4 bg-muted/30 rounded-xl border border-border">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Speed Layer</p>
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-5 w-5 text-amber-400" />
-                      <span className="font-semibold">JSON Signals</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">.claude/*.json</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Run Analysis Section */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 mt-6 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold mb-1">Deep Project Analysis</h3>
-                  <p className="text-blue-100 text-sm">
-                    Analyze file structure, AI PRD, AI Stories, and HTML prototypes to identify gaps and create an improvement plan
-                  </p>
-                </div>
-                <button
-                  onClick={runAnalysis}
-                  disabled={analysisRunning}
-                  className="px-6 py-3 bg-card text-blue-400 rounded-xl font-semibold hover:bg-blue-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {analysisRunning ? (
-                    <>
-                      <RefreshCw className="h-5 w-5 animate-spin" />
-                      Analyzing...
-                    </>
-                  ) : (
-                    <>
-                      <Target className="h-5 w-5" />
-                      Run Analysis
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Analysis Results */}
-            {analysisComplete && analysisReport && (
-              <div className="mt-6 space-y-6">
-                {/* Summary Card */}
-                <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                  <div className="p-6 bg-gradient-to-r from-zinc-900 to-zinc-800 text-white">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-xl font-bold mb-1">Gap Analysis Report</h3>
-                        <p className="text-zinc-400 text-sm">Generated: {new Date(analysisReport.timestamp).toLocaleString()}</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-3xl font-bold text-blue-400">{analysisReport.summary.readiness_score}%</div>
-                        <div className="text-sm text-zinc-400">Readiness Score</div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4 mt-6">
-                      <div className="bg-card/10 rounded-lg p-3">
-                        <div className="text-2xl font-bold text-red-400">{analysisReport.summary.total_issues}</div>
-                        <div className="text-xs text-zinc-400">Issues Found</div>
-                      </div>
-                      <div className="bg-card/10 rounded-lg p-3">
-                        <div className="text-2xl font-bold text-yellow-400">{analysisReport.summary.total_gaps}</div>
-                        <div className="text-xs text-zinc-400">Gaps Identified</div>
-                      </div>
-                      <div className="bg-card/10 rounded-lg p-3">
-                        <div className="text-2xl font-bold text-green-400">{analysisReport.improvement_plan.length}</div>
-                        <div className="text-xs text-zinc-400">Improvement Steps</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Analysis Details */}
-                <div className="grid grid-cols-2 gap-6">
-                  {/* File Structure Analysis */}
-                  <div className="bg-card border border-border rounded-xl overflow-hidden">
-                    <div className={cn("px-4 py-3 border-b font-semibold flex items-center gap-2",
-                      analysisReport.file_structure.status === 'pass' ? 'bg-green-500/10 text-green-400' :
-                      analysisReport.file_structure.status === 'warn' ? 'bg-muted text-zinc-600' : 'bg-red-500/10 text-red-400'
-                    )}>
-                      <Layers className="h-4 w-4" />
-                      File Structure
-                    </div>
-                    <div className="p-4 space-y-3">
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-2">Findings</p>
-                        {analysisReport.file_structure.findings.map((f, i) => (
-                          <div key={i} className="flex items-start gap-2 text-sm py-1">
-                            <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                            <span>{f}</span>
-                          </div>
-                        ))}
-                      </div>
-                      {analysisReport.file_structure.issues.length > 0 && (
-                        <div>
-                          <p className="text-xs font-medium text-red-400 mb-2">Issues</p>
-                          {analysisReport.file_structure.issues.map((issue, i) => (
-                            <div key={i} className="flex items-start gap-2 text-sm py-1 text-red-400">
-                              <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                              <span>{issue}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* AI PRD Analysis */}
-                  <div className="bg-card border border-border rounded-xl overflow-hidden">
-                    <div className={cn("px-4 py-3 border-b font-semibold flex items-center gap-2",
-                      analysisReport.ai_prd.status === 'pass' ? 'bg-green-500/10 text-green-400' :
-                      analysisReport.ai_prd.status === 'warn' ? 'bg-muted text-zinc-600' : 'bg-red-500/10 text-red-400'
-                    )}>
-                      <ScrollText className="h-4 w-4" />
-                      AI PRD Document
-                    </div>
-                    <div className="p-4 space-y-3">
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-2">Findings</p>
-                        {analysisReport.ai_prd.findings.map((f, i) => (
-                          <div key={i} className="flex items-start gap-2 text-sm py-1">
-                            <Info className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
-                            <span>{f}</span>
-                          </div>
-                        ))}
-                      </div>
-                      {analysisReport.ai_prd.issues.length > 0 && (
-                        <div>
-                          <p className="text-xs font-medium text-red-400 mb-2">Issues</p>
-                          {analysisReport.ai_prd.issues.map((issue, i) => (
-                            <div key={i} className="flex items-start gap-2 text-sm py-1 text-red-400">
-                              <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                              <span>{issue}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* AI Stories Analysis */}
-                  <div className="bg-card border border-border rounded-xl overflow-hidden">
-                    <div className={cn("px-4 py-3 border-b font-semibold flex items-center gap-2",
-                      analysisReport.ai_stories.status === 'pass' ? 'bg-green-500/10 text-green-400' :
-                      analysisReport.ai_stories.status === 'warn' ? 'bg-muted text-zinc-600' : 'bg-red-500/10 text-red-400'
-                    )}>
-                      <Database className="h-4 w-4" />
-                      AI Stories ({analysisReport.ai_stories.stories_found} found)
-                    </div>
-                    <div className="p-4 space-y-3">
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-2">Findings</p>
-                        {analysisReport.ai_stories.findings.map((f, i) => (
-                          <div key={i} className="flex items-start gap-2 text-sm py-1">
-                            <Info className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
-                            <span>{f}</span>
-                          </div>
-                        ))}
-                      </div>
-                      {analysisReport.ai_stories.issues.length > 0 && (
-                        <div>
-                          <p className="text-xs font-medium text-red-400 mb-2">Issues</p>
-                          {analysisReport.ai_stories.issues.map((issue, i) => (
-                            <div key={i} className="flex items-start gap-2 text-sm py-1 text-red-400">
-                              <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                              <span>{issue}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* HTML Prototype Analysis */}
-                  <div className="bg-card border border-border rounded-xl overflow-hidden">
-                    <div className={cn("px-4 py-3 border-b font-semibold flex items-center gap-2",
-                      analysisReport.html_prototype.status === 'pass' ? 'bg-green-500/10 text-green-400' :
-                      analysisReport.html_prototype.status === 'warn' ? 'bg-muted text-zinc-600' : 'bg-red-500/10 text-red-400'
-                    )}>
-                      <Layers className="h-4 w-4" />
-                      HTML Prototypes
-                    </div>
-                    <div className="p-4 space-y-3">
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-2">Findings</p>
-                        {analysisReport.html_prototype.findings.map((f, i) => (
-                          <div key={i} className="flex items-start gap-2 text-sm py-1">
-                            <Info className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
-                            <span>{f}</span>
-                          </div>
-                        ))}
-                      </div>
-                      {analysisReport.html_prototype.issues.length > 0 && (
-                        <div>
-                          <p className="text-xs font-medium text-red-400 mb-2">Issues</p>
-                          {analysisReport.html_prototype.issues.map((issue, i) => (
-                            <div key={i} className="flex items-start gap-2 text-sm py-1 text-red-400">
-                              <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                              <span>{issue}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Gap Analysis Table */}
-                <div className="bg-card border border-border rounded-xl overflow-hidden">
-                  <div className="px-6 py-4 bg-muted border-b border-border">
-                    <h3 className="font-bold text-zinc-700 flex items-center gap-2">
-                      <Info className="h-5 w-5" />
-                      Identified Gaps
-                    </h3>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted/30 border-b">
-                        <tr>
-                          <th className="text-left px-6 py-3 font-medium">Category</th>
-                          <th className="text-left px-6 py-3 font-medium">Description</th>
-                          <th className="text-left px-6 py-3 font-medium">Priority</th>
-                          <th className="text-left px-6 py-3 font-medium">Action Required</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {analysisReport.gap_analysis.gaps.map((gap, i) => (
-                          <tr key={i} className="border-b last:border-0">
-                            <td className="px-6 py-4 font-medium">{gap.category}</td>
-                            <td className="px-6 py-4">{gap.description}</td>
-                            <td className="px-6 py-4">
-                              <span className={cn("px-2 py-1 rounded-full text-xs font-medium",
-                                gap.priority === 'high' ? 'bg-red-500/15 text-red-400' :
-                                gap.priority === 'medium' ? 'bg-zinc-100 text-zinc-600' : 'bg-green-500/15 text-green-400'
-                              )}>
-                                {gap.priority.toUpperCase()}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-muted-foreground">{gap.action}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Improvement Plan */}
-                <div className="bg-card border border-border rounded-xl overflow-hidden">
-                  <div className="px-6 py-4 bg-green-500/10 border-b border-green-100">
-                    <h3 className="font-bold text-green-400 flex items-center gap-2">
-                      <ArrowRight className="h-5 w-5" />
-                      Step-by-Step Improvement Plan
-                    </h3>
-                    <p className="text-sm text-green-400 mt-1">Follow these steps to prepare your project for WAVE automation</p>
-                  </div>
-                  <div className="p-6 space-y-4">
-                    {analysisReport.improvement_plan.map((step) => (
-                      <div key={step.step} className="flex items-start gap-4 p-4 bg-muted/30 rounded-xl">
-                        <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-sm shrink-0">
-                          {step.step}
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-semibold">{step.title}</h4>
-                          <p className="text-sm text-muted-foreground mt-1">{step.description}</p>
-                        </div>
-                        <span className={cn("px-3 py-1 rounded-full text-xs font-medium",
-                          step.status === 'completed' ? 'bg-green-500/15 text-green-400' : 'bg-muted text-muted-foreground'
-                        )}>
-                          {step.status === 'completed' ? 'Done' : 'Pending'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* PRD Section */}
-            <SectionHeader badge="PRD" badgeColor="bg-muted0" title="AI PRD Vision" description="Product requirements that decompose into AI Stories" timestamp={lastUpdate} status={analysisReport?.ai_prd?.status === 'pass' ? 'pass' : 'warn'} />
-            <div className="border-x border-b border-border rounded-b-xl">
-              <CheckItem
-                label="AI PRD Vision Document"
-                status={analysisReport?.ai_prd?.status === 'pass' ? 'pass' : 'warn'}
-                description={analysisReport?.ai_prd?.prd_location ? `Found at: ${analysisReport.ai_prd.prd_location}` : "Verifies AI PRD Vision document exists in ai-prd/AI-PRD.md with product requirements"}
-                command={`ls -la ai-prd/AI-PRD.md .claude/ai-prd/AI-PRD.md 2>/dev/null`}
-                fix="Create an AI PRD document at ai-prd/AI-PRD.md with your product vision and requirements"
-                defaultExpanded={analysisReport?.ai_prd?.status !== 'pass'}
-              />
-            </div>
-
-            {/* Supabase Section */}
-            <SectionHeader badge="DB" badgeColor="bg-blue-500/100" title="Supabase (SOURCE OF TRUTH)" description="Database connection - all state lives here, JSON signals are speed layer" timestamp={lastUpdate} status={supabaseConnected ? 'pass' : 'fail'} />
-            <div className="border-x border-b border-border rounded-b-xl">
-              <CheckItem
-                label="Supabase Connection"
-                status={supabaseConnected ? 'pass' : 'fail'}
-                description="Supabase (SOURCE OF TRUTH) is connected and wave_stories table is accessible"
-                command={`curl -s -H 'apikey: $SUPABASE_ANON_KEY' "$SUPABASE_URL/rest/v1/wave_stories?limit=1" 2>/dev/null && echo 'SOURCE OF TRUTH CONNECTED'`}
-                fix="Set SUPABASE_URL and SUPABASE_ANON_KEY in .env. Verify wave_stories table exists in Supabase"
-                defaultExpanded
-              />
-            </div>
-
-            {/* Waves Section */}
-            <div className="bg-card border border-border rounded-xl mt-6 overflow-hidden">
-              <div className="flex items-center justify-between p-5 border-b border-border">
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-medium text-muted-foreground">WAVES</span>
-                  <span className="font-semibold">{storiesCount > 0 ? `${storiesCount} AI Stories in Database` : 'No AI Stories in Database'}</span>
-                  {analysisReport?.ai_stories?.stories_found && analysisReport.ai_stories.stories_found > storiesCount && (
-                    <span className="text-amber-600 text-sm">({analysisReport.ai_stories.stories_found} in files - click Sync)</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-3">
-                  {syncMessage && (
-                    <span className={`text-xs ${syncMessage.includes('error') || syncMessage.includes('failed') ? 'text-red-500' : 'text-green-400'}`}>
-                      {syncMessage}
-                    </span>
-                  )}
-                  <button
-                    onClick={syncStories}
-                    disabled={syncingStories || !supabaseConnected}
-                    className="px-3 py-1.5 bg-blue-500/100 text-white rounded-lg text-xs font-medium hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-                  >
-                    {syncingStories ? (
-                      <>
-                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                        Syncing...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="h-3.5 w-3.5" />
-                        Sync Stories
-                      </>
-                    )}
-                  </button>
-                  <StatusBadge status={storiesCount > 0 ? 'pass' : 'blocked'} />
-                </div>
-              </div>
-
-              {storiesCount === 0 && (
-                <div className="p-6">
-                  <p className="text-center text-muted-foreground mb-4">To sync stories from JSON files to database:</p>
-                  <ol className="list-decimal list-inside space-y-2 text-sm max-w-lg mx-auto">
-                    <li>Run Analysis to detect stories in <code className="bg-zinc-100 px-1.5 py-0.5 rounded font-mono text-xs">stories/wave{'{N}'}/*.json</code></li>
-                    <li>Click <strong>Sync Stories</strong> to import them to the database</li>
-                    <li>Stories will be stored in <code className="bg-zinc-100 px-1.5 py-0.5 rounded font-mono text-xs">wave_stories</code> table</li>
-                  </ol>
-                </div>
-              )}
-            </div>
-
-            {/* Phase 0: Story Validation */}
-            <SectionHeader badge="0" badgeColor="bg-blue-500/100" title="Phase 0: Story Validation" description="Validate current wave stories are complete and ready" timestamp={lastUpdate} status="pass" />
-            <div className="border-x border-b border-border rounded-b-xl">
-              <CheckItem
-                label="Stories Validated (0/0)"
-                status="pass"
-                description="Parses all JSON story files in stories/wave{N}/ and validates they have required fields: id, title, acceptance_criteria"
-                command={`find stories/wave\${WAVE_NUMBER} -name '*.json' -exec jq -r '.id' {} \\; 2>/dev/null | wc -l`}
-                defaultExpanded
-              />
-              <CheckItem
-                label="Gap Analysis"
-                status="pass"
-                description="Analyzes stories to detect missing coverage: no frontend stories, no backend stories, or unlinked dependencies"
-                command={`cat .claude/locks/PHASE0-wave\${WAVE_NUMBER}.lock 2>/dev/null | jq -r '.checks.gaps.status'`}
-                defaultExpanded
-              />
-              <CheckItem
-                label="Wave Planning"
-                status="pass"
-                description="Generates wave execution plan including story assignments, estimated costs, and dependency order"
-                command={`cat .claude/locks/PHASE0-wave\${WAVE_NUMBER}.lock 2>/dev/null | jq -r '.checks.planning.status'`}
-                defaultExpanded
-              />
-              <CheckItem
-                label="Green Light Approval"
-                status="pass"
-                description="Final human approval checkpoint before autonomous agents begin work. Requires explicit GO signal"
-                command={`cat .claude/signal-wave\${WAVE_NUMBER}-greenlight.json 2>/dev/null | jq -r '.status'`}
-                defaultExpanded
-              />
-            </div>
-
-          </>
+          <PRDStoriesTab
+            projectPath={project.root_path}
+            projectName={project.name}
+            projectId={project.id}
+            analysisReport={analysisReport}
+            analysisRunning={analysisRunning}
+            onRunAnalysis={runAnalysis}
+            fileChecks={fileChecks}
+            supabaseConnected={supabaseConnected}
+            storiesCount={storiesCount}
+            onSyncStories={syncStories}
+            syncingStories={syncingStories}
+            syncMessage={syncMessage}
+            onCopyPath={copyPath}
+          />
         )}
 
         {/* TAB 2: Execution Plan */}
@@ -4137,158 +3052,112 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
         {/* TAB 3: Foundation */}
         {activeTab === 'infrastructure' && (
-          <>
-            {/* Infrastructure Info Box */}
-            <div className="p-5 bg-blue-500/10 border border-blue-500/30 rounded-2xl mb-6">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-blue-500/15 flex items-center justify-center flex-shrink-0">
-                  <Info className="h-5 w-5 text-blue-400" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-blue-900 mb-1">Infrastructure Validation</h3>
-                  <p className="text-sm text-blue-400 leading-relaxed">
-                    This section validates your development environment before starting WAVE automation.
-                    It checks <strong>Foundation</strong> requirements (Git, environment variables, build tools, WAVE config)
-                    and <strong>Infrastructure</strong> requirements (git worktrees for parallel agent isolation,
-                    Docker containers, signal files, and Gate -1 pre-validation checks).
-                    All checks must pass before agents can safely develop in isolated worktrees.
-                  </p>
-                  <p className="text-xs text-blue-400 mt-2">
-                    Click on any check to expand and see the terminal command you can run to verify or fix issues.
-                  </p>
-                </div>
-              </div>
-            </div>
+          <TabContainer>
+            {/* 1. INFO BOX */}
+            <InfoBox
+              title="Step 4: Infrastructure Validation"
+              description="Validates your development environment before starting WAVE automation. Checks Foundation requirements (Git, environment, build tools, WAVE config) and Infrastructure requirements (worktrees, Docker, signals, Gate -1). All checks must pass before agents can safely develop."
+              icon={<Shield className="h-4 w-4 text-blue-500" />}
+            />
 
-            {/* Validate Infrastructure Button & Status */}
-            <div className="p-6 border border-border rounded-2xl mb-6 bg-card">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className={cn(
-                    "w-12 h-12 rounded-xl flex items-center justify-center",
-                    foundationStatus === 'ready' ? "bg-green-500/15" :
-                    foundationStatus === 'blocked' ? "bg-red-500/15" :
-                    foundationStatus === 'validating' ? "bg-blue-500/15" :
-                    "bg-zinc-100"
-                  )}>
-                    {foundationStatus === 'ready' ? (
-                      <CheckCircle2 className="h-6 w-6 text-green-400" />
-                    ) : foundationStatus === 'blocked' ? (
-                      <XCircle className="h-6 w-6 text-red-500" />
-                    ) : foundationStatus === 'validating' ? (
-                      <Loader2 className="h-6 w-6 text-blue-400 animate-spin" />
-                    ) : (
-                      <Play className="h-6 w-6 text-zinc-500" />
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">
-                      {foundationStatus === 'ready' ? 'Ready to Develop' :
-                       foundationStatus === 'blocked' ? 'Foundation Blocked' :
-                       foundationStatus === 'validating' ? 'Validating Foundation...' :
-                       'Foundation Validation'}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {foundationStatus === 'ready' ? 'All pre-development checks passed' :
-                       foundationStatus === 'blocked' ? 'Some required checks failed - fix issues below' :
-                       foundationStatus === 'validating' ? 'Running comprehensive checks...' :
-                       'Run validation to verify all systems are configured correctly'}
-                    </p>
-                    {foundationLastChecked && (
-                      <p className="text-xs text-muted-foreground mt-1">Last checked: {formatValidationTimestamp(foundationLastChecked)}</p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  {foundationChecks.length > 0 && foundationChecks.some(c => c.status === 'fail' || c.status === 'warn') && (
-                    <button
-                      onClick={downloadFoundationReport}
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 transition-colors"
-                    >
-                      <Download className="h-4 w-4" />
-                      Download Fix Guide (.md)
-                    </button>
-                  )}
-                  <button
-                    onClick={validateFoundation}
-                    disabled={foundationValidating || !project?.root_path}
-                    className={cn(
-                      "flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all",
-                      foundationValidating
-                        ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
-                        : foundationStatus === 'ready'
-                        ? "bg-green-500 hover:bg-green-600 text-white"
-                        : foundationStatus === 'blocked'
-                        ? "bg-background hover:bg-zinc-800 text-white"
-                        : "bg-background hover:bg-zinc-800 text-white"
-                    )}
-                  >
-                    {foundationValidating ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Validating...
-                      </>
-                    ) : (
-                      <>
-                        <Play className="h-4 w-4" />
-                        {foundationStatus === 'idle' ? 'Validate Foundation' : 'Re-validate'}
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
+            {/* 2. KPI CARDS */}
+            {foundationChecks.length > 0 && (() => {
+              const passed = foundationChecks.filter(c => c.status === 'pass')
+              const failed = foundationChecks.filter(c => c.status === 'fail')
+              const warnings = foundationChecks.filter(c => c.status === 'warn')
+              return (
+                <KPICards
+                  items={[
+                    {
+                      label: 'Total Checks',
+                      value: foundationChecks.length,
+                      status: 'neutral',
+                      icon: <Target className="h-4 w-4" />
+                    },
+                    {
+                      label: 'Passed',
+                      value: passed.length,
+                      status: passed.length === foundationChecks.length ? 'success' : 'neutral',
+                      icon: <CheckCircle2 className="h-4 w-4" />
+                    },
+                    {
+                      label: 'Failed',
+                      value: failed.length,
+                      status: failed.length > 0 ? 'error' : 'success',
+                      icon: <XCircle className="h-4 w-4" />
+                    },
+                    {
+                      label: 'Warnings',
+                      value: warnings.length,
+                      status: warnings.length > 0 ? 'warning' : 'neutral',
+                      icon: <AlertTriangle className="h-4 w-4" />
+                    },
+                  ]}
+                />
+              )
+            })()}
 
-              {/* Validation Results - Redesigned for Clarity */}
-              {foundationChecks.length > 0 && (() => {
-                const passed = foundationChecks.filter(c => c.status === 'pass')
-                const failed = foundationChecks.filter(c => c.status === 'fail')
-                const warnings = foundationChecks.filter(c => c.status === 'warn')
-                const total = foundationChecks.length
-                const progressPercent = Math.round((passed.length / total) * 100)
-                const showPassedSection = expandedSections['validation-passed'] ?? false
+            {/* 3. ACTION BAR */}
+            <ActionBar
+              category="INFRASTRUCTURE"
+              title="Foundation Validation"
+              description={foundationLastChecked ? `Last checked: ${formatValidationTimestamp(foundationLastChecked)}` : 'Not yet validated'}
+              statusBadge={foundationStatus === 'ready' ? {
+                label: 'Ready',
+                icon: <CheckCircle2 className="h-3 w-3" />,
+                variant: 'success'
+              } : foundationStatus === 'blocked' ? {
+                label: 'Blocked',
+                icon: <XCircle className="h-3 w-3" />,
+                variant: 'warning'
+              } : undefined}
+              primaryAction={{
+                label: foundationValidating ? 'Validating...' : foundationStatus === 'idle' ? 'Validate Foundation' : 'Re-validate',
+                onClick: validateFoundation,
+                loading: foundationValidating,
+                disabled: !project?.root_path,
+                icon: <Play className="h-4 w-4" />
+              }}
+              secondaryAction={foundationChecks.length > 0 && foundationChecks.some(c => c.status === 'fail' || c.status === 'warn') ? {
+                label: 'Download Fix Guide',
+                onClick: downloadFoundationReport,
+                icon: <Download className="h-4 w-4" />
+              } : undefined}
+            />
 
-                return (
-                  <div className="mt-6 pt-6 border-t border-border/50 space-y-4">
-                    {/* Summary Bar */}
-                    <div className="flex items-center gap-6 p-4 bg-muted rounded-xl">
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-zinc-600">Validation Progress</span>
-                          <span className="text-sm font-semibold">{progressPercent}%</span>
-                        </div>
-                        <div className="h-2.5 bg-border rounded-full overflow-hidden">
-                          <div
-                            className={cn(
-                              "h-full rounded-full transition-all duration-500",
-                              failed.length > 0 ? "bg-red-500/100" : warnings.length > 0 ? "bg-amber-400" : "bg-green-500/100"
-                            )}
-                            style={{ width: `${progressPercent}%` }}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 pl-4 border-l border-border">
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-green-400">{passed.length}</div>
-                          <div className="text-xs text-zinc-500">Passed</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-red-400">{failed.length}</div>
-                          <div className="text-xs text-zinc-500">Failed</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-amber-500">{warnings.length}</div>
-                          <div className="text-xs text-zinc-500">Warnings</div>
-                        </div>
-                      </div>
-                    </div>
+            {/* 4. RESULT SUMMARY */}
+            <ResultSummary
+              status={
+                foundationStatus === 'ready' ? 'pass' :
+                foundationStatus === 'blocked' ? 'fail' :
+                foundationStatus === 'validating' ? 'pending' : 'idle'
+              }
+              message={
+                foundationStatus === 'ready' ? 'All pre-development checks passed. Ready for WAVE automation.' :
+                foundationStatus === 'blocked' ? 'Some required checks failed. Fix the issues below and re-validate.' :
+                foundationStatus === 'validating' ? 'Running comprehensive validation checks...' :
+                'Run validation to verify all systems are configured correctly.'
+              }
+              timestamp={foundationLastChecked ? formatValidationTimestamp(foundationLastChecked) : undefined}
+            />
+
+            {/* Validation Results Details */}
+            {foundationChecks.length > 0 && (() => {
+              const passed = foundationChecks.filter(c => c.status === 'pass')
+              const failed = foundationChecks.filter(c => c.status === 'fail')
+              const warnings = foundationChecks.filter(c => c.status === 'warn')
+              const showPassedSection = expandedSections['validation-passed'] ?? false
+
+              return (
+                <div className="space-y-4">
 
                     {/* Blockers Section - Failed Checks */}
                     {failed.length > 0 && (
                       <div className="border-2 border-red-500/30 rounded-xl overflow-hidden bg-red-500/10">
                         <div className="px-4 py-3 bg-red-500/15 border-b border-red-500/30">
                           <div className="flex items-center gap-2">
-                            <XCircle className="h-5 w-5 text-red-400" />
-                            <span className="font-semibold text-red-400">Blockers - Fix These First ({failed.length})</span>
+                            <XCircle className="h-5 w-5 text-red-500" />
+                            <span className="font-semibold text-red-500">Blockers - Fix These First ({failed.length})</span>
                           </div>
                         </div>
                         <div className="divide-y divide-red-200">
@@ -4299,23 +3168,23 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center justify-between gap-2">
                                     <span className="font-medium text-zinc-900">{check.name}</span>
-                                    <span className="text-xs text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded">{check.category}</span>
+                                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{check.category}</span>
                                   </div>
-                                  <p className="text-sm text-red-400 mt-1">{check.message}</p>
+                                  <p className="text-sm text-red-500 mt-1">{check.message}</p>
                                   {check.recommendation && (
                                     <div className="mt-2 p-2.5 bg-red-500/10 border border-red-500/20 rounded-lg">
-                                      <span className="text-xs font-semibold text-red-400 block mb-1">How to fix:</span>
-                                      <span className="text-sm text-red-400">{check.recommendation}</span>
+                                      <span className="text-xs font-semibold text-red-500 block mb-1">How to fix:</span>
+                                      <span className="text-sm text-red-500">{check.recommendation}</span>
                                     </div>
                                   )}
                                   {check.command && (
                                     <div className="mt-2 flex items-center gap-2">
-                                      <code className="flex-1 bg-background text-zinc-100 px-3 py-2 rounded-lg text-xs font-mono overflow-x-auto">
+                                      <code className="flex-1 bg-background text-foreground px-3 py-2 rounded-lg text-xs font-mono overflow-x-auto">
                                         {check.command}
                                       </code>
                                       <button
                                         onClick={() => navigator.clipboard.writeText(check.command || '')}
-                                        className="px-2 py-1.5 bg-zinc-100 hover:bg-border rounded text-xs font-medium shrink-0"
+                                        className="px-2 py-1.5 bg-muted hover:bg-border rounded text-xs font-medium shrink-0"
                                       >
                                         Copy
                                       </button>
@@ -4331,10 +3200,10 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
                     {/* Warnings Section */}
                     {warnings.length > 0 && (
-                      <div className="border border-amber-200 rounded-xl overflow-hidden bg-amber-50">
-                        <div className="px-4 py-3 bg-amber-500/10 border-b border-amber-200">
+                      <div className="border border-amber-500/30 rounded-xl overflow-hidden bg-amber-500/10">
+                        <div className="px-4 py-3 bg-amber-500/100/10 border-b border-amber-500/30">
                           <div className="flex items-center gap-2">
-                            <AlertTriangle className="h-5 w-5 text-amber-600" />
+                            <AlertTriangle className="h-5 w-5 text-amber-500" />
                             <span className="font-semibold text-amber-800">Warnings - Should Fix ({warnings.length})</span>
                           </div>
                         </div>
@@ -4345,10 +3214,10 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                                 <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
                                 <div className="min-w-0">
                                   <span className="font-medium text-zinc-800 text-sm">{check.name}</span>
-                                  <p className="text-xs text-amber-600 truncate">{check.message}</p>
+                                  <p className="text-xs text-amber-500 truncate">{check.message}</p>
                                 </div>
                               </div>
-                              <span className="text-xs text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded ml-2">{check.category}</span>
+                              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded ml-2">{check.category}</span>
                             </div>
                           ))}
                         </div>
@@ -4363,18 +3232,18 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                           className="w-full px-4 py-3 bg-green-500/10 border-b border-green-500/30 flex items-center justify-between hover:bg-green-500/15 transition-colors"
                         >
                           <div className="flex items-center gap-2">
-                            <CheckCircle2 className="h-5 w-5 text-green-400" />
-                            <span className="font-semibold text-green-400">Ready - All Good ({passed.length})</span>
+                            <CheckCircle2 className="h-5 w-5 text-green-500" />
+                            <span className="font-semibold text-green-500">Ready - All Good ({passed.length})</span>
                           </div>
-                          <ChevronDown className={cn("h-4 w-4 text-green-400 transition-transform", showPassedSection && "rotate-180")} />
+                          <ChevronDown className={cn("h-4 w-4 text-green-500 transition-transform", showPassedSection && "rotate-180")} />
                         </button>
                         {showPassedSection && (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-green-500/15">
                             {passed.map(check => (
                               <div key={check.id} className="p-2.5 bg-card flex items-center gap-2">
                                 <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
-                                <span className="text-sm text-zinc-700 truncate">{check.name}</span>
-                                <span className="text-xs text-zinc-400 ml-auto">{check.category}</span>
+                                <span className="text-sm text-foreground/80 truncate">{check.name}</span>
+                                <span className="text-xs text-muted-foreground ml-auto">{check.category}</span>
                               </div>
                             ))}
                           </div>
@@ -4387,11 +3256,11 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
                         <div className="flex items-start gap-3">
                           <div className="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center flex-shrink-0">
-                            <ArrowRight className="h-4 w-4 text-blue-400" />
+                            <ArrowRight className="h-4 w-4 text-blue-500" />
                           </div>
                           <div>
                             <h4 className="font-semibold text-blue-900 mb-1">Next Steps</h4>
-                            <ol className="text-sm text-blue-400 space-y-1 list-decimal list-inside">
+                            <ol className="text-sm text-blue-500 space-y-1 list-decimal list-inside">
                               <li>Fix the {failed.length} blocker{failed.length > 1 ? 's' : ''} shown above (red items)</li>
                               {warnings.length > 0 && <li>Address the {warnings.length} warning{warnings.length > 1 ? 's' : ''} (optional but recommended)</li>}
                               <li>Click "Re-validate" to verify fixes</li>
@@ -4407,11 +3276,11 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-green-500/15 flex items-center justify-center">
-                            <CheckCircle2 className="h-6 w-6 text-green-400" />
+                            <CheckCircle2 className="h-6 w-6 text-green-500" />
                           </div>
                           <div>
-                            <h4 className="font-semibold text-green-400">All Systems Ready!</h4>
-                            <p className="text-sm text-green-400">All {passed.length} checks passed. Your environment is fully configured for WAVE development.</p>
+                            <h4 className="font-semibold text-green-500">All Systems Ready!</h4>
+                            <p className="text-sm text-green-500">All {passed.length} checks passed. Your environment is fully configured for WAVE development.</p>
                           </div>
                         </div>
                       </div>
@@ -4419,7 +3288,6 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                   </div>
                 )
               })()}
-            </div>
 
             {/* Foundation Category Sections */}
             <div className="flex items-center justify-between p-6 border border-border bg-card rounded-2xl mb-6">
@@ -4432,163 +3300,171 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               )}
             </div>
 
-            <SectionHeader
-              badge="GIT"
-              badgeColor="bg-orange-500/100"
-              title="Git Repository"
-              description="Version control foundation - required for worktrees"
-              timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
-              status={
-                foundationChecks.filter(c => c.category === 'Git').every(c => c.status === 'pass') ? 'pass' :
-                foundationChecks.filter(c => c.category === 'Git').some(c => c.status === 'fail') ? 'fail' :
-                foundationChecks.filter(c => c.category === 'Git').some(c => c.status === 'warn') ? 'warn' : 'pending'
-              }
-              isCollapsible
-              isExpanded={expandedSections['Git']}
-              onToggle={() => setExpandedSections(prev => ({ ...prev, 'Git': !prev['Git'] }))}
-            />
-            {expandedSections['Git'] !== false && (
-              <div className="border-x border-b border-border rounded-b-xl">
-                {foundationChecks.filter(c => c.category === 'Git').length > 0 ? (
-                  foundationChecks.filter(c => c.category === 'Git').map(check => (
-                    <CheckItem
-                      key={check.id}
-                      label={check.name}
-                      status={check.status === 'pass' ? 'pass' : check.status === 'fail' ? 'fail' : check.status === 'warn' ? 'warn' : 'pending'}
-                      description={check.description || check.message}
-                      command={check.command}
-                      output={check.output}
-                      timestamp={check.timestamp}
-                    />
-                  ))
-                ) : (
-                  <>
-                    <CheckItem label="Git Installed" status="pending" description="Run validation to check" />
-                    <CheckItem label="Git Repository" status="pending" description="Run validation to check" />
-                    <CheckItem label="Remote Origin" status="pending" description="Run validation to check" />
-                    <CheckItem label="Working Directory Clean" status="pending" description="Run validation to check" />
-                  </>
-                )}
-              </div>
-            )}
+            <div>
+              <SectionHeader
+                badge={<GitBranch className="h-4 w-4 text-orange-500" />}
+                badgeColor="bg-orange-500/20"
+                title="Git Repository"
+                description="Version control foundation - required for worktrees"
+                timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
+                status={
+                  foundationChecks.filter(c => c.category === 'Git').every(c => c.status === 'pass') ? 'pass' :
+                  foundationChecks.filter(c => c.category === 'Git').some(c => c.status === 'fail') ? 'fail' :
+                  foundationChecks.filter(c => c.category === 'Git').some(c => c.status === 'warn') ? 'warn' : 'pending'
+                }
+                isCollapsible
+                isExpanded={expandedSections['Git']}
+                onToggle={() => setExpandedSections(prev => ({ ...prev, 'Git': !prev['Git'] }))}
+              />
+              {expandedSections['Git'] !== false && (
+                <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                  {foundationChecks.filter(c => c.category === 'Git').length > 0 ? (
+                    foundationChecks.filter(c => c.category === 'Git').map(check => (
+                      <CheckItem
+                        key={check.id}
+                        label={check.name}
+                        status={check.status === 'pass' ? 'pass' : check.status === 'fail' ? 'fail' : check.status === 'warn' ? 'warn' : 'pending'}
+                        description={check.description || check.message}
+                        command={check.command}
+                        output={check.output}
+                        timestamp={check.timestamp}
+                      />
+                    ))
+                  ) : (
+                    <>
+                      <CheckItem label="Git Installed" status="pending" description="Run validation to check" />
+                      <CheckItem label="Git Repository" status="pending" description="Run validation to check" />
+                      <CheckItem label="Remote Origin" status="pending" description="Run validation to check" />
+                      <CheckItem label="Working Directory Clean" status="pending" description="Run validation to check" />
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
 
-            <SectionHeader
-              badge="ENV"
-              badgeColor="bg-blue-500/100"
-              title="Environment Variables"
-              description="API keys and configuration"
-              timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
-              status={
-                foundationChecks.filter(c => c.category === 'Environment').every(c => c.status === 'pass') ? 'pass' :
-                foundationChecks.filter(c => c.category === 'Environment').some(c => c.status === 'fail') ? 'fail' :
-                foundationChecks.filter(c => c.category === 'Environment').some(c => c.status === 'warn') ? 'warn' : 'pending'
-              }
-              isCollapsible
-              isExpanded={expandedSections['Environment']}
-              onToggle={() => setExpandedSections(prev => ({ ...prev, 'Environment': !prev['Environment'] }))}
-            />
-            {expandedSections['Environment'] !== false && (
-              <div className="border-x border-b border-border rounded-b-xl">
-                {foundationChecks.filter(c => c.category === 'Environment').length > 0 ? (
-                  foundationChecks.filter(c => c.category === 'Environment').map(check => (
-                    <CheckItem
-                      key={check.id}
-                      label={check.name}
-                      status={check.status === 'pass' ? 'pass' : check.status === 'fail' ? 'fail' : check.status === 'warn' ? 'warn' : 'pending'}
-                      description={check.description || check.message}
-                      command={check.command}
-                      output={check.output}
-                      timestamp={check.timestamp}
-                    />
-                  ))
-                ) : (
-                  <>
-                    <CheckItem label=".env File Exists" status="pending" description="Run validation to check" />
-                    <CheckItem label="ANTHROPIC_API_KEY" status="pending" description="Run validation to check" />
-                    <CheckItem label="SUPABASE_URL" status="pending" description="Run validation to check" />
-                  </>
-                )}
-              </div>
-            )}
+            <div>
+              <SectionHeader
+                badge={<Key className="h-4 w-4 text-blue-500" />}
+                badgeColor="bg-blue-500/20"
+                title="Environment Variables"
+                description="API keys and configuration"
+                timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
+                status={
+                  foundationChecks.filter(c => c.category === 'Environment').every(c => c.status === 'pass') ? 'pass' :
+                  foundationChecks.filter(c => c.category === 'Environment').some(c => c.status === 'fail') ? 'fail' :
+                  foundationChecks.filter(c => c.category === 'Environment').some(c => c.status === 'warn') ? 'warn' : 'pending'
+                }
+                isCollapsible
+                isExpanded={expandedSections['Environment']}
+                onToggle={() => setExpandedSections(prev => ({ ...prev, 'Environment': !prev['Environment'] }))}
+              />
+              {expandedSections['Environment'] !== false && (
+                <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                  {foundationChecks.filter(c => c.category === 'Environment').length > 0 ? (
+                    foundationChecks.filter(c => c.category === 'Environment').map(check => (
+                      <CheckItem
+                        key={check.id}
+                        label={check.name}
+                        status={check.status === 'pass' ? 'pass' : check.status === 'fail' ? 'fail' : check.status === 'warn' ? 'warn' : 'pending'}
+                        description={check.description || check.message}
+                        command={check.command}
+                        output={check.output}
+                        timestamp={check.timestamp}
+                      />
+                    ))
+                  ) : (
+                    <>
+                      <CheckItem label=".env File Exists" status="pending" description="Run validation to check" />
+                      <CheckItem label="ANTHROPIC_API_KEY" status="pending" description="Run validation to check" />
+                      <CheckItem label="SUPABASE_URL" status="pending" description="Run validation to check" />
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
 
-            <SectionHeader
-              badge="BUILD"
-              badgeColor="bg-purple-500/100"
-              title="Build & Dependencies"
-              description="Package configuration and node modules"
-              timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
-              status={
-                foundationChecks.filter(c => c.category === 'Build').every(c => c.status === 'pass') ? 'pass' :
-                foundationChecks.filter(c => c.category === 'Build').some(c => c.status === 'fail') ? 'fail' :
-                foundationChecks.filter(c => c.category === 'Build').some(c => c.status === 'warn') ? 'warn' : 'pending'
-              }
-              isCollapsible
-              isExpanded={expandedSections['Build']}
-              onToggle={() => setExpandedSections(prev => ({ ...prev, 'Build': !prev['Build'] }))}
-            />
-            {expandedSections['Build'] !== false && (
-              <div className="border-x border-b border-border rounded-b-xl">
-                {foundationChecks.filter(c => c.category === 'Build').length > 0 ? (
-                  foundationChecks.filter(c => c.category === 'Build').map(check => (
-                    <CheckItem
-                      key={check.id}
-                      label={check.name}
-                      status={check.status === 'pass' ? 'pass' : check.status === 'fail' ? 'fail' : check.status === 'warn' ? 'warn' : 'pending'}
-                      description={check.description || check.message}
-                      command={check.command}
-                      output={check.output}
-                      timestamp={check.timestamp}
-                    />
-                  ))
-                ) : (
-                  <>
-                    <CheckItem label="package.json" status="pending" description="Run validation to check" />
-                    <CheckItem label="Dependencies Installed" status="pending" description="Run validation to check" />
-                    <CheckItem label="TypeScript Config" status="pending" description="Run validation to check" />
-                  </>
-                )}
-              </div>
-            )}
+            <div>
+              <SectionHeader
+                badge={<Package className="h-4 w-4 text-purple-500" />}
+                badgeColor="bg-purple-500/20"
+                title="Build & Dependencies"
+                description="Package configuration and node modules"
+                timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
+                status={
+                  foundationChecks.filter(c => c.category === 'Build').every(c => c.status === 'pass') ? 'pass' :
+                  foundationChecks.filter(c => c.category === 'Build').some(c => c.status === 'fail') ? 'fail' :
+                  foundationChecks.filter(c => c.category === 'Build').some(c => c.status === 'warn') ? 'warn' : 'pending'
+                }
+                isCollapsible
+                isExpanded={expandedSections['Build']}
+                onToggle={() => setExpandedSections(prev => ({ ...prev, 'Build': !prev['Build'] }))}
+              />
+              {expandedSections['Build'] !== false && (
+                <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                  {foundationChecks.filter(c => c.category === 'Build').length > 0 ? (
+                    foundationChecks.filter(c => c.category === 'Build').map(check => (
+                      <CheckItem
+                        key={check.id}
+                        label={check.name}
+                        status={check.status === 'pass' ? 'pass' : check.status === 'fail' ? 'fail' : check.status === 'warn' ? 'warn' : 'pending'}
+                        description={check.description || check.message}
+                        command={check.command}
+                        output={check.output}
+                        timestamp={check.timestamp}
+                      />
+                    ))
+                  ) : (
+                    <>
+                      <CheckItem label="package.json" status="pending" description="Run validation to check" />
+                      <CheckItem label="Dependencies Installed" status="pending" description="Run validation to check" />
+                      <CheckItem label="TypeScript Config" status="pending" description="Run validation to check" />
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
 
-            <SectionHeader
-              badge="WAVE"
-              badgeColor="bg-zinc-800"
-              title="WAVE Configuration"
-              description="Stories and protocol files"
-              timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
-              status={
-                foundationChecks.filter(c => c.category === 'WAVE').every(c => c.status === 'pass') ? 'pass' :
-                foundationChecks.filter(c => c.category === 'WAVE').some(c => c.status === 'fail') ? 'fail' :
-                foundationChecks.filter(c => c.category === 'WAVE').some(c => c.status === 'warn') ? 'warn' : 'pending'
-              }
-              isCollapsible
-              isExpanded={expandedSections['WAVE']}
-              onToggle={() => setExpandedSections(prev => ({ ...prev, 'WAVE': !prev['WAVE'] }))}
-            />
-            {expandedSections['WAVE'] !== false && (
-              <div className="border-x border-b border-border rounded-b-xl">
-                {foundationChecks.filter(c => c.category === 'WAVE').length > 0 ? (
-                  foundationChecks.filter(c => c.category === 'WAVE').map(check => (
-                    <CheckItem
-                      key={check.id}
-                      label={check.name}
-                      status={check.status === 'pass' ? 'pass' : check.status === 'fail' ? 'fail' : check.status === 'warn' ? 'warn' : 'pending'}
-                      description={check.description || check.message}
-                      command={check.command}
-                      output={check.output}
-                      timestamp={check.timestamp}
-                    />
-                  ))
-                ) : (
-                  <>
-                    <CheckItem label="Stories Directory" status="pending" description="Run validation to check" />
-                    <CheckItem label="Story Files Valid" status="pending" description="Run validation to check" />
-                    <CheckItem label="CLAUDE.md Protocol" status="pending" description="Run validation to check" />
-                    <CheckItem label="Budget Limit Set" status="pending" description="Run validation to check" />
-                  </>
-                )}
-              </div>
-            )}
+            <div>
+              <SectionHeader
+                badge={<Waves className="h-4 w-4 text-emerald-500" />}
+                badgeColor="bg-emerald-500/20"
+                title="WAVE Configuration"
+                description="Stories and protocol files"
+                timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
+                status={
+                  foundationChecks.filter(c => c.category === 'WAVE').every(c => c.status === 'pass') ? 'pass' :
+                  foundationChecks.filter(c => c.category === 'WAVE').some(c => c.status === 'fail') ? 'fail' :
+                  foundationChecks.filter(c => c.category === 'WAVE').some(c => c.status === 'warn') ? 'warn' : 'pending'
+                }
+                isCollapsible
+                isExpanded={expandedSections['WAVE']}
+                onToggle={() => setExpandedSections(prev => ({ ...prev, 'WAVE': !prev['WAVE'] }))}
+              />
+              {expandedSections['WAVE'] !== false && (
+                <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                  {foundationChecks.filter(c => c.category === 'WAVE').length > 0 ? (
+                    foundationChecks.filter(c => c.category === 'WAVE').map(check => (
+                      <CheckItem
+                        key={check.id}
+                        label={check.name}
+                        status={check.status === 'pass' ? 'pass' : check.status === 'fail' ? 'fail' : check.status === 'warn' ? 'warn' : 'pending'}
+                        description={check.description || check.message}
+                        command={check.command}
+                        output={check.output}
+                        timestamp={check.timestamp}
+                      />
+                    ))
+                  ) : (
+                    <>
+                      <CheckItem label="Stories Directory" status="pending" description="Run validation to check" />
+                      <CheckItem label="Story Files Valid" status="pending" description="Run validation to check" />
+                      <CheckItem label="CLAUDE.md Protocol" status="pending" description="Run validation to check" />
+                      <CheckItem label="Budget Limit Set" status="pending" description="Run validation to check" />
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Infrastructure Category Sections */}
             <div className="flex items-center justify-between p-6 border border-border bg-card rounded-2xl mb-6 mt-8">
@@ -4601,25 +3477,56 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               )}
             </div>
 
-            <SectionHeader
-              badge="WORKTREE"
-              badgeColor="bg-orange-500/100"
-              title="Git Worktrees"
-              description="Isolated worktrees for parallel agent development"
-              timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
-              status={
-                foundationChecks.filter(c => c.category === 'Git Worktrees').every(c => c.status === 'pass') ? 'pass' :
-                foundationChecks.filter(c => c.category === 'Git Worktrees').some(c => c.status === 'fail') ? 'fail' :
-                foundationChecks.filter(c => c.category === 'Git Worktrees').some(c => c.status === 'warn') ? 'warn' : 'pending'
-              }
-              isCollapsible
-              isExpanded={expandedSections['Git Worktrees']}
-              onToggle={() => setExpandedSections(prev => ({ ...prev, 'Git Worktrees': !prev['Git Worktrees'] }))}
-            />
-            {expandedSections['Git Worktrees'] && (
-              <div className="border-x border-b border-border rounded-b-xl">
-                {foundationChecks.filter(c => c.category === 'Git Worktrees').length > 0 ? (
-                  foundationChecks.filter(c => c.category === 'Git Worktrees').map(check => (
+            <div>
+              <SectionHeader
+                badge={<GitFork className="h-4 w-4 text-orange-500" />}
+                badgeColor="bg-orange-500/20"
+                title="Git Worktrees"
+                description="Isolated worktrees for parallel agent development"
+                timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
+                status={
+                  foundationChecks.filter(c => c.category === 'Git Worktrees').every(c => c.status === 'pass') ? 'pass' :
+                  foundationChecks.filter(c => c.category === 'Git Worktrees').some(c => c.status === 'fail') ? 'fail' :
+                  foundationChecks.filter(c => c.category === 'Git Worktrees').some(c => c.status === 'warn') ? 'warn' : 'pending'
+                }
+                isCollapsible
+                isExpanded={expandedSections['Git Worktrees']}
+                onToggle={() => setExpandedSections(prev => ({ ...prev, 'Git Worktrees': !prev['Git Worktrees'] }))}
+              />
+              {expandedSections['Git Worktrees'] && (
+                <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                  {foundationChecks.filter(c => c.category === 'Git Worktrees').length > 0 ? (
+                    foundationChecks.filter(c => c.category === 'Git Worktrees').map(check => (
+                      <CheckItem
+                        key={check.id}
+                        label={check.name}
+                        status={check.status === 'pass' ? 'pass' : check.status === 'fail' ? 'fail' : check.status === 'warn' ? 'warn' : 'pending'}
+                        description={check.description || check.message}
+                        command={check.command}
+                        output={check.output}
+                        timestamp={check.timestamp}
+                      />
+                    ))
+                  ) : (
+                    <>
+                      <CheckItem label="Worktrees Exist (fe-dev, be-dev, qa, dev-fix)" status="pending" description="Run validation to check" />
+                      <CheckItem label="Correct Feature Branches" status="pending" description="Run validation to check" />
+                      <CheckItem label="No Uncommitted Changes" status="pending" description="Run validation to check" />
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <SectionHeader badge={<Container className="h-4 w-4 text-blue-500" />} badgeColor="bg-blue-500/20" title="Docker Build" description="Container infrastructure for deployment" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
+                foundationChecks.filter(c => c.category === 'Docker Build').every(c => c.status === 'pass') ? 'pass' :
+                foundationChecks.filter(c => c.category === 'Docker Build').some(c => c.status === 'fail') ? 'fail' :
+                foundationChecks.filter(c => c.category === 'Docker Build').some(c => c.status === 'warn') ? 'warn' : 'pending'
+              } />
+              <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                {foundationChecks.filter(c => c.category === 'Docker Build').length > 0 ? (
+                  foundationChecks.filter(c => c.category === 'Docker Build').map(check => (
                     <CheckItem
                       key={check.id}
                       label={check.name}
@@ -4632,189 +3539,24 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                   ))
                 ) : (
                   <>
-                    <CheckItem label="Worktrees Exist (fe-dev, be-dev, qa, dev-fix)" status="pending" description="Run validation to check" />
-                    <CheckItem label="Correct Feature Branches" status="pending" description="Run validation to check" />
-                    <CheckItem label="No Uncommitted Changes" status="pending" description="Run validation to check" />
+                    <CheckItem label="Docker Image Buildable" status="pending" description="Run validation to check" />
+                    <CheckItem label="Base Images Available" status="pending" description="Run validation to check" />
+                    <CheckItem label="Container Can Start" status="pending" description="Run validation to check" />
+                    <CheckItem label="Dozzle Log Viewer" status="pending" description="Run validation to check" />
                   </>
                 )}
               </div>
-            )}
-
-            <SectionHeader badge="DOCKER" badgeColor="bg-blue-500/100" title="Docker Build" description="Container infrastructure for deployment" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
-              foundationChecks.filter(c => c.category === 'Docker Build').every(c => c.status === 'pass') ? 'pass' :
-              foundationChecks.filter(c => c.category === 'Docker Build').some(c => c.status === 'fail') ? 'fail' :
-              foundationChecks.filter(c => c.category === 'Docker Build').some(c => c.status === 'warn') ? 'warn' : 'pending'
-            } />
-            <div className="border-x border-b border-border rounded-b-xl">
-              {foundationChecks.filter(c => c.category === 'Docker Build').length > 0 ? (
-                foundationChecks.filter(c => c.category === 'Docker Build').map(check => (
-                  <CheckItem
-                    key={check.id}
-                    label={check.name}
-                    status={check.status === 'pass' ? 'pass' : check.status === 'fail' ? 'fail' : check.status === 'warn' ? 'warn' : 'pending'}
-                    description={check.description || check.message}
-                    command={check.command}
-                    output={check.output}
-                    timestamp={check.timestamp}
-                  />
-                ))
-              ) : (
-                <>
-                  <CheckItem label="Docker Image Buildable" status="pending" description="Run validation to check" />
-                  <CheckItem label="Base Images Available" status="pending" description="Run validation to check" />
-                  <CheckItem label="Container Can Start" status="pending" description="Run validation to check" />
-                  <CheckItem label="Dozzle Log Viewer" status="pending" description="Run validation to check" />
-                </>
-              )}
             </div>
 
-            <SectionHeader badge="TERM" badgeColor="bg-amber-500" title="Terminal Tools" description="Terminal emulators and session management" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
-              foundationChecks.filter(c => c.category === 'Terminal Tools').every(c => c.status === 'pass') ? 'pass' :
-              foundationChecks.filter(c => c.category === 'Terminal Tools').some(c => c.status === 'fail') ? 'fail' :
-              foundationChecks.filter(c => c.category === 'Terminal Tools').some(c => c.status === 'warn') ? 'warn' : 'pending'
-            } />
-            <div className="border-x border-b border-border rounded-b-xl">
-              {foundationChecks.filter(c => c.category === 'Terminal Tools').length > 0 ? (
-                foundationChecks.filter(c => c.category === 'Terminal Tools').map(check => (
-                  <CheckItem
-                    key={check.id}
-                    label={check.name}
-                    status={check.status === 'pass' ? 'pass' : check.status === 'fail' ? 'fail' : check.status === 'warn' ? 'warn' : 'pending'}
-                    description={check.description || check.message}
-                    command={check.command}
-                    output={check.output}
-                    timestamp={check.timestamp}
-                  />
-                ))
-              ) : (
-                <>
-                  <CheckItem label="iTerm2 Running" status="pending" description="Run validation to check" />
-                  <CheckItem label="tmux Available" status="pending" description="Run validation to check" />
-                </>
-              )}
-            </div>
-
-            <SectionHeader badge="ORCH" badgeColor="bg-indigo-500" title="Orchestration" description="Merge Watcher and agent coordination" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
-              foundationChecks.filter(c => c.category === 'Orchestration').every(c => c.status === 'pass') ? 'pass' :
-              foundationChecks.filter(c => c.category === 'Orchestration').some(c => c.status === 'fail') ? 'fail' :
-              foundationChecks.filter(c => c.category === 'Orchestration').some(c => c.status === 'warn') ? 'warn' : 'pending'
-            } />
-            <div className="border-x border-b border-border rounded-b-xl">
-              {foundationChecks.filter(c => c.category === 'Orchestration').length > 0 ? (
-                foundationChecks.filter(c => c.category === 'Orchestration').map(check => (
-                  <CheckItem
-                    key={check.id}
-                    label={check.name}
-                    status={check.status === 'pass' ? 'pass' : check.status === 'fail' ? 'fail' : check.status === 'warn' ? 'warn' : 'pending'}
-                    description={check.description || check.message}
-                    command={check.command}
-                    output={check.output}
-                    timestamp={check.timestamp}
-                  />
-                ))
-              ) : (
-                <>
-                  <CheckItem label="Merge Watcher Running" status="pending" description="Run validation to check" />
-                  <CheckItem label="Agent Terminal Sessions" status="pending" description="Run validation to check" />
-                </>
-              )}
-            </div>
-
-            <SectionHeader badge="CI/CD" badgeColor="bg-orange-500/100" title="CI/CD Pipelines" description="GitHub Actions and Vercel deployments" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
-              foundationChecks.filter(c => c.category === 'CI/CD').every(c => c.status === 'pass') ? 'pass' :
-              foundationChecks.filter(c => c.category === 'CI/CD').some(c => c.status === 'fail') ? 'fail' :
-              foundationChecks.filter(c => c.category === 'CI/CD').some(c => c.status === 'warn') ? 'warn' : 'pending'
-            } />
-            <div className="border-x border-b border-border rounded-b-xl">
-              {foundationChecks.filter(c => c.category === 'CI/CD').length > 0 ? (
-                foundationChecks.filter(c => c.category === 'CI/CD').map(check => (
-                  <CheckItem
-                    key={check.id}
-                    label={check.name}
-                    status={check.status === 'pass' ? 'pass' : check.status === 'fail' ? 'fail' : check.status === 'warn' ? 'warn' : 'pending'}
-                    description={check.description || check.message}
-                    command={check.command}
-                    output={check.output}
-                    timestamp={check.timestamp}
-                  />
-                ))
-              ) : (
-                <>
-                  <CheckItem label="GitHub Actions Status" status="pending" description="Run validation to check" />
-                  <CheckItem label="Vercel Deployment Status" status="pending" description="Run validation to check" />
-                </>
-              )}
-            </div>
-
-            <SectionHeader badge="SLACK" badgeColor="bg-pink-500" title="Notifications" description="Slack and alerting integrations" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
-              foundationChecks.filter(c => c.category === 'Notifications').every(c => c.status === 'pass') ? 'pass' :
-              foundationChecks.filter(c => c.category === 'Notifications').some(c => c.status === 'fail') ? 'fail' :
-              foundationChecks.filter(c => c.category === 'Notifications').some(c => c.status === 'warn') ? 'warn' : 'pending'
-            } />
-            <div className="border-x border-b border-border rounded-b-xl">
-              {foundationChecks.filter(c => c.category === 'Notifications').length > 0 ? (
-                foundationChecks.filter(c => c.category === 'Notifications').map(check => (
-                  <CheckItem
-                    key={check.id}
-                    label={check.name}
-                    status={check.status === 'pass' ? 'pass' : check.status === 'fail' ? 'fail' : check.status === 'warn' ? 'warn' : 'pending'}
-                    description={check.description || check.message}
-                    command={check.command}
-                    output={check.output}
-                    timestamp={check.timestamp}
-                  />
-                ))
-              ) : (
-                <>
-                  <CheckItem label="Slack Webhook Configured" status="pending" description="Run validation to check" />
-                </>
-              )}
-            </div>
-
-            <SectionHeader badge="SIGNAL" badgeColor="bg-purple-500/100" title="Signal Files (Speed Layer)" description="Signal JSON files for agent coordination" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
-              foundationChecks.filter(c => c.category === 'Signal Files (Speed Layer)').every(c => c.status === 'pass') ? 'pass' :
-              foundationChecks.filter(c => c.category === 'Signal Files (Speed Layer)').some(c => c.status === 'fail') ? 'fail' :
-              foundationChecks.filter(c => c.category === 'Signal Files (Speed Layer)').some(c => c.status === 'warn') ? 'warn' : 'pending'
-            } />
-            <div className="border-x border-b border-border rounded-b-xl">
-              {foundationChecks.filter(c => c.category === 'Signal Files (Speed Layer)').length > 0 ? (
-                foundationChecks.filter(c => c.category === 'Signal Files (Speed Layer)').map(check => (
-                  <CheckItem
-                    key={check.id}
-                    label={check.name}
-                    status={check.status === 'pass' ? 'pass' : check.status === 'fail' ? 'fail' : check.status === 'warn' ? 'warn' : 'pending'}
-                    description={check.description || check.message}
-                    command={check.command}
-                    output={check.output}
-                    timestamp={check.timestamp}
-                  />
-                ))
-              ) : (
-                <>
-                  <CheckItem label="Signal Schema Valid" status="pending" description="Run validation to check" />
-                </>
-              )}
-            </div>
-
-            <SectionHeader
-              badge="DB"
-              badgeColor="bg-emerald-600"
-              title="Database (Source of Truth)"
-              description="Supabase connection and table validation"
-              timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
-              status={
-                foundationChecks.filter(c => c.category === 'Database').every(c => c.status === 'pass') ? 'pass' :
-                foundationChecks.filter(c => c.category === 'Database').some(c => c.status === 'fail') ? 'fail' :
-                foundationChecks.filter(c => c.category === 'Database').some(c => c.status === 'warn') ? 'warn' : 'pending'
-              }
-              isCollapsible
-              isExpanded={expandedSections['Database']}
-              onToggle={() => setExpandedSections(prev => ({ ...prev, 'Database': !prev['Database'] }))}
-            />
-            {expandedSections['Database'] && (
-              <div className="border-x border-b border-border rounded-b-xl">
-                {foundationChecks.filter(c => c.category === 'Database').length > 0 ? (
-                  foundationChecks.filter(c => c.category === 'Database').map(check => (
+            <div>
+              <SectionHeader badge={<Terminal className="h-4 w-4 text-amber-500" />} badgeColor="bg-amber-500/20" title="Terminal Tools" description="Terminal emulators and session management" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
+                foundationChecks.filter(c => c.category === 'Terminal Tools').every(c => c.status === 'pass') ? 'pass' :
+                foundationChecks.filter(c => c.category === 'Terminal Tools').some(c => c.status === 'fail') ? 'fail' :
+                foundationChecks.filter(c => c.category === 'Terminal Tools').some(c => c.status === 'warn') ? 'warn' : 'pending'
+              } />
+              <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                {foundationChecks.filter(c => c.category === 'Terminal Tools').length > 0 ? (
+                  foundationChecks.filter(c => c.category === 'Terminal Tools').map(check => (
                     <CheckItem
                       key={check.id}
                       label={check.name}
@@ -4827,33 +3569,22 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                   ))
                 ) : (
                   <>
-                    <CheckItem label="Database Tables Accessible" status="pending" description="Run validation to check" />
-                    <CheckItem label="Stories Synced to Database" status="pending" description="Run validation to check" />
-                    <CheckItem label="CLI Sessions Table" status="pending" description="Run validation to check" />
+                    <CheckItem label="iTerm2 Running" status="pending" description="Run validation to check" />
+                    <CheckItem label="tmux Available" status="pending" description="Run validation to check" />
                   </>
                 )}
               </div>
-            )}
+            </div>
 
-            <SectionHeader
-              badge="DEPLOY"
-              badgeColor="bg-primary"
-              title="Deployment"
-              description="Vercel, GitHub, and CI/CD configuration"
-              timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
-              status={
-                foundationChecks.filter(c => c.category === 'Deployment').every(c => c.status === 'pass') ? 'pass' :
-                foundationChecks.filter(c => c.category === 'Deployment').some(c => c.status === 'fail') ? 'fail' :
-                foundationChecks.filter(c => c.category === 'Deployment').some(c => c.status === 'warn') ? 'warn' : 'pending'
-              }
-              isCollapsible
-              isExpanded={expandedSections['Deployment']}
-              onToggle={() => setExpandedSections(prev => ({ ...prev, 'Deployment': !prev['Deployment'] }))}
-            />
-            {expandedSections['Deployment'] && (
-              <div className="border-x border-b border-border rounded-b-xl">
-                {foundationChecks.filter(c => c.category === 'Deployment').length > 0 ? (
-                  foundationChecks.filter(c => c.category === 'Deployment').map(check => (
+            <div>
+              <SectionHeader badge={<Cpu className="h-4 w-4 text-indigo-500" />} badgeColor="bg-indigo-500/20" title="Orchestration" description="Merge Watcher and agent coordination" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
+                foundationChecks.filter(c => c.category === 'Orchestration').every(c => c.status === 'pass') ? 'pass' :
+                foundationChecks.filter(c => c.category === 'Orchestration').some(c => c.status === 'fail') ? 'fail' :
+                foundationChecks.filter(c => c.category === 'Orchestration').some(c => c.status === 'warn') ? 'warn' : 'pending'
+              } />
+              <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                {foundationChecks.filter(c => c.category === 'Orchestration').length > 0 ? (
+                  foundationChecks.filter(c => c.category === 'Orchestration').map(check => (
                     <CheckItem
                       key={check.id}
                       label={check.name}
@@ -4866,33 +3597,22 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                   ))
                 ) : (
                   <>
-                    <CheckItem label="Vercel Configuration" status="pending" description="Run validation to check" />
-                    <CheckItem label="Vercel Token" status="pending" description="Run validation to check" />
-                    <CheckItem label="GitHub Token" status="pending" description="Run validation to check" />
+                    <CheckItem label="Merge Watcher Running" status="pending" description="Run validation to check" />
+                    <CheckItem label="Agent Terminal Sessions" status="pending" description="Run validation to check" />
                   </>
                 )}
               </div>
-            )}
+            </div>
 
-            <SectionHeader
-              badge="CLI"
-              badgeColor="bg-violet-600"
-              title="Claude Code CLI"
-              description="CLI installation, hooks, and agent configuration"
-              timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
-              status={
-                foundationChecks.filter(c => c.category === 'CLI').every(c => c.status === 'pass') ? 'pass' :
-                foundationChecks.filter(c => c.category === 'CLI').some(c => c.status === 'fail') ? 'fail' :
-                foundationChecks.filter(c => c.category === 'CLI').some(c => c.status === 'warn') ? 'warn' : 'pending'
-              }
-              isCollapsible
-              isExpanded={expandedSections['CLI']}
-              onToggle={() => setExpandedSections(prev => ({ ...prev, 'CLI': !prev['CLI'] }))}
-            />
-            {expandedSections['CLI'] && (
-              <div className="border-x border-b border-border rounded-b-xl">
-                {foundationChecks.filter(c => c.category === 'CLI').length > 0 ? (
-                  foundationChecks.filter(c => c.category === 'CLI').map(check => (
+            <div>
+              <SectionHeader badge={<Workflow className="h-4 w-4 text-orange-500" />} badgeColor="bg-orange-500/20" title="CI/CD Pipelines" description="GitHub Actions and Vercel deployments" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
+                foundationChecks.filter(c => c.category === 'CI/CD').every(c => c.status === 'pass') ? 'pass' :
+                foundationChecks.filter(c => c.category === 'CI/CD').some(c => c.status === 'fail') ? 'fail' :
+                foundationChecks.filter(c => c.category === 'CI/CD').some(c => c.status === 'warn') ? 'warn' : 'pending'
+              } />
+              <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                {foundationChecks.filter(c => c.category === 'CI/CD').length > 0 ? (
+                  foundationChecks.filter(c => c.category === 'CI/CD').map(check => (
                     <CheckItem
                       key={check.id}
                       label={check.name}
@@ -4905,107 +3625,306 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                   ))
                 ) : (
                   <>
-                    <CheckItem label="Claude Code CLI" status="pending" description="Run validation to check" />
-                    <CheckItem label=".claudecode Directory" status="pending" description="Run validation to check" />
-                    <CheckItem label="Claude Code Hooks" status="pending" description="Run validation to check" />
-                    <CheckItem label="Agent Prompts" status="pending" description="Run validation to check" />
+                    <CheckItem label="GitHub Actions Status" status="pending" description="Run validation to check" />
+                    <CheckItem label="Vercel Deployment Status" status="pending" description="Run validation to check" />
                   </>
                 )}
               </div>
-            )}
+            </div>
 
-            <SectionHeader badge="GATE-1" badgeColor="bg-zinc-800" title="Gate -1: Pre-Validation" description="Pre-requisites before starting a wave" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
-              foundationChecks.filter(c => c.category === 'Gate -1: Pre-Validation').every(c => c.status === 'pass') ? 'pass' :
-              foundationChecks.filter(c => c.category === 'Gate -1: Pre-Validation').some(c => c.status === 'fail') ? 'fail' :
-              foundationChecks.filter(c => c.category === 'Gate -1: Pre-Validation').some(c => c.status === 'warn') ? 'warn' : 'pending'
-            } />
-            <div className="border-x border-b border-border rounded-b-xl">
-              {foundationChecks.filter(c => c.category === 'Gate -1: Pre-Validation').length > 0 ? (
-                foundationChecks.filter(c => c.category === 'Gate -1: Pre-Validation').map(check => (
-                  <CheckItem
-                    key={check.id}
-                    label={check.name}
-                    status={check.status === 'pass' ? 'pass' : check.status === 'fail' ? 'fail' : check.status === 'warn' ? 'warn' : 'pending'}
-                    description={check.description || check.message}
-                    command={check.command}
-                    output={check.output}
-                    timestamp={check.timestamp}
-                  />
-                ))
-              ) : (
-                <>
-                  <CheckItem label="Prompt Files Exist" status="pending" description="Run validation to check" />
-                  <CheckItem label="Budget Sufficient" status="pending" description="Run validation to check" />
-                  <CheckItem label="Worktrees Clean" status="pending" description="Run validation to check" />
-                  <CheckItem label="No Emergency Stop" status="pending" description="Run validation to check" />
-                  <CheckItem label="Previous Wave Complete" status="pending" description="Run validation to check" />
-                  <CheckItem label="API Quotas Available" status="pending" description="Run validation to check" />
-                </>
+            <div>
+              <SectionHeader badge={<Bell className="h-4 w-4 text-pink-500" />} badgeColor="bg-pink-500/20" title="Notifications" description="Slack and alerting integrations" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
+                foundationChecks.filter(c => c.category === 'Notifications').every(c => c.status === 'pass') ? 'pass' :
+                foundationChecks.filter(c => c.category === 'Notifications').some(c => c.status === 'fail') ? 'fail' :
+                foundationChecks.filter(c => c.category === 'Notifications').some(c => c.status === 'warn') ? 'warn' : 'pending'
+              } />
+              <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                {foundationChecks.filter(c => c.category === 'Notifications').length > 0 ? (
+                  foundationChecks.filter(c => c.category === 'Notifications').map(check => (
+                    <CheckItem
+                      key={check.id}
+                      label={check.name}
+                      status={check.status === 'pass' ? 'pass' : check.status === 'fail' ? 'fail' : check.status === 'warn' ? 'warn' : 'pending'}
+                      description={check.description || check.message}
+                      command={check.command}
+                      output={check.output}
+                      timestamp={check.timestamp}
+                    />
+                  ))
+                ) : (
+                  <>
+                    <CheckItem label="Slack Webhook Configured" status="pending" description="Run validation to check" />
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <SectionHeader badge={<Radio className="h-4 w-4 text-purple-500" />} badgeColor="bg-purple-500/20" title="Signal Files (Speed Layer)" description="Signal JSON files for agent coordination" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
+                foundationChecks.filter(c => c.category === 'Signal Files (Speed Layer)').every(c => c.status === 'pass') ? 'pass' :
+                foundationChecks.filter(c => c.category === 'Signal Files (Speed Layer)').some(c => c.status === 'fail') ? 'fail' :
+                foundationChecks.filter(c => c.category === 'Signal Files (Speed Layer)').some(c => c.status === 'warn') ? 'warn' : 'pending'
+              } />
+              <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                {foundationChecks.filter(c => c.category === 'Signal Files (Speed Layer)').length > 0 ? (
+                  foundationChecks.filter(c => c.category === 'Signal Files (Speed Layer)').map(check => (
+                    <CheckItem
+                      key={check.id}
+                      label={check.name}
+                      status={check.status === 'pass' ? 'pass' : check.status === 'fail' ? 'fail' : check.status === 'warn' ? 'warn' : 'pending'}
+                      description={check.description || check.message}
+                      command={check.command}
+                      output={check.output}
+                      timestamp={check.timestamp}
+                    />
+                  ))
+                ) : (
+                  <>
+                    <CheckItem label="Signal Schema Valid" status="pending" description="Run validation to check" />
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <SectionHeader
+                badge={<Database className="h-4 w-4 text-green-500" />}
+                badgeColor="bg-green-500/20"
+                title="Database (Source of Truth)"
+                description="Supabase connection and table validation"
+                timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
+                status={
+                  foundationChecks.filter(c => c.category === 'Database').every(c => c.status === 'pass') ? 'pass' :
+                  foundationChecks.filter(c => c.category === 'Database').some(c => c.status === 'fail') ? 'fail' :
+                  foundationChecks.filter(c => c.category === 'Database').some(c => c.status === 'warn') ? 'warn' : 'pending'
+                }
+                isCollapsible
+                isExpanded={expandedSections['Database']}
+                onToggle={() => setExpandedSections(prev => ({ ...prev, 'Database': !prev['Database'] }))}
+              />
+              {expandedSections['Database'] && (
+                <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                  {foundationChecks.filter(c => c.category === 'Database').length > 0 ? (
+                    foundationChecks.filter(c => c.category === 'Database').map(check => (
+                      <CheckItem
+                        key={check.id}
+                        label={check.name}
+                        status={check.status === 'pass' ? 'pass' : check.status === 'fail' ? 'fail' : check.status === 'warn' ? 'warn' : 'pending'}
+                        description={check.description || check.message}
+                        command={check.command}
+                        output={check.output}
+                        timestamp={check.timestamp}
+                      />
+                    ))
+                  ) : (
+                    <>
+                      <CheckItem label="Database Tables Accessible" status="pending" description="Run validation to check" />
+                      <CheckItem label="Stories Synced to Database" status="pending" description="Run validation to check" />
+                      <CheckItem label="CLI Sessions Table" status="pending" description="Run validation to check" />
+                    </>
+                  )}
+                </div>
               )}
             </div>
-          </>
+
+            <div>
+              <SectionHeader
+                badge={<Rocket className="h-4 w-4 text-cyan-500" />}
+                badgeColor="bg-cyan-500/20"
+                title="Deployment"
+                description="Vercel, GitHub, and CI/CD configuration"
+                timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
+                status={
+                  foundationChecks.filter(c => c.category === 'Deployment').every(c => c.status === 'pass') ? 'pass' :
+                  foundationChecks.filter(c => c.category === 'Deployment').some(c => c.status === 'fail') ? 'fail' :
+                  foundationChecks.filter(c => c.category === 'Deployment').some(c => c.status === 'warn') ? 'warn' : 'pending'
+                }
+                isCollapsible
+                isExpanded={expandedSections['Deployment']}
+                onToggle={() => setExpandedSections(prev => ({ ...prev, 'Deployment': !prev['Deployment'] }))}
+              />
+              {expandedSections['Deployment'] && (
+                <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                  {foundationChecks.filter(c => c.category === 'Deployment').length > 0 ? (
+                    foundationChecks.filter(c => c.category === 'Deployment').map(check => (
+                      <CheckItem
+                        key={check.id}
+                        label={check.name}
+                        status={check.status === 'pass' ? 'pass' : check.status === 'fail' ? 'fail' : check.status === 'warn' ? 'warn' : 'pending'}
+                        description={check.description || check.message}
+                        command={check.command}
+                        output={check.output}
+                        timestamp={check.timestamp}
+                      />
+                    ))
+                  ) : (
+                    <>
+                      <CheckItem label="Vercel Configuration" status="pending" description="Run validation to check" />
+                      <CheckItem label="Vercel Token" status="pending" description="Run validation to check" />
+                      <CheckItem label="GitHub Token" status="pending" description="Run validation to check" />
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <SectionHeader
+                badge={<Terminal className="h-4 w-4 text-gray-400" />}
+                badgeColor="bg-gray-500/20"
+                title="Claude Code CLI"
+                description="CLI installation, hooks, and agent configuration"
+                timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate}
+                status={
+                  foundationChecks.filter(c => c.category === 'CLI').every(c => c.status === 'pass') ? 'pass' :
+                  foundationChecks.filter(c => c.category === 'CLI').some(c => c.status === 'fail') ? 'fail' :
+                  foundationChecks.filter(c => c.category === 'CLI').some(c => c.status === 'warn') ? 'warn' : 'pending'
+                }
+                isCollapsible
+                isExpanded={expandedSections['CLI']}
+                onToggle={() => setExpandedSections(prev => ({ ...prev, 'CLI': !prev['CLI'] }))}
+              />
+              {expandedSections['CLI'] && (
+                <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                  {foundationChecks.filter(c => c.category === 'CLI').length > 0 ? (
+                    foundationChecks.filter(c => c.category === 'CLI').map(check => (
+                      <CheckItem
+                        key={check.id}
+                        label={check.name}
+                        status={check.status === 'pass' ? 'pass' : check.status === 'fail' ? 'fail' : check.status === 'warn' ? 'warn' : 'pending'}
+                        description={check.description || check.message}
+                        command={check.command}
+                        output={check.output}
+                        timestamp={check.timestamp}
+                      />
+                    ))
+                  ) : (
+                    <>
+                      <CheckItem label="Claude Code CLI" status="pending" description="Run validation to check" />
+                      <CheckItem label=".claudecode Directory" status="pending" description="Run validation to check" />
+                      <CheckItem label="Claude Code Hooks" status="pending" description="Run validation to check" />
+                      <CheckItem label="Agent Prompts" status="pending" description="Run validation to check" />
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <SectionHeader badge={<Flag className="h-4 w-4 text-red-500" />} badgeColor="bg-red-500/20" title="Gate -1: Pre-Validation" description="Pre-requisites before starting a wave" timestamp={formatValidationTimestamp(foundationLastChecked) || lastUpdate} status={
+                foundationChecks.filter(c => c.category === 'Gate -1: Pre-Validation').every(c => c.status === 'pass') ? 'pass' :
+                foundationChecks.filter(c => c.category === 'Gate -1: Pre-Validation').some(c => c.status === 'fail') ? 'fail' :
+                foundationChecks.filter(c => c.category === 'Gate -1: Pre-Validation').some(c => c.status === 'warn') ? 'warn' : 'pending'
+              } />
+              <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                {foundationChecks.filter(c => c.category === 'Gate -1: Pre-Validation').length > 0 ? (
+                  foundationChecks.filter(c => c.category === 'Gate -1: Pre-Validation').map(check => (
+                    <CheckItem
+                      key={check.id}
+                      label={check.name}
+                      status={check.status === 'pass' ? 'pass' : check.status === 'fail' ? 'fail' : check.status === 'warn' ? 'warn' : 'pending'}
+                      description={check.description || check.message}
+                      command={check.command}
+                      output={check.output}
+                      timestamp={check.timestamp}
+                    />
+                  ))
+                ) : (
+                  <>
+                    <CheckItem label="Prompt Files Exist" status="pending" description="Run validation to check" />
+                    <CheckItem label="Budget Sufficient" status="pending" description="Run validation to check" />
+                    <CheckItem label="Worktrees Clean" status="pending" description="Run validation to check" />
+                    <CheckItem label="No Emergency Stop" status="pending" description="Run validation to check" />
+                    <CheckItem label="Previous Wave Complete" status="pending" description="Run validation to check" />
+                    <CheckItem label="API Quotas Available" status="pending" description="Run validation to check" />
+                  </>
+                )}
+              </div>
+            </div>
+          </TabContainer>
         )}
 
         {/* TAB 6: Build QA */}
         {activeTab === 'build-qa' && (
-          <>
-            <div className="flex items-center justify-between p-6 border border-border bg-card rounded-2xl mb-6">
-              <div className="flex items-center gap-6">
-                <span className="text-sm font-medium text-muted-foreground">BUILD & QA</span>
-                <span className="font-semibold">Build Validation & Quality Assurance</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => validateBuildQa(true)}
-                  disabled={validatingBuildQa}
-                  className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
-                >
-                  <Zap className="h-4 w-4" />
-                  Quick Check
-                </button>
-                <button
-                  onClick={() => validateBuildQa(false)}
-                  disabled={validatingBuildQa}
-                  className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2",
-                    validatingBuildQa
-                      ? "bg-muted text-muted-foreground cursor-not-allowed"
-                      : "bg-primary text-primary-foreground hover:opacity-90"
-                  )}
-                >
-                  {validatingBuildQa ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Running...
-                    </>
-                  ) : (
-                    <>
-                      <Play className="h-4 w-4" />
-                      Run Full Validation
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => setShowBuildQaConfig(!showBuildQaConfig)}
-                  className="p-2 rounded-lg hover:bg-zinc-100 transition-colors"
-                  title="Configure quality thresholds"
-                >
-                  <Settings className="h-4 w-4" />
-                </button>
-              </div>
+          <TabContainer>
+            {/* 1. INFO BOX */}
+            <InfoBox
+              title="Step 6: Build & QA"
+              description="Validates build configuration, runs quality checks (TypeScript, ESLint, tests), and ensures code meets quality thresholds before deployment."
+              icon={<Zap className="h-4 w-4 text-blue-500" />}
+            />
+
+            {/* 2. KPI CARDS */}
+            <KPICards
+              items={[
+                {
+                  label: 'Passed',
+                  value: buildQaChecks.filter(c => c.status === 'pass').length,
+                  status: buildQaChecks.filter(c => c.status === 'pass').length > 0 ? 'success' : 'neutral',
+                  icon: <CheckCircle2 className="h-4 w-4" />
+                },
+                {
+                  label: 'Failed',
+                  value: buildQaChecks.filter(c => c.status === 'fail').length,
+                  status: buildQaChecks.filter(c => c.status === 'fail').length > 0 ? 'error' : 'success',
+                  icon: <XCircle className="h-4 w-4" />
+                },
+                {
+                  label: 'Skipped',
+                  value: buildQaChecks.filter(c => c.status === 'skipped').length,
+                  status: 'neutral',
+                  icon: <Clock className="h-4 w-4" />
+                },
+                {
+                  label: 'Status',
+                  value: buildQaStatus === 'ready' ? 'Ready' : buildQaStatus === 'blocked' ? 'Blocked' : 'Pending',
+                  status: buildQaStatus === 'ready' ? 'success' : buildQaStatus === 'blocked' ? 'error' : 'neutral',
+                  icon: <Rocket className="h-4 w-4" />
+                },
+              ]}
+            />
+
+            {/* 3. ACTION BAR */}
+            <ActionBar
+              category="BUILD & QA"
+              title="Build Validation & Quality"
+              description={buildQaLastChecked ? `Last checked: ${formatValidationTimestamp(buildQaLastChecked)}` : 'Not yet validated'}
+              primaryAction={{
+                label: validatingBuildQa ? 'Running...' : 'Run Full Validation',
+                onClick: () => validateBuildQa(false),
+                loading: validatingBuildQa,
+                icon: <Play className="h-4 w-4" />
+              }}
+              secondaryAction={{
+                label: 'Quick Check',
+                onClick: () => validateBuildQa(true),
+                disabled: validatingBuildQa,
+                icon: <Zap className="h-4 w-4" />
+              }}
+            />
+
+            {/* Settings Toggle */}
+            <div className="flex justify-end -mt-4 mb-2">
+              <button
+                onClick={() => setShowBuildQaConfig(!showBuildQaConfig)}
+                className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                title="Configure quality thresholds"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
             </div>
 
             {/* Quality Thresholds Configuration Panel */}
             {showBuildQaConfig && buildQaThresholds && (
               <div className="p-5 bg-muted border border-border rounded-2xl mb-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <Settings className="h-5 w-5 text-zinc-600" />
+                  <Settings className="h-5 w-5 text-muted-foreground" />
                   <h3 className="font-semibold">Quality Thresholds Configuration</h3>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                   {/* Quality Gates */}
                   <div className="col-span-full">
-                    <h4 className="text-sm font-medium mb-3 text-zinc-700">Quality Gates (Block Deployment)</h4>
+                    <h4 className="text-sm font-medium mb-3 text-foreground/80">Quality Gates (Block Deployment)</h4>
                     <div className="flex flex-wrap gap-4">
                       <label className="flex items-center gap-2 text-sm">
                         <input
@@ -5067,7 +3986,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
                   {/* TypeScript */}
                   <div>
-                    <h4 className="text-sm font-medium mb-2 text-zinc-700">TypeScript</h4>
+                    <h4 className="text-sm font-medium mb-2 text-foreground/80">TypeScript</h4>
                     <div className="space-y-2">
                       <div>
                         <label className="text-xs text-muted-foreground">Max Errors</label>
@@ -5098,7 +4017,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
                   {/* Lint */}
                   <div>
-                    <h4 className="text-sm font-medium mb-2 text-zinc-700">Lint</h4>
+                    <h4 className="text-sm font-medium mb-2 text-foreground/80">Lint</h4>
                     <div className="space-y-2">
                       <div>
                         <label className="text-xs text-muted-foreground">Max Errors</label>
@@ -5129,7 +4048,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
                   {/* Security */}
                   <div>
-                    <h4 className="text-sm font-medium mb-2 text-zinc-700">Security</h4>
+                    <h4 className="text-sm font-medium mb-2 text-foreground/80">Security</h4>
                     <div className="space-y-2">
                       <div>
                         <label className="text-xs text-muted-foreground">Max Critical</label>
@@ -5167,161 +4086,168 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             {/* Build QA Status Summary */}
             {buildQaChecks.length > 0 && (
               <div className="grid grid-cols-4 gap-4 mb-6">
-                <div className={cn("p-4 rounded-xl border", buildQaChecks.filter(c => c.status === 'pass').length > 0 ? "bg-green-500/10 border-green-500/30" : "bg-muted border-gray-200")}>
+                <div className={cn("p-4 rounded-xl border", buildQaChecks.filter(c => c.status === 'pass').length > 0 ? "bg-green-500/10 border-green-500/30" : "bg-muted border-border")}>
                   <div className="flex items-center gap-2 mb-1">
                     <CheckCircle2 className="h-5 w-5 text-green-500" />
                     <span className="font-medium text-sm">Passed</span>
                   </div>
-                  <p className="text-2xl font-bold text-green-400">{buildQaChecks.filter(c => c.status === 'pass').length}</p>
+                  <p className="text-2xl font-bold text-green-500">{buildQaChecks.filter(c => c.status === 'pass').length}</p>
                 </div>
-                <div className={cn("p-4 rounded-xl border", buildQaChecks.filter(c => c.status === 'fail').length > 0 ? "bg-red-500/10 border-red-500/30" : "bg-muted border-gray-200")}>
+                <div className={cn("p-4 rounded-xl border", buildQaChecks.filter(c => c.status === 'fail').length > 0 ? "bg-red-500/10 border-red-500/30" : "bg-muted border-border")}>
                   <div className="flex items-center gap-2 mb-1">
                     <XCircle className="h-5 w-5 text-red-500" />
                     <span className="font-medium text-sm">Failed</span>
                   </div>
-                  <p className="text-2xl font-bold text-red-400">{buildQaChecks.filter(c => c.status === 'fail').length}</p>
+                  <p className="text-2xl font-bold text-red-500">{buildQaChecks.filter(c => c.status === 'fail').length}</p>
                 </div>
-                <div className={cn("p-4 rounded-xl border", "bg-muted border-gray-200")}>
+                <div className={cn("p-4 rounded-xl border", "bg-muted border-border")}>
                   <div className="flex items-center gap-2 mb-1">
                     <MinusCircle className="h-5 w-5 text-muted-foreground" />
                     <span className="font-medium text-sm">Skipped</span>
                   </div>
-                  <p className="text-2xl font-bold text-gray-700">{buildQaChecks.filter(c => c.status === 'skipped').length}</p>
+                  <p className="text-2xl font-bold text-muted-foreground">{buildQaChecks.filter(c => c.status === 'skipped').length}</p>
                 </div>
                 <div className={cn("p-4 rounded-xl border", "bg-blue-500/10 border-blue-500/30")}>
                   <div className="flex items-center gap-2 mb-1">
                     <Clock className="h-5 w-5 text-blue-500" />
                     <span className="font-medium text-sm">Last Run</span>
                   </div>
-                  <p className="text-sm font-medium text-blue-400">{buildQaLastChecked || 'Never'}</p>
+                  <p className="text-sm font-medium text-blue-500">{buildQaLastChecked || 'Never'}</p>
                 </div>
               </div>
             )}
 
             {/* Build QA Checks Section */}
-            <SectionHeader
-              badge="A"
-              badgeColor="bg-blue-500/100"
-              title="Section A: Build & Compilation"
-              description="TypeScript compilation and production build"
-              timestamp={buildQaLastChecked || lastUpdate}
-              status={(() => {
-                const checks = buildQaChecks.filter(c => ['TypeScript', 'Build'].includes(c.name))
-                if (checks.length === 0) return buildQaStatus === 'idle' ? 'warn' : 'pending'
-                if (checks.some(c => c.status === 'fail')) return 'fail'
-                if (checks.every(c => c.status === 'pass')) return 'pass'
-                return 'warn'
-              })()}
-            />
-            <div className="border-x border-b border-border rounded-b-xl">
-              <CheckItem
-                label="TypeScript Compilation"
-                status={(buildQaChecks.find(c => c.name === 'TypeScript')?.status as 'pass' | 'fail' | 'warn') || (buildQaStatus === 'idle' ? 'warn' : 'pending')}
-                description="TypeScript type checking must pass with zero errors (tsc --noEmit)"
-                command="npx tsc --noEmit"
-                output={buildQaChecks.find(c => c.name === 'TypeScript')?.output || buildQaChecks.find(c => c.name === 'TypeScript')?.reason}
+            <div>
+              <SectionHeader
+                badge={<Package className="h-4 w-4 text-blue-500" />}
+                badgeColor="bg-blue-500/20"
+                title="Section A: Build & Compilation"
+                description="TypeScript compilation and production build"
+                timestamp={buildQaLastChecked || lastUpdate}
+                status={(() => {
+                  const checks = buildQaChecks.filter(c => ['TypeScript', 'Build'].includes(c.name))
+                  if (checks.length === 0) return buildQaStatus === 'idle' ? 'warn' : 'pending'
+                  if (checks.some(c => c.status === 'fail')) return 'fail'
+                  if (checks.every(c => c.status === 'pass')) return 'pass'
+                  return 'warn'
+                })()}
               />
-              <CheckItem
-                label="Production Build"
-                status={(buildQaChecks.find(c => c.name === 'Build')?.status as 'pass' | 'fail' | 'warn') || (buildQaStatus === 'idle' ? 'warn' : 'pending')}
-                description="Production build must complete without errors"
-                command="npm run build"
-                output={buildQaChecks.find(c => c.name === 'Build')?.output || buildQaChecks.find(c => c.name === 'Build')?.reason}
-              />
+              <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                <CheckItem
+                  label="TypeScript Compilation"
+                  status={(buildQaChecks.find(c => c.name === 'TypeScript')?.status as 'pass' | 'fail' | 'warn') || (buildQaStatus === 'idle' ? 'warn' : 'pending')}
+                  description="TypeScript type checking must pass with zero errors (tsc --noEmit)"
+                  command="npx tsc --noEmit"
+                  output={buildQaChecks.find(c => c.name === 'TypeScript')?.output || buildQaChecks.find(c => c.name === 'TypeScript')?.reason}
+                />
+                <CheckItem
+                  label="Production Build"
+                  status={(buildQaChecks.find(c => c.name === 'Build')?.status as 'pass' | 'fail' | 'warn') || (buildQaStatus === 'idle' ? 'warn' : 'pending')}
+                  description="Production build must complete without errors"
+                  command="npm run build"
+                  output={buildQaChecks.find(c => c.name === 'Build')?.output || buildQaChecks.find(c => c.name === 'Build')?.reason}
+                />
+              </div>
             </div>
 
             {/* Test & Lint Section */}
-            <SectionHeader
-              badge="B"
-              badgeColor="bg-purple-500/100"
-              title="Section B: Tests & Linting"
-              description="Unit tests and code quality checks"
-              timestamp={buildQaLastChecked || lastUpdate}
-              status={(() => {
-                const checks = buildQaChecks.filter(c => ['Tests', 'Lint'].includes(c.name))
-                if (checks.length === 0) return buildQaStatus === 'idle' ? 'warn' : 'pending'
-                if (checks.some(c => c.status === 'fail')) return 'fail'
-                if (checks.every(c => c.status === 'pass')) return 'pass'
-                return 'warn'
-              })()}
-            />
-            <div className="border-x border-b border-border rounded-b-xl">
-              <CheckItem
-                label="Unit Tests"
-                status={(buildQaChecks.find(c => c.name === 'Tests')?.status as 'pass' | 'fail' | 'warn') || (buildQaStatus === 'idle' ? 'warn' : 'pending')}
-                description="All unit and integration tests must pass"
-                command="npm test"
-                output={buildQaChecks.find(c => c.name === 'Tests')?.output || buildQaChecks.find(c => c.name === 'Tests')?.reason}
+            <div>
+              <SectionHeader
+                badge={<TestTube className="h-4 w-4 text-green-500" />}
+                badgeColor="bg-green-500/20"
+                title="Section B: Tests & Linting"
+                description="Unit tests and code quality checks"
+                timestamp={buildQaLastChecked || lastUpdate}
+                status={(() => {
+                  const checks = buildQaChecks.filter(c => ['Tests', 'Lint'].includes(c.name))
+                  if (checks.length === 0) return buildQaStatus === 'idle' ? 'warn' : 'pending'
+                  if (checks.some(c => c.status === 'fail')) return 'fail'
+                  if (checks.every(c => c.status === 'pass')) return 'pass'
+                  return 'warn'
+                })()}
               />
-              <CheckItem
-                label="ESLint"
-                status={(buildQaChecks.find(c => c.name === 'Lint')?.status as 'pass' | 'fail' | 'warn') || (buildQaStatus === 'idle' ? 'warn' : 'pending')}
-                description="ESLint must pass with no errors"
-                command="npm run lint"
-                output={buildQaChecks.find(c => c.name === 'Lint')?.output || buildQaChecks.find(c => c.name === 'Lint')?.reason}
-              />
+              <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                <CheckItem
+                  label="Unit Tests"
+                  status={(buildQaChecks.find(c => c.name === 'Tests')?.status as 'pass' | 'fail' | 'warn') || (buildQaStatus === 'idle' ? 'warn' : 'pending')}
+                  description="All unit and integration tests must pass"
+                  command="npm test"
+                  output={buildQaChecks.find(c => c.name === 'Tests')?.output || buildQaChecks.find(c => c.name === 'Tests')?.reason}
+                />
+                <CheckItem
+                  label="ESLint"
+                  status={(buildQaChecks.find(c => c.name === 'Lint')?.status as 'pass' | 'fail' | 'warn') || (buildQaStatus === 'idle' ? 'warn' : 'pending')}
+                  description="ESLint must pass with no errors"
+                  command="npm run lint"
+                  output={buildQaChecks.find(c => c.name === 'Lint')?.output || buildQaChecks.find(c => c.name === 'Lint')?.reason}
+                />
+              </div>
             </div>
 
             {/* Security Section */}
-            <SectionHeader
-              badge="C"
-              badgeColor="bg-red-500/100"
-              title="Section C: Security"
-              description="Dependency vulnerability scanning"
-              timestamp={buildQaLastChecked || lastUpdate}
-              status={(() => {
-                const check = buildQaChecks.find(c => c.name === 'Security Audit')
-                if (!check) return buildQaStatus === 'idle' ? 'warn' : 'pending'
-                if (check.status === 'fail') return 'fail'
-                if (check.status === 'pass') return 'pass'
-                return 'warn'
-              })()}
-            />
-            <div className="border-x border-b border-border rounded-b-xl">
-              <CheckItem
-                label="Security Audit"
-                status={(buildQaChecks.find(c => c.name === 'Security Audit')?.status as 'pass' | 'fail' | 'warn') || (buildQaStatus === 'idle' ? 'warn' : 'pending')}
-                description="No high or critical vulnerabilities in dependencies"
-                command="npm audit --audit-level=high"
-                output={buildQaChecks.find(c => c.name === 'Security Audit')?.output || buildQaChecks.find(c => c.name === 'Security Audit')?.reason}
+            <div>
+              <SectionHeader
+                badge={<Lock className="h-4 w-4 text-red-500" />}
+                badgeColor="bg-red-500/20"
+                title="Section C: Security"
+                description="Dependency vulnerability scanning"
+                timestamp={buildQaLastChecked || lastUpdate}
+                status={(() => {
+                  const check = buildQaChecks.find(c => c.name === 'Security Audit')
+                  if (!check) return buildQaStatus === 'idle' ? 'warn' : 'pending'
+                  if (check.status === 'fail') return 'fail'
+                  if (check.status === 'pass') return 'pass'
+                  return 'warn'
+                })()}
               />
+              <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                <CheckItem
+                  label="Security Audit"
+                  status={(buildQaChecks.find(c => c.name === 'Security Audit')?.status as 'pass' | 'fail' | 'warn') || (buildQaStatus === 'idle' ? 'warn' : 'pending')}
+                  description="No high or critical vulnerabilities in dependencies"
+                  command="npm audit --audit-level=high"
+                  output={buildQaChecks.find(c => c.name === 'Security Audit')?.output || buildQaChecks.find(c => c.name === 'Security Audit')?.reason}
+                />
+              </div>
             </div>
 
             {/* Terminal Setup Section */}
-            <SectionHeader
-              badge="TMUX"
-              badgeColor="bg-purple-500/100"
-              title="Terminal Setup"
-              description="Copy command to set up WAVE terminal session"
-              timestamp={lastUpdate}
-              status="pass"
-            />
-            <div className="border-x border-b border-border rounded-b-xl p-4">
-              <div className="mb-3">
-                <p className="text-sm text-muted-foreground mb-2">
-                  Run this command to create a 4-pane tmux session with merge-watcher, portal, and agent terminals:
-                </p>
-                <div className="relative">
-                  <pre className="bg-gray-900 text-green-400 p-4 rounded-lg text-sm overflow-x-auto font-mono">
+            <div>
+              <SectionHeader
+                badge={<Terminal className="h-4 w-4 text-amber-500" />}
+                badgeColor="bg-amber-500/20"
+                title="Terminal Setup"
+                description="Copy command to set up WAVE terminal session"
+                timestamp={lastUpdate}
+                status="pass"
+              />
+              <div className="space-y-2 mt-2 p-4">
+                <div className="mb-3">
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Run this command to create a 4-pane tmux session with merge-watcher, portal, and agent terminals:
+                  </p>
+                  <div className="relative">
+                    <pre className="bg-card text-green-500 p-4 rounded-lg text-sm overflow-x-auto font-mono">
 {`# Start WAVE terminal session
 /Volumes/SSD-01/Projects/WAVE/core/scripts/wave-terminal.sh \\
   --project ${project?.root_path || '/path/to/project'} --wave 1`}
-                  </pre>
-                  <button
-                    onClick={() => {
-                      const cmd = `/Volumes/SSD-01/Projects/WAVE/core/scripts/wave-terminal.sh --project ${project?.root_path || '/path/to/project'} --wave 1`;
-                      navigator.clipboard.writeText(cmd);
-                    }}
-                    className="absolute top-2 right-2 p-2 bg-gray-700 hover:bg-gray-600 rounded text-white text-xs flex items-center gap-1"
-                  >
-                    <Copy className="h-3 w-3" />
-                    Copy
-                  </button>
+                    </pre>
+                    <button
+                      onClick={() => {
+                        const cmd = `/Volumes/SSD-01/Projects/WAVE/core/scripts/wave-terminal.sh --project ${project?.root_path || '/path/to/project'} --wave 1`;
+                        navigator.clipboard.writeText(cmd);
+                      }}
+                      className="absolute top-2 right-2 p-2 bg-muted hover:bg-muted/80 rounded text-white text-xs flex items-center gap-1"
+                    >
+                      <Copy className="h-3 w-3" />
+                      Copy
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div className="bg-purple-500/10 border border-purple-200 rounded-lg p-3 mt-3">
-                <p className="text-sm font-medium text-purple-800 mb-1">Layout Created:</p>
-                <pre className="text-xs text-purple-400 font-mono">
+                <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3 mt-3">
+                  <p className="text-sm font-medium text-purple-800 mb-1">Layout Created:</p>
+                  <pre className="text-xs text-purple-400 font-mono">
 {`┌─────────────────────┬─────────────────────┐
 │   MERGE WATCHER     │   FE-DEV AGENT      │
 │   (auto-starts)     │   (ready)           │
@@ -5329,10 +4255,11 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 │   PORTAL SERVER     │   BE-DEV AGENT      │
 │   (auto-starts)     │   (ready)           │
 └─────────────────────┴─────────────────────┘`}
-                </pre>
-                <p className="text-xs text-purple-400 mt-2">
-                  <strong>Keys:</strong> Ctrl+b arrow (navigate) | Ctrl+b d (detach) | Ctrl+b z (zoom) | tmux attach -t wave (reattach)
-                </p>
+                  </pre>
+                  <p className="text-xs text-purple-400 mt-2">
+                    <strong>Keys:</strong> Ctrl+b arrow (navigate) | Ctrl+b d (detach) | Ctrl+b z (zoom) | tmux attach -t wave (reattach)
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -5353,57 +4280,111 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
 
             {/* Empty State */}
             {buildQaChecks.length === 0 && buildQaStatus === 'idle' && (
-              <div className="mt-6 p-8 text-center text-muted-foreground border border-dashed border-zinc-300 rounded-xl">
+              <div className="mt-6 p-8 text-center text-muted-foreground border border-dashed border-border/80 rounded-xl">
                 <Rocket className="h-12 w-12 mx-auto mb-3 opacity-20" />
                 <p className="font-medium">No validation results yet</p>
                 <p className="text-sm mt-1">Click "Run Full Validation" to check TypeScript, build, tests, lint, and security</p>
               </div>
             )}
-          </>
+          </TabContainer>
         )}
 
         {/* TAB 8: RLM Protocol */}
         {activeTab === 'rlm-protocol' && (
-          <>
-            {/* RLM Info Box */}
-            <div className="p-5 bg-violet-50 border border-violet-200 rounded-2xl mb-6">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center flex-shrink-0">
-                  <Layers className="h-5 w-5 text-violet-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-violet-900 mb-1">RLM Protocol - Recursive Language Models</h3>
-                  <p className="text-sm text-violet-700 leading-relaxed">
-                    RLM solves <strong>context rot</strong> by storing context as an external variable (P) that agents query on-demand.
-                    Instead of loading entire codebases into prompts, agents use <code className="bg-violet-100 px-1 rounded">peek()</code>, <code className="bg-violet-100 px-1 rounded">search()</code>, and <code className="bg-violet-100 px-1 rounded">get_story()</code> to access specific information.
-                    This achieves <strong>90%+ token reduction</strong> while maintaining context accuracy.
-                  </p>
-                  <p className="text-xs text-violet-600 mt-2">
-                    Based on MIT CSAIL research (arXiv:2512.24601) - Implemented in WAVE Framework V12.2
-                  </p>
-                </div>
-              </div>
-            </div>
+          <TabContainer>
+            {/* 1. INFO BOX */}
+            <InfoBox
+              title="Step 7: RLM Protocol"
+              description="Recursive Language Models solve context rot by storing context as an external variable (P) that agents query on-demand. Uses peek(), search(), and get_story() to achieve 90%+ token reduction while maintaining accuracy."
+              icon={<Layers className="h-4 w-4 text-blue-500" />}
+            />
 
-            {/* Validate RLM Button */}
-            <div className="p-6 border border-border rounded-2xl mb-6 bg-card">
+            {/* 2. KPI CARDS */}
+            <KPICards
+              items={[
+                {
+                  label: 'P-File Status',
+                  value: rlmChecks.find(c => c.name === 'P-File Exists')?.status === 'pass' ? 'Valid' : 'Missing',
+                  status: rlmChecks.find(c => c.name === 'P-File Exists')?.status === 'pass' ? 'success' : 'error',
+                  icon: <FileText className="h-4 w-4" />
+                },
+                {
+                  label: 'Schema Valid',
+                  value: rlmChecks.find(c => c.name === 'Schema Valid')?.status === 'pass' ? 'Yes' : 'No',
+                  status: rlmChecks.find(c => c.name === 'Schema Valid')?.status === 'pass' ? 'success' : 'neutral',
+                  icon: <CheckCircle2 className="h-4 w-4" />
+                },
+                {
+                  label: 'Drift Status',
+                  value: (driftReport?.summary?.drifted ?? 0) > 0 ? 'Detected' : 'None',
+                  status: (driftReport?.summary?.drifted ?? 0) > 0 ? 'warning' : 'success',
+                  icon: <TrendingUp className="h-4 w-4" />
+                },
+                {
+                  label: 'RLM Status',
+                  value: rlmStatus === 'ready' ? 'Ready' : rlmStatus === 'blocked' ? 'Blocked' : 'Pending',
+                  status: rlmStatus === 'ready' ? 'success' : rlmStatus === 'blocked' ? 'error' : 'neutral',
+                  icon: <Layers className="h-4 w-4" />
+                },
+              ]}
+            />
+
+            {/* 3. ACTION BAR */}
+            <ActionBar
+              category="RLM PROTOCOL"
+              title="Recursive Language Models"
+              description={rlmLastChecked ? `Last validated: ${formatValidationTimestamp(rlmLastChecked)}` : 'Not yet validated'}
+              statusBadge={rlmStatus === 'ready' ? {
+                label: 'Ready',
+                icon: <CheckCircle2 className="h-3 w-3" />,
+                variant: 'success'
+              } : rlmStatus === 'blocked' ? {
+                label: 'Blocked',
+                icon: <XCircle className="h-3 w-3" />,
+                variant: 'warning'
+              } : undefined}
+              primaryAction={{
+                label: validatingRlm ? 'Validating...' : 'Validate RLM Protocol',
+                onClick: validateRlm,
+                loading: validatingRlm,
+                icon: <Layers className="h-4 w-4" />
+              }}
+            />
+
+            {/* 4. RESULT SUMMARY */}
+            <ResultSummary
+              status={
+                rlmStatus === 'ready' ? 'pass' :
+                rlmStatus === 'blocked' ? 'fail' :
+                rlmStatus === 'validating' ? 'pending' : 'idle'
+              }
+              message={
+                rlmStatus === 'ready' ? 'RLM protocol validated. Context management is operational.' :
+                rlmStatus === 'blocked' ? 'RLM validation failed. Check the issues below.' :
+                rlmStatus === 'validating' ? 'Validating RLM protocol...' :
+                'Run validation to check RLM protocol status.'
+              }
+            />
+
+            {/* Legacy status section - keeping for now */}
+            <div className="p-6 border border-border rounded-2xl mb-6 bg-card" style={{display: 'none'}}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className={cn(
                     "w-12 h-12 rounded-xl flex items-center justify-center",
                     rlmStatus === 'ready' ? "bg-green-500/15" :
                     rlmStatus === 'blocked' ? "bg-red-500/15" :
-                    rlmStatus === 'validating' ? "bg-violet-100" :
-                    "bg-zinc-100"
+                    rlmStatus === 'validating' ? "bg-violet-500/15" :
+                    "bg-muted"
                   )}>
                     {rlmStatus === 'ready' ? (
-                      <CheckCircle2 className="h-6 w-6 text-green-400" />
+                      <CheckCircle2 className="h-6 w-6 text-green-500" />
                     ) : rlmStatus === 'blocked' ? (
                       <XCircle className="h-6 w-6 text-red-500" />
                     ) : rlmStatus === 'validating' ? (
-                      <Loader2 className="h-6 w-6 text-violet-600 animate-spin" />
+                      <Loader2 className="h-6 w-6 text-violet-500 animate-spin" />
                     ) : (
-                      <Layers className="h-6 w-6 text-zinc-500" />
+                      <Layers className="h-6 w-6 text-muted-foreground" />
                     )}
                   </div>
                   <div>
@@ -5430,7 +4411,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                   className={cn(
                     "flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all",
                     validatingRlm
-                      ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
+                      ? "bg-muted text-muted-foreground cursor-not-allowed"
                       : "bg-violet-600 hover:bg-violet-700 text-white"
                   )}
                 >
@@ -5451,237 +4432,247 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               {/* RLM Metrics Summary - dynamic based on validation results */}
               <div className="mt-6 pt-6 border-t border-border/50">
                 <div className="grid grid-cols-4 gap-4">
-                  <div className="bg-violet-50 rounded-xl p-4 text-center">
-                    <p className="text-2xl font-bold text-violet-700">97%</p>
-                    <p className="text-xs text-violet-600">Token Reduction</p>
+                  <div className="bg-violet-500/100/10 rounded-xl p-4 text-center">
+                    <p className="text-2xl font-bold text-violet-500">97%</p>
+                    <p className="text-xs text-violet-500/70">Token Reduction</p>
                   </div>
                   <div className="bg-green-500/10 rounded-xl p-4 text-center">
-                    <p className="text-2xl font-bold text-green-400">P</p>
-                    <p className="text-xs text-green-400">External Context</p>
+                    <p className="text-2xl font-bold text-green-500">P</p>
+                    <p className="text-xs text-green-500/70">External Context</p>
                   </div>
                   <div className="bg-blue-500/10 rounded-xl p-4 text-center">
-                    <p className="text-2xl font-bold text-blue-400">4</p>
-                    <p className="text-xs text-blue-400">Agent Memories</p>
+                    <p className="text-2xl font-bold text-blue-500">4</p>
+                    <p className="text-xs text-blue-500/70">Agent Memories</p>
                   </div>
-                  <div className="bg-amber-50 rounded-xl p-4 text-center">
-                    <p className="text-2xl font-bold text-amber-700">6</p>
-                    <p className="text-xs text-amber-600">Checkpoints</p>
+                  <div className="bg-amber-500/100/10 rounded-xl p-4 text-center">
+                    <p className="text-2xl font-bold text-amber-500">6</p>
+                    <p className="text-xs text-amber-500/70">Checkpoints</p>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* RLM Category Sections */}
-            <SectionHeader
-              badge="P"
-              badgeColor="bg-violet-600"
-              title="P Variable (External Context)"
-              description="Project state stored outside LLM context"
-              timestamp={rlmLastChecked || lastUpdate}
-              status={rlmChecks.filter(c => c.category === 'P Variable').every(c => c.status === 'pass') ? 'pass' :
-                rlmChecks.filter(c => c.category === 'P Variable').some(c => c.status === 'fail') ? 'fail' : 'pending'}
-              isCollapsible
-              isExpanded={expandedSections['P Variable']}
-              onToggle={() => setExpandedSections(prev => ({ ...prev, 'P Variable': !prev['P Variable'] }))}
-            />
-            {expandedSections['P Variable'] && (
-              <div className="border-x border-b border-border rounded-b-xl">
-                <CheckItem
-                  label="P Variable File Generated"
-                  status="pending"
-                  description="External context variable exists at configured location"
-                  command="cat /tmp/P.json | jq '.meta.project_name'"
-                />
-                <CheckItem
-                  label="P Variable Schema Valid"
-                  status="pending"
-                  description="P variable matches expected JSON schema structure"
-                  command="jq -e '.meta and .codebase and .wave_state' /tmp/P.json"
-                />
-                <CheckItem
-                  label="Context Hash Current"
-                  status="pending"
-                  description="Hash matches actual file state (no drift detected)"
-                  command="./core/scripts/rlm/load-project-variable.sh --verify-hash"
-                />
-                <CheckItem
-                  label="Codebase Indexed"
-                  status="pending"
-                  description="File structure and source files captured in P variable"
-                  command="jq '.codebase.file_count' /tmp/P.json"
-                />
-              </div>
-            )}
+            <div>
+              <SectionHeader
+                badge={<FileText className="h-4 w-4 text-blue-500" />}
+                badgeColor="bg-blue-500/20"
+                title="P Variable (External Context)"
+                description="Project state stored outside LLM context"
+                timestamp={rlmLastChecked || lastUpdate}
+                status={rlmChecks.filter(c => c.category === 'P Variable').every(c => c.status === 'pass') ? 'pass' :
+                  rlmChecks.filter(c => c.category === 'P Variable').some(c => c.status === 'fail') ? 'fail' : 'pending'}
+                isCollapsible
+                isExpanded={expandedSections['P Variable']}
+                onToggle={() => setExpandedSections(prev => ({ ...prev, 'P Variable': !prev['P Variable'] }))}
+              />
+              {expandedSections['P Variable'] && (
+                <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                  <CheckItem
+                    label="P Variable File Generated"
+                    status="pending"
+                    description="External context variable exists at configured location"
+                    command="cat /tmp/P.json | jq '.meta.project_name'"
+                  />
+                  <CheckItem
+                    label="P Variable Schema Valid"
+                    status="pending"
+                    description="P variable matches expected JSON schema structure"
+                    command="jq -e '.meta and .codebase and .wave_state' /tmp/P.json"
+                  />
+                  <CheckItem
+                    label="Context Hash Current"
+                    status="pending"
+                    description="Hash matches actual file state (no drift detected)"
+                    command="./core/scripts/rlm/load-project-variable.sh --verify-hash"
+                  />
+                  <CheckItem
+                    label="Codebase Indexed"
+                    status="pending"
+                    description="File structure and source files captured in P variable"
+                    command="jq '.codebase.file_count' /tmp/P.json"
+                  />
+                </div>
+              )}
+            </div>
 
-            <SectionHeader
-              badge="MEM"
-              badgeColor="bg-primary"
-              title="Agent Memory Persistence"
-              description="Decisions and patterns survive context resets"
-              timestamp={rlmLastChecked || lastUpdate}
-              status={rlmChecks.filter(c => c.category === 'Agent Memory').every(c => c.status === 'pass') ? 'pass' :
-                rlmChecks.filter(c => c.category === 'Agent Memory').some(c => c.status === 'fail') ? 'fail' : 'pending'}
-              isCollapsible
-              isExpanded={expandedSections['Agent Memory']}
-              onToggle={() => setExpandedSections(prev => ({ ...prev, 'Agent Memory': !prev['Agent Memory'] }))}
-            />
-            {expandedSections['Agent Memory'] && (
-              <div className="border-x border-b border-border rounded-b-xl">
-                <CheckItem
-                  label="Memory Directory Exists"
-                  status="pending"
-                  description="Agent memory storage at .claude/agent-memory/"
-                  command="ls -la .claude/agent-memory/"
-                />
-                <CheckItem
-                  label="FE-Dev Memory File"
-                  status="pending"
-                  description="Frontend agent memory persisted"
-                  command="cat .claude/agent-memory/fe-dev-wave*.json | jq '.decisions | length'"
-                />
-                <CheckItem
-                  label="BE-Dev Memory File"
-                  status="pending"
-                  description="Backend agent memory persisted"
-                  command="cat .claude/agent-memory/be-dev-wave*.json | jq '.decisions | length'"
-                />
-                <CheckItem
-                  label="Memory Schema Valid"
-                  status="pending"
-                  description="Memory files match required schema"
-                  command="./core/scripts/rlm/memory-manager.sh --validate-all"
-                />
-              </div>
-            )}
+            <div>
+              <SectionHeader
+                badge={<Brain className="h-4 w-4 text-purple-500" />}
+                badgeColor="bg-purple-500/20"
+                title="Agent Memory Persistence"
+                description="Decisions and patterns survive context resets"
+                timestamp={rlmLastChecked || lastUpdate}
+                status={rlmChecks.filter(c => c.category === 'Agent Memory').every(c => c.status === 'pass') ? 'pass' :
+                  rlmChecks.filter(c => c.category === 'Agent Memory').some(c => c.status === 'fail') ? 'fail' : 'pending'}
+                isCollapsible
+                isExpanded={expandedSections['Agent Memory']}
+                onToggle={() => setExpandedSections(prev => ({ ...prev, 'Agent Memory': !prev['Agent Memory'] }))}
+              />
+              {expandedSections['Agent Memory'] && (
+                <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                  <CheckItem
+                    label="Memory Directory Exists"
+                    status="pending"
+                    description="Agent memory storage at .claude/agent-memory/"
+                    command="ls -la .claude/agent-memory/"
+                  />
+                  <CheckItem
+                    label="FE-Dev Memory File"
+                    status="pending"
+                    description="Frontend agent memory persisted"
+                    command="cat .claude/agent-memory/fe-dev-wave*.json | jq '.decisions | length'"
+                  />
+                  <CheckItem
+                    label="BE-Dev Memory File"
+                    status="pending"
+                    description="Backend agent memory persisted"
+                    command="cat .claude/agent-memory/be-dev-wave*.json | jq '.decisions | length'"
+                  />
+                  <CheckItem
+                    label="Memory Schema Valid"
+                    status="pending"
+                    description="Memory files match required schema"
+                    command="./core/scripts/rlm/memory-manager.sh --validate-all"
+                  />
+                </div>
+              )}
+            </div>
 
-            <SectionHeader
-              badge="SNAP"
-              badgeColor="bg-amber-600"
-              title="Snapshots & Recovery"
-              description="Checkpoint/restore capability for rollback"
-              timestamp={rlmLastChecked || lastUpdate}
-              status={rlmChecks.filter(c => c.category === 'Snapshots').every(c => c.status === 'pass') ? 'pass' :
-                rlmChecks.filter(c => c.category === 'Snapshots').some(c => c.status === 'fail') ? 'fail' : 'pending'}
-              isCollapsible
-              isExpanded={expandedSections['Snapshots']}
-              onToggle={() => setExpandedSections(prev => ({ ...prev, 'Snapshots': !prev['Snapshots'] }))}
-            />
-            {expandedSections['Snapshots'] && (
-              <div className="border-x border-b border-border rounded-b-xl">
-                <CheckItem
-                  label="Snapshot Directory"
-                  status="pending"
-                  description="Snapshots stored in .claude/snapshots/"
-                  command="ls -la .claude/snapshots/"
-                />
-                <CheckItem
-                  label="Checkpoint: startup"
-                  status="pending"
-                  description="Pre-flight check snapshot exists"
-                  command="ls .claude/snapshots/P-wave*-startup-*.json | tail -1"
-                />
-                <CheckItem
-                  label="Checkpoint: pre-sync"
-                  status="pending"
-                  description="Before worktree merge snapshot"
-                  command="ls .claude/snapshots/P-wave*-pre-sync-*.json | tail -1"
-                />
-                <CheckItem
-                  label="Restore Capability"
-                  status="pending"
-                  description="Can restore from last snapshot"
-                  command="./core/scripts/rlm/restore-variable.sh --dry-run --latest"
-                />
-              </div>
-            )}
+            <div>
+              <SectionHeader
+                badge={<Camera className="h-4 w-4 text-cyan-500" />}
+                badgeColor="bg-cyan-500/20"
+                title="Snapshots & Recovery"
+                description="Checkpoint/restore capability for rollback"
+                timestamp={rlmLastChecked || lastUpdate}
+                status={rlmChecks.filter(c => c.category === 'Snapshots').every(c => c.status === 'pass') ? 'pass' :
+                  rlmChecks.filter(c => c.category === 'Snapshots').some(c => c.status === 'fail') ? 'fail' : 'pending'}
+                isCollapsible
+                isExpanded={expandedSections['Snapshots']}
+                onToggle={() => setExpandedSections(prev => ({ ...prev, 'Snapshots': !prev['Snapshots'] }))}
+              />
+              {expandedSections['Snapshots'] && (
+                <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                  <CheckItem
+                    label="Snapshot Directory"
+                    status="pending"
+                    description="Snapshots stored in .claude/snapshots/"
+                    command="ls -la .claude/snapshots/"
+                  />
+                  <CheckItem
+                    label="Checkpoint: startup"
+                    status="pending"
+                    description="Pre-flight check snapshot exists"
+                    command="ls .claude/snapshots/P-wave*-startup-*.json | tail -1"
+                  />
+                  <CheckItem
+                    label="Checkpoint: pre-sync"
+                    status="pending"
+                    description="Before worktree merge snapshot"
+                    command="ls .claude/snapshots/P-wave*-pre-sync-*.json | tail -1"
+                  />
+                  <CheckItem
+                    label="Restore Capability"
+                    status="pending"
+                    description="Can restore from last snapshot"
+                    command="./core/scripts/rlm/restore-variable.sh --dry-run --latest"
+                  />
+                </div>
+              )}
+            </div>
 
-            <SectionHeader
-              badge="SCRIPTS"
-              badgeColor="bg-green-500"
-              title="RLM Scripts"
-              description="Required scripts for RLM operations"
-              timestamp={rlmLastChecked || lastUpdate}
-              status={rlmChecks.filter(c => c.category === 'RLM Scripts').every(c => c.status === 'pass') ? 'pass' :
-                rlmChecks.filter(c => c.category === 'RLM Scripts').some(c => c.status === 'fail') ? 'fail' : 'pending'}
-              isCollapsible
-              isExpanded={expandedSections['RLM Scripts']}
-              onToggle={() => setExpandedSections(prev => ({ ...prev, 'RLM Scripts': !prev['RLM Scripts'] }))}
-            />
-            {expandedSections['RLM Scripts'] && (
-              <div className="border-x border-b border-border rounded-b-xl">
-                <CheckItem
-                  label="load-project-variable.sh"
-                  status="pending"
-                  description="Generate P variable from project"
-                  command="test -x core/scripts/rlm/load-project-variable.sh && echo 'executable'"
-                />
-                <CheckItem
-                  label="query-variable.py"
-                  status="pending"
-                  description="REPL-style query interface for P"
-                  command="test -f core/scripts/rlm/query-variable.py && echo 'exists'"
-                />
-                <CheckItem
-                  label="memory-manager.sh"
-                  status="pending"
-                  description="Manage agent memory persistence"
-                  command="test -x core/scripts/rlm/memory-manager.sh && echo 'executable'"
-                />
-                <CheckItem
-                  label="snapshot-variable.sh"
-                  status="pending"
-                  description="Create P snapshots at checkpoints"
-                  command="test -x core/scripts/rlm/snapshot-variable.sh && echo 'executable'"
-                />
-                <CheckItem
-                  label="sub-llm-dispatch.py"
-                  status="pending"
-                  description="Delegate tasks to sub-LLMs"
-                  command="test -f core/scripts/rlm/sub-llm-dispatch.py && echo 'exists'"
-                />
-              </div>
-            )}
+            <div>
+              <SectionHeader
+                badge={<ScrollText className="h-4 w-4 text-amber-500" />}
+                badgeColor="bg-amber-500/20"
+                title="RLM Scripts"
+                description="Required scripts for RLM operations"
+                timestamp={rlmLastChecked || lastUpdate}
+                status={rlmChecks.filter(c => c.category === 'RLM Scripts').every(c => c.status === 'pass') ? 'pass' :
+                  rlmChecks.filter(c => c.category === 'RLM Scripts').some(c => c.status === 'fail') ? 'fail' : 'pending'}
+                isCollapsible
+                isExpanded={expandedSections['RLM Scripts']}
+                onToggle={() => setExpandedSections(prev => ({ ...prev, 'RLM Scripts': !prev['RLM Scripts'] }))}
+              />
+              {expandedSections['RLM Scripts'] && (
+                <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                  <CheckItem
+                    label="load-project-variable.sh"
+                    status="pending"
+                    description="Generate P variable from project"
+                    command="test -x core/scripts/rlm/load-project-variable.sh && echo 'executable'"
+                  />
+                  <CheckItem
+                    label="query-variable.py"
+                    status="pending"
+                    description="REPL-style query interface for P"
+                    command="test -f core/scripts/rlm/query-variable.py && echo 'exists'"
+                  />
+                  <CheckItem
+                    label="memory-manager.sh"
+                    status="pending"
+                    description="Manage agent memory persistence"
+                    command="test -x core/scripts/rlm/memory-manager.sh && echo 'executable'"
+                  />
+                  <CheckItem
+                    label="snapshot-variable.sh"
+                    status="pending"
+                    description="Create P snapshots at checkpoints"
+                    command="test -x core/scripts/rlm/snapshot-variable.sh && echo 'executable'"
+                  />
+                  <CheckItem
+                    label="sub-llm-dispatch.py"
+                    status="pending"
+                    description="Delegate tasks to sub-LLMs"
+                    command="test -f core/scripts/rlm/sub-llm-dispatch.py && echo 'exists'"
+                  />
+                </div>
+              )}
+            </div>
 
-            <SectionHeader
-              badge="$"
-              badgeColor="bg-emerald-600"
-              title="Token Budget & Efficiency"
-              description="Context reduction and cost optimization"
-              timestamp={rlmLastChecked || lastUpdate}
-              status={rlmChecks.filter(c => c.category === 'Token Budget').every(c => c.status === 'pass') ? 'pass' :
-                rlmChecks.filter(c => c.category === 'Token Budget').some(c => c.status === 'fail') ? 'fail' : 'pending'}
-              isCollapsible
-              isExpanded={expandedSections['Token Budget']}
-              onToggle={() => setExpandedSections(prev => ({ ...prev, 'Token Budget': !prev['Token Budget'] }))}
-            />
-            {expandedSections['Token Budget'] && (
-              <div className="border-x border-b border-border rounded-b-xl">
-                <CheckItem
-                  label="Baseline Token Count"
-                  status="pending"
-                  description="Initial context size measured (before RLM)"
-                  command="wc -c CLAUDE.md stories/**/*.json | tail -1"
-                />
-                <CheckItem
-                  label="RLM Token Reduction"
-                  status="pending"
-                  description="90%+ reduction in context tokens achieved"
-                  command="./core/scripts/rlm/measure-reduction.sh"
-                />
-                <CheckItem
-                  label="Sub-LLM Cost Tracking"
-                  status="pending"
-                  description="Per-model costs tracked (Haiku/Sonnet/Opus)"
-                  command="cat .claude/budget.json | jq '.by_model'"
-                />
-                <CheckItem
-                  label="Query Efficiency"
-                  status="pending"
-                  description="peek/search/list_files return accurate results"
-                  command="./core/scripts/rlm/query-variable.py --test"
-                />
-              </div>
-            )}
+            <div>
+              <SectionHeader
+                badge={<Gauge className="h-4 w-4 text-green-500" />}
+                badgeColor="bg-green-500/20"
+                title="Token Budget & Efficiency"
+                description="Context reduction and cost optimization"
+                timestamp={rlmLastChecked || lastUpdate}
+                status={rlmChecks.filter(c => c.category === 'Token Budget').every(c => c.status === 'pass') ? 'pass' :
+                  rlmChecks.filter(c => c.category === 'Token Budget').some(c => c.status === 'fail') ? 'fail' : 'pending'}
+                isCollapsible
+                isExpanded={expandedSections['Token Budget']}
+                onToggle={() => setExpandedSections(prev => ({ ...prev, 'Token Budget': !prev['Token Budget'] }))}
+              />
+              {expandedSections['Token Budget'] && (
+                <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                  <CheckItem
+                    label="Baseline Token Count"
+                    status="pending"
+                    description="Initial context size measured (before RLM)"
+                    command="wc -c CLAUDE.md stories/**/*.json | tail -1"
+                  />
+                  <CheckItem
+                    label="RLM Token Reduction"
+                    status="pending"
+                    description="90%+ reduction in context tokens achieved"
+                    command="./core/scripts/rlm/measure-reduction.sh"
+                  />
+                  <CheckItem
+                    label="Sub-LLM Cost Tracking"
+                    status="pending"
+                    description="Per-model costs tracked (Haiku/Sonnet/Opus)"
+                    command="cat .claude/budget.json | jq '.by_model'"
+                  />
+                  <CheckItem
+                    label="Query Efficiency"
+                    status="pending"
+                    description="peek/search/list_files return accurate results"
+                    command="./core/scripts/rlm/query-variable.py --test"
+                  />
+                </div>
+              )}
+            </div>
 
             {/* Drift Monitoring Section (Phase 1.3.5) */}
             <div className="mt-6 p-5 bg-card border border-border rounded-2xl">
@@ -5690,14 +4681,14 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                   <div className={cn(
                     "w-10 h-10 rounded-xl flex items-center justify-center",
                     driftReport?.overall_status === 'healthy' ? "bg-green-500/15" :
-                    driftReport?.overall_status === 'drift_detected' ? "bg-amber-500/10" :
-                    "bg-zinc-100"
+                    driftReport?.overall_status === 'drift_detected' ? "bg-amber-500/100/10" :
+                    "bg-muted"
                   )}>
                     <Brain className={cn(
                       "h-5 w-5",
-                      driftReport?.overall_status === 'healthy' ? "text-green-400" :
-                      driftReport?.overall_status === 'drift_detected' ? "text-amber-600" :
-                      "text-zinc-600"
+                      driftReport?.overall_status === 'healthy' ? "text-green-500" :
+                      driftReport?.overall_status === 'drift_detected' ? "text-amber-500" :
+                      "text-muted-foreground"
                     )} />
                   </div>
                   <div>
@@ -5709,8 +4700,8 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                   {driftReport && (
                     <span className={cn(
                       "px-3 py-1 rounded-full text-sm",
-                      driftReport.overall_status === 'healthy' ? "bg-green-500/15 text-green-400" :
-                      "bg-amber-500/10 text-amber-700"
+                      driftReport.overall_status === 'healthy' ? "bg-green-500/15 text-green-500" :
+                      "bg-amber-500/100/10 text-amber-500"
                     )}>
                       {driftReport.overall_status === 'healthy' ? 'No Drift' :
                        `${driftReport.summary.drifted + driftReport.summary.stale} Agents Affected`}
@@ -5719,7 +4710,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                   <button
                     onClick={() => fetchDriftReport(true)}
                     disabled={driftLoading}
-                    className="p-2 rounded-lg hover:bg-zinc-100 transition-colors"
+                    className="p-2 rounded-lg hover:bg-muted transition-colors"
                     title="Refresh drift report"
                   >
                     <RefreshCw className={cn("h-4 w-4", driftLoading && "animate-spin")} />
@@ -5736,7 +4727,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       className={cn(
                         "px-4 py-3 rounded-lg flex items-start gap-3",
                         rec.priority === 'high' ? "bg-red-500/10 border border-red-500/30" :
-                        rec.priority === 'medium' ? "bg-amber-50 border border-amber-200" :
+                        rec.priority === 'medium' ? "bg-amber-500/10 border border-amber-500/30" :
                         "bg-blue-500/10 border border-blue-500/30"
                       )}
                     >
@@ -5750,9 +4741,9 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       <div>
                         <p className={cn(
                           "text-sm font-medium",
-                          rec.priority === 'high' ? "text-red-400" :
-                          rec.priority === 'medium' ? "text-amber-700" :
-                          "text-blue-400"
+                          rec.priority === 'high' ? "text-red-500" :
+                          rec.priority === 'medium' ? "text-amber-500" :
+                          "text-blue-500"
                         )}>
                           {rec.message}
                         </p>
@@ -5771,24 +4762,24 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               {driftReport && (
                 <div className="grid grid-cols-5 gap-3 mb-4">
                   <div className="p-3 bg-green-500/10 rounded-lg text-center">
-                    <p className="text-xl font-bold text-green-400">{driftReport.summary.healthy}</p>
-                    <p className="text-xs text-green-400">Healthy</p>
+                    <p className="text-xl font-bold text-green-500">{driftReport.summary.healthy}</p>
+                    <p className="text-xs text-green-500">Healthy</p>
                   </div>
-                  <div className="p-3 bg-amber-50 rounded-lg text-center">
-                    <p className="text-xl font-bold text-amber-700">{driftReport.summary.drifted}</p>
-                    <p className="text-xs text-amber-600">Drifted</p>
+                  <div className="p-3 bg-amber-500/10 rounded-lg text-center">
+                    <p className="text-xl font-bold text-amber-500">{driftReport.summary.drifted}</p>
+                    <p className="text-xs text-amber-500">Drifted</p>
                   </div>
                   <div className="p-3 bg-orange-500/10 rounded-lg text-center">
                     <p className="text-xl font-bold text-orange-700">{driftReport.summary.stale}</p>
                     <p className="text-xs text-orange-600">Stale</p>
                   </div>
-                  <div className="p-3 bg-zinc-100 rounded-lg text-center">
-                    <p className="text-xl font-bold text-zinc-700">{driftReport.summary.no_baseline}</p>
-                    <p className="text-xs text-zinc-600">No Baseline</p>
+                  <div className="p-3 bg-muted rounded-lg text-center">
+                    <p className="text-xl font-bold text-foreground/80">{driftReport.summary.no_baseline}</p>
+                    <p className="text-xs text-muted-foreground">No Baseline</p>
                   </div>
-                  <div className="p-3 bg-violet-50 rounded-lg text-center">
-                    <p className="text-xl font-bold text-violet-700">{(driftReport.summary.average_drift_score * 100).toFixed(0)}%</p>
-                    <p className="text-xs text-violet-600">Avg Drift</p>
+                  <div className="p-3 bg-violet-500/10 rounded-lg text-center">
+                    <p className="text-xl font-bold text-violet-500">{(driftReport.summary.average_drift_score * 100).toFixed(0)}%</p>
+                    <p className="text-xs text-violet-500">Avg Drift</p>
                   </div>
                 </div>
               )}
@@ -5805,19 +4796,19 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                         <div className="flex items-center gap-3">
                           <div className={cn(
                             "w-2 h-2 rounded-full",
-                            agent.status === 'healthy' ? "bg-green-500/100" :
-                            agent.status === 'drifted' ? "bg-amber-500" :
+                            agent.status === 'healthy' ? "bg-green-500" :
+                            agent.status === 'drifted' ? "bg-amber-500/100" :
                             agent.status === 'stale' ? "bg-orange-500/100" :
-                            "bg-zinc-300"
+                            "bg-muted-foreground/30"
                           )} />
                           <div>
                             <span className="font-medium text-sm">{agent.agent}</span>
                             <span className={cn(
                               "ml-2 text-xs px-2 py-0.5 rounded",
-                              agent.status === 'healthy' ? "bg-green-500/15 text-green-400" :
-                              agent.status === 'drifted' ? "bg-amber-500/10 text-amber-700" :
+                              agent.status === 'healthy' ? "bg-green-500/15 text-green-500" :
+                              agent.status === 'drifted' ? "bg-amber-500/100/10 text-amber-500" :
                               agent.status === 'stale' ? "bg-orange-500/15 text-orange-700" :
-                              "bg-zinc-100 text-zinc-600"
+                              "bg-muted text-muted-foreground"
                             )}>
                               {agent.status}
                             </span>
@@ -5839,14 +4830,14 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                           {agent.status === 'no_baseline' ? (
                             <button
                               onClick={() => generateAgentBaseline(agent.agent)}
-                              className="px-2 py-1 text-xs bg-violet-100 text-violet-700 rounded hover:bg-violet-200"
+                              className="px-2 py-1 text-xs bg-violet-500/15 text-violet-500 rounded hover:bg-violet-500/25"
                             >
                               Create Baseline
                             </button>
                           ) : (agent.status === 'drifted' || agent.status === 'stale') && (
                             <button
                               onClick={() => resetAgentMemory(agent.agent)}
-                              className="px-2 py-1 text-xs bg-amber-500/10 text-amber-700 rounded hover:bg-amber-200"
+                              className="px-2 py-1 text-xs bg-amber-500/100/10 text-amber-500 rounded hover:bg-amber-500/20"
                             >
                               Reset Memory
                             </button>
@@ -5867,386 +4858,438 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                 </div>
               )}
             </div>
-          </>
+          </TabContainer>
         )}
 
         {/* TAB 5: Aerospace Safety */}
         {activeTab === 'compliance-safety' && (
-          <>
-            <div className="flex items-center justify-between p-6 border border-border bg-card rounded-2xl mb-6">
-              <div className="flex items-center gap-6">
-                <span className="text-sm font-medium text-muted-foreground">AEROSPACE</span>
-                <span className="font-semibold">DO-178C Inspired Safety Protocol</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={validateSafety}
-                  disabled={validatingSafety}
-                  className="px-4 py-2 bg-orange-500/100 text-white rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {validatingSafety ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Validating...
-                    </>
-                  ) : (
-                    <>
-                      <Shield className="h-4 w-4" />
-                      Run Safety Validation
-                    </>
-                  )}
-                </button>
-                {safetyValidationResult && (
-                  <div className="flex items-center gap-2">
-                    <StatusBadge status={safetyValidationResult.status || 'pending'} />
-                    <span className="text-xs text-muted-foreground">{safetyValidationResult.message}</span>
-                  </div>
-                )}
+          <TabContainer>
+            {/* 1. INFO BOX */}
+            <InfoBox
+              title="Step 5: Aerospace Safety Protocol"
+              description="DO-178C inspired safety validation for AI agent operations. Validates safety documentation, Docker configuration, signal protocols, and behavioral probes to ensure agents refuse forbidden operations."
+              icon={<Shield className="h-4 w-4 text-blue-500" />}
+            />
+
+            {/* 2. KPI CARDS */}
+            <KPICards
+              items={[
+                {
+                  label: 'Safety Docs',
+                  value: safetyChecks.filter(c => c.status === 'pass').length > 0 ? 'Valid' : 'Pending',
+                  status: safetyChecks.filter(c => c.status === 'pass').length > 0 ? 'success' : 'neutral',
+                  icon: <FileText className="h-4 w-4" />
+                },
+                {
+                  label: 'Probes Passed',
+                  value: behavioralProbes.filter(p => p.status === 'validated' || p.status === 'pass').length,
+                  status: behavioralProbes.filter(p => p.status === 'fail').length === 0 ? 'success' : 'error',
+                  icon: <Target className="h-4 w-4" />
+                },
+                {
+                  label: 'Coverage',
+                  value: traceabilityReport?.summary?.coverage_percent != null ? `${traceabilityReport.summary.coverage_percent}%` : 'N/A',
+                  status: (traceabilityReport?.summary?.coverage_percent ?? 0) >= 80 ? 'success' : (traceabilityReport?.summary?.coverage_percent ?? 0) >= 50 ? 'warning' : 'neutral',
+                  icon: <Layers className="h-4 w-4" />
+                },
+                {
+                  label: 'Status',
+                  value: safetyStatus === 'ready' ? 'Ready' : safetyStatus === 'blocked' ? 'Blocked' : 'Pending',
+                  status: safetyStatus === 'ready' ? 'success' : safetyStatus === 'blocked' ? 'error' : 'neutral',
+                  icon: <Shield className="h-4 w-4" />
+                },
+              ]}
+            />
+
+            {/* 3. ACTION BAR */}
+            <ActionBar
+              category="AEROSPACE"
+              title="DO-178C Safety Protocol"
+              description={safetyLastChecked ? `Last validated: ${formatValidationTimestamp(safetyLastChecked)}` : 'Not yet validated'}
+              statusBadge={safetyValidationResult ? {
+                label: safetyValidationResult.status === 'pass' ? 'Passed' : safetyValidationResult.status === 'fail' ? 'Failed' : 'Warning',
+                icon: safetyValidationResult.status === 'pass' ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />,
+                variant: safetyValidationResult.status === 'pass' ? 'success' : 'warning'
+              } : undefined}
+              primaryAction={{
+                label: validatingSafety ? 'Validating...' : 'Run Safety Validation',
+                onClick: validateSafety,
+                loading: validatingSafety,
+                icon: <Shield className="h-4 w-4" />
+              }}
+            />
+
+            {/* 4. RESULT SUMMARY */}
+            <ResultSummary
+              status={
+                safetyStatus === 'ready' ? 'pass' :
+                safetyStatus === 'blocked' ? 'fail' :
+                safetyStatus === 'validating' ? 'pending' : 'idle'
+              }
+              message={
+                safetyStatus === 'ready' ? 'All safety validations passed. System is compliant.' :
+                safetyStatus === 'blocked' ? 'Safety validation failed. Review issues below.' :
+                safetyStatus === 'validating' ? 'Running safety validation checks...' :
+                'Run safety validation to verify compliance.'
+              }
+            />
+
+            {/* 5. EXPANDABLE SECTIONS */}
+            <div>
+              <SectionHeader badge={<FileText className="h-4 w-4 text-slate-400" />} badgeColor="bg-slate-500/20" title="Section A: Safety Documentation" description="CLAUDE.md and forbidden operations" timestamp={lastUpdate} status="warn" />
+              <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                <CheckItem
+                  label="Safety Markers (20+)"
+                  status="warn"
+                  description="CLAUDE.md must contain at least 20 CRITICAL/NEVER/FORBIDDEN markers"
+                  command="grep -cE '(CRITICAL|NEVER|FORBIDDEN|DO NOT)' CLAUDE.md"
+                />
+                <CheckItem
+                  label="Emergency Stop Configured"
+                  status="pass"
+                  description="Emergency stop mechanism is configured and accessible"
+                  command="test -f .claude/emergency-stop.sh && echo 'CONFIGURED'"
+                />
+                <CheckItem
+                  label="Domain Boundaries Defined"
+                  status="pass"
+                  description="Agent domain boundaries are clearly defined in CLAUDE.md"
+                  command="grep -c 'DOMAIN:' CLAUDE.md"
+                />
+                <CheckItem
+                  label="Budget Limits Enforced"
+                  status="pass"
+                  description="API budget limits are set and being tracked"
+                  command="cat .claude/budget.json | jq '{limit, spent, remaining}'"
+                />
               </div>
             </div>
 
-            <SectionHeader badge="A" badgeColor="bg-muted-foreground" title="Section A: Safety Documentation" description="CLAUDE.md and forbidden operations" timestamp={lastUpdate} status="warn" />
-            <div className="border-x border-b border-border rounded-b-xl">
-              <CheckItem
-                label="Safety Markers (20+)"
-                status="warn"
-                description="CLAUDE.md must contain at least 20 CRITICAL/NEVER/FORBIDDEN markers"
-                command="grep -cE '(CRITICAL|NEVER|FORBIDDEN|DO NOT)' CLAUDE.md"
-              />
-              <CheckItem
-                label="Emergency Stop Configured"
-                status="pass"
-                description="Emergency stop mechanism is configured and accessible"
-                command="test -f .claude/emergency-stop.sh && echo 'CONFIGURED'"
-              />
-              <CheckItem
-                label="Domain Boundaries Defined"
-                status="pass"
-                description="Agent domain boundaries are clearly defined in CLAUDE.md"
-                command="grep -c 'DOMAIN:' CLAUDE.md"
-              />
-              <CheckItem
-                label="Budget Limits Enforced"
-                status="pass"
-                description="API budget limits are set and being tracked"
-                command="cat .claude/budget.json | jq '{limit, spent, remaining}'"
-              />
-            </div>
-
-            <SectionHeader badge="B" badgeColor="bg-muted-foreground" title="Section B: Docker Configuration" description="Container safety settings" timestamp={lastUpdate} status="pass" />
-            <div className="border-x border-b border-border rounded-b-xl">
-              <CheckItem
-                label="--dangerously-skip-permissions"
-                status="pass"
-                description="Docker runs with appropriate permission flags for Claude Code"
-                command="grep -c 'dangerously-skip-permissions' docker-compose.yml || echo 'Not found'"
-              />
+            <div>
+              <SectionHeader badge={<Container className="h-4 w-4 text-slate-400" />} badgeColor="bg-slate-500/20" title="Section B: Docker Configuration" description="Container safety settings" timestamp={lastUpdate} status="pass" />
+              <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                <CheckItem
+                  label="--dangerously-skip-permissions"
+                  status="pass"
+                  description="Docker runs with appropriate permission flags for Claude Code"
+                  command="grep -c 'dangerously-skip-permissions' docker-compose.yml || echo 'Not found'"
+                />
               <CheckItem
                 label="Non-Root User"
                 status="pass"
                 description="Container runs as non-root user for security"
                 command="grep -E '^USER' Dockerfile | tail -1"
               />
+              </div>
             </div>
 
-            <SectionHeader badge="C" badgeColor="bg-muted-foreground" title="Section C: Signal Protocol" description="Agent communication mechanism" timestamp={lastUpdate} status="pass" />
-            <div className="border-x border-b border-border rounded-b-xl">
-              <CheckItem
-                label="Signal File Schema"
-                status="pass"
-                description="Signal files follow the required JSON schema"
-                command="ajv validate -s .claude/schemas/signal.json -d '.claude/signal-*.json'"
-              />
-              <CheckItem
-                label="Gate Progression (0-7)"
-                status="pass"
-                description="Gate progression follows the defined sequence (0→7)"
-                command="cat .claude/gate-status.json | jq '.current_gate'"
-              />
+            <div>
+              <SectionHeader badge={<Radio className="h-4 w-4 text-slate-400" />} badgeColor="bg-slate-500/20" title="Section C: Signal Protocol" description="Agent communication mechanism" timestamp={lastUpdate} status="pass" />
+              <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                <CheckItem
+                  label="Signal File Schema"
+                  status="pass"
+                  description="Signal files follow the required JSON schema"
+                  command="ajv validate -s .claude/schemas/signal.json -d '.claude/signal-*.json'"
+                />
+                <CheckItem
+                  label="Gate Progression (0-7)"
+                  status="pass"
+                  description="Gate progression follows the defined sequence (0→7)"
+                  command="cat .claude/gate-status.json | jq '.current_gate'"
+                />
+              </div>
             </div>
 
             {/* Section D: Real validation results from API */}
-            <SectionHeader
-              badge="D"
-              badgeColor="bg-muted-foreground"
-              title="Section D: Aerospace Safety (DO-178C)"
-              description="Design Assurance and FMEA compliance"
-              timestamp={formatValidationTimestamp(safetyLastChecked) || lastUpdate}
-              status={(() => {
-                const sectionDChecks = ['FMEA Document (17 modes)', 'Emergency Levels (E1-E5)', 'Approval Matrix (L0-L5)', 'Forbidden Operations (108)', 'Safety Policy']
-                const results = safetyChecks.filter(c => sectionDChecks.includes(c.name))
-                if (results.length === 0) return safetyStatus === 'idle' ? 'warn' : 'pending'
-                if (results.some(c => c.status === 'fail')) return 'fail'
-                if (results.some(c => c.status === 'warn')) return 'warn'
-                return 'pass'
-              })()}
-            />
-            <div className="border-x border-b border-border rounded-b-xl">
-              <CheckItem
-                label="FMEA Document (17 modes)"
-                status={(safetyChecks.find(c => c.name === 'FMEA Document (17 modes)')?.status as 'pass' | 'fail' | 'warn') || (safetyStatus === 'idle' ? 'warn' : 'pending')}
-                description="Failure Mode and Effects Analysis covers all 17 identified failure modes"
-                command="grep -c '## FM-' .claudecode/safety/FMEA.md"
-                output={safetyChecks.find(c => c.name === 'FMEA Document (17 modes)')?.message}
+            <div>
+              <SectionHeader
+                badge={<Shield className="h-4 w-4 text-slate-400" />}
+                badgeColor="bg-slate-500/20"
+                title="Section D: Aerospace Safety (DO-178C)"
+                description="Design Assurance and FMEA compliance"
+                timestamp={formatValidationTimestamp(safetyLastChecked) || lastUpdate}
+                status={(() => {
+                  const sectionDChecks = ['FMEA Document (17 modes)', 'Emergency Levels (E1-E5)', 'Approval Matrix (L0-L5)', 'Forbidden Operations (108)', 'Safety Policy']
+                  const results = safetyChecks.filter(c => sectionDChecks.includes(c.name))
+                  if (results.length === 0) return safetyStatus === 'idle' ? 'warn' : 'pending'
+                  if (results.some(c => c.status === 'fail')) return 'fail'
+                  if (results.some(c => c.status === 'warn')) return 'warn'
+                  return 'pass'
+                })()}
               />
-              <CheckItem
-                label="Emergency Levels (E1-E5)"
-                status={(safetyChecks.find(c => c.name === 'Emergency Levels (E1-E5)')?.status as 'pass' | 'fail' | 'warn') || (safetyStatus === 'idle' ? 'warn' : 'pending')}
-                description="Emergency severity levels E1-E5 are defined and documented"
-                command="grep -c '## E[1-5]:' .claudecode/safety/EMERGENCY-LEVELS.md"
-                output={safetyChecks.find(c => c.name === 'Emergency Levels (E1-E5)')?.message}
-              />
-              <CheckItem
-                label="Approval Matrix (L0-L5)"
-                status={(safetyChecks.find(c => c.name === 'Approval Matrix (L0-L5)')?.status as 'pass' | 'fail' | 'warn') || (safetyStatus === 'idle' ? 'warn' : 'pending')}
-                description="Approval levels L0-L5 are defined for different operation types"
-                command="grep -c '## L[0-5]:' .claudecode/safety/APPROVAL-LEVELS.md"
-                output={safetyChecks.find(c => c.name === 'Approval Matrix (L0-L5)')?.message}
-              />
-              <CheckItem
-                label="Forbidden Operations (108)"
-                status={(safetyChecks.find(c => c.name === 'Forbidden Operations (108)')?.status as 'pass' | 'fail' | 'warn') || (safetyStatus === 'idle' ? 'warn' : 'pending')}
-                description="All 108 forbidden operations are documented and enforced"
-                command="grep -c '| [A-J][0-9]' .claudecode/safety/COMPLETE-SAFETY-REFERENCE.md"
-                output={safetyChecks.find(c => c.name === 'Forbidden Operations (108)')?.message}
-              />
-              <CheckItem
-                label="Safety Policy"
-                status={(safetyChecks.find(c => c.name === 'Safety Policy')?.status as 'pass' | 'fail' | 'warn') || (safetyStatus === 'idle' ? 'warn' : 'pending')}
-                description="Safety policy document exists and defines core principles"
-                command="test -f .claudecode/safety/SAFETY-POLICY.md"
-                output={safetyChecks.find(c => c.name === 'Safety Policy')?.message}
-              />
+              <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                <CheckItem
+                  label="FMEA Document (17 modes)"
+                  status={(safetyChecks.find(c => c.name === 'FMEA Document (17 modes)')?.status as 'pass' | 'fail' | 'warn') || (safetyStatus === 'idle' ? 'warn' : 'pending')}
+                  description="Failure Mode and Effects Analysis covers all 17 identified failure modes"
+                  command="grep -c '## FM-' .claudecode/safety/FMEA.md"
+                  output={safetyChecks.find(c => c.name === 'FMEA Document (17 modes)')?.message}
+                />
+                <CheckItem
+                  label="Emergency Levels (E1-E5)"
+                  status={(safetyChecks.find(c => c.name === 'Emergency Levels (E1-E5)')?.status as 'pass' | 'fail' | 'warn') || (safetyStatus === 'idle' ? 'warn' : 'pending')}
+                  description="Emergency severity levels E1-E5 are defined and documented"
+                  command="grep -c '## E[1-5]:' .claudecode/safety/EMERGENCY-LEVELS.md"
+                  output={safetyChecks.find(c => c.name === 'Emergency Levels (E1-E5)')?.message}
+                />
+                <CheckItem
+                  label="Approval Matrix (L0-L5)"
+                  status={(safetyChecks.find(c => c.name === 'Approval Matrix (L0-L5)')?.status as 'pass' | 'fail' | 'warn') || (safetyStatus === 'idle' ? 'warn' : 'pending')}
+                  description="Approval levels L0-L5 are defined for different operation types"
+                  command="grep -c '## L[0-5]:' .claudecode/safety/APPROVAL-LEVELS.md"
+                  output={safetyChecks.find(c => c.name === 'Approval Matrix (L0-L5)')?.message}
+                />
+                <CheckItem
+                  label="Forbidden Operations (108)"
+                  status={(safetyChecks.find(c => c.name === 'Forbidden Operations (108)')?.status as 'pass' | 'fail' | 'warn') || (safetyStatus === 'idle' ? 'warn' : 'pending')}
+                  description="All 108 forbidden operations are documented and enforced"
+                  command="grep -c '| [A-J][0-9]' .claudecode/safety/COMPLETE-SAFETY-REFERENCE.md"
+                  output={safetyChecks.find(c => c.name === 'Forbidden Operations (108)')?.message}
+                />
+                <CheckItem
+                  label="Safety Policy"
+                  status={(safetyChecks.find(c => c.name === 'Safety Policy')?.status as 'pass' | 'fail' | 'warn') || (safetyStatus === 'idle' ? 'warn' : 'pending')}
+                  description="Safety policy document exists and defines core principles"
+                  command="test -f .claudecode/safety/SAFETY-POLICY.md"
+                  output={safetyChecks.find(c => c.name === 'Safety Policy')?.message}
+                />
+              </div>
             </div>
 
             {/* Section E: Real validation results from API */}
-            <SectionHeader
-              badge="E"
-              badgeColor="bg-muted-foreground"
-              title="Section E: Operational Safety"
-              description="Validation scripts and PM agent"
-              timestamp={formatValidationTimestamp(safetyLastChecked) || lastUpdate}
-              status={(() => {
-                const sectionEChecks = ['pre-flight-validator.sh', 'pre-merge-validator.sh', 'post-deploy-validator.sh', 'safety-violation-detector.sh', 'protocol-compliance-checker.sh', 'PM Agent Configuration']
-                const results = safetyChecks.filter(c => sectionEChecks.includes(c.name))
-                if (results.length === 0) return safetyStatus === 'idle' ? 'warn' : 'pending'
-                if (results.some(c => c.status === 'fail')) return 'fail'
-                if (results.some(c => c.status === 'warn')) return 'warn'
-                return 'pass'
-              })()}
-            />
-            <div className="border-x border-b border-border rounded-b-xl">
-              <CheckItem
-                label="Pre-Flight Validator"
-                status={(safetyChecks.find(c => c.name === 'pre-flight-validator.sh')?.status as 'pass' | 'fail' | 'warn') || (safetyStatus === 'idle' ? 'warn' : 'pending')}
-                description="Pre-flight validation script exists and is executable"
-                command="test -x core/scripts/pre-flight-validator.sh"
-                output={safetyChecks.find(c => c.name === 'pre-flight-validator.sh')?.message}
+            <div>
+              <SectionHeader
+                badge={<ShieldCheck className="h-4 w-4 text-slate-400" />}
+                badgeColor="bg-slate-500/20"
+                title="Section E: Operational Safety"
+                description="Validation scripts and PM agent"
+                timestamp={formatValidationTimestamp(safetyLastChecked) || lastUpdate}
+                status={(() => {
+                  const sectionEChecks = ['pre-flight-validator.sh', 'pre-merge-validator.sh', 'post-deploy-validator.sh', 'safety-violation-detector.sh', 'protocol-compliance-checker.sh', 'PM Agent Configuration']
+                  const results = safetyChecks.filter(c => sectionEChecks.includes(c.name))
+                  if (results.length === 0) return safetyStatus === 'idle' ? 'warn' : 'pending'
+                  if (results.some(c => c.status === 'fail')) return 'fail'
+                  if (results.some(c => c.status === 'warn')) return 'warn'
+                  return 'pass'
+                })()}
               />
-              <CheckItem
-                label="Pre-Merge Validator"
-                status={(safetyChecks.find(c => c.name === 'pre-merge-validator.sh')?.status as 'pass' | 'fail' | 'warn') || (safetyStatus === 'idle' ? 'warn' : 'pending')}
-                description="Pre-merge validation script exists and is executable"
-                command="test -x core/scripts/pre-merge-validator.sh"
-                output={safetyChecks.find(c => c.name === 'pre-merge-validator.sh')?.message}
-              />
-              <CheckItem
-                label="Post-Deploy Validator"
-                status={(safetyChecks.find(c => c.name === 'post-deploy-validator.sh')?.status as 'pass' | 'fail' | 'warn') || (safetyStatus === 'idle' ? 'warn' : 'pending')}
-                description="Post-deployment validation script exists and is executable"
-                command="test -x core/scripts/post-deploy-validator.sh"
-                output={safetyChecks.find(c => c.name === 'post-deploy-validator.sh')?.message}
-              />
-              <CheckItem
-                label="Safety Violation Detector"
-                status={(safetyChecks.find(c => c.name === 'safety-violation-detector.sh')?.status as 'pass' | 'fail' | 'warn') || (safetyStatus === 'idle' ? 'warn' : 'pending')}
-                description="Real-time safety violation monitoring script"
-                command="test -x core/scripts/safety-violation-detector.sh"
-                output={safetyChecks.find(c => c.name === 'safety-violation-detector.sh')?.message}
-              />
-              <CheckItem
-                label="Protocol Compliance Checker"
-                status={(safetyChecks.find(c => c.name === 'protocol-compliance-checker.sh')?.status as 'pass' | 'fail' | 'warn') || (safetyStatus === 'idle' ? 'warn' : 'pending')}
-                description="Protocol compliance verification script"
-                command="test -x core/scripts/protocol-compliance-checker.sh"
-                output={safetyChecks.find(c => c.name === 'protocol-compliance-checker.sh')?.message}
-              />
-              <CheckItem
-                label="PM Agent Configuration"
-                status={(safetyChecks.find(c => c.name === 'PM Agent Configuration')?.status as 'pass' | 'fail' | 'warn') || (safetyStatus === 'idle' ? 'warn' : 'pending')}
-                description="PM agent configured with gates and budget"
-                command="test -f .claudecode/agents/pm-agent.md && grep -q 'Gate' .claudecode/agents/pm-agent.md"
-                output={safetyChecks.find(c => c.name === 'PM Agent Configuration')?.message}
-              />
+              <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                <CheckItem
+                  label="Pre-Flight Validator"
+                  status={(safetyChecks.find(c => c.name === 'pre-flight-validator.sh')?.status as 'pass' | 'fail' | 'warn') || (safetyStatus === 'idle' ? 'warn' : 'pending')}
+                  description="Pre-flight validation script exists and is executable"
+                  command="test -x core/scripts/pre-flight-validator.sh"
+                  output={safetyChecks.find(c => c.name === 'pre-flight-validator.sh')?.message}
+                />
+                <CheckItem
+                  label="Pre-Merge Validator"
+                  status={(safetyChecks.find(c => c.name === 'pre-merge-validator.sh')?.status as 'pass' | 'fail' | 'warn') || (safetyStatus === 'idle' ? 'warn' : 'pending')}
+                  description="Pre-merge validation script exists and is executable"
+                  command="test -x core/scripts/pre-merge-validator.sh"
+                  output={safetyChecks.find(c => c.name === 'pre-merge-validator.sh')?.message}
+                />
+                <CheckItem
+                  label="Post-Deploy Validator"
+                  status={(safetyChecks.find(c => c.name === 'post-deploy-validator.sh')?.status as 'pass' | 'fail' | 'warn') || (safetyStatus === 'idle' ? 'warn' : 'pending')}
+                  description="Post-deployment validation script exists and is executable"
+                  command="test -x core/scripts/post-deploy-validator.sh"
+                  output={safetyChecks.find(c => c.name === 'post-deploy-validator.sh')?.message}
+                />
+                <CheckItem
+                  label="Safety Violation Detector"
+                  status={(safetyChecks.find(c => c.name === 'safety-violation-detector.sh')?.status as 'pass' | 'fail' | 'warn') || (safetyStatus === 'idle' ? 'warn' : 'pending')}
+                  description="Real-time safety violation monitoring script"
+                  command="test -x core/scripts/safety-violation-detector.sh"
+                  output={safetyChecks.find(c => c.name === 'safety-violation-detector.sh')?.message}
+                />
+                <CheckItem
+                  label="Protocol Compliance Checker"
+                  status={(safetyChecks.find(c => c.name === 'protocol-compliance-checker.sh')?.status as 'pass' | 'fail' | 'warn') || (safetyStatus === 'idle' ? 'warn' : 'pending')}
+                  description="Protocol compliance verification script"
+                  command="test -x core/scripts/protocol-compliance-checker.sh"
+                  output={safetyChecks.find(c => c.name === 'protocol-compliance-checker.sh')?.message}
+                />
+                <CheckItem
+                  label="PM Agent Configuration"
+                  status={(safetyChecks.find(c => c.name === 'PM Agent Configuration')?.status as 'pass' | 'fail' | 'warn') || (safetyStatus === 'idle' ? 'warn' : 'pending')}
+                  description="PM agent configured with gates and budget"
+                  command="test -f .claudecode/agents/pm-agent.md && grep -q 'Gate' .claudecode/agents/pm-agent.md"
+                  output={safetyChecks.find(c => c.name === 'PM Agent Configuration')?.message}
+                />
+              </div>
             </div>
 
             {/* Section F: Behavioral Safety Probes */}
-            <SectionHeader
-              badge="F"
-              badgeColor="bg-amber-500"
-              title="Section F: Behavioral Safety Probes"
-              description="Tests that agents actually REFUSE forbidden operations"
-              timestamp={behavioralLastChecked || lastUpdate}
-              status={
-                behavioralProbeStatus === 'ready' ? 'pass' :
-                behavioralProbeStatus === 'blocked' ? 'fail' :
-                behavioralProbeStatus === 'validating' ? 'pending' :
-                'warn'
-              }
-            />
-            <div className="border-x border-b border-border rounded-b-xl">
-              {/* Explanation Banner */}
-              <div className="p-4 bg-amber-50 border-b border-amber-100">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium text-amber-800">Why Behavioral Probes Matter</p>
-                    <p className="text-sm text-amber-700 mt-1">
-                      Structural validation checks "Does the safety file exist?" but never asks
-                      "Will the agent actually refuse a forbidden operation?" These probes test
-                      actual behavior, not just configuration.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Run Probes Button */}
-              <div className="p-4 border-b border-border bg-card">
-                <button
-                  onClick={validateBehavioralProbes}
-                  disabled={validatingBehavioral}
-                  className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2",
-                    validatingBehavioral
-                      ? "bg-muted text-muted-foreground cursor-not-allowed"
-                      : "bg-amber-600 text-white hover:bg-amber-700"
-                  )}
-                >
-                  {validatingBehavioral ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Running Probes...
-                    </>
-                  ) : (
-                    <>
-                      <Shield className="h-4 w-4" />
-                      Run Behavioral Probes
-                    </>
-                  )}
-                </button>
-                <p className="text-xs text-muted-foreground mt-2">
-                  15 probes testing forbidden operations, domain boundaries, prompt injection resistance
-                </p>
-              </div>
-
-              {/* Probe Results */}
-              {behavioralProbes.length > 0 ? (
-                <div className="divide-y divide-border">
-                  {/* Summary */}
-                  <div className="p-4 bg-card">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-5 w-5 text-green-500" />
-                        <span className="text-sm font-medium">
-                          {behavioralProbes.filter(p => p.status === 'validated' || p.status === 'pass').length} Validated
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <XCircle className="h-5 w-5 text-red-500" />
-                        <span className="text-sm font-medium">
-                          {behavioralProbes.filter(p => p.status === 'fail').length} Failed
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-5 w-5 text-blue-500" />
-                        <span className="text-sm font-medium">
-                          {behavioralProbes.filter(p => p.status === 'pending').length} Pending
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <MinusCircle className="h-5 w-5 text-muted-foreground" />
-                        <span className="text-sm font-medium">
-                          {behavioralProbes.filter(p => p.status === 'skipped').length} Skipped
-                        </span>
-                      </div>
+            <div>
+              <SectionHeader
+                badge={<TestTube className="h-4 w-4 text-amber-500" />}
+                badgeColor="bg-amber-500/20"
+                title="Section F: Behavioral Safety Probes"
+                description="Tests that agents actually REFUSE forbidden operations"
+                timestamp={behavioralLastChecked || lastUpdate}
+                status={
+                  behavioralProbeStatus === 'ready' ? 'pass' :
+                  behavioralProbeStatus === 'blocked' ? 'fail' :
+                  behavioralProbeStatus === 'validating' ? 'pending' :
+                  'warn'
+                }
+              />
+              <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
+                {/* Explanation Banner */}
+                <div className="p-4 bg-amber-500/10 border-b border-amber-500/30">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium text-amber-800">Why Behavioral Probes Matter</p>
+                      <p className="text-sm text-amber-500 mt-1">
+                        Structural validation checks "Does the safety file exist?" but never asks
+                        "Will the agent actually refuse a forbidden operation?" These probes test
+                        actual behavior, not just configuration.
+                      </p>
                     </div>
                   </div>
+                </div>
 
-                  {/* Individual Probes */}
-                  {behavioralProbes.map((probe) => (
-                    <div key={probe.probe_id} className="p-4 bg-card hover:bg-muted">
-                      <div className="flex items-start gap-3">
-                        <div className={cn(
-                          "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
-                          probe.status === 'validated' || probe.status === 'pass' ? "bg-green-500/15" :
-                          probe.status === 'fail' ? "bg-red-500/15" :
-                          probe.status === 'pending' ? "bg-blue-500/15" :
-                          "bg-muted"
-                        )}>
-                          {probe.status === 'validated' || probe.status === 'pass' ? (
-                            <CheckCircle2 className="h-4 w-4 text-green-400" />
-                          ) : probe.status === 'fail' ? (
-                            <XCircle className="h-4 w-4 text-red-400" />
-                          ) : probe.status === 'pending' ? (
-                            <Clock className="h-4 w-4 text-blue-400" />
-                          ) : (
-                            <MinusCircle className="h-4 w-4 text-muted-foreground" />
-                          )}
+                {/* Run Probes Button */}
+                <div className="p-4 border-b border-border bg-card">
+                  <button
+                    onClick={validateBehavioralProbes}
+                    disabled={validatingBehavioral}
+                    className={cn(
+                      "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2",
+                      validatingBehavioral
+                        ? "bg-muted text-muted-foreground cursor-not-allowed"
+                        : "bg-amber-600 text-white hover:bg-amber-700"
+                    )}
+                  >
+                    {validatingBehavioral ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Running Probes...
+                      </>
+                    ) : (
+                      <>
+                        <Shield className="h-4 w-4" />
+                        Run Behavioral Probes
+                      </>
+                    )}
+                  </button>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    15 probes testing forbidden operations, domain boundaries, prompt injection resistance
+                  </p>
+                </div>
+
+                {/* Probe Results */}
+                {behavioralProbes.length > 0 ? (
+                  <div className="divide-y divide-border">
+                    {/* Summary */}
+                    <div className="p-4 bg-card">
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-5 w-5 text-green-500" />
+                          <span className="text-sm font-medium">
+                            {behavioralProbes.filter(p => p.status === 'validated' || p.status === 'pass').length} Validated
+                          </span>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm">{probe.name}</span>
-                            <span className={cn(
-                              "text-xs px-2 py-0.5 rounded-full",
-                              probe.severity === 'critical' ? "bg-red-500/15 text-red-400" :
-                              probe.severity === 'high' ? "bg-orange-500/15 text-orange-700" :
-                              probe.severity === 'medium' ? "bg-yellow-100 text-yellow-700" :
-                              "bg-muted text-gray-700"
-                            )}>
-                              {probe.severity}
-                            </span>
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600">
-                              {probe.category?.replace('_', ' ')}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <code className="text-xs text-muted-foreground font-mono">
-                              {probe.probe_id}
-                            </code>
-                            {probe.message && (
-                              <span className="text-xs text-muted-foreground">
-                                - {probe.message}
-                              </span>
+                        <div className="flex items-center gap-2">
+                          <XCircle className="h-5 w-5 text-red-500" />
+                          <span className="text-sm font-medium">
+                            {behavioralProbes.filter(p => p.status === 'fail').length} Failed
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-5 w-5 text-blue-500" />
+                          <span className="text-sm font-medium">
+                            {behavioralProbes.filter(p => p.status === 'pending').length} Pending
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <MinusCircle className="h-5 w-5 text-muted-foreground" />
+                          <span className="text-sm font-medium">
+                            {behavioralProbes.filter(p => p.status === 'skipped').length} Skipped
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Individual Probes */}
+                    {behavioralProbes.map((probe) => (
+                      <div key={probe.probe_id} className="p-4 bg-card hover:bg-muted">
+                        <div className="flex items-start gap-3">
+                          <div className={cn(
+                            "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
+                            probe.status === 'validated' || probe.status === 'pass' ? "bg-green-500/15" :
+                            probe.status === 'fail' ? "bg-red-500/15" :
+                            probe.status === 'pending' ? "bg-blue-500/15" :
+                            "bg-muted"
+                          )}>
+                            {probe.status === 'validated' || probe.status === 'pass' ? (
+                              <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            ) : probe.status === 'fail' ? (
+                              <XCircle className="h-4 w-4 text-red-500" />
+                            ) : probe.status === 'pending' ? (
+                              <Clock className="h-4 w-4 text-blue-500" />
+                            ) : (
+                              <MinusCircle className="h-4 w-4 text-muted-foreground" />
                             )}
                           </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm">{probe.name}</span>
+                              <span className={cn(
+                                "text-xs px-2 py-0.5 rounded-full",
+                                probe.severity === 'critical' ? "bg-red-500/15 text-red-500" :
+                                probe.severity === 'high' ? "bg-orange-500/15 text-orange-700" :
+                                probe.severity === 'medium' ? "bg-yellow-500/15 text-yellow-700" :
+                                "bg-muted text-muted-foreground"
+                              )}>
+                                {probe.severity}
+                              </span>
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                                {probe.category?.replace('_', ' ')}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <code className="text-xs text-muted-foreground font-mono">
+                                {probe.probe_id}
+                              </code>
+                              {probe.message && (
+                                <span className="text-xs text-muted-foreground">
+                                  - {probe.message}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-8 text-center text-muted-foreground">
-                  <Shield className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                  <p className="font-medium">No probe results yet</p>
-                  <p className="text-sm mt-1">Click "Run Behavioral Probes" to test agent safety behavior</p>
-                </div>
-              )}
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-8 text-center text-muted-foreground">
+                    <Shield className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                    <p className="font-medium">No probe results yet</p>
+                    <p className="text-sm mt-1">Click "Run Behavioral Probes" to test agent safety behavior</p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Section G: Safety Traceability Matrix (Phase 3.2) */}
-            <SectionHeader
-              badge="G"
-              badgeColor="bg-blue-500/100"
-              title="Section G: Safety Traceability Matrix"
-              description="Story-to-safety-control mapping for audit compliance"
-              timestamp={lastUpdate}
-              status={traceabilityReport
-                ? (traceabilityReport.summary.coverage_percent >= 80 ? 'pass' :
-                   traceabilityReport.summary.coverage_percent >= 50 ? 'warn' : 'fail')
-                : 'pending'
-              }
-            />
-            <div className="border-x border-b border-border rounded-b-xl">
+            <div>
+              <SectionHeader
+                badge={<Layers className="h-4 w-4 text-blue-500" />}
+                badgeColor="bg-blue-500/20"
+                title="Section G: Safety Traceability Matrix"
+                description="Story-to-safety-control mapping for audit compliance"
+                timestamp={lastUpdate}
+                status={traceabilityReport
+                  ? (traceabilityReport.summary.coverage_percent >= 80 ? 'pass' :
+                     traceabilityReport.summary.coverage_percent >= 50 ? 'warn' : 'fail')
+                  : 'pending'
+                }
+              />
+            <div className="px-4 pb-4 space-y-2 border-x border-b border-border rounded-b-xl bg-card">
               {/* Generate Button */}
               <div className="p-4 border-b border-border bg-card">
                 <div className="flex items-center justify-between">
@@ -6281,9 +5324,9 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                     <div className="flex items-center gap-2">
                       <span className={cn(
                         "px-3 py-1 rounded-full text-sm font-medium",
-                        traceabilityReport.summary.coverage_percent >= 80 ? "bg-green-500/15 text-green-400" :
-                        traceabilityReport.summary.coverage_percent >= 50 ? "bg-amber-500/10 text-amber-700" :
-                        "bg-red-500/15 text-red-400"
+                        traceabilityReport.summary.coverage_percent >= 80 ? "bg-green-500/15 text-green-500" :
+                        traceabilityReport.summary.coverage_percent >= 50 ? "bg-amber-500/100/10 text-amber-500" :
+                        "bg-red-500/15 text-red-500"
                       )}>
                         {traceabilityReport.summary.coverage_percent}% Coverage
                       </span>
@@ -6302,7 +5345,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       <div className="text-xs text-muted-foreground">Total Stories</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-red-400">{traceabilityReport.summary.critical_risk_stories}</div>
+                      <div className="text-2xl font-bold text-red-500">{traceabilityReport.summary.critical_risk_stories}</div>
                       <div className="text-xs text-muted-foreground">Critical Risk</div>
                     </div>
                     <div className="text-center">
@@ -6318,10 +5361,10 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                   {/* Risk Distribution Bar */}
                   <div className="p-4 bg-card border-b border-border">
                     <div className="text-xs font-medium text-muted-foreground mb-2">Risk Distribution</div>
-                    <div className="flex h-4 rounded-full overflow-hidden bg-zinc-100">
+                    <div className="flex h-4 rounded-full overflow-hidden bg-muted">
                       {traceabilityReport.risk_distribution.critical > 0 && (
                         <div
-                          className="bg-red-500/100"
+                          className="bg-red-500"
                           style={{ width: `${(traceabilityReport.risk_distribution.critical / traceabilityReport.summary.total_stories) * 100}%` }}
                           title={`Critical: ${traceabilityReport.risk_distribution.critical}`}
                         />
@@ -6349,7 +5392,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       )}
                     </div>
                     <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500/100" /> Critical</span>
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" /> Critical</span>
                       <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500/100" /> High</span>
                       <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" /> Medium</span>
                       <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-400" /> Low</span>
@@ -6376,15 +5419,15 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                               <div className="text-sm truncate max-w-[200px]" title={item.title}>{item.title}</div>
                             </td>
                             <td className="px-4 py-2">
-                              <span className="px-2 py-0.5 bg-zinc-100 rounded text-xs">W{item.wave}</span>
+                              <span className="px-2 py-0.5 bg-muted rounded text-xs">W{item.wave}</span>
                             </td>
                             <td className="px-4 py-2">
                               <span className={cn(
                                 "px-2 py-0.5 rounded text-xs font-medium",
-                                item.risk === 'critical' ? 'bg-red-500/15 text-red-400' :
+                                item.risk === 'critical' ? 'bg-red-500/15 text-red-500' :
                                 item.risk === 'high' ? 'bg-orange-500/15 text-orange-700' :
-                                item.risk === 'medium' ? 'bg-amber-500/10 text-amber-700' :
-                                'bg-green-500/15 text-green-400'
+                                item.risk === 'medium' ? 'bg-amber-500/100/10 text-amber-500' :
+                                'bg-green-500/15 text-green-500'
                               )}>
                                 {item.risk?.toUpperCase() || 'LOW'}
                               </span>
@@ -6392,7 +5435,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                             <td className="px-4 py-2">
                               <div className="flex flex-wrap gap-1">
                                 {item.safety_tags?.length > 0 ? item.safety_tags.map(tag => (
-                                  <span key={tag} className="px-1.5 py-0.5 bg-red-500/10 text-red-400 rounded text-[10px] border border-red-500/30">
+                                  <span key={tag} className="px-1.5 py-0.5 bg-red-500/10 text-red-500 rounded-full text-[10px]">
                                     {tag}
                                   </span>
                                 )) : (
@@ -6428,128 +5471,101 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                 </div>
               )}
             </div>
-          </>
+            </div>
+          </TabContainer>
         )}
 
         {/* TAB 5: Configurations - API Keys & Environment Variables */}
         {activeTab === 'system-config' && (
-          <>
-            <div className="flex items-center justify-between p-6 border border-border bg-card rounded-2xl mb-6">
-              <div className="flex items-center gap-6">
-                <span className="text-sm font-medium text-muted-foreground">CONFIGURATION</span>
-                <span className="font-semibold">API Keys & Environment Variables</span>
-              </div>
-              <div className="flex items-center gap-3">
-                {configLoadedFromDb && (
-                  <span className="text-xs text-blue-400 flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded">
-                    <Database className="h-3 w-3" />
-                    Loaded from DB
-                  </span>
-                )}
-                {configSaved && (
-                  <span className="text-sm text-green-400 flex items-center gap-1">
-                    <CheckCircle2 className="h-4 w-4" />
-                    Synced
-                  </span>
-                )}
-                <button
-                  onClick={reloadConfiguration}
-                  className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:opacity-90 flex items-center gap-2"
-                  title="Reload configuration from database"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Reload
-                </button>
-                <button
-                  onClick={saveConfiguration}
-                  disabled={configSaving}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
-                >
-                  {configSaving ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Syncing...
-                    </>
-                  ) : (
-                    <>
-                      <Database className="h-4 w-4" />
-                      Sync to Database
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
+          <TabContainer>
+            {/* 1. INFO BOX */}
+            <InfoBox
+              title="Step 3: Configurations"
+              description="Configure API keys and environment variables required for WAVE automation. Keys are stored securely in your Supabase database and can be exported to a .env file for local development."
+              icon={<Key className="h-4 w-4 text-blue-500" />}
+            />
 
-            {/* API Keys Status Summary */}
-            <div className="grid grid-cols-4 gap-4 mb-6">
-              <div className={cn("p-4 rounded-xl border", hasAnthropicKey ? "bg-green-500/10 border-green-500/30" : "bg-red-500/10 border-red-500/30")}>
-                <div className="flex items-center gap-2 mb-1">
-                  {hasAnthropicKey ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />}
-                  <span className="font-medium text-sm">Anthropic</span>
-                </div>
-                <p className="text-xs text-muted-foreground">{hasAnthropicKey ? "Configured" : "Missing"}</p>
-              </div>
-              <div className={cn("p-4 rounded-xl border", hasSupabaseUrl ? "bg-green-500/10 border-green-500/30" : "bg-red-500/10 border-red-500/30")}>
-                <div className="flex items-center gap-2 mb-1">
-                  {hasSupabaseUrl ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />}
-                  <span className="font-medium text-sm">Supabase URL</span>
-                </div>
-                <p className="text-xs text-muted-foreground">{hasSupabaseUrl ? "Configured" : "Missing"}</p>
-              </div>
-              <div className={cn("p-4 rounded-xl border", hasSupabaseKey ? "bg-green-500/10 border-green-500/30" : "bg-red-500/10 border-red-500/30")}>
-                <div className="flex items-center gap-2 mb-1">
-                  {hasSupabaseKey ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />}
-                  <span className="font-medium text-sm">Supabase Key</span>
-                </div>
-                <p className="text-xs text-muted-foreground">{hasSupabaseKey ? "Configured" : "Missing"}</p>
-              </div>
-              <div className={cn("p-4 rounded-xl border", hasBudgetLimit ? "bg-green-500/10 border-green-500/30" : "bg-red-500/10 border-red-500/30")}>
-                <div className="flex items-center gap-2 mb-1">
-                  {hasBudgetLimit ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />}
-                  <span className="font-medium text-sm">Budget Limit</span>
-                </div>
-                <p className="text-xs text-muted-foreground">{hasBudgetLimit ? "Configured" : "Missing"}</p>
-              </div>
-            </div>
+            {/* 2. KPI CARDS */}
+            <KPICards
+              items={[
+                {
+                  label: 'Anthropic',
+                  value: hasAnthropicKey ? 'Set' : 'Missing',
+                  status: hasAnthropicKey ? 'success' : 'error',
+                  icon: <Zap className="h-4 w-4" />
+                },
+                {
+                  label: 'Supabase URL',
+                  value: hasSupabaseUrl ? 'Set' : 'Missing',
+                  status: hasSupabaseUrl ? 'success' : 'error',
+                  icon: <Database className="h-4 w-4" />
+                },
+                {
+                  label: 'Supabase Key',
+                  value: hasSupabaseKey ? 'Set' : 'Missing',
+                  status: hasSupabaseKey ? 'success' : 'error',
+                  icon: <Key className="h-4 w-4" />
+                },
+                {
+                  label: 'Budget Limit',
+                  value: hasBudgetLimit ? `$${configValues.WAVE_BUDGET_LIMIT}` : 'Missing',
+                  status: hasBudgetLimit ? 'success' : 'error',
+                  icon: <DollarSign className="h-4 w-4" />
+                },
+              ]}
+            />
 
-            {/* Storage Info */}
-            <div className="bg-blue-500/10 border border-blue-100 rounded-xl p-4 mb-6">
-              <div className="flex items-start gap-3">
-                <Info className="h-5 w-5 text-blue-500 mt-0.5" />
-                <div>
-                  <p className="font-medium text-blue-400">Configuration Storage</p>
-                  <p className="text-sm text-blue-400 mt-1">
-                    API keys are stored securely in the Supabase database (wave_project_config table).
-                    For local development, you can also copy these values to your <code className="bg-blue-500/15 px-1.5 py-0.5 rounded font-mono text-xs">.env</code> file.
-                  </p>
-                </div>
-              </div>
-            </div>
+            {/* 3. ACTION BAR */}
+            <ActionBar
+              category="CONFIGURATION"
+              title="API Keys & Environment"
+              description={`${[hasAnthropicKey, hasSupabaseUrl, hasSupabaseKey, hasBudgetLimit].filter(Boolean).length}/4 required keys configured`}
+              statusBadge={configLoadedFromDb ? {
+                label: 'Loaded from DB',
+                icon: <Database className="h-3 w-3" />,
+                variant: 'info'
+              } : configSaved ? {
+                label: 'Synced',
+                icon: <CheckCircle2 className="h-3 w-3" />,
+                variant: 'success'
+              } : undefined}
+              primaryAction={{
+                label: configSaving ? 'Syncing...' : 'Sync to Database',
+                onClick: saveConfiguration,
+                loading: configSaving,
+                icon: <Database className="h-4 w-4" />
+              }}
+              secondaryAction={{
+                label: 'Reload',
+                onClick: reloadConfiguration,
+                icon: <RefreshCw className="h-4 w-4" />
+              }}
+            />
+
+            {/* 4. RESULT SUMMARY */}
+            <ResultSummary
+              status={allRequiredKeysSet ? 'pass' : someRequiredKeysSet ? 'warn' : 'fail'}
+              message={
+                allRequiredKeysSet
+                  ? 'All required API keys are configured. Ready for WAVE execution.'
+                  : someRequiredKeysSet
+                  ? 'Some required keys are missing. Configure all keys to enable WAVE automation.'
+                  : 'No required keys configured. Add your API keys to get started.'
+              }
+            />
+
+            {/* 5. EXPANDABLE CARDS */}
 
             {/* Required Keys */}
-            <div className="bg-card border border-border rounded-xl overflow-hidden mb-6">
-              <div className={cn(
-                "px-6 py-4 border-b",
-                allRequiredKeysSet
-                  ? "bg-green-500/10 border-green-100"
-                  : "bg-muted border-zinc-100"
-              )}>
-                <h3 className={cn(
-                  "font-semibold flex items-center gap-2",
-                  allRequiredKeysSet ? "text-green-400" : "text-zinc-700"
-                )}>
-                  {allRequiredKeysSet ? <CheckCircle2 className="h-5 w-5" /> : <Key className="h-5 w-5" />}
-                  Required API Keys
-                  {allRequiredKeysSet && <span className="text-xs bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full ml-2">All Set</span>}
-                </h3>
-                <p className={cn(
-                  "text-sm mt-1",
-                  allRequiredKeysSet ? "text-green-400" : "text-zinc-500"
-                )}>
-                  {allRequiredKeysSet ? "All required keys are configured" : "These keys are required for WAVE to function"}
-                </p>
-              </div>
-              <div className="p-6 space-y-6">
+            <ExpandableCard
+              title="Required API Keys"
+              subtitle={allRequiredKeysSet ? "All required keys configured" : "Configure these keys for WAVE to function"}
+              icon={<Key className="h-4 w-4 text-slate-400" />}
+              status={allRequiredKeysSet ? 'pass' : 'fail'}
+              badge={`${configFields.filter(f => f.required && configValues[f.key as keyof typeof configValues]).length}/${configFields.filter(f => f.required).length}`}
+              defaultExpanded={!allRequiredKeysSet}
+            >
+              <div className="space-y-5">
                 {configFields.filter(f => f.required).map((field) => {
                   const value = configValues[field.key as keyof typeof configValues]
                   const isEmpty = !value || value.length === 0
@@ -6564,7 +5580,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                         <button
                           type="button"
                           onClick={() => setHelpModal(field.key)}
-                          className="text-zinc-400 hover:text-zinc-600 transition-colors"
+                          className="text-muted-foreground hover:text-foreground transition-colors"
                           title="How to get this key"
                         >
                           <HelpCircle className="h-4 w-4" />
@@ -6573,10 +5589,10 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       <span className={cn(
                         "text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1",
                         isEmpty
-                          ? "bg-red-500/15 text-red-400"
+                          ? "bg-red-500/10 text-red-500"
                           : isValidFormat
-                            ? "bg-green-500/15 text-green-400"
-                            : "bg-zinc-100 text-zinc-600"
+                            ? "bg-green-500/10 text-green-500"
+                            : "bg-amber-500/10 text-amber-500"
                       )}>
                         {isEmpty ? (
                           <><XCircle className="h-3 w-3" /> Missing</>
@@ -6594,7 +5610,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                           value={configValues[field.key as keyof typeof configValues]}
                           onChange={(e) => updateConfigValue(field.key, e.target.value)}
                           placeholder={field.placeholder}
-                          className="w-full px-4 py-3 bg-muted/30 border border-border rounded-lg text-sm font-mono pr-20"
+                          className="w-full px-4 py-3 bg-background border border-border rounded-lg text-sm font-mono pr-12"
                         />
                         <button
                           type="button"
@@ -6610,26 +5626,18 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       </div>
                       <button
                         onClick={() => navigator.clipboard.writeText(configValues[field.key as keyof typeof configValues])}
-                        className="px-3 py-2 bg-muted hover:bg-muted/80 rounded-lg"
+                        className="px-3 py-2 bg-muted hover:bg-muted/80 rounded-lg transition-colors"
                         title="Copy to clipboard"
                       >
                         <Copy className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={saveConfiguration}
-                        disabled={configSaving}
-                        className="px-3 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-lg disabled:opacity-50"
-                        title="Save to database"
-                      >
-                        <Save className="h-4 w-4" />
-                      </button>
-                      <button
                         onClick={() => testConnection(field.key)}
                         disabled={pingStatus[field.key] === 'testing' || isEmpty}
                         className={cn(
-                          "px-3 py-2 rounded-lg disabled:opacity-50 flex items-center gap-1.5",
-                          pingStatus[field.key] === 'success' ? 'bg-green-500/15 text-green-400' :
-                          pingStatus[field.key] === 'error' ? 'bg-red-500/15 text-red-400' :
+                          "px-3 py-2 rounded-lg disabled:opacity-50 flex items-center gap-1.5 transition-colors",
+                          pingStatus[field.key] === 'success' ? 'bg-green-500/10 text-green-500' :
+                          pingStatus[field.key] === 'error' ? 'bg-red-500/10 text-red-500' :
                           'bg-muted hover:bg-muted/80'
                         )}
                         title="Test connection"
@@ -6651,7 +5659,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       {pingMessage[field.key] && (
                         <span className={cn(
                           "text-xs",
-                          pingStatus[field.key] === 'success' ? 'text-green-400' : 'text-red-400'
+                          pingStatus[field.key] === 'success' ? 'text-green-500' : 'text-red-500'
                         )}>
                           {pingMessage[field.key]}
                         </span>
@@ -6660,18 +5668,16 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                   </div>
                 )})}
               </div>
-            </div>
+            </ExpandableCard>
 
             {/* Optional Keys */}
-            <div className="bg-card border border-border rounded-xl overflow-hidden mb-6">
-              <div className="px-6 py-4 bg-muted/30 border-b border-border">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
-                  Optional Configuration
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1">Additional integrations and settings</p>
-              </div>
-              <div className="p-6 space-y-6">
+            <ExpandableCard
+              title="Optional Configuration"
+              subtitle="Additional integrations and settings"
+              icon={<Settings className="h-4 w-4 text-slate-400" />}
+              badge={`${configFields.filter(f => !f.required && configValues[f.key as keyof typeof configValues]).length}/${configFields.filter(f => !f.required).length}`}
+            >
+              <div className="space-y-5">
                 {configFields.filter(f => !f.required).map((field) => {
                   const value = configValues[field.key as keyof typeof configValues]
                   const isEmpty = !value || value.length === 0
@@ -6685,7 +5691,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                         <button
                           type="button"
                           onClick={() => setHelpModal(field.key)}
-                          className="text-zinc-400 hover:text-zinc-600 transition-colors"
+                          className="text-muted-foreground hover:text-foreground transition-colors"
                           title="How to get this key"
                         >
                           <HelpCircle className="h-4 w-4" />
@@ -6696,8 +5702,8 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                         isEmpty
                           ? "bg-muted text-muted-foreground"
                           : isValidFormat
-                            ? "bg-green-500/15 text-green-400"
-                            : "bg-zinc-100 text-zinc-600"
+                            ? "bg-green-500/10 text-green-500"
+                            : "bg-amber-500/10 text-amber-500"
                       )}>
                         {isEmpty ? (
                           <><Clock className="h-3 w-3" /> Not Set</>
@@ -6715,7 +5721,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                           value={configValues[field.key as keyof typeof configValues]}
                           onChange={(e) => updateConfigValue(field.key, e.target.value)}
                           placeholder={field.placeholder}
-                          className="w-full px-4 py-3 bg-muted/30 border border-border rounded-lg text-sm font-mono pr-20"
+                          className="w-full px-4 py-3 bg-background border border-border rounded-lg text-sm font-mono pr-12"
                         />
                         <button
                           type="button"
@@ -6731,26 +5737,18 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       </div>
                       <button
                         onClick={() => navigator.clipboard.writeText(configValues[field.key as keyof typeof configValues])}
-                        className="px-3 py-2 bg-muted hover:bg-muted/80 rounded-lg"
+                        className="px-3 py-2 bg-muted hover:bg-muted/80 rounded-lg transition-colors"
                         title="Copy to clipboard"
                       >
                         <Copy className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={saveConfiguration}
-                        disabled={configSaving}
-                        className="px-3 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-lg disabled:opacity-50"
-                        title="Save to database"
-                      >
-                        <Save className="h-4 w-4" />
-                      </button>
-                      <button
                         onClick={() => testConnection(field.key)}
                         disabled={pingStatus[field.key] === 'testing' || isEmpty}
                         className={cn(
-                          "px-3 py-2 rounded-lg disabled:opacity-50 flex items-center gap-1.5",
-                          pingStatus[field.key] === 'success' ? 'bg-green-500/15 text-green-400' :
-                          pingStatus[field.key] === 'error' ? 'bg-red-500/15 text-red-400' :
+                          "px-3 py-2 rounded-lg disabled:opacity-50 flex items-center gap-1.5 transition-colors",
+                          pingStatus[field.key] === 'success' ? 'bg-green-500/10 text-green-500' :
+                          pingStatus[field.key] === 'error' ? 'bg-red-500/10 text-red-500' :
                           'bg-muted hover:bg-muted/80'
                         )}
                         title="Test connection"
@@ -6772,7 +5770,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                       {pingMessage[field.key] && (
                         <span className={cn(
                           "text-xs",
-                          pingStatus[field.key] === 'success' ? 'text-green-400' : 'text-red-400'
+                          pingStatus[field.key] === 'success' ? 'text-green-500' : 'text-red-500'
                         )}>
                           {pingMessage[field.key]}
                         </span>
@@ -6781,20 +5779,16 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                   </div>
                 )})}
               </div>
-            </div>
+            </ExpandableCard>
 
-            {/* Generate .env File */}
-            <div className="bg-card border border-border rounded-xl overflow-hidden">
-              <div className="px-6 py-4 bg-background border-b border-zinc-700">
-                <h3 className="font-semibold text-white flex items-center gap-2">
-                  <Database className="h-5 w-5" />
-                  Export to .env File
-                </h3>
-                <p className="text-sm text-zinc-400 mt-1">Copy this content to your project's .env file</p>
-              </div>
-              <div className="p-4 bg-background">
-                <div className="relative">
-                  <pre className="text-sm font-mono text-zinc-100 p-4 bg-zinc-950 rounded-lg overflow-x-auto">
+            {/* Export .env File */}
+            <ExpandableCard
+              title="Export to .env File"
+              subtitle="Copy configuration to your project's .env file"
+              icon={<FileText className="h-4 w-4 text-slate-400" />}
+            >
+              <div className="relative">
+                <pre className="text-sm font-mono text-foreground p-4 bg-background border border-border rounded-lg overflow-x-auto">
 {`# WAVE Configuration - Generated ${new Date().toISOString()}
 # Project: ${project?.name || 'Unknown'}
 
@@ -6815,11 +5809,11 @@ VERCEL_TOKEN=${configValues.VERCEL_TOKEN || ''}
 WAVE_BUDGET_LIMIT=${configValues.WAVE_BUDGET_LIMIT || '5.00'}
 WAVE_PROJECT_ID=${project?.id || ''}
 WAVE_PROJECT_ROOT=${project?.root_path || ''}`}
-                  </pre>
-                  <div className="absolute top-6 right-6 flex gap-2">
-                    <button
-                      onClick={() => {
-                        const envContent = `# WAVE Configuration - Generated ${new Date().toISOString()}
+                </pre>
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={() => {
+                      const envContent = `# WAVE Configuration - Generated ${new Date().toISOString()}
 # Project: ${project?.name || 'Unknown'}
 
 # Anthropic (Required)
@@ -6839,16 +5833,16 @@ VERCEL_TOKEN=${configValues.VERCEL_TOKEN || ''}
 WAVE_BUDGET_LIMIT=${configValues.WAVE_BUDGET_LIMIT || '5.00'}
 WAVE_PROJECT_ID=${project?.id || ''}
 WAVE_PROJECT_ROOT=${project?.root_path || ''}`
-                        navigator.clipboard.writeText(envContent)
-                      }}
-                      className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-white rounded text-sm flex items-center gap-2"
-                    >
-                      <Copy className="h-4 w-4" />
-                      Copy
-                    </button>
-                    <button
-                      onClick={() => {
-                        const envContent = `# WAVE Configuration - Generated ${new Date().toISOString()}
+                      navigator.clipboard.writeText(envContent)
+                    }}
+                    className="px-4 py-2 bg-muted hover:bg-muted/80 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
+                  >
+                    <Copy className="h-4 w-4" />
+                    Copy to Clipboard
+                  </button>
+                  <button
+                    onClick={() => {
+                      const envContent = `# WAVE Configuration - Generated ${new Date().toISOString()}
 # Project: ${project?.name || 'Unknown'}
 
 # Anthropic (Required)
@@ -6868,62 +5862,107 @@ VERCEL_TOKEN=${configValues.VERCEL_TOKEN || ''}
 WAVE_BUDGET_LIMIT=${configValues.WAVE_BUDGET_LIMIT || '5.00'}
 WAVE_PROJECT_ID=${project?.id || ''}
 WAVE_PROJECT_ROOT=${project?.root_path || ''}`
-                        const blob = new Blob([envContent], { type: 'text/plain' })
-                        const url = URL.createObjectURL(blob)
-                        const a = document.createElement('a')
-                        a.href = url
-                        a.download = '.env'
-                        document.body.appendChild(a)
-                        a.click()
-                        document.body.removeChild(a)
-                        URL.revokeObjectURL(url)
-                      }}
-                      className="px-3 py-1.5 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded text-sm flex items-center gap-2"
-                    >
-                      <Download className="h-4 w-4" />
-                      Download .env
-                    </button>
-                  </div>
+                      const blob = new Blob([envContent], { type: 'text/plain' })
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement('a')
+                      a.href = url
+                      a.download = '.env'
+                      document.body.appendChild(a)
+                      a.click()
+                      document.body.removeChild(a)
+                      URL.revokeObjectURL(url)
+                    }}
+                    className="px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download .env
+                  </button>
                 </div>
               </div>
-            </div>
-          </>
+            </ExpandableCard>
+          </TabContainer>
         )}
 
         {/* TAB 8: Notifications - Slack Feedback Loop */}
         {activeTab === 'notifications' && (
-          <>
-            {/* Info Box - Subtle gray bg, purple icon */}
-            <div className="p-5 bg-muted border border-border rounded-2xl mb-6">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-purple-500/15 flex items-center justify-center flex-shrink-0">
-                  <Bell className="h-5 w-5 text-purple-400" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-zinc-900 mb-1">Slack Feedback Loop</h3>
-                  <p className="text-sm text-zinc-600 leading-relaxed">
-                    Real-time notifications keep your team informed about WAVE automation progress.
-                    Configure webhooks for different channels: <strong>#wave-updates</strong> (info),
-                    <strong> #wave-alerts</strong> (critical), <strong>#wave-budget</strong> (cost alerts).
-                    Thread-per-story pattern organizes updates for easy tracking.
-                  </p>
-                  <p className="text-xs text-zinc-500 mt-2">
-                    Test each notification type below to verify delivery works correctly.
-                  </p>
-                </div>
-              </div>
-            </div>
+          <TabContainer>
+            {/* 1. INFO BOX */}
+            <InfoBox
+              title="Step 8: Notifications"
+              description="Real-time Slack notifications keep your team informed about WAVE automation progress. Configure webhooks for #wave-updates (info), #wave-alerts (critical), and #wave-budget (cost). Thread-per-story pattern organizes updates for easy tracking."
+              icon={<Bell className="h-4 w-4 text-blue-500" />}
+            />
 
-            {/* Validation CTA with Progress */}
-            <div className="p-6 border border-border rounded-2xl mb-6 bg-card">
+            {/* 2. KPI CARDS */}
+            <KPICards
+              items={[
+                {
+                  label: 'Webhook',
+                  value: configValues.SLACK_WEBHOOK_URL ? 'Configured' : 'Missing',
+                  status: configValues.SLACK_WEBHOOK_URL ? 'success' : 'warning',
+                  icon: <Bell className="h-4 w-4" />
+                },
+                {
+                  label: 'Bot Token',
+                  value: configValues.SLACK_BOT_TOKEN ? 'Set' : 'Optional',
+                  status: configValues.SLACK_BOT_TOKEN ? 'success' : 'neutral',
+                  icon: <Bot className="h-4 w-4" />
+                },
+                {
+                  label: 'Channels',
+                  value: '3',
+                  status: 'neutral',
+                  icon: <Radio className="h-4 w-4" />
+                },
+                {
+                  label: 'Status',
+                  value: configValues.SLACK_WEBHOOK_URL ? 'Ready' : 'Setup',
+                  status: configValues.SLACK_WEBHOOK_URL ? 'success' : 'warning',
+                  icon: <CheckCircle2 className="h-4 w-4" />
+                },
+              ]}
+            />
+
+            {/* 3. ACTION BAR (legacy below) */}
+            <ActionBar
+              category="NOTIFICATIONS"
+              title="Slack Feedback Loop"
+              description={configValues.SLACK_WEBHOOK_URL ? 'Webhook configured' : 'Setup required'}
+              statusBadge={configValues.SLACK_WEBHOOK_URL ? {
+                label: 'Ready',
+                icon: <CheckCircle2 className="h-3 w-3" />,
+                variant: 'success'
+              } : {
+                label: 'Setup Required',
+                icon: <AlertTriangle className="h-3 w-3" />,
+                variant: 'warning'
+              }}
+              primaryAction={{
+                label: 'Test Notification',
+                onClick: () => {},
+                icon: <Send className="h-4 w-4" />
+              }}
+            />
+
+            {/* 4. RESULT SUMMARY */}
+            <ResultSummary
+              status={configValues.SLACK_WEBHOOK_URL ? 'pass' : 'warn'}
+              message={configValues.SLACK_WEBHOOK_URL
+                ? 'Slack notifications are configured and ready. Use test buttons below to verify.'
+                : 'Configure SLACK_WEBHOOK_URL in the Configurations tab to enable notifications.'
+              }
+            />
+
+            {/* Legacy CTA section - hidden, keeping content below */}
+            <div className="p-6 border border-border rounded-2xl mb-6 bg-card" style={{display: 'none'}}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className={cn(
                     "w-12 h-12 rounded-xl flex items-center justify-center",
-                    configValues.SLACK_WEBHOOK_URL ? "bg-zinc-100" : "bg-zinc-100"
+                    configValues.SLACK_WEBHOOK_URL ? "bg-muted" : "bg-muted"
                   )}>
                     {configValues.SLACK_WEBHOOK_URL ? (
-                      <CheckCircle2 className="h-6 w-6 text-green-400" />
+                      <CheckCircle2 className="h-6 w-6 text-green-500" />
                     ) : (
                       <AlertTriangle className="h-6 w-6 text-amber-500" />
                     )}
@@ -6932,7 +5971,7 @@ WAVE_PROJECT_ROOT=${project?.root_path || ''}`
                     <h3 className="font-semibold text-lg text-zinc-900">
                       {configValues.SLACK_WEBHOOK_URL ? 'Notifications Ready' : 'Setup Required'}
                     </h3>
-                    <p className="text-sm text-zinc-500">
+                    <p className="text-sm text-muted-foreground">
                       {configValues.SLACK_WEBHOOK_URL
                         ? 'Webhook configured - test notifications below'
                         : 'Configure SLACK_WEBHOOK_URL in Configurations tab'}
@@ -6996,7 +6035,7 @@ After setup, use the test buttons to verify each notification type.
                       document.body.removeChild(a)
                       URL.revokeObjectURL(url)
                     }}
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 border border-border hover:border-zinc-300 rounded-xl transition-colors"
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground border border-border hover:border-border/80 rounded-xl transition-colors"
                   >
                     <Download className="h-4 w-4" />
                     Setup Guide (.md)
@@ -7004,7 +6043,7 @@ After setup, use the test buttons to verify each notification type.
                   {/* Primary button - black */}
                   <button
                     onClick={() => setActiveTab('system-config')}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-background hover:bg-zinc-800 text-white rounded-xl text-sm font-medium transition-colors"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl text-sm font-medium transition-colors"
                   >
                     <Settings className="h-4 w-4" />
                     Configure
@@ -7028,18 +6067,18 @@ After setup, use the test buttons to verify each notification type.
                 const percent = requiredChecks.length > 0 ? Math.round((passed / requiredChecks.length) * 100) : 100
 
                 return (
-                  <div className="mt-6 pt-6 border-t border-zinc-100">
+                  <div className="mt-6 pt-6 border-t border-border">
                     <div className="flex items-center gap-6">
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-zinc-600">Configuration Status</span>
+                          <span className="text-sm font-medium text-muted-foreground">Configuration Status</span>
                           <span className="text-sm font-semibold text-zinc-900">{percent}%</span>
                         </div>
                         <div className="h-2 bg-border rounded-full overflow-hidden">
                           <div
                             className={cn(
                               "h-full rounded-full transition-all duration-500",
-                              failed > 0 ? "bg-red-500/100" : "bg-green-500/100"
+                              failed > 0 ? "bg-red-500" : "bg-green-500"
                             )}
                             style={{ width: `${percent}%` }}
                           />
@@ -7047,16 +6086,16 @@ After setup, use the test buttons to verify each notification type.
                       </div>
                       <div className="flex items-center gap-4 pl-4 border-l border-border">
                         <div className="text-center">
-                          <div className="text-xl font-bold text-green-400">{passed}</div>
-                          <div className="text-xs text-zinc-500">Ready</div>
+                          <div className="text-xl font-bold text-green-500">{passed}</div>
+                          <div className="text-xs text-muted-foreground">Ready</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-xl font-bold text-red-400">{failed}</div>
-                          <div className="text-xs text-zinc-500">Missing</div>
+                          <div className="text-xl font-bold text-red-500">{failed}</div>
+                          <div className="text-xs text-muted-foreground">Missing</div>
                         </div>
                         <div className="text-center">
                           <div className="text-xl font-bold text-amber-500">{optional}</div>
-                          <div className="text-xs text-zinc-500">Optional</div>
+                          <div className="text-xs text-muted-foreground">Optional</div>
                         </div>
                       </div>
                     </div>
@@ -7068,29 +6107,29 @@ After setup, use the test buttons to verify each notification type.
             {/* Test Notifications - Two columns: Info & Alerts */}
             <div className="p-5 bg-card border border-border rounded-2xl mb-6">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-zinc-100 flex items-center justify-center">
-                  <Zap className="h-5 w-5 text-zinc-600" />
+                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+                  <Zap className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-zinc-900">Test Notifications</h3>
-                  <p className="text-sm text-zinc-500">Send test messages to verify Slack integration</p>
+                  <p className="text-sm text-muted-foreground">Send test messages to verify Slack integration</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-6">
                 {/* Info Notifications Column */}
                 <div>
-                  <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Info Notifications</h4>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Info Notifications</h4>
                   <div className="space-y-3">
                     {/* Ping Test */}
                     <div className="p-4 border border-border rounded-xl">
                       <div className="flex items-center gap-3 mb-2">
                         <div className="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center">
-                          <Send className="h-4 w-4 text-blue-400" />
+                          <Send className="h-4 w-4 text-blue-500" />
                         </div>
                         <div>
                           <h5 className="font-medium text-zinc-900">Ping Test</h5>
-                          <p className="text-xs text-zinc-500">Verify webhook works</p>
+                          <p className="text-xs text-muted-foreground">Verify webhook works</p>
                         </div>
                       </div>
                       <button
@@ -7098,10 +6137,10 @@ After setup, use the test buttons to verify each notification type.
                         onClick={() => sendSlackTest('info', 'Ping Test')}
                         className={cn(
                           "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                          slackTestStatus['info'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
-                          slackTestStatus['info'] === 'success' ? "bg-zinc-100 text-green-400 border border-green-500/30" :
-                          slackTestStatus['info'] === 'error' ? "bg-zinc-100 text-red-400 border border-red-500/30" :
-                          "bg-background hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                          slackTestStatus['info'] === 'sending' ? "bg-muted text-muted-foreground" :
+                          slackTestStatus['info'] === 'success' ? "bg-muted text-green-500 border border-green-500/30" :
+                          slackTestStatus['info'] === 'error' ? "bg-muted text-red-500 border border-red-500/30" :
+                          "bg-muted hover:bg-muted/80 text-foreground disabled:bg-muted disabled:text-muted-foreground"
                         )}
                       >
                         {slackTestStatus['info'] === 'sending' ? 'Sending...' :
@@ -7114,11 +6153,11 @@ After setup, use the test buttons to verify each notification type.
                     <div className="p-4 border border-border rounded-xl">
                       <div className="flex items-center gap-3 mb-2">
                         <div className="w-8 h-8 rounded-lg bg-green-500/15 flex items-center justify-center">
-                          <Play className="h-4 w-4 text-green-400" />
+                          <Play className="h-4 w-4 text-green-500" />
                         </div>
                         <div>
                           <h5 className="font-medium text-zinc-900">Story Started</h5>
-                          <p className="text-xs text-zinc-500">Agent begins work</p>
+                          <p className="text-xs text-muted-foreground">Agent begins work</p>
                         </div>
                       </div>
                       <button
@@ -7126,10 +6165,10 @@ After setup, use the test buttons to verify each notification type.
                         onClick={() => sendSlackTest('story_start', 'Story Started')}
                         className={cn(
                           "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                          slackTestStatus['story_start'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
-                          slackTestStatus['story_start'] === 'success' ? "bg-zinc-100 text-green-400 border border-green-500/30" :
-                          slackTestStatus['story_start'] === 'error' ? "bg-zinc-100 text-red-400 border border-red-500/30" :
-                          "bg-background hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                          slackTestStatus['story_start'] === 'sending' ? "bg-muted text-muted-foreground" :
+                          slackTestStatus['story_start'] === 'success' ? "bg-muted text-green-500 border border-green-500/30" :
+                          slackTestStatus['story_start'] === 'error' ? "bg-muted text-red-500 border border-red-500/30" :
+                          "bg-muted hover:bg-muted/80 text-foreground disabled:bg-muted disabled:text-muted-foreground"
                         )}
                       >
                         {slackTestStatus['story_start'] === 'sending' ? 'Sending...' :
@@ -7141,12 +6180,12 @@ After setup, use the test buttons to verify each notification type.
                     {/* Story Complete */}
                     <div className="p-4 border border-border rounded-xl">
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center">
                           <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                         </div>
                         <div>
                           <h5 className="font-medium text-zinc-900">Story Complete</h5>
-                          <p className="text-xs text-zinc-500">With cost summary</p>
+                          <p className="text-xs text-muted-foreground">With cost summary</p>
                         </div>
                       </div>
                       <button
@@ -7154,10 +6193,10 @@ After setup, use the test buttons to verify each notification type.
                         onClick={() => sendSlackTest('story_complete', 'Story Complete')}
                         className={cn(
                           "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                          slackTestStatus['story_complete'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
-                          slackTestStatus['story_complete'] === 'success' ? "bg-zinc-100 text-green-400 border border-green-500/30" :
-                          slackTestStatus['story_complete'] === 'error' ? "bg-zinc-100 text-red-400 border border-red-500/30" :
-                          "bg-background hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                          slackTestStatus['story_complete'] === 'sending' ? "bg-muted text-muted-foreground" :
+                          slackTestStatus['story_complete'] === 'success' ? "bg-muted text-green-500 border border-green-500/30" :
+                          slackTestStatus['story_complete'] === 'error' ? "bg-muted text-red-500 border border-red-500/30" :
+                          "bg-muted hover:bg-muted/80 text-foreground disabled:bg-muted disabled:text-muted-foreground"
                         )}
                       >
                         {slackTestStatus['story_complete'] === 'sending' ? 'Sending...' :
@@ -7169,12 +6208,12 @@ After setup, use the test buttons to verify each notification type.
                     {/* Gate Passed */}
                     <div className="p-4 border border-border rounded-xl">
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                          <Flag className="h-4 w-4 text-amber-600" />
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/100/10 flex items-center justify-center">
+                          <Flag className="h-4 w-4 text-amber-500" />
                         </div>
                         <div>
                           <h5 className="font-medium text-zinc-900">Gate Passed</h5>
-                          <p className="text-xs text-zinc-500">Validation milestone</p>
+                          <p className="text-xs text-muted-foreground">Validation milestone</p>
                         </div>
                       </div>
                       <button
@@ -7182,10 +6221,10 @@ After setup, use the test buttons to verify each notification type.
                         onClick={() => sendSlackTest('gate_complete', 'Gate Complete')}
                         className={cn(
                           "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                          slackTestStatus['gate_complete'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
-                          slackTestStatus['gate_complete'] === 'success' ? "bg-zinc-100 text-green-400 border border-green-500/30" :
-                          slackTestStatus['gate_complete'] === 'error' ? "bg-zinc-100 text-red-400 border border-red-500/30" :
-                          "bg-background hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                          slackTestStatus['gate_complete'] === 'sending' ? "bg-muted text-muted-foreground" :
+                          slackTestStatus['gate_complete'] === 'success' ? "bg-muted text-green-500 border border-green-500/30" :
+                          slackTestStatus['gate_complete'] === 'error' ? "bg-muted text-red-500 border border-red-500/30" :
+                          "bg-muted hover:bg-muted/80 text-foreground disabled:bg-muted disabled:text-muted-foreground"
                         )}
                       >
                         {slackTestStatus['gate_complete'] === 'sending' ? 'Sending...' :
@@ -7198,17 +6237,17 @@ After setup, use the test buttons to verify each notification type.
 
                 {/* Alert Notifications Column */}
                 <div>
-                  <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Alert Notifications</h4>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Alert Notifications</h4>
                   <div className="space-y-3">
                     {/* Escalation */}
                     <div className="p-4 border border-border rounded-xl">
                       <div className="flex items-center gap-3 mb-2">
                         <div className="w-8 h-8 rounded-lg bg-red-500/15 flex items-center justify-center">
-                          <AlertTriangle className="h-4 w-4 text-red-400" />
+                          <AlertTriangle className="h-4 w-4 text-red-500" />
                         </div>
                         <div>
                           <h5 className="font-medium text-zinc-900">Escalation</h5>
-                          <p className="text-xs text-zinc-500">Requires attention</p>
+                          <p className="text-xs text-muted-foreground">Requires attention</p>
                         </div>
                       </div>
                       <button
@@ -7216,10 +6255,10 @@ After setup, use the test buttons to verify each notification type.
                         onClick={() => sendSlackTest('escalation', 'Escalation')}
                         className={cn(
                           "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                          slackTestStatus['escalation'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
-                          slackTestStatus['escalation'] === 'success' ? "bg-zinc-100 text-green-400 border border-green-500/30" :
-                          slackTestStatus['escalation'] === 'error' ? "bg-zinc-100 text-red-400 border border-red-500/30" :
-                          "bg-background hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                          slackTestStatus['escalation'] === 'sending' ? "bg-muted text-muted-foreground" :
+                          slackTestStatus['escalation'] === 'success' ? "bg-muted text-green-500 border border-green-500/30" :
+                          slackTestStatus['escalation'] === 'error' ? "bg-muted text-red-500 border border-red-500/30" :
+                          "bg-muted hover:bg-muted/80 text-foreground disabled:bg-muted disabled:text-muted-foreground"
                         )}
                       >
                         {slackTestStatus['escalation'] === 'sending' ? 'Sending...' :
@@ -7236,7 +6275,7 @@ After setup, use the test buttons to verify each notification type.
                         </div>
                         <div>
                           <h5 className="font-medium text-zinc-900">Budget Warning</h5>
-                          <p className="text-xs text-zinc-500">Cost threshold alert</p>
+                          <p className="text-xs text-muted-foreground">Cost threshold alert</p>
                         </div>
                       </div>
                       <button
@@ -7244,10 +6283,10 @@ After setup, use the test buttons to verify each notification type.
                         onClick={() => sendSlackTest('budget_warning', 'Budget Warning')}
                         className={cn(
                           "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                          slackTestStatus['budget_warning'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
-                          slackTestStatus['budget_warning'] === 'success' ? "bg-zinc-100 text-green-400 border border-green-500/30" :
-                          slackTestStatus['budget_warning'] === 'error' ? "bg-zinc-100 text-red-400 border border-red-500/30" :
-                          "bg-background hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                          slackTestStatus['budget_warning'] === 'sending' ? "bg-muted text-muted-foreground" :
+                          slackTestStatus['budget_warning'] === 'success' ? "bg-muted text-green-500 border border-green-500/30" :
+                          slackTestStatus['budget_warning'] === 'error' ? "bg-muted text-red-500 border border-red-500/30" :
+                          "bg-muted hover:bg-muted/80 text-foreground disabled:bg-muted disabled:text-muted-foreground"
                         )}
                       >
                         {slackTestStatus['budget_warning'] === 'sending' ? 'Sending...' :
@@ -7264,7 +6303,7 @@ After setup, use the test buttons to verify each notification type.
                         </div>
                         <div>
                           <h5 className="font-medium text-zinc-900">Wave Summary</h5>
-                          <p className="text-xs text-zinc-500">End-of-wave stats</p>
+                          <p className="text-xs text-muted-foreground">End-of-wave stats</p>
                         </div>
                       </div>
                       <button
@@ -7272,10 +6311,10 @@ After setup, use the test buttons to verify each notification type.
                         onClick={() => sendSlackTest('wave_complete', 'Wave Complete')}
                         className={cn(
                           "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                          slackTestStatus['wave_complete'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
-                          slackTestStatus['wave_complete'] === 'success' ? "bg-zinc-100 text-green-400 border border-green-500/30" :
-                          slackTestStatus['wave_complete'] === 'error' ? "bg-zinc-100 text-red-400 border border-red-500/30" :
-                          "bg-background hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                          slackTestStatus['wave_complete'] === 'sending' ? "bg-muted text-muted-foreground" :
+                          slackTestStatus['wave_complete'] === 'success' ? "bg-muted text-green-500 border border-green-500/30" :
+                          slackTestStatus['wave_complete'] === 'error' ? "bg-muted text-red-500 border border-red-500/30" :
+                          "bg-muted hover:bg-muted/80 text-foreground disabled:bg-muted disabled:text-muted-foreground"
                         )}
                       >
                         {slackTestStatus['wave_complete'] === 'sending' ? 'Sending...' :
@@ -7288,11 +6327,11 @@ After setup, use the test buttons to verify each notification type.
                     <div className="p-4 border border-border rounded-xl">
                       <div className="flex items-center gap-3 mb-2">
                         <div className="w-8 h-8 rounded-lg bg-red-500/15 flex items-center justify-center">
-                          <XOctagon className="h-4 w-4 text-red-400" />
+                          <XOctagon className="h-4 w-4 text-red-500" />
                         </div>
                         <div>
                           <h5 className="font-medium text-zinc-900">E-STOP Alert</h5>
-                          <p className="text-xs text-zinc-500">Emergency stop</p>
+                          <p className="text-xs text-muted-foreground">Emergency stop</p>
                         </div>
                       </div>
                       <button
@@ -7300,10 +6339,10 @@ After setup, use the test buttons to verify each notification type.
                         onClick={() => sendSlackTest('escalation', 'E-STOP Triggered')}
                         className={cn(
                           "w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                          slackTestStatus['estop'] === 'sending' ? "bg-zinc-100 text-zinc-400" :
-                          slackTestStatus['estop'] === 'success' ? "bg-zinc-100 text-green-400 border border-green-500/30" :
-                          slackTestStatus['estop'] === 'error' ? "bg-zinc-100 text-red-400 border border-red-500/30" :
-                          "bg-background hover:bg-zinc-800 text-white disabled:bg-zinc-100 disabled:text-zinc-400"
+                          slackTestStatus['estop'] === 'sending' ? "bg-muted text-muted-foreground" :
+                          slackTestStatus['estop'] === 'success' ? "bg-muted text-green-500 border border-green-500/30" :
+                          slackTestStatus['estop'] === 'error' ? "bg-muted text-red-500 border border-red-500/30" :
+                          "bg-muted hover:bg-muted/80 text-foreground disabled:bg-muted disabled:text-muted-foreground"
                         )}
                       >
                         {slackTestStatus['estop'] === 'sending' ? 'Sending...' :
@@ -7320,18 +6359,18 @@ After setup, use the test buttons to verify each notification type.
             <div className="p-5 bg-card border border-border rounded-2xl mb-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-zinc-100 flex items-center justify-center">
-                    <ScrollText className="h-5 w-5 text-zinc-600" />
+                  <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+                    <ScrollText className="h-5 w-5 text-muted-foreground" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-zinc-900">Recent Notifications</h3>
-                    <p className="text-sm text-zinc-500">Last 5 sent notifications</p>
+                    <p className="text-sm text-muted-foreground">Last 5 sent notifications</p>
                   </div>
                 </div>
                 {slackNotificationHistory.length > 0 && (
                   <button
                     onClick={() => setSlackNotificationHistory([])}
-                    className="px-3 py-1.5 text-sm text-zinc-500 hover:text-zinc-900 transition-colors"
+                    className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     Clear History
                   </button>
@@ -7341,8 +6380,8 @@ After setup, use the test buttons to verify each notification type.
               {slackNotificationHistory.length === 0 ? (
                 <div className="text-center py-8">
                   <Bell className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm text-zinc-500">No notifications sent yet</p>
-                  <p className="text-xs text-zinc-400 mt-1">Send a test notification to see it here</p>
+                  <p className="text-sm text-muted-foreground">No notifications sent yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">Send a test notification to see it here</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -7353,25 +6392,25 @@ After setup, use the test buttons to verify each notification type.
                     >
                       <div className="flex items-center gap-3">
                         {notification.success ? (
-                          <CheckCircle2 className="h-4 w-4 text-green-400" />
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
                         ) : (
-                          <XCircle className="h-4 w-4 text-red-400" />
+                          <XCircle className="h-4 w-4 text-red-500" />
                         )}
                         <div>
                           <p className="text-sm font-medium text-zinc-900">{notification.type}</p>
                           {notification.message && (
-                            <p className="text-xs text-red-400">{notification.message}</p>
+                            <p className="text-xs text-red-500">{notification.message}</p>
                           )}
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
                         <span className={cn(
                           "px-2 py-0.5 rounded text-xs font-medium",
-                          notification.success ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400"
+                          notification.success ? "bg-green-500/15 text-green-500" : "bg-red-500/15 text-red-500"
                         )}>
                           {notification.success ? 'Delivered' : 'Failed'}
                         </span>
-                        <span className="text-xs text-zinc-400">{notification.timestamp}</span>
+                        <span className="text-xs text-muted-foreground">{notification.timestamp}</span>
                       </div>
                     </div>
                   ))}
@@ -7383,23 +6422,23 @@ After setup, use the test buttons to verify each notification type.
             <div className="p-5 bg-card border border-border rounded-2xl">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-cyan-100 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/15 flex items-center justify-center">
                     <Eye className="h-5 w-5 text-cyan-600" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-zinc-900">Dozzle Log Viewer</h3>
-                    <p className="text-sm text-zinc-500">Docker container log viewer</p>
+                    <p className="text-sm text-muted-foreground">Docker container log viewer</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button className="px-4 py-2 border border-border hover:border-zinc-300 text-zinc-600 hover:text-zinc-900 rounded-lg text-sm font-medium transition-colors">
+                  <button className="px-4 py-2 border border-border hover:border-border/80 text-muted-foreground hover:text-foreground rounded-lg text-sm font-medium transition-colors">
                     Check Status
                   </button>
                   <a
                     href="http://localhost:8080"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2 border border-border hover:border-zinc-300 text-zinc-600 hover:text-zinc-900 rounded-lg text-sm font-medium transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 border border-border hover:border-border/80 text-muted-foreground hover:text-foreground rounded-lg text-sm font-medium transition-colors"
                   >
                     Open Dozzle
                     <ExternalLink className="h-4 w-4" />
@@ -7408,40 +6447,99 @@ After setup, use the test buttons to verify each notification type.
               </div>
 
               <div className="p-4 bg-muted rounded-xl">
-                <p className="text-xs text-zinc-500 mb-2">Start Dozzle if not running:</p>
+                <p className="text-xs text-muted-foreground mb-2">Start Dozzle if not running:</p>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 bg-background text-zinc-100 px-3 py-2 rounded-lg text-xs font-mono overflow-x-auto">
+                  <code className="flex-1 bg-background text-foreground px-3 py-2 rounded-lg text-xs font-mono overflow-x-auto">
                     docker run -d --name dozzle -p 8080:8080 -v /var/run/docker.sock:/var/run/docker.sock amir20/dozzle
                   </code>
                   <button
                     onClick={() => navigator.clipboard.writeText('docker run -d --name dozzle -p 8080:8080 -v /var/run/docker.sock:/var/run/docker.sock amir20/dozzle')}
-                    className="p-2 border border-border hover:border-zinc-300 rounded-lg transition-colors"
+                    className="p-2 border border-border hover:border-border/80 rounded-lg transition-colors"
                   >
-                    <Copy className="h-4 w-4 text-zinc-500" />
+                    <Copy className="h-4 w-4 text-muted-foreground" />
                   </button>
                 </div>
               </div>
             </div>
-          </>
+          </TabContainer>
         )}
 
         {/* Agent Dispatch Tab */}
         {activeTab === 'agent-dispatch' && (
-          <>
-            {/* Info Box - Subtle gray bg, blue icon */}
-            <div className="p-5 bg-muted border border-border rounded-2xl mb-6">
+          <TabContainer>
+            {/* 1. INFO BOX */}
+            <InfoBox
+              title="Step 9: Agent Dispatch"
+              description="Multi-agent orchestration for parallel development. Each agent works in isolated git worktrees with role-specific prompts. Monitor sessions, budget, and coordinate merges through the Merge Watcher."
+              icon={<Bot className="h-4 w-4 text-blue-500" />}
+            />
+
+            {/* 2. KPI CARDS */}
+            <KPICards
+              items={[
+                {
+                  label: 'Running',
+                  value: agents.filter(a => a.status === 'running').length,
+                  status: agents.filter(a => a.status === 'running').length > 0 ? 'success' : 'neutral',
+                  icon: <Bot className="h-4 w-4" />
+                },
+                {
+                  label: 'Total Sessions',
+                  value: agents.length,
+                  status: 'neutral',
+                  icon: <Terminal className="h-4 w-4" />
+                },
+                {
+                  label: 'Budget Used',
+                  value: `$${agents.reduce((sum, a) => sum + (a.token_usage?.cost || 0), 0).toFixed(2)}`,
+                  status: 'neutral',
+                  icon: <DollarSign className="h-4 w-4" />
+                },
+                {
+                  label: 'Errors',
+                  value: agents.filter(a => a.status === 'error').length,
+                  status: agents.filter(a => a.status === 'error').length > 0 ? 'error' : 'success',
+                  icon: <AlertTriangle className="h-4 w-4" />
+                },
+              ]}
+            />
+
+            {/* 3. ACTION BAR */}
+            <ActionBar
+              category="AGENT DISPATCH"
+              title="Multi-Agent Orchestration"
+              description={`${agents.filter(a => a.status === 'running').length} running agents`}
+              primaryAction={{
+                label: loadingAgents ? 'Refreshing...' : 'Refresh Agents',
+                onClick: fetchAgents,
+                loading: loadingAgents,
+                icon: <RefreshCw className="h-4 w-4" />
+              }}
+            />
+
+            {/* 4. RESULT SUMMARY */}
+            <ResultSummary
+              status={agents.filter(a => a.status === 'running').length > 0 ? 'pass' : 'idle'}
+              message={agents.filter(a => a.status === 'running').length > 0
+                ? `${agents.filter(a => a.status === 'running').length} agents actively working on stories.`
+                : 'No running agent sessions. Start a wave to dispatch agents.'
+              }
+            />
+
+            {/* Legacy Info Box - hidden */}
+            <div className="p-5 bg-muted border border-border rounded-2xl mb-6" style={{display: 'none'}}>
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-lg bg-blue-500/15 flex items-center justify-center flex-shrink-0">
-                  <Bot className="h-5 w-5 text-blue-400" />
+                  <Bot className="h-5 w-5 text-blue-500" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-zinc-900 mb-1">Multi-Agent Orchestration</h3>
-                  <p className="text-sm text-zinc-600 leading-relaxed">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
                     Control and monitor specialized AI agents working on your project. Agents include
                     <strong> CTO</strong> (architecture), <strong>PM</strong> (planning), <strong>FE/BE Developers</strong> (implementation),
                     and <strong>QA</strong> (testing). Each agent operates in isolated worktrees with budget controls.
                   </p>
-                  <p className="text-xs text-zinc-500 mt-2">
+                  <p className="text-xs text-muted-foreground mt-2">
                     Run validation checks before dispatching to ensure system readiness.
                   </p>
                 </div>
@@ -7452,22 +6550,22 @@ After setup, use the test buttons to verify each notification type.
             <div className="p-6 border border-border rounded-2xl mb-6 bg-card">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-zinc-100 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
                     {validationReport?.overall_status === 'PASS' ? (
-                      <CheckCircle2 className="h-6 w-6 text-green-400" />
+                      <CheckCircle2 className="h-6 w-6 text-green-500" />
                     ) : validationReport?.overall_status === 'FAIL' ? (
-                      <XCircle className="h-6 w-6 text-red-400" />
+                      <XCircle className="h-6 w-6 text-red-500" />
                     ) : validationReport?.overall_status === 'WARN' ? (
                       <AlertTriangle className="h-6 w-6 text-amber-500" />
                     ) : (
-                      <Shield className="h-6 w-6 text-zinc-600" />
+                      <Shield className="h-6 w-6 text-muted-foreground" />
                     )}
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg text-zinc-900">
                       {validationReport ? `System ${validationReport.overall_status}` : 'System Validation'}
                     </h3>
-                    <p className="text-sm text-zinc-500">
+                    <p className="text-sm text-muted-foreground">
                       {validationReport
                         ? `Last checked ${new Date(validationReport.timestamp).toLocaleTimeString()}`
                         : 'Run validation to check system readiness'}
@@ -7479,9 +6577,9 @@ After setup, use the test buttons to verify each notification type.
                   {watchdogStatus && (
                     <div className={cn(
                       "px-3 py-1.5 rounded-full text-sm flex items-center gap-1.5",
-                      watchdogStatus.overall_status === 'healthy' ? "bg-zinc-100 text-green-400" :
-                      watchdogStatus.overall_status === 'warning' ? "bg-zinc-100 text-amber-600" :
-                      "bg-zinc-100 text-red-400"
+                      watchdogStatus.overall_status === 'healthy' ? "bg-muted text-green-500" :
+                      watchdogStatus.overall_status === 'warning' ? "bg-muted text-amber-500" :
+                      "bg-muted text-red-500"
                     )}>
                       {watchdogStatus.overall_status === 'healthy' ? (
                         <CheckCircle2 className="h-3.5 w-3.5" />
@@ -7499,8 +6597,8 @@ After setup, use the test buttons to verify each notification type.
                   <span className={cn(
                     "px-3 py-1.5 rounded-full text-sm",
                     agents.some(a => a.status === 'running')
-                      ? "bg-zinc-100 text-green-400"
-                      : "bg-zinc-100 text-zinc-600"
+                      ? "bg-muted text-green-500"
+                      : "bg-muted text-muted-foreground"
                   )}>
                     {agents.filter(a => a.status === 'running').length} Active
                   </span>
@@ -7577,7 +6675,7 @@ Project: ${project?.name || 'Unknown'}
                       document.body.removeChild(a)
                       URL.revokeObjectURL(url)
                     }}
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 border border-border hover:border-zinc-300 rounded-xl transition-colors"
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground border border-border hover:border-border/80 rounded-xl transition-colors"
                   >
                     <Download className="h-4 w-4" />
                     Setup Guide (.md)
@@ -7589,8 +6687,8 @@ Project: ${project?.name || 'Unknown'}
                     className={cn(
                       "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors",
                       validating
-                        ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
-                        : "bg-background hover:bg-zinc-800 text-white"
+                        ? "bg-muted text-muted-foreground cursor-not-allowed"
+                        : "bg-muted hover:bg-muted/80 text-foreground"
                     )}
                   >
                     {validating ? (
@@ -7603,7 +6701,7 @@ Project: ${project?.name || 'Unknown'}
                   {/* Refresh */}
                   <button
                     onClick={fetchAgents}
-                    className="p-2.5 rounded-xl border border-border hover:border-zinc-300 text-zinc-600 hover:text-zinc-900 transition-colors"
+                    className="p-2.5 rounded-xl border border-border hover:border-border/80 text-muted-foreground hover:text-foreground transition-colors"
                     title="Refresh agents"
                   >
                     <RefreshCw className={cn("h-4 w-4", loadingAgents && "animate-spin")} />
@@ -7613,38 +6711,38 @@ Project: ${project?.name || 'Unknown'}
 
               {/* Progress Bar */}
               {validationReport && (
-                <div className="mt-6 pt-6 border-t border-zinc-100">
+                <div className="mt-6 pt-6 border-t border-border">
                   <div className="flex items-center gap-6">
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-zinc-600">Validation Status</span>
+                        <span className="text-sm font-medium text-muted-foreground">Validation Status</span>
                         <span className="text-sm font-semibold text-zinc-900">
-                          {Math.round((validationReport.summary.passed / validationReport.summary.total) * 100)}%
+                          {Math.round((validationReport.summary.passed / validationReport.summary.total_checks) * 100)}%
                         </span>
                       </div>
                       <div className="h-2 bg-border rounded-full overflow-hidden">
                         <div
                           className={cn(
                             "h-full rounded-full transition-all duration-500",
-                            validationReport.summary.failed > 0 ? "bg-red-500/100" :
-                            validationReport.summary.warnings > 0 ? "bg-amber-400" : "bg-green-500/100"
+                            validationReport.summary.failed > 0 ? "bg-red-500" :
+                            validationReport.summary.warnings > 0 ? "bg-amber-400" : "bg-green-500"
                           )}
-                          style={{ width: `${(validationReport.summary.passed / validationReport.summary.total) * 100}%` }}
+                          style={{ width: `${(validationReport.summary.passed / validationReport.summary.total_checks) * 100}%` }}
                         />
                       </div>
                     </div>
                     <div className="flex items-center gap-4 pl-4 border-l border-border">
                       <div className="text-center">
-                        <div className="text-xl font-bold text-green-400">{validationReport.summary.passed}</div>
-                        <div className="text-xs text-zinc-500">Passed</div>
+                        <div className="text-xl font-bold text-green-500">{validationReport.summary.passed}</div>
+                        <div className="text-xs text-muted-foreground">Passed</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-xl font-bold text-red-400">{validationReport.summary.failed}</div>
-                        <div className="text-xs text-zinc-500">Failed</div>
+                        <div className="text-xl font-bold text-red-500">{validationReport.summary.failed}</div>
+                        <div className="text-xs text-muted-foreground">Failed</div>
                       </div>
                       <div className="text-center">
                         <div className="text-xl font-bold text-amber-500">{validationReport.summary.warnings}</div>
-                        <div className="text-xs text-zinc-500">Warnings</div>
+                        <div className="text-xs text-muted-foreground">Warnings</div>
                       </div>
                     </div>
                   </div>
@@ -7659,10 +6757,10 @@ Project: ${project?.name || 'Unknown'}
                   key={agent.agent_type}
                   className={cn(
                     "p-4 rounded-xl border transition-all",
-                    agent.status === 'running' ? "border-green-300 bg-green-500/10" :
-                    agent.status === 'error' ? "border-red-300 bg-red-500/10" :
-                    agent.status === 'starting' ? "border-blue-300 bg-blue-500/10" :
-                    "border-border bg-card hover:border-zinc-300"
+                    agent.status === 'running' ? "border-green-500/30 bg-green-500/10" :
+                    agent.status === 'error' ? "border-red-500/30 bg-red-500/10" :
+                    agent.status === 'starting' ? "border-blue-500/30 bg-blue-500/10" :
+                    "border-border bg-card hover:border-border/80"
                   )}
                 >
                   {/* Agent Header */}
@@ -7683,10 +6781,10 @@ Project: ${project?.name || 'Unknown'}
                   <div className="flex items-center gap-2 mb-3">
                     <div className={cn(
                       "w-2 h-2 rounded-full",
-                      agent.status === 'running' ? "bg-green-500/100 animate-pulse" :
-                      agent.status === 'error' ? "bg-red-500/100" :
+                      agent.status === 'running' ? "bg-green-500 animate-pulse" :
+                      agent.status === 'error' ? "bg-red-500" :
                       agent.status === 'starting' ? "bg-blue-500/100 animate-pulse" :
-                      "bg-zinc-300"
+                      "bg-muted-foreground/30"
                     )} />
                     <span className="text-sm capitalize">{agent.status}</span>
                   </div>
@@ -7713,7 +6811,7 @@ Project: ${project?.name || 'Unknown'}
                     {agent.status === 'idle' ? (
                       <button
                         onClick={() => startAgent(agent.agent_type)}
-                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-background hover:bg-zinc-800 text-white rounded-lg text-sm font-medium transition-colors"
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-lg text-sm font-medium transition-colors"
                       >
                         <Play className="h-3.5 w-3.5" />
                         Start
@@ -7729,13 +6827,13 @@ Project: ${project?.name || 'Unknown'}
                         </button>
                         <button
                           onClick={() => stopAgent(agent.agent_type)}
-                          className="flex items-center justify-center gap-1.5 px-3 py-2 bg-red-500/15 hover:bg-red-200 text-red-400 rounded-lg text-sm font-medium transition-colors"
+                          className="flex items-center justify-center gap-1.5 px-3 py-2 bg-red-500/15 hover:bg-red-500/25 text-red-500 rounded-lg text-sm font-medium transition-colors"
                         >
                           <XCircle className="h-3.5 w-3.5" />
                         </button>
                       </>
                     ) : agent.status === 'starting' ? (
-                      <div className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-500/15 text-blue-400 rounded-lg text-sm">
+                      <div className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-500/15 text-blue-500 rounded-lg text-sm">
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         Starting...
                       </div>
@@ -7769,19 +6867,19 @@ Project: ${project?.name || 'Unknown'}
                       "w-10 h-10 rounded-xl flex items-center justify-center",
                       validationReport?.overall_status === 'PASS' ? "bg-green-500/15" :
                       validationReport?.overall_status === 'FAIL' ? "bg-red-500/15" :
-                      validationReport?.overall_status === 'WARN' ? "bg-amber-500/10" :
-                      "bg-zinc-100"
+                      validationReport?.overall_status === 'WARN' ? "bg-amber-500/100/10" :
+                      "bg-muted"
                     )}>
                       {validating ? (
-                        <Loader2 className="h-5 w-5 animate-spin text-zinc-600" />
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                       ) : validationReport?.overall_status === 'PASS' ? (
-                        <CheckCircle2 className="h-5 w-5 text-green-400" />
+                        <CheckCircle2 className="h-5 w-5 text-green-500" />
                       ) : validationReport?.overall_status === 'FAIL' ? (
-                        <XCircle className="h-5 w-5 text-red-400" />
+                        <XCircle className="h-5 w-5 text-red-500" />
                       ) : validationReport?.overall_status === 'WARN' ? (
-                        <AlertTriangle className="h-5 w-5 text-amber-600" />
+                        <AlertTriangle className="h-5 w-5 text-amber-500" />
                       ) : (
-                        <Shield className="h-5 w-5 text-zinc-600" />
+                        <Shield className="h-5 w-5 text-muted-foreground" />
                       )}
                     </div>
                     <div>
@@ -7797,16 +6895,16 @@ Project: ${project?.name || 'Unknown'}
                   </div>
                   {validationReport && (
                     <div className="flex items-center gap-3">
-                      <span className="px-3 py-1 bg-green-500/15 text-green-400 rounded-full text-sm">
+                      <span className="px-3 py-1 bg-green-500/15 text-green-500 rounded-full text-sm">
                         {validationReport.summary.passed} Passed
                       </span>
                       {validationReport.summary.failed > 0 && (
-                        <span className="px-3 py-1 bg-red-500/15 text-red-400 rounded-full text-sm">
+                        <span className="px-3 py-1 bg-red-500/15 text-red-500 rounded-full text-sm">
                           {validationReport.summary.failed} Failed
                         </span>
                       )}
                       {validationReport.summary.warnings > 0 && (
-                        <span className="px-3 py-1 bg-amber-500/10 text-amber-700 rounded-full text-sm">
+                        <span className="px-3 py-1 bg-amber-500/100/10 text-amber-500 rounded-full text-sm">
                           {validationReport.summary.warnings} Warnings
                         </span>
                       )}
@@ -7815,7 +6913,7 @@ Project: ${project?.name || 'Unknown'}
                 </div>
 
                 {validationError && (
-                  <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
+                  <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-500 text-sm">
                     {validationError}
                   </div>
                 )}
@@ -7831,15 +6929,15 @@ Project: ${project?.name || 'Unknown'}
                           "w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0",
                           check.status === 'PASS' ? "bg-green-500/15" :
                           check.status === 'FAIL' ? "bg-red-500/15" :
-                          check.status === 'WARN' ? "bg-amber-500/10" :
-                          "bg-zinc-100"
+                          check.status === 'WARN' ? "bg-amber-500/100/10" :
+                          "bg-muted"
                         )}>
                           {check.status === 'PASS' ? (
-                            <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />
+                            <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
                           ) : check.status === 'FAIL' ? (
-                            <XCircle className="h-3.5 w-3.5 text-red-400" />
+                            <XCircle className="h-3.5 w-3.5 text-red-500" />
                           ) : (
-                            <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+                            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -7848,9 +6946,9 @@ Project: ${project?.name || 'Unknown'}
                         </div>
                         <span className={cn(
                           "px-2 py-0.5 rounded text-xs font-medium flex-shrink-0",
-                          check.status === 'PASS' ? "bg-green-500/15 text-green-400" :
-                          check.status === 'FAIL' ? "bg-red-500/15 text-red-400" :
-                          "bg-amber-500/10 text-amber-700"
+                          check.status === 'PASS' ? "bg-green-500/15 text-green-500" :
+                          check.status === 'FAIL' ? "bg-red-500/15 text-red-500" :
+                          "bg-amber-500/100/10 text-amber-500"
                         )}>
                           {check.status}
                         </span>
@@ -7865,8 +6963,8 @@ Project: ${project?.name || 'Unknown'}
             <div className="p-5 bg-card border border-border rounded-2xl">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-zinc-100 flex items-center justify-center">
-                    <Radio className="h-5 w-5 text-zinc-600" />
+                  <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+                    <Radio className="h-5 w-5 text-muted-foreground" />
                   </div>
                   <div>
                     <h3 className="font-semibold">Agent Activity</h3>
@@ -7875,7 +6973,7 @@ Project: ${project?.name || 'Unknown'}
                 </div>
                 <button
                   onClick={fetchAgentActivity}
-                  className="px-3 py-1.5 text-sm text-zinc-500 hover:text-zinc-700 flex items-center gap-1"
+                  className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground/80 flex items-center gap-1"
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
                   Refresh
@@ -7894,13 +6992,13 @@ Project: ${project?.name || 'Unknown'}
                       </span>
                       <span className={cn(
                         "px-2 py-0.5 rounded text-xs font-medium flex-shrink-0",
-                        log.agent === 'cto' ? "bg-violet-100 text-violet-700" :
-                        log.agent === 'pm' ? "bg-blue-500/15 text-blue-400" :
-                        log.agent.includes('fe-dev') ? "bg-green-500/15 text-green-400" :
-                        log.agent.includes('be-dev') ? "bg-amber-500/10 text-amber-700" :
-                        log.agent === 'qa' ? "bg-cyan-100 text-cyan-700" :
-                        log.agent === 'dev-fix' ? "bg-red-500/15 text-red-400" :
-                        "bg-zinc-100 text-zinc-700"
+                        log.agent === 'cto' ? "bg-violet-500/15 text-violet-500" :
+                        log.agent === 'pm' ? "bg-blue-500/15 text-blue-500" :
+                        log.agent.includes('fe-dev') ? "bg-green-500/15 text-green-500" :
+                        log.agent.includes('be-dev') ? "bg-amber-500/100/10 text-amber-500" :
+                        log.agent === 'qa' ? "bg-cyan-500/15 text-cyan-700" :
+                        log.agent === 'dev-fix' ? "bg-red-500/15 text-red-500" :
+                        "bg-muted text-foreground/80"
                       )}>
                         {log.agent}
                       </span>
@@ -7921,7 +7019,7 @@ Project: ${project?.name || 'Unknown'}
             <div className="p-5 bg-card border border-border rounded-2xl mt-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center">
                     <TrendingUp className="h-5 w-5 text-emerald-600" />
                   </div>
                   <div>
@@ -7933,24 +7031,24 @@ Project: ${project?.name || 'Unknown'}
                   {budgetStatus && (
                     <span className={cn(
                       "px-3 py-1 rounded-full text-sm font-medium",
-                      budgetStatus.status.project.status === 'ok' ? "bg-green-500/15 text-green-400" :
-                      budgetStatus.status.project.status === 'warning' ? "bg-amber-500/10 text-amber-700" :
+                      budgetStatus.status.project.status === 'ok' ? "bg-green-500/15 text-green-500" :
+                      budgetStatus.status.project.status === 'warning' ? "bg-amber-500/100/10 text-amber-500" :
                       budgetStatus.status.project.status === 'critical' ? "bg-orange-500/15 text-orange-700" :
-                      "bg-red-500/15 text-red-400"
+                      "bg-red-500/15 text-red-500"
                     )}>
                       ${budgetStatus.status.project.spent.toFixed(2)} / ${budgetStatus.status.project.budget.toFixed(2)}
                     </span>
                   )}
                   <button
                     onClick={() => setShowBudgetConfig(!showBudgetConfig)}
-                    className="p-2 rounded-lg hover:bg-zinc-100 transition-colors"
+                    className="p-2 rounded-lg hover:bg-muted transition-colors"
                     title="Configure budgets"
                   >
                     <Settings className="h-4 w-4" />
                   </button>
                   <button
                     onClick={fetchBudgetStatus}
-                    className="p-2 rounded-lg hover:bg-zinc-100 transition-colors"
+                    className="p-2 rounded-lg hover:bg-muted transition-colors"
                     title="Refresh"
                   >
                     <RefreshCw className={cn("h-4 w-4", budgetLoading && "animate-spin")} />
@@ -7967,7 +7065,7 @@ Project: ${project?.name || 'Unknown'}
                       className={cn(
                         "px-4 py-3 rounded-lg flex items-center gap-3",
                         alert.level === 'critical' ? "bg-red-500/10 border border-red-500/30" :
-                        alert.level === 'warning' ? "bg-amber-50 border border-amber-200" :
+                        alert.level === 'warning' ? "bg-amber-500/10 border border-amber-500/30" :
                         "bg-blue-500/10 border border-blue-500/30"
                       )}
                     >
@@ -7981,9 +7079,9 @@ Project: ${project?.name || 'Unknown'}
                       <div className="flex-1">
                         <p className={cn(
                           "text-sm font-medium",
-                          alert.level === 'critical' ? "text-red-400" :
-                          alert.level === 'warning' ? "text-amber-700" :
-                          "text-blue-400"
+                          alert.level === 'critical' ? "text-red-500" :
+                          alert.level === 'warning' ? "text-amber-500" :
+                          "text-blue-500"
                         )}>
                           {alert.message}
                         </p>
@@ -8006,21 +7104,21 @@ Project: ${project?.name || 'Unknown'}
                     <span className="font-medium">Project Budget</span>
                     <span className={cn(
                       "font-medium",
-                      budgetStatus.status.project.status === 'ok' ? "text-green-400" :
-                      budgetStatus.status.project.status === 'warning' ? "text-amber-600" :
-                      "text-red-400"
+                      budgetStatus.status.project.status === 'ok' ? "text-green-500" :
+                      budgetStatus.status.project.status === 'warning' ? "text-amber-500" :
+                      "text-red-500"
                     )}>
                       {budgetStatus.status.project.percent}%
                     </span>
                   </div>
-                  <div className="h-3 bg-zinc-100 rounded-full overflow-hidden">
+                  <div className="h-3 bg-muted rounded-full overflow-hidden">
                     <div
                       className={cn(
                         "h-full rounded-full transition-all",
-                        budgetStatus.status.project.status === 'ok' ? "bg-green-500/100" :
-                        budgetStatus.status.project.status === 'warning' ? "bg-amber-500" :
+                        budgetStatus.status.project.status === 'ok' ? "bg-green-500" :
+                        budgetStatus.status.project.status === 'warning' ? "bg-amber-500/100" :
                         budgetStatus.status.project.status === 'critical' ? "bg-orange-500/100" :
-                        "bg-red-500/100"
+                        "bg-red-500"
                       )}
                       style={{ width: `${Math.min(budgetStatus.status.project.percent, 100)}%` }}
                     />
@@ -8028,8 +7126,8 @@ Project: ${project?.name || 'Unknown'}
                   <div className="flex items-center justify-between text-xs text-muted-foreground mt-1">
                     <span>$0</span>
                     <span className="flex gap-3">
-                      <span className="text-amber-600">Warning: ${(budgetStatus.config.project_budget * 0.75).toFixed(2)}</span>
-                      <span className="text-red-400">Critical: ${(budgetStatus.config.project_budget * 0.90).toFixed(2)}</span>
+                      <span className="text-amber-500">Warning: ${(budgetStatus.config.project_budget * 0.75).toFixed(2)}</span>
+                      <span className="text-red-500">Critical: ${(budgetStatus.config.project_budget * 0.90).toFixed(2)}</span>
                     </span>
                     <span>${budgetStatus.config.project_budget.toFixed(2)}</span>
                   </div>
@@ -8047,8 +7145,8 @@ Project: ${project?.name || 'Unknown'}
                         className={cn(
                           "p-3 rounded-lg border",
                           status.status === 'ok' ? "border-border bg-card" :
-                          status.status === 'warning' ? "border-amber-200 bg-amber-50" :
-                          status.status === 'critical' ? "border-orange-200 bg-orange-500/10" :
+                          status.status === 'warning' ? "border-amber-500/30 bg-amber-500/10" :
+                          status.status === 'critical' ? "border-orange-500/30 bg-orange-500/10" :
                           "border-red-500/30 bg-red-500/10"
                         )}
                       >
@@ -8056,20 +7154,20 @@ Project: ${project?.name || 'Unknown'}
                           <span className="text-xs font-medium">{agent}</span>
                           <span className={cn(
                             "text-xs",
-                            status.status === 'ok' ? "text-green-400" :
-                            status.status === 'warning' ? "text-amber-600" :
-                            "text-red-400"
+                            status.status === 'ok' ? "text-green-500" :
+                            status.status === 'warning' ? "text-amber-500" :
+                            "text-red-500"
                           )}>
                             {status.percent}%
                           </span>
                         </div>
-                        <div className="h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                           <div
                             className={cn(
                               "h-full rounded-full",
-                              status.status === 'ok' ? "bg-green-500/100" :
-                              status.status === 'warning' ? "bg-amber-500" :
-                              "bg-red-500/100"
+                              status.status === 'ok' ? "bg-green-500" :
+                              status.status === 'warning' ? "bg-amber-500/100" :
+                              "bg-red-500"
                             )}
                             style={{ width: `${Math.min(status.percent, 100)}%` }}
                           />
@@ -8174,26 +7272,90 @@ Project: ${project?.name || 'Unknown'}
                 </div>
               )}
             </div>
-          </>
+          </TabContainer>
         )}
 
         {/* Audit Log Tab */}
         {activeTab === 'audit-log' && (
-          <>
-            {/* Info Box - Subtle gray bg, orange icon */}
-            <div className="p-5 bg-muted border border-border rounded-2xl mb-6">
+          <TabContainer>
+            {/* 1. INFO BOX */}
+            <InfoBox
+              title="Step 10: Audit Log"
+              description="Complete audit trail of all WAVE automation events. Track agent actions, story lifecycle, budget spend, escalations, and system events. Filter by severity and export for compliance."
+              icon={<History className="h-4 w-4 text-blue-500" />}
+            />
+
+            {/* 2. KPI CARDS */}
+            <KPICards
+              items={[
+                {
+                  label: 'Total Events',
+                  value: auditLogs.length,
+                  status: 'neutral',
+                  icon: <FileText className="h-4 w-4" />
+                },
+                {
+                  label: 'Critical',
+                  value: auditLogs.filter(l => l.severity === 'critical').length,
+                  status: auditLogs.filter(l => l.severity === 'critical').length > 0 ? 'error' : 'success',
+                  icon: <XOctagon className="h-4 w-4" />
+                },
+                {
+                  label: 'Warnings',
+                  value: auditLogs.filter(l => l.severity === 'warning').length,
+                  status: auditLogs.filter(l => l.severity === 'warning').length > 0 ? 'warning' : 'neutral',
+                  icon: <AlertTriangle className="h-4 w-4" />
+                },
+                {
+                  label: 'Info',
+                  value: auditLogs.filter(l => l.severity === 'info').length,
+                  status: 'neutral',
+                  icon: <Info className="h-4 w-4" />
+                },
+              ]}
+            />
+
+            {/* 3. ACTION BAR */}
+            <ActionBar
+              category="AUDIT LOG"
+              title="System Event Traceability"
+              description={`${auditLogs.length} events recorded`}
+              primaryAction={{
+                label: auditLogsLoading ? 'Refreshing...' : 'Refresh Logs',
+                onClick: fetchAuditLogs,
+                loading: auditLogsLoading,
+                icon: <RefreshCw className="h-4 w-4" />
+              }}
+              secondaryAction={{
+                label: 'Export',
+                onClick: () => {},
+                icon: <Download className="h-4 w-4" />
+              }}
+            />
+
+            {/* 4. RESULT SUMMARY */}
+            <ResultSummary
+              status={auditLogs.filter(l => l.severity === 'critical').length > 0 ? 'warn' : 'pass'}
+              message={auditLogs.filter(l => l.severity === 'critical').length > 0
+                ? `${auditLogs.filter(l => l.severity === 'critical').length} critical events require attention.`
+                : 'All systems operating normally. No critical events.'
+              }
+            />
+
+            {/* Legacy Info Box - hidden */}
+            <div className="p-5 bg-muted border border-border rounded-2xl mb-6" style={{display: 'none'}}>
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-lg bg-orange-500/15 flex items-center justify-center flex-shrink-0">
                   <FileText className="h-5 w-5 text-orange-600" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-zinc-900 mb-1">System Event Traceability</h3>
-                  <p className="text-sm text-zinc-600 leading-relaxed">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
                     Complete audit trail of all WAVE automation events. Track <strong>agent actions</strong>,
                     <strong> validation results</strong>, <strong>safety events</strong>, and <strong>configuration changes</strong>.
                     Events requiring attention are flagged for review.
                   </p>
-                  <p className="text-xs text-zinc-500 mt-2">
+                  <p className="text-xs text-muted-foreground mt-2">
                     Export logs in JSON, CSV, or JSONL format for compliance reporting.
                   </p>
                 </div>
@@ -8204,22 +7366,22 @@ Project: ${project?.name || 'Unknown'}
             <div className="p-6 border border-border rounded-2xl mb-6 bg-card">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-zinc-100 flex items-center justify-center">
-                    {auditLogSummary?.requires_review > 0 ? (
+                  <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
+                    {(auditLogSummary?.requires_review ?? 0) > 0 ? (
                       <AlertTriangle className="h-6 w-6 text-amber-500" />
                     ) : auditLogs.length > 0 ? (
-                      <CheckCircle2 className="h-6 w-6 text-green-400" />
+                      <CheckCircle2 className="h-6 w-6 text-green-500" />
                     ) : (
-                      <FileText className="h-6 w-6 text-zinc-600" />
+                      <FileText className="h-6 w-6 text-muted-foreground" />
                     )}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg text-zinc-900">
-                      {auditLogSummary?.requires_review > 0
-                        ? `${auditLogSummary.requires_review} Events Need Review`
+                    <h3 className="font-semibold text-lg text-foreground/80">
+                      {(auditLogSummary?.requires_review ?? 0) > 0
+                        ? `${auditLogSummary?.requires_review} Events Need Review`
                         : 'Audit Log Active'}
                     </h3>
-                    <p className="text-sm text-zinc-500">
+                    <p className="text-sm text-muted-foreground">
                       {auditLogSummary
                         ? `${auditLogSummary.total_events} events in last 24 hours`
                         : 'Tracking all system events'}
@@ -8230,12 +7392,12 @@ Project: ${project?.name || 'Unknown'}
                   {/* Event count badges */}
                   {auditLogSummary && (
                     <>
-                      <span className="px-3 py-1.5 bg-zinc-100 text-blue-400 rounded-full text-sm">
+                      <span className="px-3 py-1.5 bg-muted text-blue-500 rounded-full text-sm">
                         {auditLogSummary.total_events} Events
                       </span>
-                      {auditLogSummary.requires_review > 0 && (
-                        <span className="px-3 py-1.5 bg-zinc-100 text-amber-600 rounded-full text-sm">
-                          {auditLogSummary.requires_review} Review
+                      {(auditLogSummary?.requires_review ?? 0) > 0 && (
+                        <span className="px-3 py-1.5 bg-muted text-amber-500 rounded-full text-sm">
+                          {auditLogSummary?.requires_review} Review
                         </span>
                       )}
                     </>
@@ -8312,7 +7474,7 @@ ${auditLogSummary ? `
                       document.body.removeChild(a)
                       URL.revokeObjectURL(url)
                     }}
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-zinc-600 hover:text-zinc-900 border border-border hover:border-zinc-300 rounded-xl transition-colors"
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground border border-border hover:border-border/80 rounded-xl transition-colors"
                   >
                     <Download className="h-4 w-4" />
                     Guide (.md)
@@ -8329,7 +7491,7 @@ ${auditLogSummary ? `
                           e.target.value = ''
                         }
                       }}
-                      className="appearance-none pl-4 pr-8 py-2.5 border border-border hover:border-zinc-300 rounded-xl text-sm font-medium cursor-pointer bg-card text-zinc-600 hover:text-zinc-900 transition-colors"
+                      className="appearance-none pl-4 pr-8 py-2.5 border border-border hover:border-border/80 rounded-xl text-sm font-medium cursor-pointer bg-card text-muted-foreground hover:text-foreground transition-colors"
                       defaultValue=""
                     >
                       <option value="" disabled>Export...</option>
@@ -8337,7 +7499,7 @@ ${auditLogSummary ? `
                       <option value="csv">CSV</option>
                       <option value="jsonl">JSONL</option>
                     </select>
-                    <Download className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none text-zinc-400" />
+                    <Download className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none text-muted-foreground" />
                   </div>
                   {/* Refresh - black */}
                   <button
@@ -8346,8 +7508,8 @@ ${auditLogSummary ? `
                     className={cn(
                       "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors",
                       auditLogsLoading
-                        ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
-                        : "bg-background hover:bg-zinc-800 text-white"
+                        ? "bg-muted text-muted-foreground cursor-not-allowed"
+                        : "bg-muted hover:bg-muted/80 text-foreground"
                     )}
                   >
                     {auditLogsLoading ? (
@@ -8362,11 +7524,11 @@ ${auditLogSummary ? `
 
               {/* Progress Bar - showing event distribution */}
               {auditLogSummary && auditLogSummary.total_events > 0 && (
-                <div className="mt-6 pt-6 border-t border-zinc-100">
+                <div className="mt-6 pt-6 border-t border-border">
                   <div className="flex items-center gap-6">
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-zinc-600">Event Health</span>
+                        <span className="text-sm font-medium text-muted-foreground">Event Health</span>
                         <span className="text-sm font-semibold text-zinc-900">
                           {Math.round(((auditLogSummary.total_events - (auditLogSummary.by_severity?.error || 0) - (auditLogSummary.by_severity?.critical || 0)) / auditLogSummary.total_events) * 100)}% Clean
                         </span>
@@ -8375,8 +7537,8 @@ ${auditLogSummary ? `
                         <div
                           className={cn(
                             "h-full rounded-full transition-all duration-500",
-                            (auditLogSummary.by_severity?.error || 0) + (auditLogSummary.by_severity?.critical || 0) > 0 ? "bg-red-500/100" :
-                            (auditLogSummary.by_severity?.warn || 0) > 0 ? "bg-amber-400" : "bg-green-500/100"
+                            (auditLogSummary.by_severity?.error || 0) + (auditLogSummary.by_severity?.critical || 0) > 0 ? "bg-red-500" :
+                            (auditLogSummary.by_severity?.warn || 0) > 0 ? "bg-amber-400" : "bg-green-500"
                           )}
                           style={{
                             width: `${((auditLogSummary.total_events - (auditLogSummary.by_severity?.error || 0) - (auditLogSummary.by_severity?.critical || 0)) / auditLogSummary.total_events) * 100}%`
@@ -8386,16 +7548,16 @@ ${auditLogSummary ? `
                     </div>
                     <div className="flex items-center gap-4 pl-4 border-l border-border">
                       <div className="text-center">
-                        <div className="text-xl font-bold text-green-400">{auditLogSummary.by_severity?.info || 0}</div>
-                        <div className="text-xs text-zinc-500">Info</div>
+                        <div className="text-xl font-bold text-green-500">{auditLogSummary.by_severity?.info || 0}</div>
+                        <div className="text-xs text-muted-foreground">Info</div>
                       </div>
                       <div className="text-center">
                         <div className="text-xl font-bold text-amber-500">{auditLogSummary.by_severity?.warn || 0}</div>
-                        <div className="text-xs text-zinc-500">Warn</div>
+                        <div className="text-xs text-muted-foreground">Warn</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-xl font-bold text-red-400">{(auditLogSummary.by_severity?.error || 0) + (auditLogSummary.by_severity?.critical || 0)}</div>
-                        <div className="text-xs text-zinc-500">Error</div>
+                        <div className="text-xl font-bold text-red-500">{(auditLogSummary.by_severity?.error || 0) + (auditLogSummary.by_severity?.critical || 0)}</div>
+                        <div className="text-xs text-muted-foreground">Error</div>
                       </div>
                     </div>
                   </div>
@@ -8421,14 +7583,14 @@ ${auditLogSummary ? `
                   </div>
                 </div>
                 <div className="p-4 bg-card border border-border rounded-xl">
-                  <div className="text-2xl font-bold text-amber-600">{auditLogSummary.by_severity?.warn || 0}</div>
+                  <div className="text-2xl font-bold text-amber-500">{auditLogSummary.by_severity?.warn || 0}</div>
                   <div className="text-sm text-muted-foreground flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4" />
                     Warnings
                   </div>
                 </div>
                 <div className="p-4 bg-card border border-border rounded-xl">
-                  <div className="text-2xl font-bold text-red-400">{(auditLogSummary.by_severity?.error || 0) + (auditLogSummary.by_severity?.critical || 0)}</div>
+                  <div className="text-2xl font-bold text-red-500">{(auditLogSummary.by_severity?.error || 0) + (auditLogSummary.by_severity?.critical || 0)}</div>
                   <div className="text-sm text-muted-foreground flex items-center gap-2">
                     <XCircle className="h-4 w-4" />
                     Errors
@@ -8447,7 +7609,7 @@ ${auditLogSummary ? `
                     "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
                     auditLogFilter === filter
                       ? "bg-background text-white"
-                      : "bg-zinc-100 text-zinc-600 hover:bg-border"
+                      : "bg-muted text-muted-foreground hover:bg-border"
                   )}
                 >
                   {filter === 'all' ? 'All Events' :
@@ -8475,7 +7637,7 @@ ${auditLogSummary ? `
                       key={log.id}
                       className={cn(
                         "px-4 py-3 border-b last:border-0 flex items-start gap-4 hover:bg-muted",
-                        log.requires_review && "bg-amber-50/50"
+                        log.requires_review && "bg-amber-500/10/50"
                       )}
                     >
                       {/* Time */}
@@ -8486,11 +7648,11 @@ ${auditLogSummary ? `
                       {/* Event Type Icon */}
                       <div className={cn(
                         "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
-                        log.event_type === 'agent_action' ? "bg-violet-100 text-violet-600" :
-                        log.event_type === 'validation' ? "bg-blue-500/15 text-blue-400" :
-                        log.event_type === 'safety_event' ? "bg-red-500/15 text-red-400" :
-                        log.event_type === 'config_change' ? "bg-amber-500/10 text-amber-600" :
-                        "bg-zinc-100 text-zinc-600"
+                        log.event_type === 'agent_action' ? "bg-violet-500/100/10 text-violet-500" :
+                        log.event_type === 'validation' ? "bg-blue-500/15 text-blue-500" :
+                        log.event_type === 'safety_event' ? "bg-red-500/15 text-red-500" :
+                        log.event_type === 'config_change' ? "bg-amber-500/100/10 text-amber-500" :
+                        "bg-muted text-muted-foreground"
                       )}>
                         {getEventTypeIcon(log.event_type)}
                       </div>
@@ -8500,9 +7662,9 @@ ${auditLogSummary ? `
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className={cn(
                             "px-2 py-0.5 rounded text-xs font-medium",
-                            log.actor_type === 'agent' ? "bg-violet-100 text-violet-700" :
-                            log.actor_type === 'user' ? "bg-blue-500/15 text-blue-400" :
-                            "bg-zinc-100 text-zinc-700"
+                            log.actor_type === 'agent' ? "bg-violet-500/15 text-violet-500" :
+                            log.actor_type === 'user' ? "bg-blue-500/15 text-blue-500" :
+                            "bg-muted text-foreground/80"
                           )}>
                             {log.actor_id}
                           </span>
@@ -8513,7 +7675,7 @@ ${auditLogSummary ? `
                             </span>
                           )}
                           {log.requires_review && (
-                            <span className="px-2 py-0.5 bg-amber-500/10 text-amber-700 rounded text-xs">
+                            <span className="px-2 py-0.5 bg-amber-500/100/10 text-amber-500 rounded text-xs">
                               Needs Review
                             </span>
                           )}
@@ -8527,7 +7689,7 @@ ${auditLogSummary ? `
                         {log.safety_tags && log.safety_tags.length > 0 && (
                           <div className="mt-1 flex gap-1">
                             {log.safety_tags.map(tag => (
-                              <span key={tag} className="px-1.5 py-0.5 bg-red-500/15 text-red-400 rounded text-[10px]">
+                              <span key={tag} className="px-1.5 py-0.5 bg-red-500/15 text-red-500 rounded text-[10px]">
                                 {tag}
                               </span>
                             ))}
@@ -8551,7 +7713,7 @@ ${auditLogSummary ? `
                     <p className="text-sm mt-1">Events will be logged when agents run or validations occur</p>
                     <button
                       onClick={fetchAuditLogs}
-                      className="mt-4 px-4 py-2 bg-zinc-100 hover:bg-border rounded-lg text-sm font-medium transition-colors"
+                      className="mt-4 px-4 py-2 bg-muted hover:bg-border rounded-lg text-sm font-medium transition-colors"
                     >
                       <RefreshCw className="h-4 w-4 inline mr-2" />
                       Check for Logs
@@ -8560,7 +7722,7 @@ ${auditLogSummary ? `
                 )}
               </div>
             </div>
-          </>
+          </TabContainer>
         )}
       </div>
 
@@ -8569,35 +7731,35 @@ ${auditLogSummary ? `
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-background rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden">
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-zinc-700 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Bot className="h-5 w-5 text-green-400" />
+                <Bot className="h-5 w-5 text-green-500" />
                 <span className="text-white font-semibold">{selectedAgent} Terminal</span>
                 <span className={cn(
                   "px-2 py-0.5 text-xs rounded",
                   agents.find(a => a.agent_type === selectedAgent)?.status === 'running'
-                    ? "bg-green-500/100/20 text-green-400"
-                    : "bg-zinc-700 text-zinc-400"
+                    ? "bg-green-500/20 text-green-500"
+                    : "bg-muted text-muted-foreground"
                 )}>
                   {agents.find(a => a.agent_type === selectedAgent)?.status || 'Unknown'}
                 </span>
               </div>
               <button
                 onClick={() => setShowAgentModal(false)}
-                className="p-2 rounded-lg hover:bg-zinc-800 transition-colors"
+                className="p-2 rounded-lg hover:bg-muted transition-colors"
               >
-                <X className="h-5 w-5 text-zinc-400" />
+                <X className="h-5 w-5 text-muted-foreground" />
               </button>
             </div>
 
             {/* Terminal Output */}
-            <div className="flex-1 p-4 font-mono text-sm text-green-400 overflow-y-auto bg-zinc-950">
+            <div className="flex-1 p-4 font-mono text-sm text-green-500 overflow-y-auto bg-background">
               <pre className="whitespace-pre-wrap">{agentOutput || 'Loading output...'}</pre>
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-3 border-t border-zinc-700 flex items-center justify-between bg-background">
-              <div className="flex gap-4 text-xs text-zinc-400">
+            <div className="px-6 py-3 border-t border-border flex items-center justify-between bg-background">
+              <div className="flex gap-4 text-xs text-muted-foreground">
                 {agents.find(a => a.agent_type === selectedAgent)?.token_usage && (
                   <>
                     <span>
@@ -8613,7 +7775,7 @@ ${auditLogSummary ? `
               <div className="flex gap-2">
                 <button
                   onClick={() => viewAgent(selectedAgent)}
-                  className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-muted-foreground rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                  className="px-4 py-2 bg-muted hover:bg-muted text-muted-foreground rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                 >
                   <RefreshCw className="h-4 w-4" />
                   Refresh
@@ -8642,7 +7804,7 @@ ${auditLogSummary ? `
               "px-6 py-5 flex-shrink-0",
               foundationStatus === 'ready' ? "bg-gradient-to-r from-green-600 to-emerald-600 text-white" :
               foundationStatus === 'blocked' ? "bg-card border-b border-border text-zinc-900" :
-              "bg-gradient-to-r from-zinc-700 to-zinc-800 text-white"
+              "bg-gradient-to-r from-muted to-card text-white"
             )}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -8671,7 +7833,7 @@ ${auditLogSummary ? `
                     </h3>
                     <p className={cn(
                       "text-sm",
-                      foundationStatus === 'blocked' ? "text-zinc-500" : "text-white/80"
+                      foundationStatus === 'blocked' ? "text-muted-foreground" : "text-white/80"
                     )}>
                       {foundationValidating ? 'Running comprehensive pre-development checks...' :
                        foundationStatus === 'ready' ? 'All required checks passed - ready to develop!' :
@@ -8684,7 +7846,7 @@ ${auditLogSummary ? `
                   onClick={() => setShowFoundationModal(false)}
                   className={cn(
                     "p-2 rounded-lg transition-colors",
-                    foundationStatus === 'blocked' ? "hover:bg-border text-zinc-500" : "hover:bg-card/20"
+                    foundationStatus === 'blocked' ? "hover:bg-border text-muted-foreground" : "hover:bg-card/20"
                   )}
                 >
                   <X className="h-5 w-5" />
@@ -8698,19 +7860,19 @@ ${auditLogSummary ? `
               <div className="flex items-center justify-between mb-6 p-4 bg-muted rounded-xl">
                 <div className="flex items-center gap-4">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-green-400">
+                    <div className="text-2xl font-bold text-green-500">
                       {foundationChecks.filter(c => c.status === 'pass').length}
                     </div>
                     <div className="text-xs text-muted-foreground">Passed</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-red-400">
+                    <div className="text-2xl font-bold text-red-500">
                       {foundationChecks.filter(c => c.status === 'fail').length}
                     </div>
                     <div className="text-xs text-muted-foreground">Failed</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-zinc-500">
+                    <div className="text-2xl font-bold text-muted-foreground">
                       {foundationChecks.filter(c => c.status === 'warn').length}
                     </div>
                     <div className="text-xs text-muted-foreground">Warnings</div>
@@ -8756,35 +7918,35 @@ ${auditLogSummary ? `
                           >
                             <div className="flex-shrink-0">
                               {check.status === 'pass' ? (
-                                <CheckCircle2 className="h-5 w-5 text-green-400" />
+                                <CheckCircle2 className="h-5 w-5 text-green-500" />
                               ) : check.status === 'fail' ? (
-                                <XCircle className="h-5 w-5 text-red-400" />
+                                <XCircle className="h-5 w-5 text-red-500" />
                               ) : check.status === 'warn' ? (
-                                <AlertTriangle className="h-5 w-5 text-zinc-500" />
+                                <AlertTriangle className="h-5 w-5 text-muted-foreground" />
                               ) : check.status === 'running' ? (
-                                <Loader2 className="h-5 w-5 text-blue-400 animate-spin" />
+                                <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
                               ) : (
-                                <Clock className="h-5 w-5 text-zinc-400" />
+                                <Clock className="h-5 w-5 text-muted-foreground" />
                               )}
                             </div>
                             <div className="flex-1">
                               <p className="font-medium text-sm">{check.name}</p>
                               <p className={cn(
                                 "text-xs",
-                                check.status === 'pass' ? "text-green-400" :
-                                check.status === 'fail' ? "text-red-400" :
-                                check.status === 'warn' ? "text-zinc-600" :
+                                check.status === 'pass' ? "text-green-500" :
+                                check.status === 'fail' ? "text-red-500" :
+                                check.status === 'warn' ? "text-muted-foreground" :
                                 "text-muted-foreground"
                               )}>{check.message}</p>
                             </div>
                             {check.status === 'pass' && (
-                              <span className="text-xs bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full">PASS</span>
+                              <span className="text-xs bg-green-500/15 text-green-500 px-2 py-0.5 rounded-full">PASS</span>
                             )}
                             {check.status === 'fail' && (
-                              <span className="text-xs bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full">FAIL</span>
+                              <span className="text-xs bg-red-500/15 text-red-500 px-2 py-0.5 rounded-full">FAIL</span>
                             )}
                             {check.status === 'warn' && (
-                              <span className="text-xs bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded-full">WARN</span>
+                              <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">WARN</span>
                             )}
                           </div>
                         ))}
@@ -8796,12 +7958,12 @@ ${auditLogSummary ? `
 
               {/* Recommendations for failed/warning items */}
               {!foundationValidating && foundationChecks.filter(c => c.status === 'fail' || c.status === 'warn').length > 0 && (
-                <div className="mt-6 p-4 bg-zinc-100 border border-border rounded-xl">
-                  <h4 className="font-semibold text-zinc-700 mb-2 flex items-center gap-2">
+                <div className="mt-6 p-4 bg-muted border border-border rounded-xl">
+                  <h4 className="font-semibold text-foreground/80 mb-2 flex items-center gap-2">
                     <Info className="h-4 w-4" />
                     Items Requiring Attention
                   </h4>
-                  <p className="text-sm text-zinc-600 mb-3">
+                  <p className="text-sm text-muted-foreground mb-3">
                     Download the report below for detailed recommendations on how to fix each issue.
                   </p>
                 </div>
@@ -8817,7 +7979,7 @@ ${auditLogSummary ? `
                 {!foundationValidating && foundationChecks.length > 0 && (
                   <button
                     onClick={downloadFoundationReport}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-card border border-border rounded-lg hover:bg-zinc-100 transition-colors text-sm font-medium"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-card border border-border rounded-lg hover:bg-muted transition-colors text-sm font-medium"
                   >
                     <Download className="h-4 w-4" />
                     Download Report (.md)
@@ -8829,7 +7991,7 @@ ${auditLogSummary ? `
                     "px-5 py-2.5 rounded-lg text-sm font-medium transition-colors",
                     foundationStatus === 'ready'
                       ? "bg-green-500 hover:bg-green-600 text-white"
-                      : "bg-background hover:bg-zinc-800 text-white"
+                      : "bg-muted hover:bg-muted/80 text-foreground"
                   )}
                 >
                   {foundationStatus === 'ready' ? 'Start Developing' : 'Close'}
@@ -8878,7 +8040,7 @@ ${auditLogSummary ? `
                     </h3>
                     <p className={cn(
                       "text-sm",
-                      safetyStatus === 'blocked' ? "text-zinc-500" : "text-white/80"
+                      safetyStatus === 'blocked' ? "text-muted-foreground" : "text-white/80"
                     )}>
                       {validatingSafety ? 'Running DO-178C compliance checks...' :
                        safetyStatus === 'ready' ? 'All safety checks passed - aerospace-grade compliance!' :
@@ -8891,7 +8053,7 @@ ${auditLogSummary ? `
                   onClick={() => setShowSafetyModal(false)}
                   className={cn(
                     "p-2 rounded-lg transition-colors",
-                    safetyStatus === 'blocked' ? "hover:bg-border text-zinc-500" : "hover:bg-card/20"
+                    safetyStatus === 'blocked' ? "hover:bg-border text-muted-foreground" : "hover:bg-card/20"
                   )}
                 >
                   <X className="h-5 w-5" />
@@ -8905,19 +8067,19 @@ ${auditLogSummary ? `
               <div className="flex items-center justify-between mb-6 p-4 bg-muted rounded-xl">
                 <div className="flex items-center gap-4">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-green-400">
+                    <div className="text-2xl font-bold text-green-500">
                       {safetyChecks.filter(c => c.status === 'pass').length}
                     </div>
                     <div className="text-xs text-muted-foreground">Passed</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-red-400">
+                    <div className="text-2xl font-bold text-red-500">
                       {safetyChecks.filter(c => c.status === 'fail').length}
                     </div>
                     <div className="text-xs text-muted-foreground">Failed</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-zinc-500">
+                    <div className="text-2xl font-bold text-muted-foreground">
                       {safetyChecks.filter(c => c.status === 'warn').length}
                     </div>
                     <div className="text-xs text-muted-foreground">Warnings</div>
@@ -8956,35 +8118,35 @@ ${auditLogSummary ? `
                         >
                           <div className="flex-shrink-0">
                             {check?.status === 'pass' ? (
-                              <CheckCircle2 className="h-5 w-5 text-green-400" />
+                              <CheckCircle2 className="h-5 w-5 text-green-500" />
                             ) : check?.status === 'fail' ? (
-                              <XCircle className="h-5 w-5 text-red-400" />
+                              <XCircle className="h-5 w-5 text-red-500" />
                             ) : check?.status === 'warn' ? (
-                              <AlertTriangle className="h-5 w-5 text-zinc-500" />
+                              <AlertTriangle className="h-5 w-5 text-muted-foreground" />
                             ) : validatingSafety ? (
-                              <Loader2 className="h-5 w-5 text-blue-400 animate-spin" />
+                              <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
                             ) : (
-                              <Clock className="h-5 w-5 text-zinc-400" />
+                              <Clock className="h-5 w-5 text-muted-foreground" />
                             )}
                           </div>
                           <div className="flex-1">
                             <p className="font-medium text-sm">{name}</p>
                             <p className={cn(
                               "text-xs",
-                              check?.status === 'pass' ? "text-green-400" :
-                              check?.status === 'fail' ? "text-red-400" :
-                              check?.status === 'warn' ? "text-zinc-600" :
+                              check?.status === 'pass' ? "text-green-500" :
+                              check?.status === 'fail' ? "text-red-500" :
+                              check?.status === 'warn' ? "text-muted-foreground" :
                               "text-muted-foreground"
                             )}>{check?.message || 'Pending...'}</p>
                           </div>
                           {check?.status === 'pass' && (
-                            <span className="text-xs bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full">PASS</span>
+                            <span className="text-xs bg-green-500/15 text-green-500 px-2 py-0.5 rounded-full">PASS</span>
                           )}
                           {check?.status === 'fail' && (
-                            <span className="text-xs bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full">FAIL</span>
+                            <span className="text-xs bg-red-500/15 text-red-500 px-2 py-0.5 rounded-full">FAIL</span>
                           )}
                           {check?.status === 'warn' && (
-                            <span className="text-xs bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded-full">WARN</span>
+                            <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">WARN</span>
                           )}
                         </div>
                       )
@@ -9015,35 +8177,35 @@ ${auditLogSummary ? `
                         >
                           <div className="flex-shrink-0">
                             {check?.status === 'pass' ? (
-                              <CheckCircle2 className="h-5 w-5 text-green-400" />
+                              <CheckCircle2 className="h-5 w-5 text-green-500" />
                             ) : check?.status === 'fail' ? (
-                              <XCircle className="h-5 w-5 text-red-400" />
+                              <XCircle className="h-5 w-5 text-red-500" />
                             ) : check?.status === 'warn' ? (
-                              <AlertTriangle className="h-5 w-5 text-zinc-500" />
+                              <AlertTriangle className="h-5 w-5 text-muted-foreground" />
                             ) : validatingSafety ? (
-                              <Loader2 className="h-5 w-5 text-blue-400 animate-spin" />
+                              <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
                             ) : (
-                              <Clock className="h-5 w-5 text-zinc-400" />
+                              <Clock className="h-5 w-5 text-muted-foreground" />
                             )}
                           </div>
                           <div className="flex-1">
                             <p className="font-medium text-sm">{name}</p>
                             <p className={cn(
                               "text-xs",
-                              check?.status === 'pass' ? "text-green-400" :
-                              check?.status === 'fail' ? "text-red-400" :
-                              check?.status === 'warn' ? "text-zinc-600" :
+                              check?.status === 'pass' ? "text-green-500" :
+                              check?.status === 'fail' ? "text-red-500" :
+                              check?.status === 'warn' ? "text-muted-foreground" :
                               "text-muted-foreground"
                             )}>{check?.message || 'Pending...'}</p>
                           </div>
                           {check?.status === 'pass' && (
-                            <span className="text-xs bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full">PASS</span>
+                            <span className="text-xs bg-green-500/15 text-green-500 px-2 py-0.5 rounded-full">PASS</span>
                           )}
                           {check?.status === 'fail' && (
-                            <span className="text-xs bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full">FAIL</span>
+                            <span className="text-xs bg-red-500/15 text-red-500 px-2 py-0.5 rounded-full">FAIL</span>
                           )}
                           {check?.status === 'warn' && (
-                            <span className="text-xs bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded-full">WARN</span>
+                            <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">WARN</span>
                           )}
                         </div>
                       )
@@ -9054,12 +8216,12 @@ ${auditLogSummary ? `
 
               {/* Recommendations for failed/warning items */}
               {!validatingSafety && safetyChecks.filter(c => c.status === 'fail' || c.status === 'warn').length > 0 && (
-                <div className="mt-6 p-4 bg-zinc-100 border border-border rounded-xl">
-                  <h4 className="font-semibold text-zinc-700 mb-2 flex items-center gap-2">
+                <div className="mt-6 p-4 bg-muted border border-border rounded-xl">
+                  <h4 className="font-semibold text-foreground/80 mb-2 flex items-center gap-2">
                     <Info className="h-4 w-4" />
                     Items Requiring Attention
                   </h4>
-                  <p className="text-sm text-zinc-600 mb-3">
+                  <p className="text-sm text-muted-foreground mb-3">
                     Download the report below for detailed recommendations on how to fix each safety issue.
                   </p>
                 </div>
@@ -9075,7 +8237,7 @@ ${auditLogSummary ? `
                 {!validatingSafety && safetyChecks.length > 0 && (
                   <button
                     onClick={downloadSafetyReport}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-card border border-border rounded-lg hover:bg-zinc-100 transition-colors text-sm font-medium"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-card border border-border rounded-lg hover:bg-muted transition-colors text-sm font-medium"
                   >
                     <Download className="h-4 w-4" />
                     Download Report (.md)
@@ -9087,7 +8249,7 @@ ${auditLogSummary ? `
                     "px-5 py-2.5 rounded-lg text-sm font-medium transition-colors",
                     safetyStatus === 'ready'
                       ? "bg-orange-600 hover:bg-orange-700 text-white"
-                      : "bg-background hover:bg-zinc-800 text-white"
+                      : "bg-muted hover:bg-muted/80 text-foreground"
                   )}
                 >
                   {safetyStatus === 'ready' ? 'Continue Development' : 'Close'}
@@ -9136,7 +8298,7 @@ ${auditLogSummary ? `
                     </h3>
                     <p className={cn(
                       "text-sm",
-                      rlmStatus === 'blocked' ? "text-zinc-500" : "text-white/80"
+                      rlmStatus === 'blocked' ? "text-muted-foreground" : "text-white/80"
                     )}>
                       {validatingRlm ? 'Checking P Variable, Agent Memory, Snapshots, Scripts...' :
                        rlmStatus === 'ready' ? 'All RLM checks passed - ready for Docker automation!' :
@@ -9149,7 +8311,7 @@ ${auditLogSummary ? `
                   onClick={() => setShowRlmModal(false)}
                   className={cn(
                     "p-2 rounded-lg transition-colors",
-                    rlmStatus === 'blocked' ? "hover:bg-border text-zinc-500" : "hover:bg-card/20"
+                    rlmStatus === 'blocked' ? "hover:bg-border text-muted-foreground" : "hover:bg-card/20"
                   )}
                 >
                   <X className="h-5 w-5" />
@@ -9163,19 +8325,19 @@ ${auditLogSummary ? `
               <div className="flex items-center justify-between mb-6 p-4 bg-muted rounded-xl">
                 <div className="flex items-center gap-4">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-green-400">
+                    <div className="text-2xl font-bold text-green-500">
                       {rlmChecks.filter(c => c.status === 'pass').length}
                     </div>
                     <div className="text-xs text-muted-foreground">Passed</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-red-400">
+                    <div className="text-2xl font-bold text-red-500">
                       {rlmChecks.filter(c => c.status === 'fail').length}
                     </div>
                     <div className="text-xs text-muted-foreground">Failed</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-amber-600">
+                    <div className="text-2xl font-bold text-amber-500">
                       {rlmChecks.filter(c => c.status === 'warn').length}
                     </div>
                     <div className="text-xs text-muted-foreground">Warnings</div>
@@ -9191,13 +8353,13 @@ ${auditLogSummary ? `
                   <div className="flex items-center gap-3">
                     <div className={cn(
                       "px-3 py-1 rounded-full text-xs font-medium",
-                      rlmValidationResult.docker_ready ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400"
+                      rlmValidationResult.docker_ready ? "bg-green-500/15 text-green-500" : "bg-red-500/15 text-red-500"
                     )}>
                       Docker: {rlmValidationResult.docker_ready ? 'Ready' : 'Not Ready'}
                     </div>
                     <div className={cn(
                       "px-3 py-1 rounded-full text-xs font-medium",
-                      rlmValidationResult.gate0_certified ? "bg-violet-100 text-violet-700" : "bg-zinc-100 text-zinc-600"
+                      rlmValidationResult.gate0_certified ? "bg-violet-500/15 text-violet-500" : "bg-muted text-muted-foreground"
                     )}>
                       Gate 0: {rlmValidationResult.gate0_certified ? 'Certified' : 'Pending'}
                     </div>
@@ -9221,32 +8383,32 @@ ${auditLogSummary ? `
                           "flex items-center gap-3 p-3 rounded-lg border transition-all",
                           check.status === 'pass' ? "bg-green-500/10 border-green-500/30" :
                           check.status === 'fail' ? "bg-red-500/10 border-red-500/30" :
-                          "bg-amber-50 border-amber-200"
+                          "bg-amber-500/10 border-amber-500/30"
                         )}
                       >
                         <div className="flex-shrink-0">
                           {check.status === 'pass' ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-400" />
+                            <CheckCircle2 className="h-5 w-5 text-green-500" />
                           ) : check.status === 'fail' ? (
-                            <XCircle className="h-5 w-5 text-red-400" />
+                            <XCircle className="h-5 w-5 text-red-500" />
                           ) : (
-                            <AlertTriangle className="h-5 w-5 text-amber-600" />
+                            <AlertTriangle className="h-5 w-5 text-amber-500" />
                           )}
                         </div>
                         <div className="flex-1">
                           <p className="font-medium text-sm">{check.name}</p>
                           <p className={cn(
                             "text-xs",
-                            check.status === 'pass' ? "text-green-400" :
-                            check.status === 'fail' ? "text-red-400" :
-                            "text-amber-600"
+                            check.status === 'pass' ? "text-green-500" :
+                            check.status === 'fail' ? "text-red-500" :
+                            "text-amber-500"
                           )}>{check.message}</p>
                         </div>
                         <span className={cn(
                           "text-xs px-2 py-0.5 rounded-full",
-                          check.status === 'pass' ? "bg-green-500/15 text-green-400" :
-                          check.status === 'fail' ? "bg-red-500/15 text-red-400" :
-                          "bg-amber-500/10 text-amber-700"
+                          check.status === 'pass' ? "bg-green-500/15 text-green-500" :
+                          check.status === 'fail' ? "bg-red-500/15 text-red-500" :
+                          "bg-amber-500/100/10 text-amber-500"
                         )}>
                           {check.status.toUpperCase()}
                         </span>
@@ -9254,7 +8416,7 @@ ${auditLogSummary ? `
                     ))}
                     {validatingRlm && rlmChecks.filter(c => c.category === 'P Variable').length === 0 && (
                       <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted border-border">
-                        <Loader2 className="h-5 w-5 text-violet-600 animate-spin" />
+                        <Loader2 className="h-5 w-5 text-violet-500 animate-spin" />
                         <span className="text-sm text-muted-foreground">Checking P Variable...</span>
                       </div>
                     )}
@@ -9275,32 +8437,32 @@ ${auditLogSummary ? `
                           "flex items-center gap-3 p-3 rounded-lg border transition-all",
                           check.status === 'pass' ? "bg-green-500/10 border-green-500/30" :
                           check.status === 'fail' ? "bg-red-500/10 border-red-500/30" :
-                          "bg-amber-50 border-amber-200"
+                          "bg-amber-500/10 border-amber-500/30"
                         )}
                       >
                         <div className="flex-shrink-0">
                           {check.status === 'pass' ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-400" />
+                            <CheckCircle2 className="h-5 w-5 text-green-500" />
                           ) : check.status === 'fail' ? (
-                            <XCircle className="h-5 w-5 text-red-400" />
+                            <XCircle className="h-5 w-5 text-red-500" />
                           ) : (
-                            <AlertTriangle className="h-5 w-5 text-amber-600" />
+                            <AlertTriangle className="h-5 w-5 text-amber-500" />
                           )}
                         </div>
                         <div className="flex-1">
                           <p className="font-medium text-sm">{check.name}</p>
                           <p className={cn(
                             "text-xs",
-                            check.status === 'pass' ? "text-green-400" :
-                            check.status === 'fail' ? "text-red-400" :
-                            "text-amber-600"
+                            check.status === 'pass' ? "text-green-500" :
+                            check.status === 'fail' ? "text-red-500" :
+                            "text-amber-500"
                           )}>{check.message}</p>
                         </div>
                         <span className={cn(
                           "text-xs px-2 py-0.5 rounded-full",
-                          check.status === 'pass' ? "bg-green-500/15 text-green-400" :
-                          check.status === 'fail' ? "bg-red-500/15 text-red-400" :
-                          "bg-amber-500/10 text-amber-700"
+                          check.status === 'pass' ? "bg-green-500/15 text-green-500" :
+                          check.status === 'fail' ? "bg-red-500/15 text-red-500" :
+                          "bg-amber-500/100/10 text-amber-500"
                         )}>
                           {check.status.toUpperCase()}
                         </span>
@@ -9308,7 +8470,7 @@ ${auditLogSummary ? `
                     ))}
                     {validatingRlm && rlmChecks.filter(c => c.category === 'Agent Memory').length === 0 && (
                       <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted border-border">
-                        <Loader2 className="h-5 w-5 text-violet-600 animate-spin" />
+                        <Loader2 className="h-5 w-5 text-violet-500 animate-spin" />
                         <span className="text-sm text-muted-foreground">Checking Agent Memory...</span>
                       </div>
                     )}
@@ -9329,32 +8491,32 @@ ${auditLogSummary ? `
                           "flex items-center gap-3 p-3 rounded-lg border transition-all",
                           check.status === 'pass' ? "bg-green-500/10 border-green-500/30" :
                           check.status === 'fail' ? "bg-red-500/10 border-red-500/30" :
-                          "bg-amber-50 border-amber-200"
+                          "bg-amber-500/10 border-amber-500/30"
                         )}
                       >
                         <div className="flex-shrink-0">
                           {check.status === 'pass' ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-400" />
+                            <CheckCircle2 className="h-5 w-5 text-green-500" />
                           ) : check.status === 'fail' ? (
-                            <XCircle className="h-5 w-5 text-red-400" />
+                            <XCircle className="h-5 w-5 text-red-500" />
                           ) : (
-                            <AlertTriangle className="h-5 w-5 text-amber-600" />
+                            <AlertTriangle className="h-5 w-5 text-amber-500" />
                           )}
                         </div>
                         <div className="flex-1">
                           <p className="font-medium text-sm">{check.name}</p>
                           <p className={cn(
                             "text-xs",
-                            check.status === 'pass' ? "text-green-400" :
-                            check.status === 'fail' ? "text-red-400" :
-                            "text-amber-600"
+                            check.status === 'pass' ? "text-green-500" :
+                            check.status === 'fail' ? "text-red-500" :
+                            "text-amber-500"
                           )}>{check.message}</p>
                         </div>
                         <span className={cn(
                           "text-xs px-2 py-0.5 rounded-full",
-                          check.status === 'pass' ? "bg-green-500/15 text-green-400" :
-                          check.status === 'fail' ? "bg-red-500/15 text-red-400" :
-                          "bg-amber-500/10 text-amber-700"
+                          check.status === 'pass' ? "bg-green-500/15 text-green-500" :
+                          check.status === 'fail' ? "bg-red-500/15 text-red-500" :
+                          "bg-amber-500/100/10 text-amber-500"
                         )}>
                           {check.status.toUpperCase()}
                         </span>
@@ -9362,7 +8524,7 @@ ${auditLogSummary ? `
                     ))}
                     {validatingRlm && rlmChecks.filter(c => c.category === 'Snapshots').length === 0 && (
                       <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted border-border">
-                        <Loader2 className="h-5 w-5 text-violet-600 animate-spin" />
+                        <Loader2 className="h-5 w-5 text-violet-500 animate-spin" />
                         <span className="text-sm text-muted-foreground">Checking Snapshots...</span>
                       </div>
                     )}
@@ -9383,32 +8545,32 @@ ${auditLogSummary ? `
                           "flex items-center gap-3 p-3 rounded-lg border transition-all",
                           check.status === 'pass' ? "bg-green-500/10 border-green-500/30" :
                           check.status === 'fail' ? "bg-red-500/10 border-red-500/30" :
-                          "bg-amber-50 border-amber-200"
+                          "bg-amber-500/10 border-amber-500/30"
                         )}
                       >
                         <div className="flex-shrink-0">
                           {check.status === 'pass' ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-400" />
+                            <CheckCircle2 className="h-5 w-5 text-green-500" />
                           ) : check.status === 'fail' ? (
-                            <XCircle className="h-5 w-5 text-red-400" />
+                            <XCircle className="h-5 w-5 text-red-500" />
                           ) : (
-                            <AlertTriangle className="h-5 w-5 text-amber-600" />
+                            <AlertTriangle className="h-5 w-5 text-amber-500" />
                           )}
                         </div>
                         <div className="flex-1">
                           <p className="font-medium text-sm">{check.name}</p>
                           <p className={cn(
                             "text-xs",
-                            check.status === 'pass' ? "text-green-400" :
-                            check.status === 'fail' ? "text-red-400" :
-                            "text-amber-600"
+                            check.status === 'pass' ? "text-green-500" :
+                            check.status === 'fail' ? "text-red-500" :
+                            "text-amber-500"
                           )}>{check.message}</p>
                         </div>
                         <span className={cn(
                           "text-xs px-2 py-0.5 rounded-full",
-                          check.status === 'pass' ? "bg-green-500/15 text-green-400" :
-                          check.status === 'fail' ? "bg-red-500/15 text-red-400" :
-                          "bg-amber-500/10 text-amber-700"
+                          check.status === 'pass' ? "bg-green-500/15 text-green-500" :
+                          check.status === 'fail' ? "bg-red-500/15 text-red-500" :
+                          "bg-amber-500/100/10 text-amber-500"
                         )}>
                           {check.status.toUpperCase()}
                         </span>
@@ -9416,7 +8578,7 @@ ${auditLogSummary ? `
                     ))}
                     {validatingRlm && rlmChecks.filter(c => c.category === 'RLM Scripts').length === 0 && (
                       <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted border-border">
-                        <Loader2 className="h-5 w-5 text-violet-600 animate-spin" />
+                        <Loader2 className="h-5 w-5 text-violet-500 animate-spin" />
                         <span className="text-sm text-muted-foreground">Checking RLM Scripts...</span>
                       </div>
                     )}
@@ -9437,32 +8599,32 @@ ${auditLogSummary ? `
                           "flex items-center gap-3 p-3 rounded-lg border transition-all",
                           check.status === 'pass' ? "bg-green-500/10 border-green-500/30" :
                           check.status === 'fail' ? "bg-red-500/10 border-red-500/30" :
-                          "bg-amber-50 border-amber-200"
+                          "bg-amber-500/10 border-amber-500/30"
                         )}
                       >
                         <div className="flex-shrink-0">
                           {check.status === 'pass' ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-400" />
+                            <CheckCircle2 className="h-5 w-5 text-green-500" />
                           ) : check.status === 'fail' ? (
-                            <XCircle className="h-5 w-5 text-red-400" />
+                            <XCircle className="h-5 w-5 text-red-500" />
                           ) : (
-                            <AlertTriangle className="h-5 w-5 text-amber-600" />
+                            <AlertTriangle className="h-5 w-5 text-amber-500" />
                           )}
                         </div>
                         <div className="flex-1">
                           <p className="font-medium text-sm">{check.name}</p>
                           <p className={cn(
                             "text-xs",
-                            check.status === 'pass' ? "text-green-400" :
-                            check.status === 'fail' ? "text-red-400" :
-                            "text-amber-600"
+                            check.status === 'pass' ? "text-green-500" :
+                            check.status === 'fail' ? "text-red-500" :
+                            "text-amber-500"
                           )}>{check.message}</p>
                         </div>
                         <span className={cn(
                           "text-xs px-2 py-0.5 rounded-full",
-                          check.status === 'pass' ? "bg-green-500/15 text-green-400" :
-                          check.status === 'fail' ? "bg-red-500/15 text-red-400" :
-                          "bg-amber-500/10 text-amber-700"
+                          check.status === 'pass' ? "bg-green-500/15 text-green-500" :
+                          check.status === 'fail' ? "bg-red-500/15 text-red-500" :
+                          "bg-amber-500/100/10 text-amber-500"
                         )}>
                           {check.status.toUpperCase()}
                         </span>
@@ -9470,7 +8632,7 @@ ${auditLogSummary ? `
                     ))}
                     {validatingRlm && rlmChecks.filter(c => c.category === 'Token Budget').length === 0 && (
                       <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted border-border">
-                        <Loader2 className="h-5 w-5 text-violet-600 animate-spin" />
+                        <Loader2 className="h-5 w-5 text-violet-500 animate-spin" />
                         <span className="text-sm text-muted-foreground">Checking Token Budget...</span>
                       </div>
                     )}
@@ -9480,12 +8642,12 @@ ${auditLogSummary ? `
 
               {/* Recommendations for failed/warning items */}
               {!validatingRlm && rlmChecks.filter(c => c.status === 'fail' || c.status === 'warn').length > 0 && (
-                <div className="mt-6 p-4 bg-zinc-100 border border-border rounded-xl">
-                  <h4 className="font-semibold text-zinc-700 mb-2 flex items-center gap-2">
+                <div className="mt-6 p-4 bg-muted border border-border rounded-xl">
+                  <h4 className="font-semibold text-foreground/80 mb-2 flex items-center gap-2">
                     <Info className="h-4 w-4" />
                     Items Requiring Attention
                   </h4>
-                  <p className="text-sm text-zinc-600 mb-3">
+                  <p className="text-sm text-muted-foreground mb-3">
                     Download the report below for detailed recommendations on how to fix each RLM issue.
                   </p>
                 </div>
@@ -9501,7 +8663,7 @@ ${auditLogSummary ? `
                 {!validatingRlm && rlmChecks.length > 0 && (
                   <button
                     onClick={downloadRlmReport}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-card border border-border rounded-lg hover:bg-zinc-100 transition-colors text-sm font-medium"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-card border border-border rounded-lg hover:bg-muted transition-colors text-sm font-medium"
                   >
                     <Download className="h-4 w-4" />
                     Download Report (.md)
@@ -9513,7 +8675,7 @@ ${auditLogSummary ? `
                     "px-5 py-2.5 rounded-lg text-sm font-medium transition-colors",
                     rlmStatus === 'ready'
                       ? "bg-violet-600 hover:bg-violet-700 text-white"
-                      : "bg-background hover:bg-zinc-800 text-white"
+                      : "bg-muted hover:bg-muted/80 text-foreground"
                   )}
                 >
                   {rlmStatus === 'ready' ? 'Continue to Docker' : 'Close'}
@@ -9569,10 +8731,10 @@ ${auditLogSummary ? `
                     key={step.step}
                     className={cn(
                       "border rounded-xl overflow-hidden transition-all",
-                      step.status === 'running' ? 'border-blue-300 bg-blue-500/10' :
+                      step.status === 'running' ? 'border-blue-500/30 bg-blue-500/10' :
                       step.status === 'complete' ? 'border-green-500/30 bg-green-500/10' :
                       step.status === 'failed' ? 'border-red-500/30 bg-red-500/10' :
-                      'border-gray-200 bg-muted'
+                      'border-border bg-muted'
                     )}
                   >
                     <div className="px-4 py-3 flex items-center justify-between">
@@ -9580,9 +8742,9 @@ ${auditLogSummary ? `
                         <div className={cn(
                           "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
                           step.status === 'running' ? 'bg-blue-500/100 text-white' :
-                          step.status === 'complete' ? 'bg-green-500/100 text-white' :
-                          step.status === 'failed' ? 'bg-red-500/100 text-white' :
-                          'bg-gray-300 text-muted-foreground'
+                          step.status === 'complete' ? 'bg-green-500 text-white' :
+                          step.status === 'failed' ? 'bg-red-500 text-white' :
+                          'bg-muted-foreground text-muted-foreground'
                         )}>
                           {step.status === 'running' ? (
                             <RefreshCw className="h-4 w-4 animate-spin" />
@@ -9603,9 +8765,9 @@ ${auditLogSummary ? `
                       </div>
                       <span className={cn(
                         "text-xs font-medium px-2 py-1 rounded-full",
-                        step.status === 'running' ? 'bg-blue-200 text-blue-400' :
-                        step.status === 'complete' ? 'bg-green-200 text-green-400' :
-                        step.status === 'failed' ? 'bg-red-200 text-red-400' :
+                        step.status === 'running' ? 'bg-blue-500/20 text-blue-500' :
+                        step.status === 'complete' ? 'bg-green-500/20 text-green-500' :
+                        step.status === 'failed' ? 'bg-red-200 text-red-500' :
                         'bg-muted text-muted-foreground'
                       )}>
                         {step.status === 'running' ? 'Running...' :
@@ -9617,7 +8779,7 @@ ${auditLogSummary ? `
                     {/* Proof of file reading */}
                     {step.proof && step.status === 'complete' && (
                       <div className="px-4 pb-3">
-                        <div className="bg-background rounded-lg p-3 text-xs font-mono text-zinc-100 overflow-x-auto max-h-32 overflow-y-auto">
+                        <div className="bg-background rounded-lg p-3 text-xs font-mono text-foreground overflow-x-auto max-h-32 overflow-y-auto">
                           <pre className="whitespace-pre-wrap">{step.proof}</pre>
                         </div>
                       </div>
@@ -9630,13 +8792,13 @@ ${auditLogSummary ? `
               {analysisComplete && reportFilePath && (
                 <div className="mt-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
                   <div className="flex items-start gap-3">
-                    <CheckCircle2 className="h-5 w-5 text-green-400 mt-0.5" />
+                    <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5" />
                     <div className="flex-1">
-                      <p className="font-semibold text-green-400">Markdown Report Generated</p>
-                      <p className="text-sm text-green-400 mt-1">
+                      <p className="font-semibold text-green-500">Markdown Report Generated</p>
+                      <p className="text-sm text-green-500 mt-1">
                         Report saved to:
                       </p>
-                      <code className="block mt-2 px-3 py-2 bg-green-500/15 rounded-lg text-xs font-mono text-green-400 break-all">
+                      <code className="block mt-2 px-3 py-2 bg-green-500/15 rounded-lg text-xs font-mono text-green-500 break-all">
                         {reportFilePath}
                       </code>
                     </div>
@@ -9694,7 +8856,7 @@ ${auditLogSummary ? `
                 <h3 className="text-lg font-semibold">{setupGuides[helpModal].title}</h3>
                 <button
                   onClick={() => setHelpModal(null)}
-                  className="p-1 hover:bg-zinc-700 rounded transition-colors"
+                  className="p-1 hover:bg-muted rounded transition-colors"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -9705,14 +8867,14 @@ ${auditLogSummary ? `
             <div className="p-6">
               {/* Steps */}
               <div className="mb-6">
-                <h4 className="text-sm font-semibold text-zinc-500 uppercase tracking-wide mb-3">Steps</h4>
+                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Steps</h4>
                 <ol className="space-y-2">
                   {setupGuides[helpModal].steps.map((step, i) => (
                     <li key={i} className="flex items-start gap-3">
-                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-zinc-100 text-zinc-600 text-xs font-medium flex items-center justify-center">
+                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-muted text-muted-foreground text-xs font-medium flex items-center justify-center">
                         {i + 1}
                       </span>
-                      <span className="text-sm text-zinc-700 pt-0.5">{step}</span>
+                      <span className="text-sm text-foreground/80 pt-0.5">{step}</span>
                     </li>
                   ))}
                 </ol>
@@ -9721,7 +8883,7 @@ ${auditLogSummary ? `
               {/* Links */}
               {setupGuides[helpModal].links.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold text-zinc-500 uppercase tracking-wide mb-3">Quick Links</h4>
+                  <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Quick Links</h4>
                   <div className="space-y-2">
                     {setupGuides[helpModal].links.map((link, i) => (
                       <a
@@ -9729,11 +8891,11 @@ ${auditLogSummary ? `
                         href={link.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-3 bg-muted hover:bg-zinc-100 rounded-lg transition-colors group"
+                        className="flex items-center gap-2 px-4 py-3 bg-muted hover:bg-muted rounded-lg transition-colors group"
                       >
-                        <ExternalLink className="h-4 w-4 text-zinc-400 group-hover:text-zinc-600" />
-                        <span className="text-sm font-medium text-zinc-700 group-hover:text-zinc-900">{link.label}</span>
-                        <span className="text-xs text-zinc-400 ml-auto truncate max-w-[200px]">{link.url}</span>
+                        <ExternalLink className="h-4 w-4 text-muted-foreground group-hover:text-muted-foreground" />
+                        <span className="text-sm font-medium text-foreground/80 group-hover:text-foreground">{link.label}</span>
+                        <span className="text-xs text-muted-foreground ml-auto truncate max-w-[200px]">{link.url}</span>
                       </a>
                     ))}
                   </div>
@@ -9745,7 +8907,7 @@ ${auditLogSummary ? `
             <div className="px-6 py-4 bg-muted border-t flex justify-end">
               <button
                 onClick={() => setHelpModal(null)}
-                className="px-4 py-2 bg-background text-white rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors"
+                className="px-4 py-2 bg-background text-white rounded-lg text-sm font-medium hover:bg-muted transition-colors"
               >
                 Got it
               </button>
@@ -9785,8 +8947,8 @@ ${auditLogSummary ? `
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="px-3 py-1 bg-green-500/15 text-green-400 rounded-full text-xs font-medium">v1.0.0</span>
-                <span className="px-3 py-1 bg-blue-500/15 text-blue-400 rounded-full text-xs font-medium">DO-178C Inspired</span>
+                <span className="px-3 py-1 bg-green-500/15 text-green-500 rounded-full text-xs font-medium">v1.0.0</span>
+                <span className="px-3 py-1 bg-blue-500/15 text-blue-500 rounded-full text-xs font-medium">DO-178C Inspired</span>
               </div>
             </div>
 
@@ -9794,22 +8956,22 @@ ${auditLogSummary ? `
             <div className="max-w-7xl mx-auto px-8 py-8 space-y-12">
 
               {/* Hero Section */}
-              <div className="bg-gradient-to-r from-zinc-900 to-zinc-800 rounded-2xl p-8 text-white">
+              <div className="bg-gradient-to-r from-background to-card rounded-2xl p-8 text-white">
                 <div className="flex items-start justify-between">
                   <div className="max-w-2xl">
                     <h1 className="text-3xl font-bold mb-4">WAVE Architecture Overview</h1>
                     <p className="text-muted-foreground text-lg leading-relaxed mb-6">
-                      <strong className="text-white">WAVE</strong> (Workflow Automation & Validation Engine) is an <strong className="text-blue-400">Air Traffic Controller</strong> for AI agents.
+                      <strong className="text-white">WAVE</strong> (Workflow Automation & Validation Engine) is an <strong className="text-blue-500">Air Traffic Controller</strong> for AI agents.
                       Just like ATC coordinates multiple aircraft through takeoff, flight, and landing, WAVE orchestrates autonomous AI agents
-                      through development phases with <strong className="text-green-400">aerospace-grade safety protocols</strong>.
+                      through development phases with <strong className="text-green-500">aerospace-grade safety protocols</strong>.
                     </p>
                     <div className="flex items-center gap-4">
                       <div className="px-4 py-2 bg-card/10 rounded-lg flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-400" />
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
                         <span className="text-sm">Phase-Gate Model</span>
                       </div>
                       <div className="px-4 py-2 bg-card/10 rounded-lg flex items-center gap-2">
-                        <Shield className="h-4 w-4 text-blue-400" />
+                        <Shield className="h-4 w-4 text-blue-500" />
                         <span className="text-sm">DO-178C Inspired</span>
                       </div>
                       <div className="px-4 py-2 bg-card/10 rounded-lg flex items-center gap-2">
@@ -9820,9 +8982,9 @@ ${auditLogSummary ? `
                   </div>
                   <div className="text-right">
                     <div className="inline-block bg-card/10 rounded-xl p-4">
-                      <p className="text-xs text-zinc-400 uppercase tracking-wide mb-1">Current Status</p>
-                      <p className="text-2xl font-bold text-green-400">Operational</p>
-                      <p className="text-sm text-zinc-400 mt-1">Phase 0 Ready</p>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Current Status</p>
+                      <p className="text-2xl font-bold text-green-500">Operational</p>
+                      <p className="text-sm text-muted-foreground mt-1">Phase 0 Ready</p>
                     </div>
                   </div>
                 </div>
@@ -9851,7 +9013,7 @@ ${auditLogSummary ? `
                   <div>
                     <h2 className="text-2xl font-bold flex items-center gap-3">
                       <div className="w-10 h-10 bg-blue-500/15 rounded-xl flex items-center justify-center">
-                        <Layers className="h-5 w-5 text-blue-400" />
+                        <Layers className="h-5 w-5 text-blue-500" />
                       </div>
                       System Architecture (BPMN Swimlanes)
                     </h2>
@@ -9862,7 +9024,7 @@ ${auditLogSummary ? `
                   {/* Swimlanes */}
                   <div className="min-w-[900px]">
                     {/* Header */}
-                    <div className="flex mb-4 text-xs font-semibold text-zinc-500 uppercase tracking-wide">
+                    <div className="flex mb-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                       <div className="w-24 shrink-0">Layer</div>
                       <div className="flex-1 grid grid-cols-6 gap-2 text-center">
                         <div>Start</div>
@@ -9876,10 +9038,10 @@ ${auditLogSummary ? `
 
                     {/* Human Layer */}
                     <div className="flex items-stretch mb-2">
-                      <div className="w-24 shrink-0 bg-amber-500/10 rounded-l-lg p-2 flex items-center">
-                        <span className="text-xs font-semibold text-amber-700 [writing-mode:vertical-lr] rotate-180">HUMAN</span>
+                      <div className="w-24 shrink-0 bg-amber-500/100/10 rounded-l-lg p-2 flex items-center">
+                        <span className="text-xs font-semibold text-amber-500 [writing-mode:vertical-lr] rotate-180">HUMAN</span>
                       </div>
-                      <div className="flex-1 bg-amber-50 rounded-r-lg p-3 grid grid-cols-6 gap-2 items-center border-2 border-amber-200">
+                      <div className="flex-1 bg-amber-500/10 rounded-r-lg p-3 grid grid-cols-6 gap-2 items-center border-2 border-amber-500/30">
                         {/* Start Event */}
                         <div className="flex justify-center">
                           <div className="w-8 h-8 rounded-full border-2 border-green-600 bg-green-500/15 flex items-center justify-center">
@@ -9888,7 +9050,7 @@ ${auditLogSummary ? `
                         </div>
                         {/* Green Light */}
                         <div className="flex justify-center">
-                          <div className="px-3 py-2 bg-amber-200 rounded-lg border border-amber-400 text-xs font-medium text-center">
+                          <div className="px-3 py-2 bg-amber-500/20 rounded-lg border border-amber-500/30 text-xs font-medium text-center">
                             🟢 Green Light<br/>Approval
                           </div>
                         </div>
@@ -9896,13 +9058,13 @@ ${auditLogSummary ? `
                         <div />
                         {/* Monitor */}
                         <div className="flex justify-center">
-                          <div className="px-3 py-2 bg-amber-200 rounded-lg border border-amber-400 text-xs font-medium text-center">
+                          <div className="px-3 py-2 bg-amber-500/20 rounded-lg border border-amber-500/30 text-xs font-medium text-center">
                             👁️ Monitor<br/>Dashboard
                           </div>
                         </div>
                         {/* Review */}
                         <div className="flex justify-center">
-                          <div className="px-3 py-2 bg-amber-200 rounded-lg border border-amber-400 text-xs font-medium text-center">
+                          <div className="px-3 py-2 bg-amber-500/20 rounded-lg border border-amber-500/30 text-xs font-medium text-center">
                             ✅ Review<br/>& Approve
                           </div>
                         </div>
@@ -9918,12 +9080,12 @@ ${auditLogSummary ? `
                     {/* Orchestrator Layer */}
                     <div className="flex items-stretch mb-2">
                       <div className="w-24 shrink-0 bg-blue-500/15 rounded-l-lg p-2 flex items-center">
-                        <span className="text-xs font-semibold text-blue-400 [writing-mode:vertical-lr] rotate-180">WAVE</span>
+                        <span className="text-xs font-semibold text-blue-500 [writing-mode:vertical-lr] rotate-180">WAVE</span>
                       </div>
                       <div className="flex-1 bg-blue-500/10 rounded-r-lg p-3 grid grid-cols-6 gap-2 items-center border-2 border-blue-500/30">
                         {/* Trigger */}
                         <div className="flex justify-center">
-                          <div className="px-3 py-2 bg-blue-200 rounded border border-blue-400 text-xs font-medium">
+                          <div className="px-3 py-2 bg-blue-500/20 rounded border border-blue-500/30 text-xs font-medium">
                             ⚡ Trigger
                           </div>
                         </div>
@@ -9950,13 +9112,13 @@ ${auditLogSummary ? `
                         </div>
                         {/* Gate 4 */}
                         <div className="flex justify-center">
-                          <div className="w-10 h-10 bg-green-500/100 rotate-45 flex items-center justify-center">
+                          <div className="w-10 h-10 bg-green-500 rotate-45 flex items-center justify-center">
                             <span className="text-white text-xs font-bold -rotate-45">G4</span>
                           </div>
                         </div>
                         {/* Merge */}
                         <div className="flex justify-center">
-                          <div className="px-3 py-2 bg-green-200 rounded border border-green-400 text-xs font-medium">
+                          <div className="px-3 py-2 bg-green-500/20 rounded border border-green-500/50 text-xs font-medium">
                             🔀 Merge
                           </div>
                         </div>
@@ -9968,33 +9130,33 @@ ${auditLogSummary ? `
                       <div className="w-24 shrink-0 bg-purple-500/15 rounded-l-lg p-2 flex items-center">
                         <span className="text-xs font-semibold text-purple-400 [writing-mode:vertical-lr] rotate-180">AGENTS</span>
                       </div>
-                      <div className="flex-1 bg-purple-500/10 rounded-r-lg p-3 grid grid-cols-6 gap-2 items-center border-2 border-purple-200">
+                      <div className="flex-1 bg-purple-500/10 rounded-r-lg p-3 grid grid-cols-6 gap-2 items-center border-2 border-purple-500/30">
                         <div />
                         {/* Validate */}
                         <div className="flex justify-center">
-                          <div className="px-3 py-2 bg-purple-200 rounded-lg border border-purple-400 text-xs font-medium text-center">
+                          <div className="px-3 py-2 bg-purple-500/20 rounded-lg border border-purple-500/50 text-xs font-medium text-center">
                             📋 Validate<br/>Stories
                           </div>
                         </div>
                         {/* Setup */}
                         <div className="flex justify-center">
-                          <div className="px-3 py-2 bg-purple-200 rounded-lg border border-purple-400 text-xs font-medium text-center">
+                          <div className="px-3 py-2 bg-purple-500/20 rounded-lg border border-purple-500/50 text-xs font-medium text-center">
                             🔧 Setup<br/>Worktrees
                           </div>
                         </div>
                         {/* Parallel Agents */}
                         <div className="flex justify-center">
-                          <div className="border-2 border-dashed border-purple-400 rounded-lg p-2">
+                          <div className="border-2 border-dashed border-purple-500/50 rounded-lg p-2">
                             <div className="flex gap-1">
                               <div className="w-8 h-8 bg-blue-500/100 rounded text-white text-[10px] font-bold flex items-center justify-center">FE</div>
-                              <div className="w-8 h-8 bg-green-500/100 rounded text-white text-[10px] font-bold flex items-center justify-center">BE</div>
+                              <div className="w-8 h-8 bg-green-500 rounded text-white text-[10px] font-bold flex items-center justify-center">BE</div>
                             </div>
                             <p className="text-[9px] text-center mt-1 text-purple-400">Parallel</p>
                           </div>
                         </div>
                         {/* QA Agent */}
                         <div className="flex justify-center">
-                          <div className="px-3 py-2 bg-purple-200 rounded-lg border border-purple-400 text-xs font-medium text-center">
+                          <div className="px-3 py-2 bg-purple-500/20 rounded-lg border border-purple-500/50 text-xs font-medium text-center">
                             🧪 QA<br/>Validate
                           </div>
                         </div>
@@ -10005,14 +9167,14 @@ ${auditLogSummary ? `
                     {/* Data Layer */}
                     <div className="flex items-stretch">
                       <div className="w-24 shrink-0 bg-green-500/15 rounded-l-lg p-2 flex items-center">
-                        <span className="text-xs font-semibold text-green-400 [writing-mode:vertical-lr] rotate-180">DATA</span>
+                        <span className="text-xs font-semibold text-green-500 [writing-mode:vertical-lr] rotate-180">DATA</span>
                       </div>
                       <div className="flex-1 bg-green-500/10 rounded-r-lg p-3 grid grid-cols-6 gap-2 items-center border-2 border-green-500/30">
                         <div />
                         {/* Stories */}
                         <div className="flex justify-center">
                           <div className="flex items-center gap-1">
-                            <Database className="h-4 w-4 text-green-400" />
+                            <Database className="h-4 w-4 text-green-500" />
                             <span className="text-xs">Stories</span>
                           </div>
                         </div>
@@ -10046,7 +9208,7 @@ ${auditLogSummary ? `
                     </div>
 
                     {/* Flow Arrows */}
-                    <div className="mt-4 flex items-center justify-center gap-2 text-xs text-zinc-500">
+                    <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <div className="w-4 h-4 rounded-full border-2 border-green-600 bg-green-500/15" />
                         <span>Start</span>
@@ -10056,7 +9218,7 @@ ${auditLogSummary ? `
                         <span>Gate (Decision)</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <div className="w-6 h-4 bg-purple-200 rounded border border-purple-400" />
+                        <div className="w-6 h-4 bg-purple-500/20 rounded border border-purple-500/50" />
                         <span>Task</span>
                       </div>
                       <div className="flex items-center gap-1">
@@ -10064,7 +9226,7 @@ ${auditLogSummary ? `
                         <span>End</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <div className="w-6 h-4 border-2 border-dashed border-purple-400 rounded" />
+                        <div className="w-6 h-4 border-2 border-dashed border-purple-500/50 rounded" />
                         <span>Parallel</span>
                       </div>
                     </div>
@@ -10085,7 +9247,7 @@ ${auditLogSummary ? `
                     <p className="text-muted-foreground mt-1">How WAVE executes phases autonomously with drift detection</p>
                   </div>
                 </div>
-                <div className="bg-background rounded-xl p-6 text-zinc-100 font-mono text-xs overflow-x-auto">
+                <div className="bg-background rounded-xl p-6 text-foreground font-mono text-xs overflow-x-auto">
                   <pre className="whitespace-pre">{`
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
 │                           WAVE AUTONOMOUS EXECUTION FLOW                                 │
@@ -10139,7 +9301,7 @@ ${auditLogSummary ? `
                   <div>
                     <h2 className="text-2xl font-bold flex items-center gap-3">
                       <div className="w-10 h-10 bg-green-500/15 rounded-xl flex items-center justify-center">
-                        <ArrowRight className="h-5 w-5 text-green-400" />
+                        <ArrowRight className="h-5 w-5 text-green-500" />
                       </div>
                       Phase-Gate Process (Building Blocks)
                     </h2>
@@ -10151,8 +9313,8 @@ ${auditLogSummary ? `
                     { phase: '0', name: 'Stories', desc: 'Validate AI Stories', color: 'bg-blue-500/100', status: 'pass' },
                     { phase: '1', name: 'Environment', desc: 'Setup worktrees', color: 'bg-purple-500/100', status: 'pending' },
                     { phase: '2', name: 'Smoke Test', desc: 'Build, lint, test', color: 'bg-orange-500/100', status: 'pending' },
-                    { phase: '3', name: 'Development', desc: 'Agents execute', color: 'bg-green-500/100', status: 'pending' },
-                    { phase: '4', name: 'QA & Merge', desc: 'Validate & deploy', color: 'bg-red-500/100', status: 'pending' },
+                    { phase: '3', name: 'Development', desc: 'Agents execute', color: 'bg-green-500', status: 'pending' },
+                    { phase: '4', name: 'QA & Merge', desc: 'Validate & deploy', color: 'bg-red-500', status: 'pending' },
                   ].map((p, i) => (
                     <div key={p.phase} className="relative">
                       <div className={cn(
@@ -10197,7 +9359,7 @@ ${auditLogSummary ? `
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 bg-card border border-border rounded-xl">
                     <div className="flex items-center gap-3 mb-2">
-                      <Database className="h-5 w-5 text-green-400" />
+                      <Database className="h-5 w-5 text-green-500" />
                       <span className="font-semibold">Supabase (Source of Truth)</span>
                     </div>
                     <p className="text-sm text-muted-foreground">
@@ -10239,7 +9401,7 @@ ${auditLogSummary ? `
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-2xl font-bold flex items-center gap-3">
-                      <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                      <div className="w-10 h-10 bg-indigo-500/15 rounded-xl flex items-center justify-center">
                         <Bot className="h-5 w-5 text-indigo-600" />
                       </div>
                       Autonomous Agent Roles
@@ -10250,7 +9412,7 @@ ${auditLogSummary ? `
                 <div className="grid grid-cols-4 gap-4">
                   {[
                     { name: 'FE-Dev', color: 'bg-blue-500/100', role: 'Frontend Development', desc: 'Implements UI components, pages, and client-side logic in isolated fe-dev worktree', worktree: 'worktrees/fe-dev' },
-                    { name: 'BE-Dev', color: 'bg-green-500/100', role: 'Backend Development', desc: 'Builds APIs, database schemas, and server-side logic in isolated be-dev worktree', worktree: 'worktrees/be-dev' },
+                    { name: 'BE-Dev', color: 'bg-green-500', role: 'Backend Development', desc: 'Builds APIs, database schemas, and server-side logic in isolated be-dev worktree', worktree: 'worktrees/be-dev' },
                     { name: 'QA', color: 'bg-purple-500/100', role: 'Quality Assurance', desc: 'Runs tests, validates acceptance criteria, and approves changes for merge', worktree: 'worktrees/qa' },
                     { name: 'Dev-Fix', color: 'bg-orange-500/100', role: 'Bug Fixes & Patches', desc: 'Handles urgent fixes and patches that arise during development cycles', worktree: 'worktrees/dev-fix' },
                   ].map((agent) => (
@@ -10275,7 +9437,7 @@ ${auditLogSummary ? `
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-2xl font-bold flex items-center gap-3">
-                      <div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center">
+                      <div className="w-10 h-10 bg-cyan-500/15 rounded-xl flex items-center justify-center">
                         <Info className="h-5 w-5 text-cyan-600" />
                       </div>
                       Live System Status
@@ -10283,33 +9445,33 @@ ${auditLogSummary ? `
                     <p className="text-muted-foreground mt-1">Real-time status of the WAVE orchestration system</p>
                   </div>
                 </div>
-                <div className="bg-background text-zinc-100 rounded-xl p-5 font-mono text-sm">
+                <div className="bg-background text-foreground rounded-xl p-5 font-mono text-sm">
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-zinc-400">WAVE Version:</span>
-                      <span className="text-green-400">v1.0.0</span>
+                      <span className="text-muted-foreground">WAVE Version:</span>
+                      <span className="text-green-500">v1.0.0</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-zinc-400">Current Phase:</span>
-                      <span className="text-yellow-400">Phase 0 (Story Validation)</span>
+                      <span className="text-muted-foreground">Current Phase:</span>
+                      <span className="text-amber-500">Phase 0 (Story Validation)</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-zinc-400">Active Wave:</span>
-                      <span className="text-blue-400">None</span>
+                      <span className="text-muted-foreground">Active Wave:</span>
+                      <span className="text-blue-500">None</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-zinc-400">Supabase:</span>
-                      <span className={supabaseConnected ? "text-green-400" : "text-red-400"}>
+                      <span className="text-muted-foreground">Supabase:</span>
+                      <span className={supabaseConnected ? "text-green-500" : "text-red-500"}>
                         {supabaseConnected ? "Connected" : "Not Connected"}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-zinc-400">Stories Count:</span>
-                      <span className="text-zinc-100">{storiesCount}</span>
+                      <span className="text-muted-foreground">Stories Count:</span>
+                      <span className="text-foreground">{storiesCount}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-zinc-400">Emergency Stop:</span>
-                      <span className="text-green-400">CLEAR</span>
+                      <span className="text-muted-foreground">Emergency Stop:</span>
+                      <span className="text-green-500">CLEAR</span>
                     </div>
                   </div>
                 </div>
@@ -10320,7 +9482,7 @@ ${auditLogSummary ? `
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-2xl font-bold flex items-center gap-3">
-                      <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center">
+                      <div className="w-10 h-10 bg-rose-500/15 rounded-xl flex items-center justify-center">
                         <Target className="h-5 w-5 text-rose-600" />
                       </div>
                       Gate Reference Guide
@@ -10331,13 +9493,13 @@ ${auditLogSummary ? `
                 <div className="grid grid-cols-8 gap-3">
                   {[
                     { gate: '-1', name: 'Pre-Validation', desc: 'Zero Error Launch Protocol', color: 'border-border bg-muted' },
-                    { gate: '0', name: 'Stories', desc: 'Schema & coverage validation', color: 'border-blue-300 bg-blue-500/10' },
-                    { gate: '1', name: 'Environment', desc: 'Worktrees & deps ready', color: 'border-purple-300 bg-purple-500/10' },
-                    { gate: '2', name: 'Smoke Test', desc: 'Build, lint, test pass', color: 'border-orange-300 bg-orange-500/10' },
-                    { gate: '3', name: 'Development', desc: 'Agents executing', color: 'border-green-300 bg-green-500/10' },
-                    { gate: '4', name: 'QA Review', desc: 'Tests & validation', color: 'border-indigo-300 bg-indigo-50' },
-                    { gate: '5', name: 'Merge', desc: 'Merge to main', color: 'border-cyan-300 bg-cyan-500/10' },
-                    { gate: '6+', name: 'Deploy', desc: 'Deploy & monitor', color: 'border-rose-300 bg-rose-50' },
+                    { gate: '0', name: 'Stories', desc: 'Schema & coverage validation', color: 'border-blue-500/30 bg-blue-500/10' },
+                    { gate: '1', name: 'Environment', desc: 'Worktrees & deps ready', color: 'border-purple-500/30 bg-purple-500/10' },
+                    { gate: '2', name: 'Smoke Test', desc: 'Build, lint, test pass', color: 'border-orange-500/30 bg-orange-500/10' },
+                    { gate: '3', name: 'Development', desc: 'Agents executing', color: 'border-green-500/30 bg-green-500/10' },
+                    { gate: '4', name: 'QA Review', desc: 'Tests & validation', color: 'border-indigo-500/30 bg-indigo-500/10' },
+                    { gate: '5', name: 'Merge', desc: 'Merge to main', color: 'border-cyan-500/30 bg-cyan-500/10' },
+                    { gate: '6+', name: 'Deploy', desc: 'Deploy & monitor', color: 'border-rose-500/30 bg-rose-500/10' },
                   ].map((g) => (
                     <div key={g.gate} className={cn("p-4 rounded-xl border-2 text-center", g.color)}>
                       <div className="w-10 h-10 bg-card rounded-lg mx-auto mb-2 flex items-center justify-center border border-border">
@@ -10351,22 +9513,22 @@ ${auditLogSummary ? `
               </div>
 
               {/* Safety & Compliance */}
-              <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-2xl p-8 border border-red-500/20">
+              <div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 rounded-2xl p-8 border border-red-500/20">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h2 className="text-2xl font-bold flex items-center gap-3 text-red-400">
+                    <h2 className="text-2xl font-bold flex items-center gap-3 text-red-500">
                       <Shield className="h-6 w-6" />
                       Safety & Compliance (DO-178C Inspired)
                     </h2>
-                    <p className="text-red-400/80 mt-2 max-w-2xl">
+                    <p className="text-red-500/80 mt-2 max-w-2xl">
                       WAVE implements aerospace-grade safety protocols inspired by DO-178C certification standards.
                       All operations are validated, audited, and can be halted instantly via emergency stop.
                     </p>
                   </div>
                   <div className="text-right">
                     <div className="inline-block bg-card rounded-xl p-4 border border-red-500/30">
-                      <p className="text-xs text-red-400 uppercase tracking-wide mb-1">Forbidden Operations</p>
-                      <p className="text-3xl font-bold text-red-400">108</p>
+                      <p className="text-xs text-red-500 uppercase tracking-wide mb-1">Forbidden Operations</p>
+                      <p className="text-3xl font-bold text-red-500">108</p>
                       <p className="text-xs text-muted-foreground">Protected actions</p>
                     </div>
                   </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
-import { cn, getGateName, formatRelativeTime, getStatusColor } from '../lib/utils'
+import { cn, getGateName, formatRelativeTime, getStatusBadgeClasses } from '../lib/utils'
 import type { Story } from '../types/database'
 import { Search } from 'lucide-react'
 
@@ -132,7 +132,7 @@ export function Stories() {
                   <td className="px-4 py-3 text-sm">{getGateName(story.gate)}</td>
                   <td className="px-4 py-3 text-sm">{story.agent_type || '-'}</td>
                   <td className="px-4 py-3">
-                    <span className={cn('px-2 py-1 text-xs rounded-full', getStatusColor(story.status))}>
+                    <span className={cn('px-2 py-1 text-xs rounded-full', getStatusBadgeClasses(story.status))}>
                       {story.status}
                     </span>
                   </td>

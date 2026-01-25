@@ -15,7 +15,7 @@ import {
   Search
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
-import { cn } from '../lib/utils'
+import { cn, getStatusBadgeClasses } from '../lib/utils'
 import type { Project } from '../types/database'
 
 interface TreeNode {
@@ -115,7 +115,7 @@ function TreeItem({ node, level = 0 }: { node: TreeNode; level?: number }) {
           title="Copy path"
         >
           {copied ? (
-            <Check className="h-3 w-3 text-success" />
+            <Check className="h-3 w-3 text-green-500" />
           ) : (
             <Copy className="h-3 w-3 text-muted-foreground" />
           )}
@@ -265,7 +265,7 @@ export function Projects() {
                   <span className="font-medium">{project.name}</span>
                   <span className={cn(
                     'text-xs px-2 py-0.5 rounded-full',
-                    project.status === 'active' ? 'bg-success/20 text-green-600' : 'bg-muted'
+                    getStatusBadgeClasses(project.status)
                   )}>
                     {project.status}
                   </span>
@@ -298,7 +298,7 @@ export function Projects() {
             >
               <div className="flex items-center justify-between">
                 <span className="font-medium">Demo Project</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-success/20 text-green-600">
+                <span className={cn('text-xs px-2 py-0.5 rounded-full', getStatusBadgeClasses('active'))}>
                   active
                 </span>
               </div>

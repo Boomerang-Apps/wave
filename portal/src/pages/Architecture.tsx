@@ -68,7 +68,7 @@ export function Architecture() {
         {activeTab === 'overview' && (
           <>
             {/* Hero */}
-            <div className="bg-gradient-to-r from-zinc-900 to-zinc-800 rounded-2xl p-8 text-white">
+            <div className="bg-gradient-to-r from-background to-card rounded-2xl p-8 text-white">
               <div className="max-w-3xl">
                 <h2 className="text-3xl font-bold mb-4">WAVE Framework</h2>
                 <p className="text-muted-foreground text-lg leading-relaxed mb-6">
@@ -178,28 +178,28 @@ export function Architecture() {
             </div>
 
             {/* Agent Hierarchy */}
-            <div className="bg-gradient-to-b from-zinc-900 to-zinc-800 rounded-2xl p-8 text-white mb-6">
+            <div className="bg-gradient-to-b from-background to-card rounded-2xl p-8 text-white mb-6">
               <h4 className="text-lg font-semibold mb-6 text-muted-foreground">Agent Hierarchy</h4>
               <div className="flex flex-col items-center gap-4">
                 <div className="px-6 py-3 bg-amber-500/20 border border-amber-500/50 rounded-xl text-amber-300 font-medium">
                   Human (L1 Approval)
                 </div>
-                <div className="w-px h-6 bg-zinc-600" />
+                <div className="w-px h-6 bg-border" />
                 <div className="px-6 py-3 bg-purple-500/100/20 border border-purple-500/50 rounded-xl text-purple-300 font-medium">
                   CTO Agent (Opus 4.5) - L2
                 </div>
-                <div className="w-px h-6 bg-zinc-600" />
+                <div className="w-px h-6 bg-border" />
                 <div className="px-6 py-3 bg-blue-500/100/20 border border-blue-500/50 rounded-xl text-blue-300 font-medium">
                   PM Agent (Opus 4.5) - L3
                 </div>
-                <div className="w-px h-6 bg-zinc-600" />
+                <div className="w-px h-6 bg-border" />
                 <div className="flex gap-4">
                   <div className="px-4 py-2 bg-green-500/100/20 border border-green-500/50 rounded-lg text-green-300 text-sm">FE-Dev-1</div>
                   <div className="px-4 py-2 bg-green-500/100/20 border border-green-500/50 rounded-lg text-green-300 text-sm">FE-Dev-2</div>
                   <div className="px-4 py-2 bg-cyan-500/100/20 border border-cyan-500/50 rounded-lg text-cyan-300 text-sm">BE-Dev-1</div>
                   <div className="px-4 py-2 bg-cyan-500/100/20 border border-cyan-500/50 rounded-lg text-cyan-300 text-sm">BE-Dev-2</div>
                 </div>
-                <div className="w-px h-6 bg-zinc-600" />
+                <div className="w-px h-6 bg-border" />
                 <div className="flex gap-4">
                   <div className="px-6 py-3 bg-orange-500/100/20 border border-orange-500/50 rounded-xl text-orange-300 font-medium">
                     QA Agent (Haiku 4) - L4
@@ -273,13 +273,13 @@ export function Architecture() {
                       "w-16 h-16 rounded-xl flex flex-col items-center justify-center text-white font-bold transition-all",
                       g.status === 'pass' ? 'bg-green-500/100' :
                       g.status === 'active' ? 'bg-blue-500/100 ring-4 ring-blue-500/30' :
-                      'bg-zinc-700'
+                      'bg-muted'
                     )}>
                       <span className="text-xs opacity-70">Gate</span>
                       <span className="text-lg">{g.gate}</span>
                     </div>
                     {i < 7 && (
-                      <ArrowRight className="h-5 w-5 mx-2 text-zinc-600" />
+                      <ArrowRight className="h-5 w-5 mx-2 text-muted-foreground" />
                     )}
                   </div>
                 ))}

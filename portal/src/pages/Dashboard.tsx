@@ -10,7 +10,7 @@ import {
   Plus
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
-import { cn } from '../lib/utils'
+import { cn, getStatusBadgeClasses, getGateName as getGateNameUtil } from '../lib/utils'
 
 interface Stats {
   projects: number
@@ -163,35 +163,7 @@ export function Dashboard() {
     { name: 'Completed', value: stats.completed, icon: CheckCircle2, href: '/stories', color: 'text-green-500' },
   ]
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-      case 'done':
-        return 'bg-green-500/10 text-green-600'
-      case 'in_progress':
-      case 'active':
-        return 'bg-blue-500/10 text-blue-600'
-      case 'pending':
-        return 'bg-gray-500/10 text-gray-600'
-      default:
-        return 'bg-gray-500/10 text-gray-600'
-    }
-  }
-
-  const getGateName = (gate: number) => {
-    const gates: Record<number, string> = {
-      [-1]: 'Pre-Validation',
-      0: 'Story Validation',
-      1: 'Environment Setup',
-      2: 'Smoke Test',
-      3: 'Development',
-      4: 'QA/Merge',
-      5: 'Deployment',
-      6: 'Monitoring',
-      7: 'Complete',
-    }
-    return gates[gate] || `Gate ${gate}`
-  }
+  // Using imported utilities for consistent styling
 
   return (
     <div className="space-y-6">
@@ -304,10 +276,10 @@ export function Dashboard() {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium">Wave {wave.wave_number}</p>
                     <p className="text-xs text-muted-foreground">
-                      {getGateName(wave.current_gate)}
+                      {getGateNameUtil(wave.current_gate)}
                     </p>
                   </div>
-                  <span className={cn('px-2 py-1 text-xs rounded-full', getStatusColor(wave.status))}>
+                  <span className={cn('px-2 py-1 text-xs rounded-full', getStatusBadgeClasses(wave.status))}>
                     {wave.status}
                   </span>
                 </div>
@@ -341,7 +313,7 @@ export function Dashboard() {
                   <p className="font-medium truncate">{story.title}</p>
                   <p className="text-xs text-muted-foreground">{story.story_id}</p>
                 </div>
-                <span className={cn('px-2 py-1 text-xs rounded-full', getStatusColor(story.status))}>
+                <span className={cn('px-2 py-1 text-xs rounded-full', getStatusBadgeClasses(story.status))}>
                   {story.status}
                 </span>
               </div>

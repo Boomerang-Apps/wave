@@ -1,17 +1,11 @@
 /**
- * LaunchSequenceProgress Component (Phase 6)
+ * LaunchSequenceProgress Component
  *
- * Visual progress indicator for the 10-step launch sequence.
- * Shows completion status with step circles and connecting lines.
- *
- * Design: Shadcn UI, Light Mode, Tailwind colors, Lucide icons
+ * Clean, minimal progress indicator for the 10-step launch sequence.
+ * Shows step circles with labels and connecting lines.
  */
 
 import { Check, Rocket } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 
 // ============================================
@@ -25,68 +19,8 @@ export interface LaunchStep {
 }
 
 export interface LaunchSequenceProgressProps {
-  /** Array of all steps in the launch sequence */
   steps: LaunchStep[];
-  /** Index of the currently active step */
   currentStep: number;
-  /** Optional: Show compact version */
-  compact?: boolean;
-}
-
-// ============================================
-// Step Circle Component
-// ============================================
-
-interface StepCircleProps {
-  stepNumber: number;
-  status: 'idle' | 'ready' | 'blocked' | 'validating';
-  isCurrent: boolean;
-  isLast: boolean;
-}
-
-function StepCircle({ stepNumber, status, isCurrent, isLast }: StepCircleProps) {
-  return (
-    <div
-      className={cn(
-        'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300',
-        status === 'ready' && 'bg-primary text-primary-foreground',
-        status === 'blocked' && 'bg-destructive text-destructive-foreground',
-        status === 'validating' && 'bg-amber-500 text-white animate-pulse',
-        status === 'idle' && 'bg-muted text-muted-foreground',
-        isCurrent && 'ring-2 ring-primary ring-offset-2 ring-offset-background'
-      )}
-      title={`Step ${stepNumber}`}
-    >
-      {status === 'ready' ? (
-        isLast ? (
-          <Rocket className="h-4 w-4" />
-        ) : (
-          <Check className="h-4 w-4" />
-        )
-      ) : (
-        stepNumber
-      )}
-    </div>
-  );
-}
-
-// ============================================
-// Connecting Line Component
-// ============================================
-
-interface ConnectingLineProps {
-  isComplete: boolean;
-}
-
-function ConnectingLine({ isComplete }: ConnectingLineProps) {
-  return (
-    <div
-      className={cn(
-        'flex-1 h-1 mx-1 rounded-full transition-colors duration-300',
-        isComplete ? 'bg-primary' : 'bg-muted'
-      )}
-    />
-  );
 }
 
 // ============================================
@@ -95,84 +29,74 @@ function ConnectingLine({ isComplete }: ConnectingLineProps) {
 
 export function LaunchSequenceProgress({
   steps,
-  currentStep,
-  compact = false
+  currentStep
 }: LaunchSequenceProgressProps) {
   const completedCount = steps.filter(s => s.status === 'ready').length;
-  const allComplete = completedCount === steps.length;
-  const progressPercent = (completedCount / steps.length) * 100;
 
   return (
-    <Card className="mb-6">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Rocket className={cn('h-5 w-5', allComplete ? 'text-primary' : 'text-muted-foreground')} />
-            Launch Sequence
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            <span className={cn('text-sm', allComplete ? 'text-primary' : 'text-muted-foreground')}>
-              {completedCount}/{steps.length} Complete
-            </span>
-            {allComplete && (
-              <Badge variant="default" className="bg-green-500/100 hover:bg-green-500">
-                READY
-              </Badge>
-            )}
-          </div>
+    <div className="bg-card border border-border rounded-xl p-5 mb-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Rocket className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium text-sm">Launch Sequence</span>
         </div>
-      </CardHeader>
+        <span className="text-sm text-muted-foreground">
+          {completedCount}/{steps.length} Complete
+        </span>
+      </div>
 
-      <CardContent className="space-y-4">
-        {/* Overall Progress Bar */}
-        <Progress value={progressPercent} className="h-2" />
-
-        {/* Step Circles */}
-        <div className="flex items-center">
-          {steps.map((step, index) => (
-            <div key={step.id} className="contents">
-              <StepCircle
-                stepNumber={index}
-                status={step.status}
-                isCurrent={index === currentStep}
-                isLast={index === steps.length - 1}
-              />
-              {index < steps.length - 1 && (
-                <ConnectingLine isComplete={step.status === 'ready'} />
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Step Labels (non-compact mode) */}
-        {!compact && (
-          <div className="flex items-center text-[10px] text-muted-foreground">
-            {steps.map((step, index) => (
+      {/* Stepper */}
+      <div className="flex items-center">
+        {steps.map((step, index) => (
+          <div key={step.id} className="flex items-center flex-1 last:flex-none">
+            {/* Step Circle + Label */}
+            <div className="flex flex-col items-center">
               <div
-                key={step.id}
                 className={cn(
-                  'flex-1 text-center truncate px-1',
-                  index === currentStep && 'text-foreground font-medium',
-                  step.status === 'ready' && 'text-primary'
+                  'w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all',
+                  step.status === 'ready' && 'bg-green-500 text-white',
+                  step.status === 'blocked' && 'bg-red-500 text-white',
+                  step.status === 'validating' && 'bg-amber-500 text-white animate-pulse',
+                  step.status === 'idle' && 'bg-muted text-muted-foreground',
+                  index === currentStep && step.status === 'idle' && 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+                )}
+              >
+                {step.status === 'ready' ? (
+                  index === steps.length - 1 ? (
+                    <Rocket className="h-3.5 w-3.5" />
+                  ) : (
+                    <Check className="h-3.5 w-3.5" />
+                  )
+                ) : (
+                  index
+                )}
+              </div>
+              <span
+                className={cn(
+                  'text-[10px] mt-1.5 whitespace-nowrap',
+                  step.status === 'ready' && 'text-green-500',
+                  step.status === 'blocked' && 'text-red-500',
+                  step.status !== 'ready' && step.status !== 'blocked' && 'text-muted-foreground'
                 )}
               >
                 {step.label}
-              </div>
-            ))}
-          </div>
-        )}
+              </span>
+            </div>
 
-        {/* All Green Message */}
-        {allComplete && (
-          <Alert className="border-green-500/30 bg-green-500/10">
-            <Check className="h-4 w-4 text-green-400" />
-            <AlertDescription className="text-green-400 font-medium ml-2">
-              All systems green - Launch authorized
-            </AlertDescription>
-          </Alert>
-        )}
-      </CardContent>
-    </Card>
+            {/* Connecting Line */}
+            {index < steps.length - 1 && (
+              <div
+                className={cn(
+                  'flex-1 h-0.5 mx-2 mt-[-18px]',
+                  step.status === 'ready' ? 'bg-green-500' : 'bg-muted'
+                )}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

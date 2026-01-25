@@ -173,6 +173,49 @@
     @apply bg-muted text-foreground;
   }
 
+  /* Status badge styles - no borders, subtle backgrounds */
+  .status-badge {
+    @apply inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full;
+  }
+
+  .status-badge-success {
+    @apply status-badge bg-green-500/10 text-green-500;
+  }
+
+  .status-badge-warning {
+    @apply status-badge bg-amber-500/10 text-amber-500;
+  }
+
+  .status-badge-error {
+    @apply status-badge bg-red-500/10 text-red-500;
+  }
+
+  .status-badge-info {
+    @apply status-badge bg-blue-500/10 text-blue-500;
+  }
+
+  .status-badge-muted {
+    @apply status-badge bg-muted text-muted-foreground;
+  }
+
+  /* Stat card with icon - consistent pattern */
+  .stat-card {
+    @apply flex items-center gap-4 p-4 bg-card rounded-xl border border-border;
+    @apply hover:border-primary/50 transition-colors;
+  }
+
+  .stat-card-icon {
+    @apply p-3 rounded-lg bg-muted;
+  }
+
+  .stat-card-value {
+    @apply text-2xl font-bold;
+  }
+
+  .stat-card-label {
+    @apply text-sm text-muted-foreground;
+  }
+
   /* Badge styles - Devin uses green for NEW */
   .badge-new {
     @apply inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium;

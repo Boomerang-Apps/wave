@@ -134,7 +134,7 @@ export function NewProject() {
         </div>
 
         {error && (
-          <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-600 text-sm">
+          <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-500 text-sm">
             {error}
           </div>
         )}

@@ -1,13 +1,13 @@
 /**
  * MockupDesignTab Component (Launch Sequence)
  *
- * Phase 2, Step 2.5: Mockup Tab UI Component
- *
- * Provides the UI for Step 0 of the launch sequence - validating HTML mockups.
- * Users can validate their design_mockups folder and lock mockups when ready.
+ * Step 0: Validate HTML mockups before any development
+ * Uses standardized TabLayout components for consistent UI
  */
 
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { Palette, FileCode, Layout, CheckCircle2, XCircle, AlertTriangle, Lock, Database } from 'lucide-react';
+import { InfoBox, KPICards, ActionBar, ResultSummary, ExpandableCard, TabContainer } from './TabLayout';
 
 // ============================================
 // Types
@@ -38,66 +38,8 @@ export interface ValidationResult {
 export interface MockupDesignTabProps {
   projectPath: string;
   projectId: string;
-  validationStatus: 'idle' | 'ready' | 'blocked';
+  validationStatus: 'idle' | 'validating' | 'ready' | 'blocked';
   onValidationComplete: (status: 'ready' | 'blocked') => void;
-}
-
-// ============================================
-// Status Indicator Component
-// ============================================
-
-function StatusIndicator({ status }: { status: 'idle' | 'ready' | 'blocked' | 'validating' }) {
-  const colorClass = {
-    idle: 'bg-muted-foreground',
-    validating: 'bg-yellow-500',
-    ready: 'bg-green-500/100',
-    blocked: 'bg-red-500/100'
-  }[status];
-
-  return (
-    <div
-      data-testid="status-indicator"
-      className={`w-3 h-3 rounded-full ${colorClass}`}
-    />
-  );
-}
-
-// ============================================
-// Loading Spinner Component
-// ============================================
-
-function LoadingSpinner() {
-  return (
-    <div data-testid="loading-spinner" className="animate-spin h-4 w-4 border-2 border-border border-t-blue-600 rounded-full" />
-  );
-}
-
-// ============================================
-// Check Icon Components
-// ============================================
-
-function CheckPassIcon() {
-  return (
-    <svg data-testid="check-pass-icon" className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-    </svg>
-  );
-}
-
-function CheckFailIcon() {
-  return (
-    <svg data-testid="check-fail-icon" className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-    </svg>
-  );
-}
-
-function CheckWarnIcon() {
-  return (
-    <svg data-testid="check-warn-icon" className="h-4 w-4 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-    </svg>
-  );
 }
 
 // ============================================
@@ -111,7 +53,7 @@ export function MockupDesignTab({
   onValidationComplete
 }: MockupDesignTabProps) {
   const [isValidating, setIsValidating] = useState(false);
-  const [currentStatus, setCurrentStatus] = useState<'idle' | 'ready' | 'blocked'>(initialStatus);
+  const [currentStatus, setCurrentStatus] = useState<'idle' | 'validating' | 'ready' | 'blocked'>(initialStatus);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -154,111 +96,133 @@ export function MockupDesignTab({
     onValidationComplete('ready');
   }, [onValidationComplete]);
 
-  const displayStatus = isValidating ? 'validating' : currentStatus;
+  // Calculate KPIs
+  const passedChecks = validationResult?.checks.filter(c => c.status === 'pass').length || 0;
+  const totalChecks = validationResult?.checks.length || 0;
+  const screenCount = validationResult?.screens.length || 0;
+
+  // Format timestamp
+  const formatTimestamp = (ts?: string) => {
+    if (!ts) return undefined;
+    try {
+      return new Date(ts).toLocaleString();
+    } catch {
+      return ts;
+    }
+  };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header with Status */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold">Mockup Design</h2>
-          <p className="text-sm text-muted-foreground">
-            Step 0: Validate HTML mockups in <span className="font-mono">{projectName}</span>
-          </p>
-        </div>
-        <StatusIndicator status={displayStatus} />
-      </div>
+    <TabContainer>
+      {/* 1. INFO BOX */}
+      <InfoBox
+        title="Step 0: Mockup Design Validation"
+        description={`Validate HTML mockups in the design_mockups folder before development begins. This ensures your visual designs are locked and ready for the agent system. Project: ${projectName}`}
+        icon={<Palette className="h-4 w-4 text-blue-500" />}
+      />
 
-      {/* Info Box */}
-      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-        <p className="text-sm text-blue-400">
-          Before launching the WAVE agent system, you must validate your HTML mockups.
-          Place your design files in the <code className="bg-blue-100 px-1 rounded">design_mockups</code> folder.
-        </p>
-      </div>
+      {/* 2. KPI CARDS */}
+      <KPICards
+        items={[
+          {
+            label: 'Screens',
+            value: screenCount,
+            status: screenCount > 0 ? 'success' : 'neutral',
+            icon: <Layout className="h-4 w-4" />
+          },
+          {
+            label: 'Checks Passed',
+            value: `${passedChecks}/${totalChecks}`,
+            status: passedChecks === totalChecks && totalChecks > 0 ? 'success' : totalChecks > 0 ? 'warning' : 'neutral',
+            icon: <CheckCircle2 className="h-4 w-4" />
+          },
+          {
+            label: 'Status',
+            value: currentStatus === 'ready' ? 'Ready' : currentStatus === 'blocked' ? 'Blocked' : 'Pending',
+            status: currentStatus === 'ready' ? 'success' : currentStatus === 'blocked' ? 'error' : 'neutral',
+          },
+        ]}
+      />
 
-      {/* Validate Button */}
-      <div className="flex items-center gap-4">
-        <button
-          onClick={handleValidate}
-          disabled={isValidating}
-          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-        >
-          {isValidating && <LoadingSpinner />}
-          Validate Mockups
-        </button>
-      </div>
+      {/* 3. ACTION BAR */}
+      <ActionBar
+        category="MOCKUP"
+        title="Design Validation"
+        description={`HTML mockups for ${projectName}`}
+        statusBadge={validationResult ? {
+          label: formatTimestamp(validationResult.timestamp) || 'Validated',
+          icon: <Database className="h-3 w-3" />,
+          variant: currentStatus === 'ready' ? 'success' : 'warning'
+        } : undefined}
+        primaryAction={{
+          label: currentStatus === 'ready' ? 'Re-Validate' : 'Validate Mockups',
+          onClick: handleValidate,
+          loading: isValidating,
+          icon: <FileCode className="h-4 w-4" />
+        }}
+        secondaryAction={currentStatus === 'ready' && !error ? {
+          label: 'Lock & Continue',
+          onClick: handleLockMockups,
+          icon: <Lock className="h-4 w-4" />
+        } : undefined}
+      />
 
-      {/* Progress Bar (shown during validation) */}
-      {isValidating && (
-        <div className="w-full bg-muted rounded-full h-2">
-          <div
-            role="progressbar"
-            className="bg-primary h-2 rounded-full animate-pulse"
-            style={{ width: '60%' }}
-          />
-        </div>
+      {/* 4. RESULT SUMMARY */}
+      {(validationResult || error) && (
+        <ResultSummary
+          status={error ? 'fail' : currentStatus === 'ready' ? 'pass' : currentStatus === 'blocked' ? 'fail' : 'pending'}
+          message={error || (currentStatus === 'ready' ? 'All mockups validated successfully' : 'Some checks failed - review details below')}
+          timestamp={formatTimestamp(validationResult?.timestamp)}
+        />
       )}
 
-      {/* Error Display */}
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-          <p className="text-sm text-red-400">
-            Error: {error}
-          </p>
-        </div>
-      )}
-
-      {/* Validation Results */}
+      {/* 5. EXPANDABLE DETAIL CARDS */}
       {validationResult && !error && (
-        <div className="space-y-4">
-          {/* Checks List */}
-          <div className="border rounded-lg divide-y">
-            <div className="px-4 py-2 bg-muted font-medium">
-              Validation Checks
-            </div>
-            {validationResult.checks.map((check, index) => (
-              <div key={index} className="px-4 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {check.status === 'pass' && <CheckPassIcon />}
-                  {check.status === 'fail' && <CheckFailIcon />}
-                  {check.status === 'warn' && <CheckWarnIcon />}
-                  <span>{check.name}</span>
-                </div>
-                <span className="text-sm text-muted-foreground">{check.message}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Screens List */}
-          {validationResult.screens.length > 0 && (
-            <div className="border rounded-lg divide-y">
-              <div className="px-4 py-2 bg-muted font-medium">
-                Detected Screens
-              </div>
-              {validationResult.screens.map((screen, index) => (
-                <div key={index} className="px-4 py-3">
-                  <div className="font-medium">{screen.name}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {screen.title} - {screen.summary}
+        <>
+          {/* Validation Checks */}
+          <ExpandableCard
+            title="Validation Checks"
+            subtitle={`${passedChecks} of ${totalChecks} checks passed`}
+            icon={<CheckCircle2 className="h-4 w-4" />}
+            status={passedChecks === totalChecks ? 'pass' : 'warn'}
+            defaultExpanded={passedChecks < totalChecks}
+          >
+            <div className="space-y-2">
+              {validationResult.checks.map((check, index) => (
+                <div key={index} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                  <div className="flex items-center gap-2">
+                    {check.status === 'pass' && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                    {check.status === 'fail' && <XCircle className="h-4 w-4 text-red-500" />}
+                    {check.status === 'warn' && <AlertTriangle className="h-4 w-4 text-amber-500" />}
+                    <span className="text-sm">{check.name}</span>
                   </div>
+                  <span className="text-xs text-muted-foreground">{check.message}</span>
                 </div>
               ))}
             </div>
-          )}
+          </ExpandableCard>
 
-          {/* Lock Mockups Button (only when ready) */}
-          {currentStatus === 'ready' && (
-            <button
-              onClick={handleLockMockups}
-              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-2"
+          {/* Detected Screens */}
+          {screenCount > 0 && (
+            <ExpandableCard
+              title="Detected Screens"
+              subtitle={`${screenCount} HTML mockup${screenCount !== 1 ? 's' : ''} found`}
+              icon={<Layout className="h-4 w-4" />}
+              status="pass"
+              defaultExpanded={false}
             >
-              Lock Mockups
-            </button>
+              <div className="space-y-2">
+                {validationResult.screens.map((screen, index) => (
+                  <div key={index} className="py-2 border-b border-border last:border-0">
+                    <div className="font-medium text-sm">{screen.name}</div>
+                    <div className="text-xs text-muted-foreground">{screen.title} - {screen.summary}</div>
+                  </div>
+                ))}
+              </div>
+            </ExpandableCard>
           )}
-        </div>
+        </>
       )}
-    </div>
+    </TabContainer>
   );
 }
 

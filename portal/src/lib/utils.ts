@@ -46,6 +46,7 @@ export function getGateName(gateId: number | string): string {
 
 /**
  * Get status color class based on status string
+ * Returns text color only (for icons, text, etc.)
  */
 export function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
@@ -53,15 +54,69 @@ export function getStatusColor(status: string): string {
     'pass': 'text-green-500',
     'success': 'text-green-500',
     'completed': 'text-green-500',
-    'blocked': 'text-destructive',
-    'fail': 'text-destructive',
-    'error': 'text-destructive',
-    'failed': 'text-destructive',
+    'done': 'text-green-500',
+    'active': 'text-blue-500',
+    'blocked': 'text-red-500',
+    'fail': 'text-red-500',
+    'error': 'text-red-500',
+    'failed': 'text-red-500',
+    'rejected': 'text-red-500',
     'idle': 'text-muted-foreground',
     'pending': 'text-muted-foreground',
     'validating': 'text-amber-500',
     'running': 'text-amber-500',
-    'in_progress': 'text-amber-500'
+    'in_progress': 'text-blue-500'
+  }
+  return colors[status.toLowerCase()] || 'text-muted-foreground'
+}
+
+/**
+ * Get status badge classes (background + text) - NO BORDER
+ * Use this for status badges/pills
+ */
+export function getStatusBadgeClasses(status: string): string {
+  const classes: Record<string, string> = {
+    'ready': 'bg-green-500/10 text-green-500',
+    'pass': 'bg-green-500/10 text-green-500',
+    'success': 'bg-green-500/10 text-green-500',
+    'completed': 'bg-green-500/10 text-green-500',
+    'done': 'bg-green-500/10 text-green-500',
+    'active': 'bg-blue-500/10 text-blue-500',
+    'blocked': 'bg-red-500/10 text-red-500',
+    'fail': 'bg-red-500/10 text-red-500',
+    'error': 'bg-red-500/10 text-red-500',
+    'failed': 'bg-red-500/10 text-red-500',
+    'rejected': 'bg-red-500/10 text-red-500',
+    'idle': 'bg-muted text-muted-foreground',
+    'pending': 'bg-muted text-muted-foreground',
+    'validating': 'bg-amber-500/10 text-amber-500',
+    'running': 'bg-amber-500/10 text-amber-500',
+    'in_progress': 'bg-blue-500/10 text-blue-500'
+  }
+  return classes[status.toLowerCase()] || 'bg-muted text-muted-foreground'
+}
+
+/**
+ * Get icon color class for status
+ */
+export function getStatusIconColor(status: string): string {
+  const colors: Record<string, string> = {
+    'ready': 'text-green-500',
+    'pass': 'text-green-500',
+    'success': 'text-green-500',
+    'completed': 'text-green-500',
+    'done': 'text-green-500',
+    'active': 'text-blue-500',
+    'blocked': 'text-red-500',
+    'fail': 'text-red-500',
+    'error': 'text-red-500',
+    'failed': 'text-red-500',
+    'rejected': 'text-red-500',
+    'idle': 'text-muted-foreground',
+    'pending': 'text-muted-foreground',
+    'validating': 'text-amber-500',
+    'running': 'text-amber-500',
+    'in_progress': 'text-blue-500'
   }
   return colors[status.toLowerCase()] || 'text-muted-foreground'
 }
