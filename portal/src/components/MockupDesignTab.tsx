@@ -1,74 +1,53 @@
 /**
- * MockupDesignTab Component (Launch Sequence)
+ * MockupDesignTab Component (Gate 0)
  *
- * Step 0: Gate 0 - Design Phase
- * - Project overview with name and vision
- * - Documentation links (PRD, Architecture, User Stories)
- * - Mockup gallery with thumbnails
- * - Validate and lock mockups before development
+ * Clean project connection and discovery flow:
+ * 1. Not Connected - Single "Select Folder" action
+ * 2. Discovering - Auto-detect docs, mockups, structure
+ * 3. Connected - Show discovered project info
  */
 
 import { useState, useCallback, useEffect } from 'react';
 import {
-  FileCode, Layout, CheckCircle2, XCircle, AlertTriangle,
-  Lock, Database, FileText, Building2, Users, BookOpen, Bot,
-  Rocket, Settings, File, ExternalLink, Play, Eye, Quote, Palette,
-  FolderOpen, FolderX, Plug, PlugZap
+  FolderOpen, FileText, Layout, CheckCircle2, AlertTriangle,
+  Building2, Users, BookOpen, ExternalLink, Play, RefreshCw,
+  Loader2, Sparkles
 } from 'lucide-react';
-import { InfoBox, KPICards, ActionBar, ResultSummary, ExpandableCard, TabContainer, SectionDivider } from './TabLayout';
+import { TabContainer } from './TabLayout';
 import { cn } from '@/lib/utils';
 
 // ============================================
 // Types
 // ============================================
 
-export interface MockupCheck {
+interface MockupFile {
   name: string;
-  status: 'pass' | 'fail' | 'warn';
-  message: string;
-  details?: Record<string, unknown>;
-}
-
-export interface MockupScreen {
-  path?: string;
-  name: string;
-  title: string;
-  summary: string;
-  filename?: string;
+  filename: string;
+  path: string;
   order?: number;
 }
 
-export interface ValidationResult {
-  status: 'ready' | 'blocked';
-  checks: MockupCheck[];
-  screens: MockupScreen[];
-  timestamp?: string;
-  persistError?: string;
-}
-
-export interface DocumentationFile {
+interface DocumentFile {
   title: string;
   filename: string;
   path: string;
-  relativePath?: string;
-  type: 'prd' | 'architecture' | 'userStories' | 'readme' | 'claude' | 'quickstart' | 'setup' | 'other';
-  icon: string;
+  type: string;
 }
 
-export interface ProjectMetadata {
+interface ProjectData {
   name: string;
   tagline: string;
   vision: string;
   description: string;
-  documentation: DocumentationFile[];
-  mockups: MockupScreen[];
+  documentation: DocumentFile[];
+  mockups: MockupFile[];
   techStack: string[];
-  paths?: {
+  paths: {
     root: string;
     mockups: string;
     docs: string;
   };
-  connection?: {
+  connection: {
     rootExists: boolean;
     mockupsFolderExists: boolean;
     docsFolderExists: boolean;
@@ -84,451 +63,309 @@ export interface MockupDesignTabProps {
 }
 
 // ============================================
-// Helper Functions
-// ============================================
-
-const getDocIcon = (type: string) => {
-  switch (type) {
-    case 'prd': return <FileText className="h-4 w-4" />;
-    case 'architecture': return <Building2 className="h-4 w-4" />;
-    case 'userStories': return <Users className="h-4 w-4" />;
-    case 'readme': return <BookOpen className="h-4 w-4" />;
-    case 'claude': return <Bot className="h-4 w-4" />;
-    case 'quickstart': return <Rocket className="h-4 w-4" />;
-    case 'setup': return <Settings className="h-4 w-4" />;
-    default: return <File className="h-4 w-4" />;
-  }
-};
-
-const getDocColor = (type: string) => {
-  switch (type) {
-    case 'prd': return 'text-blue-500 bg-blue-500/10';
-    case 'architecture': return 'text-purple-500 bg-purple-500/10';
-    case 'userStories': return 'text-green-500 bg-green-500/10';
-    case 'readme': return 'text-amber-500 bg-amber-500/10';
-    case 'claude': return 'text-orange-500 bg-orange-500/10';
-    default: return 'text-slate-500 bg-slate-500/10';
-  }
-};
-
-// ============================================
 // Sub-components
 // ============================================
 
-interface FolderStatusProps {
-  paths?: ProjectMetadata['paths'];
-  connection?: ProjectMetadata['connection'];
-  currentPath: string;
-  projectId: string;
-  onPathUpdate: (newPath: string) => void;
-}
+// Not Connected State - Clean folder selection
+function NotConnectedState({
+  onSelectFolder,
+  isUpdating
+}: {
+  onSelectFolder: (path: string) => void;
+  isUpdating: boolean;
+}) {
+  const [inputPath, setInputPath] = useState('');
 
-function FolderStatus({ paths, connection, currentPath, projectId, onPathUpdate }: FolderStatusProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [newPath, setNewPath] = useState(currentPath || '');
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [updateError, setUpdateError] = useState<string | null>(null);
-
-  const isConnected = connection?.status === 'connected';
-  const needsSetup = !currentPath || currentPath === '';
-
-  const handleConnect = async () => {
-    if (!newPath.trim()) {
-      setUpdateError('Please enter a valid path');
-      return;
-    }
-
-    setIsUpdating(true);
-    setUpdateError(null);
-
-    try {
-      const response = await fetch('/api/update-project-path', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId, rootPath: newPath.trim() })
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to update path');
-      }
-
-      onPathUpdate(newPath.trim());
-      setIsEditing(false);
-    } catch (err) {
-      setUpdateError(err instanceof Error ? err.message : 'Failed to update path');
-    } finally {
-      setIsUpdating(false);
+  const handleConnect = () => {
+    if (inputPath.trim()) {
+      onSelectFolder(inputPath.trim());
     }
   };
 
   return (
-    <div className={cn(
-      "rounded-xl p-4 mb-6 border",
-      isConnected
-        ? "bg-green-500/5 border-green-500/20"
-        : "bg-red-500/10 border-red-500/20"
-    )}>
-      {/* Connection Status Header */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          {isConnected ? (
-            <>
-              <PlugZap className="h-4 w-4 text-green-500" />
-              <span className="text-sm font-medium text-green-500">Connected to Project</span>
-            </>
-          ) : (
-            <>
-              <Plug className="h-4 w-4 text-red-500" />
-              <span className="text-sm font-medium text-red-500">
-                {needsSetup ? 'Not Connected - Set Project Folder' : 'Disconnected - Folder Not Found'}
-              </span>
-            </>
-          )}
-        </div>
-        {!isEditing && !needsSetup && (
-          <button
-            onClick={() => { setIsEditing(true); setNewPath(currentPath); }}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Change Path
-          </button>
-        )}
-      </div>
+    <div className="flex items-center justify-center min-h-[400px]">
+      <div className="max-w-md w-full">
+        <div className="bg-card border border-border rounded-2xl p-8 text-center">
+          {/* Icon */}
+          <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <FolderOpen className="h-8 w-8 text-blue-500" />
+          </div>
 
-      {/* Path Input (show when editing or needs setup) */}
-      {(isEditing || needsSetup) && (
-        <div className="mb-4 p-3 bg-muted/50 rounded-lg">
-          <label className="text-xs font-medium text-muted-foreground block mb-2">
-            Project Root Folder Path
-          </label>
-          <div className="flex gap-2">
+          {/* Title */}
+          <h2 className="text-xl font-semibold mb-2">Connect Your Project</h2>
+
+          {/* Description */}
+          <p className="text-muted-foreground text-sm mb-6">
+            Enter your project's root folder path. WAVE will automatically discover
+            documentation, design mockups, and project structure.
+          </p>
+
+          {/* Input */}
+          <div className="space-y-3">
             <input
               type="text"
-              value={newPath}
-              onChange={(e) => setNewPath(e.target.value)}
+              value={inputPath}
+              onChange={(e) => setInputPath(e.target.value)}
               placeholder="/path/to/your/project"
-              className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
             />
+
             <button
               onClick={handleConnect}
-              disabled={isUpdating || !newPath.trim()}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              disabled={!inputPath.trim() || isUpdating}
+              className="w-full px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isUpdating ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Connecting...
+                </>
               ) : (
-                <FolderOpen className="h-4 w-4" />
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  Connect & Discover
+                </>
               )}
-              Connect
             </button>
-            {isEditing && !needsSetup && (
-              <button
-                onClick={() => { setIsEditing(false); setUpdateError(null); }}
-                className="px-3 py-2 bg-muted text-muted-foreground rounded-lg text-sm hover:bg-muted/80"
-              >
-                Cancel
-              </button>
-            )}
           </div>
-          {updateError && (
-            <p className="text-xs text-red-500 mt-2">{updateError}</p>
-          )}
-          <p className="text-xs text-muted-foreground mt-2">
-            Enter the full path to your project folder (e.g., /Users/you/Projects/footprint)
+
+          {/* Help text */}
+          <p className="text-xs text-muted-foreground mt-4">
+            Example: /Users/you/Projects/my-app
           </p>
         </div>
-      )}
-
-      {/* Folder Paths (only show when not in setup mode) */}
-      {!needsSetup && (
-        <div className="space-y-2">
-          {/* Root Folder */}
-          <div className="flex items-center gap-2">
-            {connection?.rootExists ? (
-              <FolderOpen className="h-4 w-4 text-green-500" />
-            ) : (
-              <FolderX className="h-4 w-4 text-red-500" />
-            )}
-            <span className="text-xs text-muted-foreground">Root:</span>
-            <code className="text-xs bg-muted px-2 py-0.5 rounded font-mono flex-1 truncate">
-              {paths?.root || currentPath || 'Not set'}
-            </code>
-            <span className={cn(
-              "text-xs px-2 py-0.5 rounded",
-              connection?.rootExists ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
-            )}>
-              {connection?.rootExists ? 'Found' : 'Missing'}
-            </span>
-          </div>
-
-          {/* Mockups Folder */}
-          <div className="flex items-center gap-2">
-            {connection?.mockupsFolderExists ? (
-              <FolderOpen className="h-4 w-4 text-green-500" />
-            ) : (
-              <FolderX className="h-4 w-4 text-amber-500" />
-            )}
-            <span className="text-xs text-muted-foreground">Mockups:</span>
-            <code className="text-xs bg-muted px-2 py-0.5 rounded font-mono flex-1 truncate">
-              {paths?.mockups || `${currentPath}/design_mockups`}
-            </code>
-            <span className={cn(
-              "text-xs px-2 py-0.5 rounded",
-              connection?.mockupsFolderExists ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"
-            )}>
-              {connection?.mockupsFolderExists ? 'Found' : 'Not Found'}
-            </span>
-          </div>
-
-          {/* Docs Folder */}
-          <div className="flex items-center gap-2">
-            {connection?.docsFolderExists ? (
-              <FolderOpen className="h-4 w-4 text-green-500" />
-            ) : (
-              <FolderX className="h-4 w-4 text-amber-500" />
-            )}
-            <span className="text-xs text-muted-foreground">Docs:</span>
-            <code className="text-xs bg-muted px-2 py-0.5 rounded font-mono flex-1 truncate">
-              {paths?.docs || `${currentPath}/docs`}
-            </code>
-            <span className={cn(
-              "text-xs px-2 py-0.5 rounded",
-              connection?.docsFolderExists ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"
-            )}>
-              {connection?.docsFolderExists ? 'Found' : 'Not Found'}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Warning for disconnected (only when path is set but not found) */}
-      {!isConnected && !needsSetup && !isEditing && (
-        <div className="mt-3 p-3 bg-red-500/10 rounded-lg">
-          <div className="flex items-start gap-2">
-            <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm text-red-500 font-medium">Project folder not accessible</p>
-              <p className="text-xs text-red-500/70 mt-1">
-                Please verify the project path exists and is accessible. Check if the drive is mounted.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
 
-interface ProjectHeaderProps {
-  name: string;
-  tagline: string;
-  vision: string;
-  techStack: string[];
+// Discovering State - Loading animation
+function DiscoveringState() {
+  return (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <div className="text-center">
+        <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+          <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+        </div>
+        <h2 className="text-xl font-semibold mb-2">Discovering Project</h2>
+        <p className="text-muted-foreground text-sm">
+          Scanning folder structure, finding documentation and mockups...
+        </p>
+      </div>
+    </div>
+  );
 }
 
-function ProjectHeader({ name, tagline, vision, techStack }: ProjectHeaderProps) {
+// Connected State - Show discovered project
+function ConnectedState({
+  project,
+  projectPath,
+  onRefresh,
+  onChangePath,
+  isRefreshing
+}: {
+  project: ProjectData;
+  projectPath: string;
+  onRefresh: () => void;
+  onChangePath: () => void;
+  isRefreshing: boolean;
+}) {
+  const handleOpenDoc = (doc: DocumentFile) => {
+    window.open(`vscode://file${doc.path}`, '_blank');
+  };
+
+  const handleOpenMockup = (mockup: MockupFile) => {
+    window.open(`file://${mockup.path}`, '_blank');
+  };
+
+  const getDocIcon = (type: string) => {
+    switch (type) {
+      case 'prd': return <FileText className="h-4 w-4" />;
+      case 'architecture': return <Building2 className="h-4 w-4" />;
+      case 'userStories': return <Users className="h-4 w-4" />;
+      case 'readme': return <BookOpen className="h-4 w-4" />;
+      default: return <FileText className="h-4 w-4" />;
+    }
+  };
+
+  const getDocColor = (type: string) => {
+    switch (type) {
+      case 'prd': return 'text-blue-500 bg-blue-500/10';
+      case 'architecture': return 'text-purple-500 bg-purple-500/10';
+      case 'userStories': return 'text-green-500 bg-green-500/10';
+      case 'readme': return 'text-amber-500 bg-amber-500/10';
+      default: return 'text-slate-500 bg-slate-500/10';
+    }
+  };
+
   return (
-    <div className="bg-card border border-border rounded-xl p-6 mb-6">
-      {/* Project Name & Tagline */}
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground mb-1">{name}</h1>
-          {tagline && (
-            <p className="text-sm text-muted-foreground">{tagline}</p>
-          )}
+    <div className="space-y-6">
+      {/* Project Header */}
+      <div className="bg-card border border-border rounded-xl p-6">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center">
+              <CheckCircle2 className="h-6 w-6 text-green-500" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">{project.name}</h1>
+              {project.tagline && (
+                <p className="text-muted-foreground text-sm">{project.tagline}</p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+              title="Refresh"
+            >
+              <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+            </button>
+            <button
+              onClick={onChangePath}
+              className="text-xs text-muted-foreground hover:text-foreground px-3 py-1.5 hover:bg-muted rounded-lg transition-colors"
+            >
+              Change Folder
+            </button>
+          </div>
         </div>
-        {/* Tech Stack Badges */}
-        {techStack.length > 0 && (
-          <div className="flex flex-wrap gap-2 justify-end">
-            {techStack.map((tech, index) => (
-              <span
-                key={index}
-                className="px-2.5 py-1 bg-muted text-muted-foreground rounded-lg text-xs font-medium"
-              >
+
+        {/* Path display */}
+        <div className="mt-4 flex items-center gap-2 text-sm">
+          <FolderOpen className="h-4 w-4 text-muted-foreground" />
+          <code className="text-xs bg-muted px-2 py-1 rounded font-mono text-muted-foreground">
+            {projectPath}
+          </code>
+        </div>
+
+        {/* Tech Stack */}
+        {project.techStack.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {project.techStack.map((tech, i) => (
+              <span key={i} className="px-2.5 py-1 bg-muted text-muted-foreground rounded-lg text-xs font-medium">
                 {tech}
               </span>
             ))}
           </div>
         )}
+
+        {/* Vision */}
+        {project.vision && (
+          <div className="mt-4 p-4 bg-blue-500/5 border border-blue-500/10 rounded-lg">
+            <p className="text-sm text-blue-400 italic">"{project.vision}"</p>
+          </div>
+        )}
       </div>
 
-      {/* Vision Statement */}
-      {vision && (
-        <div className="flex items-start gap-3 bg-blue-500/10 rounded-lg p-4">
-          <Quote className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
-          <p className="text-blue-500 text-sm leading-relaxed">"{vision}"</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-interface DocumentationLinksProps {
-  docs: DocumentationFile[];
-}
-
-function DocumentationLinks({ docs }: DocumentationLinksProps) {
-  if (docs.length === 0) {
-    return (
-      <div className="bg-amber-500/10 rounded-xl p-4 mb-6">
-        <div className="flex items-center gap-2 text-amber-500">
-          <AlertTriangle className="h-4 w-4" />
-          <span className="text-sm">No documentation files found in project</span>
-        </div>
-      </div>
-    );
-  }
-
-  const handleOpenDoc = (doc: DocumentationFile) => {
-    // Open file in system viewer or VS Code
-    window.open(`vscode://file${doc.path}`, '_blank');
-  };
-
-  // Group docs by type for organized display
-  const priorityDocs = docs.filter(d => ['prd', 'architecture', 'userStories', 'readme'].includes(d.type));
-  const otherDocs = docs.filter(d => !['prd', 'architecture', 'userStories', 'readme'].includes(d.type));
-
-  return (
-    <div className="mb-6">
-      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Documentation</h3>
-
-      {/* Priority Documents Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-        {priorityDocs.map((doc, index) => (
-          <button
-            key={index}
-            onClick={() => handleOpenDoc(doc)}
-            className={cn(
-              "flex items-center gap-3 p-4 rounded-xl border border-border bg-card",
-              "hover:bg-muted/50 transition-colors text-left group"
-            )}
-          >
-            <span className={cn("w-10 h-10 rounded-lg flex items-center justify-center", getDocColor(doc.type))}>
-              {getDocIcon(doc.type)}
+      {/* Documentation & Mockups Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Documentation */}
+        <div className="bg-card border border-border rounded-xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold flex items-center gap-2">
+              <FileText className="h-4 w-4 text-blue-500" />
+              Documentation
+            </h3>
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+              {project.documentation.length} files
             </span>
-            <div className="flex-1 min-w-0">
-              <div className="font-medium text-sm truncate">{doc.title}</div>
-              <div className="text-xs text-muted-foreground capitalize">{doc.type.replace(/([A-Z])/g, ' $1').trim()}</div>
-            </div>
-            <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-          </button>
-        ))}
-      </div>
+          </div>
 
-      {/* Other Documents */}
-      {otherDocs.length > 0 && (
-        <ExpandableCard
-          title="Additional Documents"
-          subtitle={`${otherDocs.length} more file${otherDocs.length !== 1 ? 's' : ''}`}
-          icon={<File className="h-4 w-4" />}
-          defaultExpanded={false}
-        >
-          <div className="space-y-2">
-            {otherDocs.map((doc, index) => (
-              <button
-                key={index}
-                onClick={() => handleOpenDoc(doc)}
-                className="flex items-center justify-between w-full py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
-              >
-                <div className="flex items-center gap-2">
-                  <span className={cn("w-6 h-6 rounded flex items-center justify-center", getDocColor(doc.type))}>
+          {project.documentation.length > 0 ? (
+            <div className="space-y-2">
+              {project.documentation.slice(0, 6).map((doc, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleOpenDoc(doc)}
+                  className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors text-left group"
+                >
+                  <span className={cn("w-8 h-8 rounded-lg flex items-center justify-center", getDocColor(doc.type))}>
                     {getDocIcon(doc.type)}
                   </span>
-                  <span className="text-sm">{doc.title}</span>
-                </div>
-                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
-              </button>
-            ))}
-          </div>
-        </ExpandableCard>
-      )}
-    </div>
-  );
-}
-
-interface MockupGalleryProps {
-  mockups: MockupScreen[];
-  onLaunchPreview: (mockup: MockupScreen) => void;
-  selectedMockup?: MockupScreen | null;
-  onSelectMockup: (mockup: MockupScreen | null) => void;
-}
-
-function MockupGallery({ mockups, onLaunchPreview, selectedMockup, onSelectMockup }: MockupGalleryProps) {
-  if (mockups.length === 0) {
-    return (
-      <div className="bg-amber-500/10 rounded-xl p-6 mb-6 text-center">
-        <Layout className="h-8 w-8 text-amber-500 mx-auto mb-2" />
-        <p className="text-amber-500 font-medium">No mockups found</p>
-        <p className="text-amber-500/70 text-sm mt-1">
-          Add HTML files to <code className="bg-amber-500/20 px-1 rounded">design_mockups/</code> folder
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mb-6">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          Design Mockups
-        </h3>
-        <span className="text-xs text-muted-foreground">{mockups.length} screen{mockups.length !== 1 ? 's' : ''}</span>
-      </div>
-
-      {/* Mockup Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-        {mockups.map((mockup, index) => (
-          <button
-            key={index}
-            onClick={() => onSelectMockup(selectedMockup?.name === mockup.name ? null : mockup)}
-            className={cn(
-              "group relative aspect-[4/3] rounded-xl border-2 overflow-hidden transition-all",
-              selectedMockup?.name === mockup.name
-                ? "border-blue-500 ring-2 ring-blue-500/20"
-                : "border-border hover:border-slate-500"
-            )}
-          >
-            {/* Placeholder background - in production would use iframe or screenshot */}
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
-              <Layout className="h-8 w-8 text-slate-600" />
+                  <span className="flex-1 text-sm font-medium truncate">{doc.title}</span>
+                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              ))}
+              {project.documentation.length > 6 && (
+                <p className="text-xs text-muted-foreground text-center pt-2">
+                  +{project.documentation.length - 6} more files
+                </p>
+              )}
             </div>
-
-            {/* Overlay with mockup name */}
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-              <p className="text-white text-sm font-medium truncate">{mockup.name}</p>
+          ) : (
+            <div className="text-center py-8">
+              <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No documentation found</p>
+              <p className="text-xs text-muted-foreground mt-1">Add .md files to docs/ folder</p>
             </div>
-
-            {/* Hover overlay with preview button */}
-            <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-              <span className="bg-white text-slate-900 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-lg">
-                <Eye className="h-3.5 w-3.5" />
-                Preview
-              </span>
-            </div>
-
-            {/* Selection indicator */}
-            {selectedMockup?.name === mockup.name && (
-              <div className="absolute top-2 right-2">
-                <CheckCircle2 className="h-5 w-5 text-blue-500 bg-white rounded-full" />
-              </div>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {/* Launch Preview Button */}
-      {selectedMockup && (
-        <div className="mt-4 flex items-center justify-center">
-          <button
-            onClick={() => onLaunchPreview(selectedMockup)}
-            className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium flex items-center gap-2 transition-colors"
-          >
-            <Play className="h-4 w-4" />
-            Launch Preview: {selectedMockup.name}
-          </button>
+          )}
         </div>
-      )}
+
+        {/* Mockups */}
+        <div className="bg-card border border-border rounded-xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Layout className="h-4 w-4 text-purple-500" />
+              Design Mockups
+            </h3>
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+              {project.mockups.length} screens
+            </span>
+          </div>
+
+          {project.mockups.length > 0 ? (
+            <div className="space-y-2">
+              {project.mockups.slice(0, 6).map((mockup, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleOpenMockup(mockup)}
+                  className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors text-left group"
+                >
+                  <span className="w-8 h-8 rounded-lg flex items-center justify-center bg-purple-500/10 text-purple-500">
+                    <Layout className="h-4 w-4" />
+                  </span>
+                  <span className="flex-1 text-sm font-medium truncate">{mockup.name}</span>
+                  <Play className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              ))}
+              {project.mockups.length > 6 && (
+                <p className="text-xs text-muted-foreground text-center pt-2">
+                  +{project.mockups.length - 6} more screens
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No mockups found</p>
+              <p className="text-xs text-muted-foreground mt-1">Add HTML files to design_mockups/ folder</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-4 gap-4">
+        <div className="bg-card border border-border rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold">{project.documentation.length}</p>
+          <p className="text-xs text-muted-foreground">Documents</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold">{project.mockups.length}</p>
+          <p className="text-xs text-muted-foreground">Mockups</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold">{project.techStack.length}</p>
+          <p className="text-xs text-muted-foreground">Technologies</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-green-500">Ready</p>
+          <p className="text-xs text-muted-foreground">Status</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -540,256 +377,114 @@ function MockupGallery({ mockups, onLaunchPreview, selectedMockup, onSelectMocku
 export function MockupDesignTab({
   projectPath,
   projectId,
-  validationStatus: initialStatus,
-  onValidationComplete
+  validationStatus: _initialStatus,
+  onValidationComplete: _onValidationComplete
 }: MockupDesignTabProps) {
-  const [isValidating, setIsValidating] = useState(false);
-  const [isDiscovering, setIsDiscovering] = useState(true);
-  const [currentStatus, setCurrentStatus] = useState<'idle' | 'validating' | 'ready' | 'blocked'>(initialStatus);
-  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
-  const [projectMetadata, setProjectMetadata] = useState<ProjectMetadata | null>(null);
-  const [selectedMockup, setSelectedMockup] = useState<MockupScreen | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<'not-connected' | 'discovering' | 'connected'>(
+    projectPath ? 'discovering' : 'not-connected'
+  );
+  const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [currentPath, setCurrentPath] = useState(projectPath);
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  // Handler for path updates
-  const handlePathUpdate = useCallback((newPath: string) => {
-    setCurrentPath(newPath);
-    setIsDiscovering(true);
-    // Re-trigger discovery with new path
-    window.location.reload(); // Simple reload to refresh with new path
-  }, []);
-
-  // Discover project metadata on mount or when path changes
-  useEffect(() => {
-    async function discoverProject() {
-      if (!currentPath) {
-        setIsDiscovering(false);
-        return;
-      }
-
-      try {
-        const response = await fetch('/api/discover-project', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ projectPath: currentPath })
-        });
-
-        if (response.ok) {
-          const { data } = await response.json();
-          setProjectMetadata(data);
-        }
-      } catch (err) {
-        console.error('Failed to discover project:', err);
-      } finally {
-        setIsDiscovering(false);
-      }
+  // Discover project when path is set
+  const discoverProject = useCallback(async (path: string) => {
+    if (!path) {
+      setState('not-connected');
+      return;
     }
 
-    discoverProject();
-  }, [projectPath]);
-
-  const handleValidate = useCallback(async () => {
-    setIsValidating(true);
-    setError(null);
+    setState('discovering');
 
     try {
-      const response = await fetch('/api/validate-mockups', {
+      const response = await fetch('/api/discover-project', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectPath, projectId })
+        body: JSON.stringify({ projectPath: path })
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Server error');
+      if (response.ok) {
+        const { data } = await response.json();
+        setProjectData(data);
+
+        if (data.connection?.status === 'connected') {
+          setState('connected');
+        } else {
+          setState('not-connected');
+        }
+      } else {
+        setState('not-connected');
       }
-
-      const data: ValidationResult = await response.json();
-      setValidationResult(data);
-      setCurrentStatus(data.status);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      setError(message);
-    } finally {
-      setIsValidating(false);
-    }
-  }, [projectPath, projectId]);
-
-  const handleLockMockups = useCallback(() => {
-    onValidationComplete('ready');
-  }, [onValidationComplete]);
-
-  const handleLaunchPreview = useCallback((mockup: MockupScreen) => {
-    if (mockup.path) {
-      // Open mockup file in browser
-      window.open(`file://${mockup.path}`, '_blank');
+      console.error('Failed to discover project:', err);
+      setState('not-connected');
     }
   }, []);
 
-  // Calculate KPIs
-  const passedChecks = validationResult?.checks.filter(c => c.status === 'pass').length || 0;
-  const totalChecks = validationResult?.checks.length || 0;
-  const screenCount = projectMetadata?.mockups.length || validationResult?.screens.length || 0;
-  const docCount = projectMetadata?.documentation.length || 0;
+  // Initial discovery
+  useEffect(() => {
+    if (currentPath) {
+      discoverProject(currentPath);
+    }
+  }, []);
 
-  // Format timestamp
-  const formatTimestamp = (ts?: string) => {
-    if (!ts) return undefined;
+  // Handle folder selection
+  const handleSelectFolder = async (path: string) => {
+    setIsUpdating(true);
+
     try {
-      return new Date(ts).toLocaleString();
-    } catch {
-      return ts;
+      // Update path in database
+      const response = await fetch('/api/update-project-path', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, rootPath: path })
+      });
+
+      if (response.ok) {
+        setCurrentPath(path);
+        await discoverProject(path);
+      }
+    } catch (err) {
+      console.error('Failed to update path:', err);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
-  // Extract project name from metadata or path
-  const projectName = projectMetadata?.name || projectPath.split('/').pop() || 'Project';
+  // Handle refresh
+  const handleRefresh = () => {
+    if (currentPath) {
+      discoverProject(currentPath);
+    }
+  };
 
-  // Loading state
-  if (isDiscovering) {
-    return (
-      <TabContainer>
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent mx-auto mb-3" />
-            <p className="text-muted-foreground">Discovering project...</p>
-          </div>
-        </div>
-      </TabContainer>
-    );
-  }
+  // Handle change path
+  const handleChangePath = () => {
+    setState('not-connected');
+    setProjectData(null);
+  };
 
   return (
     <TabContainer>
-      {/* 1. INFO BOX */}
-      <InfoBox
-        title="Gate 0: Design Validation"
-        description="Review project documentation and validate HTML mockups before development begins. Lock your design to ensure agents build exactly what you envisioned."
-        icon={<Palette className="h-4 w-4 text-blue-500" />}
-      />
-
-      {/* 2. FOLDER CONNECTION STATUS */}
-      <FolderStatus
-        paths={projectMetadata?.paths}
-        connection={projectMetadata?.connection}
-        currentPath={currentPath}
-        projectId={projectId}
-        onPathUpdate={handlePathUpdate}
-      />
-
-      {/* PROJECT INFO */}
-      <ProjectHeader
-        name={projectName}
-        tagline={projectMetadata?.tagline || ''}
-        vision={projectMetadata?.vision || ''}
-        techStack={projectMetadata?.techStack || []}
-      />
-
-      {/* DOCUMENTATION LINKS */}
-      <DocumentationLinks
-        docs={projectMetadata?.documentation || []}
-      />
-
-      <SectionDivider label="Design Mockups" />
-
-      {/* MOCKUP GALLERY */}
-      <MockupGallery
-        mockups={projectMetadata?.mockups || []}
-        onLaunchPreview={handleLaunchPreview}
-        selectedMockup={selectedMockup}
-        onSelectMockup={setSelectedMockup}
-      />
-
-      <SectionDivider label="Validation" />
-
-      {/* KPI CARDS */}
-      <KPICards
-        items={[
-          {
-            label: 'Screens',
-            value: screenCount,
-            status: screenCount > 0 ? 'success' : 'neutral',
-            icon: <Layout className="h-4 w-4" />
-          },
-          {
-            label: 'Documents',
-            value: docCount,
-            status: docCount > 0 ? 'success' : 'neutral',
-            icon: <FileText className="h-4 w-4" />
-          },
-          {
-            label: 'Checks Passed',
-            value: totalChecks > 0 ? `${passedChecks}/${totalChecks}` : '-',
-            status: passedChecks === totalChecks && totalChecks > 0 ? 'success' : totalChecks > 0 ? 'warning' : 'neutral',
-            icon: <CheckCircle2 className="h-4 w-4" />
-          },
-          {
-            label: 'Status',
-            value: currentStatus === 'ready' ? 'Ready' : currentStatus === 'blocked' ? 'Blocked' : 'Pending',
-            status: currentStatus === 'ready' ? 'success' : currentStatus === 'blocked' ? 'error' : 'neutral',
-          },
-        ]}
-      />
-
-      {/* ACTION BAR */}
-      <ActionBar
-        category="GATE 0"
-        title="Design Validation"
-        description={`Validate HTML mockups before development`}
-        statusBadge={validationResult ? {
-          label: formatTimestamp(validationResult.timestamp) || 'Validated',
-          icon: <Database className="h-3 w-3" />,
-          variant: currentStatus === 'ready' ? 'success' : 'warning'
-        } : undefined}
-        primaryAction={{
-          label: currentStatus === 'ready' ? 'Re-Validate' : 'Validate Mockups',
-          onClick: handleValidate,
-          loading: isValidating,
-          icon: <FileCode className="h-4 w-4" />
-        }}
-        secondaryAction={currentStatus === 'ready' && !error ? {
-          label: 'Lock & Continue',
-          onClick: handleLockMockups,
-          icon: <Lock className="h-4 w-4" />
-        } : undefined}
-      />
-
-      {/* RESULT SUMMARY */}
-      {(validationResult || error) && (
-        <ResultSummary
-          status={error ? 'fail' : currentStatus === 'ready' ? 'pass' : currentStatus === 'blocked' ? 'fail' : 'pending'}
-          message={error || (currentStatus === 'ready' ? 'All mockups validated successfully' : 'Some checks failed - review details below')}
-          timestamp={formatTimestamp(validationResult?.timestamp)}
+      {state === 'not-connected' && (
+        <NotConnectedState
+          onSelectFolder={handleSelectFolder}
+          isUpdating={isUpdating}
         />
       )}
 
-      {/* EXPANDABLE DETAIL CARDS */}
-      {validationResult && !error && (
-        <>
-          {/* Validation Checks */}
-          <ExpandableCard
-            title="Validation Checks"
-            subtitle={`${passedChecks} of ${totalChecks} checks passed`}
-            icon={<CheckCircle2 className="h-4 w-4" />}
-            status={passedChecks === totalChecks ? 'pass' : 'warn'}
-            defaultExpanded={passedChecks < totalChecks}
-          >
-            <div className="space-y-2">
-              {validationResult.checks.map((check, index) => (
-                <div key={index} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                  <div className="flex items-center gap-2">
-                    {check.status === 'pass' && <CheckCircle2 className="h-4 w-4 text-green-500" />}
-                    {check.status === 'fail' && <XCircle className="h-4 w-4 text-red-500" />}
-                    {check.status === 'warn' && <AlertTriangle className="h-4 w-4 text-amber-500" />}
-                    <span className="text-sm">{check.name}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">{check.message}</span>
-                </div>
-              ))}
-            </div>
-          </ExpandableCard>
-        </>
+      {state === 'discovering' && (
+        <DiscoveringState />
+      )}
+
+      {state === 'connected' && projectData && (
+        <ConnectedState
+          project={projectData}
+          projectPath={currentPath}
+          onRefresh={handleRefresh}
+          onChangePath={handleChangePath}
+          isRefreshing={false}
+        />
       )}
     </TabContainer>
   );
