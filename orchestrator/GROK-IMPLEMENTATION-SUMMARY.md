@@ -1,15 +1,15 @@
 # WAVE v2 Orchestrator: Grok Implementation Summary
 
 **Date:** 2026-01-25
-**Status:** COMPLETE - All 11 LangGraph Multi-Agent Patterns Implemented
-**Tests:** 500/500 passing (100%)
+**Status:** COMPLETE - All 11 LangGraph Patterns + LangSmith Tracing
+**Tests:** 575/575 passing (100%)
 **For Review By:** Grok (xAI)
 
 ---
 
 ## Executive Summary
 
-This document summarizes the implementation of Grok's recommendations from `GROK-LANGGRAPH-IMPLEMENTATION-PLAN.md` and `GROK-HYBRID-SYNTHESIS.md`. All 11 phases have been completed with 100% test coverage, including the extended parallel domain execution enhancements.
+This document summarizes the implementation of Grok's recommendations from `GROK-LANGGRAPH-IMPLEMENTATION-PLAN.md` and `GROK-HYBRID-SYNTHESIS.md`. All 11 LangGraph phases have been completed with 100% test coverage, including the extended parallel domain execution enhancements. Additionally, full LangSmith tracing integration has been implemented across 5 phases for production observability.
 
 ---
 
@@ -41,7 +41,14 @@ Phase 9: Worktrees       [██████████] 100%  ✓ Per-Domain G
 Phase 10: Consensus      [██████████] 100%  ✓ Cross-Domain Merge Safety
 Phase 11: Portal         [██████████] 100%  ✓ API + Domain Events + Pub/Sub
 
-TOTAL: ████████████████████████████████████████████ 100% COMPLETE (500 tests)
+LANGSMITH TRACING (Phases 1-5)
+Phase 1: Configuration   [██████████] 100%  ✓ TracingConfig + Environment
+Phase 2: Infrastructure  [██████████] 100%  ✓ TracingManager + Decorators
+Phase 3: Instrumentation [██████████] 100%  ✓ wrap_node + Traced Nodes
+Phase 4: Metrics         [██████████] 100%  ✓ RunMetrics + Export
+Phase 5: Portal          [██████████] 100%  ✓ API + React Hooks
+
+TOTAL: ████████████████████████████████████████████ 100% COMPLETE (575 tests)
 ```
 
 ---
@@ -429,7 +436,12 @@ poc/poc_migration.py - 37/37 passed (GATE 5 FINAL)
 | test_c9_domain_worktrees.py | 18 | ✅ |
 | test_c10_cross_domain.py | 20 | ✅ |
 | test_c11_portal_integration.py | 18 | ✅ |
-| **TOTAL** | **500** | **100%** |
+| test_langsmith_config.py | 13 | ✅ |
+| test_langsmith_core.py | 20 | ✅ |
+| test_langsmith_nodes.py | 15 | ✅ |
+| test_langsmith_metrics.py | 15 | ✅ |
+| test_langsmith_portal.py | 12 | ✅ |
+| **TOTAL** | **575** | **100%** |
 
 ---
 
@@ -539,7 +551,7 @@ orchestrator/
 | Database state instead of files | ✅ | PostgreSQL + Supabase checkpoints |
 | Parallel development with worktrees | ✅ | pygit2 worktree management |
 | gVisor for VM-level isolation | ✅ | SandboxManager with process fallback |
-| LangSmith traces | ⚠️ | Ready, needs API key |
+| LangSmith traces | ✅ | Full integration (5 phases, 75 tests) |
 | Kubernetes deployment | ✅ | Manifests created, ready to deploy |
 | Multi-LLM routing (Claude + Grok) | ✅ | Automatic fallback on failures |
 | 8-gate validation system | ✅ | All gates implemented |
@@ -1212,5 +1224,172 @@ These phases implemented Grok's "Parallel Domain Execution" recommendations:
 
 ---
 
-**All Grok Recommendations: IMPLEMENTED (11 Phases, 500 Tests)**
+---
+
+## LangSmith Tracing Integration (5 Phases, 75 Tests)
+
+Following Grok's recommendation for LangSmith traces, implemented full observability:
+
+### Phase LangSmith-1: Configuration (13 tests)
+
+```python
+# src/tracing/config.py
+
+@dataclass
+class TracingConfig:
+    enabled: bool = True
+    api_key: Optional[str] = None
+    endpoint: str = "https://api.smith.langchain.com"
+    project: str = "wave-orchestrator"
+    sample_rate: float = 1.0
+
+    @classmethod
+    def from_env(cls) -> "TracingConfig"
+    def validate(self) -> Tuple[bool, List[str]]
+    def apply(self) -> None
+```
+
+### Phase LangSmith-2: Core Infrastructure (20 tests)
+
+```python
+# src/tracing/manager.py
+
+class TracingManager:
+    """Singleton manager for LangSmith tracing"""
+
+    @classmethod
+    def get_instance(cls) -> "TracingManager"
+    def initialize(self, config: TracingConfig) -> bool
+    def is_active(self) -> bool
+    def shutdown(self) -> None
+
+# src/tracing/decorators.py
+
+@trace_node(name="cto_node", tags=["agent"])
+def cto_node(state: WAVEState) -> dict: ...
+
+@trace_tool(name="git_commit")
+def commit_changes(path: str, msg: str): ...
+
+@trace_llm_call(model="claude-3-opus")
+async def call_claude(messages: list): ...
+```
+
+### Phase LangSmith-3: Node Instrumentation (15 tests)
+
+```python
+# src/tracing/node_wrapper.py
+
+def wrap_node(
+    node_fn: Callable,
+    name: Optional[str] = None,
+    capture_state: bool = False,
+    tags: Optional[List[str]] = None,
+) -> Callable:
+    """Wrap any WAVE node with tracing - transparent, no-op when disabled"""
+
+# nodes/traced_nodes.py
+
+traced_cto_node = wrap_node(cto_node, tags=["agent", "cto"])
+traced_dev_node = wrap_node(dev_node, tags=["agent", "dev"])
+traced_qa_node = wrap_node(qa_node, tags=["agent", "qa"])
+traced_supervisor_node = wrap_node(supervisor_node, tags=["agent", "supervisor"])
+traced_safety_gate_node = wrap_node(safety_gate_node, tags=["agent", "safety"])
+```
+
+### Phase LangSmith-4: Metrics & Export (15 tests)
+
+```python
+# src/tracing/metrics.py
+
+@dataclass
+class RunMetrics:
+    run_id: str
+    start_time: datetime
+    end_time: Optional[datetime]
+    total_duration_ms: float
+    node_executions: int
+    node_errors: int
+    tokens_used: int
+    cost_usd: float
+    agent_counts: Dict[str, int]
+    agent_durations: Dict[str, float]
+    retry_count: int
+    safety_violations: int
+
+class MetricsCollector:
+    """Singleton collector for run metrics"""
+
+    def start_run(self, run_id: str) -> None
+    def end_run(self) -> RunMetrics
+    def record_node_execution(self, node_name: str, duration_ms: float) -> None
+    def record_tokens(self, count: int, cost_usd: float) -> None
+
+def export_metrics_json(metrics: RunMetrics, filepath: str = None) -> str
+def get_run_summary(metrics: RunMetrics) -> Dict[str, Any]
+```
+
+### Phase LangSmith-5: Portal Integration (12 tests)
+
+```python
+# src/tracing/api.py (FastAPI)
+
+@router.get("/tracing/metrics/{run_id}")
+async def get_run_metrics(run_id: str) -> JSONResponse
+
+@router.get("/tracing/summary/{run_id}")
+async def get_run_summary_endpoint(run_id: str) -> JSONResponse
+
+@router.get("/tracing/health")
+async def tracing_health() -> JSONResponse
+```
+
+```typescript
+// portal/src/hooks/useTracingMetrics.ts (React)
+
+function useTracingMetrics(runId: string): {
+  metrics: TracingMetrics | null;
+  summary: TracingSummary | null;
+  loading: boolean;
+  error: Error | null;
+  refetch: () => void;
+}
+```
+
+### LangSmith File Structure
+
+```
+orchestrator/src/tracing/
+├── __init__.py       # Module exports
+├── config.py         # Phase 1: TracingConfig
+├── manager.py        # Phase 2: TracingManager singleton
+├── decorators.py     # Phase 2: @trace_node, @trace_tool, @trace_llm_call
+├── node_wrapper.py   # Phase 3: wrap_node utility
+├── metrics.py        # Phase 4: RunMetrics, MetricsCollector
+└── api.py            # Phase 5: FastAPI endpoints
+
+orchestrator/nodes/
+└── traced_nodes.py   # Phase 3: Pre-wrapped node exports
+
+portal/server/routes/
+└── tracing-routes.js # Phase 5: Express proxy routes
+
+portal/src/hooks/
+└── useTracingMetrics.ts # Phase 5: React hooks
+```
+
+### LangSmith Test Summary
+
+| Test File | Tests | Commit |
+|-----------|-------|--------|
+| test_langsmith_config.py | 13 | `609d45c` |
+| test_langsmith_core.py | 20 | `a459f57` |
+| test_langsmith_nodes.py | 15 | `336465a` |
+| test_langsmith_metrics.py | 15 | `6931fde` |
+| test_langsmith_portal.py | 12 | `c1d5383` |
+| **TOTAL** | **75** | |
+
+---
+
+**All Grok Recommendations: IMPLEMENTED (11 LangGraph Phases + 5 LangSmith Phases, 575 Tests)**
 **WAVE v2 Orchestrator - 2026-01-25**
