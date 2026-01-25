@@ -57,6 +57,16 @@ from .native_parallel_graph import (
     create_native_parallel_graph,
     compile_native_parallel_graph,
 )
+# Phase 10: Cross-Domain Consensus
+from .cross_domain_consensus import (
+    ConsensusResult,
+    cross_domain_consensus,
+    check_all_domains_passed,
+    calculate_average_safety,
+    build_escalation_reason,
+    consensus_router,
+    SAFETY_THRESHOLD,
+)
 
 __all__ = [
     # State
@@ -96,4 +106,12 @@ __all__ = [
     # Phase 7: Native Parallel Graph
     "create_native_parallel_graph",
     "compile_native_parallel_graph",
+    # Phase 10: Cross-Domain Consensus
+    "ConsensusResult",
+    "cross_domain_consensus",
+    "check_all_domains_passed",
+    "calculate_average_safety",
+    "build_escalation_reason",
+    "consensus_router",
+    "SAFETY_THRESHOLD",
 ]

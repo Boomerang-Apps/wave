@@ -1,6 +1,7 @@
 # WAVE v2 Git Tools
 #
 # Phase 9 Enhancement: Per-Domain Worktrees
+# Phase 10 Enhancement: Conflict Detection
 
 from .tools import (
     GitTools,
@@ -22,6 +23,14 @@ from .worktree_context import (
     worktree_context,
     execute_in_worktree,
 )
+# Phase 10: Conflict Detection
+from .conflict_detector import (
+    ConflictResult,
+    check_cross_domain_conflicts,
+    detect_file_conflicts,
+    detect_schema_conflicts,
+    detect_api_conflicts,
+)
 
 __all__ = [
     "GitTools",
@@ -38,4 +47,10 @@ __all__ = [
     "DomainWorktreeManager",
     "worktree_context",
     "execute_in_worktree",
+    # Phase 10: Conflict Detection
+    "ConflictResult",
+    "check_cross_domain_conflicts",
+    "detect_file_conflicts",
+    "detect_schema_conflicts",
+    "detect_api_conflicts",
 ]
