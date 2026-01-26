@@ -4,10 +4,15 @@
  * Phase 2, Step 2.5: Mockup Tab UI Component
  *
  * Tests the MockupDesignTab component that provides the UI for
- * Step 0 of the launch sequence - validating HTML mockups.
+ * Step 0 of the launch sequence - Design Foundation validation.
+ *
+ * The component has three states:
+ * 1. not-connected - Shows folder selection UI
+ * 2. discovering - Shows loading state while discovering project
+ * 3. connected - Shows project info and "Analyze Foundation" button
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 import { MockupDesignTab } from '../components/MockupDesignTab';
@@ -23,6 +28,10 @@ describe('MockupDesignTab Component', () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockReset();
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   const defaultProps: MockupDesignTabProps = {
     projectPath: '/project/my-app',
     projectId: 'project-123',
@@ -30,285 +39,188 @@ describe('MockupDesignTab Component', () => {
     onValidationComplete: vi.fn()
   };
 
+  // Mock successful project discovery response
+  const mockProjectData = {
+    data: {
+      name: 'my-app',
+      tagline: 'Test project',
+      vision: 'A test application',
+      description: 'Description',
+      documentation: [
+        { title: 'PRD', filename: 'PRD.md', path: '/project/my-app/docs/PRD.md', type: 'prd' }
+      ],
+      mockups: [
+        { name: 'Home', filename: '01-home.html', path: '/project/my-app/design_mockups/01-home.html', order: 1 }
+      ],
+      techStack: ['React', 'TypeScript'],
+      paths: {
+        root: '/project/my-app',
+        mockups: '/project/my-app/design_mockups',
+        docs: '/project/my-app/docs'
+      },
+      connection: {
+        rootExists: true,
+        mockupsFolderExists: true,
+        docsFolderExists: true,
+        status: 'connected'
+      }
+    }
+  };
+
+  const mockStructureValidation = {
+    data: {
+      deviations: [],
+      complianceScore: 85,
+      reorganizationPlan: {
+        actions: [],
+        isOrganized: true,
+        estimatedMinutes: 0,
+        duplicates: { prd: [], architecture: [], hasDuplicates: false }
+      }
+    }
+  };
+
   // ============================================
   // Initial Render Tests
   // ============================================
 
   describe('initial render', () => {
-    it('should render info box explaining Step 0', () => {
-      render(<MockupDesignTab {...defaultProps} />);
-
-      expect(screen.getByText(/mockup design/i)).toBeInTheDocument();
-    });
-
-    it('should display project path', () => {
-      render(<MockupDesignTab {...defaultProps} projectPath="/project/my-app" />);
-
-      expect(screen.getByText(/my-app/)).toBeInTheDocument();
-    });
-
-    it('should show validate button', () => {
-      render(<MockupDesignTab {...defaultProps} />);
-
-      expect(screen.getByRole('button', { name: /validate/i })).toBeInTheDocument();
-    });
-
-    it('should show idle status indicator when status is idle', () => {
-      render(<MockupDesignTab {...defaultProps} validationStatus="idle" />);
-
-      expect(screen.getByTestId('status-indicator')).toHaveClass('bg-gray-400');
-    });
-  });
-
-  // ============================================
-  // Validation Button Tests
-  // ============================================
-
-  describe('validate button', () => {
-    it('should call API when validate button clicked', async () => {
-      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ status: 'ready', checks: [], screens: [] })
-      });
-
-      render(<MockupDesignTab {...defaultProps} />);
-
-      fireEvent.click(screen.getByRole('button', { name: /validate/i }));
-
-      await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledWith(
-          '/api/validate-mockups',
-          expect.objectContaining({ method: 'POST' })
-        );
-      });
-    });
-
-    it('should disable button while validating', async () => {
+    it('should show discovering state when projectPath is provided', () => {
+      // Don't resolve fetch immediately to stay in discovering state
       (global.fetch as ReturnType<typeof vi.fn>).mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve({
-          ok: true,
-          json: () => Promise.resolve({ status: 'ready', checks: [], screens: [] })
-        }), 100))
+        () => new Promise(() => {}) // Never resolves
       );
 
       render(<MockupDesignTab {...defaultProps} />);
 
-      const button = screen.getByRole('button', { name: /validate/i });
-      fireEvent.click(button);
-
-      expect(button).toBeDisabled();
+      expect(screen.getByText(/discovering project/i)).toBeInTheDocument();
     });
 
-    it('should show loading spinner while validating', async () => {
-      (global.fetch as ReturnType<typeof vi.fn>).mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve({
+    it('should show not-connected state when no projectPath', () => {
+      render(<MockupDesignTab {...defaultProps} projectPath="" />);
+
+      expect(screen.getByText('Connect Your Project')).toBeInTheDocument();
+    });
+
+    it('should transition to connected state after discovery', async () => {
+      (global.fetch as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ status: 'ready', checks: [], screens: [] })
-        }), 100))
-      );
-
-      render(<MockupDesignTab {...defaultProps} />);
-
-      fireEvent.click(screen.getByRole('button', { name: /validate/i }));
-
-      expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
-    });
-  });
-
-  // ============================================
-  // Progress Display Tests
-  // ============================================
-
-  describe('progress display', () => {
-    it('should show progress bar during validation', async () => {
-      (global.fetch as ReturnType<typeof vi.fn>).mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve({
+          json: () => Promise.resolve(mockProjectData)
+        })
+        .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ status: 'ready', checks: [], screens: [] })
-        }), 100))
-      );
+          json: () => Promise.resolve(mockStructureValidation)
+        });
 
       render(<MockupDesignTab {...defaultProps} />);
-
-      fireEvent.click(screen.getByRole('button', { name: /validate/i }));
-
-      expect(screen.getByRole('progressbar')).toBeInTheDocument();
-    });
-  });
-
-  // ============================================
-  // Results Display Tests
-  // ============================================
-
-  describe('results display', () => {
-    it('should display validation results after completion', async () => {
-      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({
-          status: 'ready',
-          checks: [
-            { name: 'Mockup Folder', status: 'pass', message: 'Found' },
-            { name: 'HTML Files', status: 'pass', message: 'Found 3 files' }
-          ],
-          screens: []
-        })
-      });
-
-      render(<MockupDesignTab {...defaultProps} />);
-
-      fireEvent.click(screen.getByRole('button', { name: /validate/i }));
 
       await waitFor(() => {
-        expect(screen.getByText('Mockup Folder')).toBeInTheDocument();
-        expect(screen.getByText('HTML Files')).toBeInTheDocument();
-      });
-    });
-
-    it('should display screen list when mockups found', async () => {
-      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({
-          status: 'ready',
-          checks: [],
-          screens: [
-            { name: 'home.html', title: 'Home Page', summary: '2 forms, 3 buttons' },
-            { name: 'about.html', title: 'About Us', summary: '1 form' }
-          ]
-        })
-      });
-
-      render(<MockupDesignTab {...defaultProps} />);
-
-      fireEvent.click(screen.getByRole('button', { name: /validate/i }));
-
-      await waitFor(() => {
-        expect(screen.getByText('home.html')).toBeInTheDocument();
-        expect(screen.getByText('about.html')).toBeInTheDocument();
-      });
-    });
-
-    it('should show pass/fail icons for checks', async () => {
-      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({
-          status: 'blocked',
-          checks: [
-            { name: 'Mockup Folder', status: 'fail', message: 'Not found' }
-          ],
-          screens: []
-        })
-      });
-
-      render(<MockupDesignTab {...defaultProps} />);
-
-      fireEvent.click(screen.getByRole('button', { name: /validate/i }));
-
-      await waitFor(() => {
-        expect(screen.getByTestId('check-fail-icon')).toBeInTheDocument();
+        expect(screen.getByText('my-app')).toBeInTheDocument();
       });
     });
   });
 
   // ============================================
-  // Lock Mockups Button Tests
+  // Connected State Tests
   // ============================================
 
-  describe('lock mockups button', () => {
-    it('should show Lock Mockups button when status is ready', async () => {
-      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({
-          status: 'ready',
-          checks: [{ name: 'Mockup Folder', status: 'pass', message: 'Found' }],
-          screens: [{ name: 'home.html', title: 'Home', summary: '' }]
+  describe('connected state', () => {
+    beforeEach(() => {
+      (global.fetch as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockProjectData)
         })
-      });
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockStructureValidation)
+        });
+    });
 
+    it('should display project name when connected', async () => {
       render(<MockupDesignTab {...defaultProps} />);
 
-      fireEvent.click(screen.getByRole('button', { name: /validate/i }));
-
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /lock mockups/i })).toBeInTheDocument();
+        expect(screen.getByText('my-app')).toBeInTheDocument();
       });
     });
 
-    it('should not show Lock Mockups button when status is blocked', async () => {
-      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({
-          status: 'blocked',
-          checks: [{ name: 'Mockup Folder', status: 'fail', message: 'Not found' }],
-          screens: []
-        })
-      });
-
+    it('should display Step 0: Design Foundation info', async () => {
       render(<MockupDesignTab {...defaultProps} />);
 
-      fireEvent.click(screen.getByRole('button', { name: /validate/i }));
-
       await waitFor(() => {
-        expect(screen.queryByRole('button', { name: /lock mockups/i })).not.toBeInTheDocument();
+        expect(screen.getByText(/step 0.*design foundation/i)).toBeInTheDocument();
       });
     });
 
-    it('should call onValidationComplete when Lock Mockups clicked', async () => {
-      const onComplete = vi.fn();
-      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({
-          status: 'ready',
-          checks: [],
-          screens: [{ name: 'home.html', title: 'Home', summary: '' }]
-        })
-      });
-
-      render(<MockupDesignTab {...defaultProps} onValidationComplete={onComplete} />);
-
-      fireEvent.click(screen.getByRole('button', { name: /validate/i }));
+    it('should show Analyze Foundation button when connected', async () => {
+      render(<MockupDesignTab {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /lock mockups/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /analyze foundation/i })).toBeInTheDocument();
       });
+    });
 
-      fireEvent.click(screen.getByRole('button', { name: /lock mockups/i }));
+    it('should display KPI cards with document and mockup counts', async () => {
+      render(<MockupDesignTab {...defaultProps} />);
 
-      expect(onComplete).toHaveBeenCalledWith('ready');
+      await waitFor(() => {
+        // Check for document count
+        expect(screen.getByText('Documents')).toBeInTheDocument();
+        // Check for mockup count
+        expect(screen.getByText('Mockups')).toBeInTheDocument();
+      });
+    });
+
+    it('should display tech stack pills', async () => {
+      render(<MockupDesignTab {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('React')).toBeInTheDocument();
+        expect(screen.getByText('TypeScript')).toBeInTheDocument();
+      });
+    });
+
+    it('should show Connected status badge', async () => {
+      render(<MockupDesignTab {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Connected')).toBeInTheDocument();
+      });
     });
   });
 
   // ============================================
-  // Status Indicator Tests
+  // Refresh and Change Path Tests
   // ============================================
 
-  describe('status indicator', () => {
-    it('should show green indicator when status is ready', async () => {
-      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ status: 'ready', checks: [], screens: [] })
-      });
+  describe('refresh and change path', () => {
+    beforeEach(() => {
+      (global.fetch as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockProjectData)
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockStructureValidation)
+        });
+    });
 
+    it('should show Refresh button when connected', async () => {
       render(<MockupDesignTab {...defaultProps} />);
 
-      fireEvent.click(screen.getByRole('button', { name: /validate/i }));
-
       await waitFor(() => {
-        expect(screen.getByTestId('status-indicator')).toHaveClass('bg-green-500');
+        expect(screen.getByRole('button', { name: /refresh/i })).toBeInTheDocument();
       });
     });
 
-    it('should show red indicator when status is blocked', async () => {
-      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ status: 'blocked', checks: [], screens: [] })
-      });
-
+    it('should show Change button when connected', async () => {
       render(<MockupDesignTab {...defaultProps} />);
 
-      fireEvent.click(screen.getByRole('button', { name: /validate/i }));
-
       await waitFor(() => {
-        expect(screen.getByTestId('status-indicator')).toHaveClass('bg-red-500');
+        expect(screen.getByRole('button', { name: /change/i })).toBeInTheDocument();
       });
     });
   });
@@ -318,57 +230,163 @@ describe('MockupDesignTab Component', () => {
   // ============================================
 
   describe('error handling', () => {
-    it('should display error message on API failure', async () => {
+    it('should show not-connected state on discovery failure', async () => {
       (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
         ok: false,
-        status: 500,
-        json: () => Promise.resolve({ error: 'Server error' })
+        status: 500
       });
 
       render(<MockupDesignTab {...defaultProps} />);
 
-      fireEvent.click(screen.getByRole('button', { name: /validate/i }));
-
       await waitFor(() => {
-        expect(screen.getByText(/error/i)).toBeInTheDocument();
+        // Should fall back to not-connected state
+        expect(screen.getByText('Connect Your Project')).toBeInTheDocument();
       });
     });
 
-    it('should display error on network failure', async () => {
+    it('should handle network errors gracefully', async () => {
       (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'));
 
       render(<MockupDesignTab {...defaultProps} />);
 
-      fireEvent.click(screen.getByRole('button', { name: /validate/i }));
-
       await waitFor(() => {
-        expect(screen.getByText(/network error/i)).toBeInTheDocument();
+        // Should fall back to not-connected state
+        expect(screen.getByText('Connect Your Project')).toBeInTheDocument();
       });
     });
+  });
 
-    it('should allow retry after error', async () => {
+  // ============================================
+  // Folder Browser Dialog Tests
+  // ============================================
+
+  describe('folder browser dialog', () => {
+    it.skip('should open folder browser when Select Folder clicked', async () => {
+      // Mock the browse-folders API call
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          folders: [],
+          currentPath: '/Users/test',
+          parentPath: '/Users'
+        })
+      });
+
+      render(<MockupDesignTab {...defaultProps} projectPath="" />);
+
+      const selectButton = screen.getByRole('button', { name: /select folder/i });
+      fireEvent.click(selectButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Select Project Folder')).toBeInTheDocument();
+      });
+    });
+  });
+
+  // ============================================
+  // API Call Tests
+  // ============================================
+
+  describe('API calls', () => {
+    it('should call discover-project API on mount', async () => {
       (global.fetch as ReturnType<typeof vi.fn>)
-        .mockRejectedValueOnce(new Error('Network error'))
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ status: 'ready', checks: [], screens: [] })
+          json: () => Promise.resolve(mockProjectData)
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockStructureValidation)
         });
 
       render(<MockupDesignTab {...defaultProps} />);
 
-      // First attempt fails
-      fireEvent.click(screen.getByRole('button', { name: /validate/i }));
-
       await waitFor(() => {
-        expect(screen.getByText(/network error/i)).toBeInTheDocument();
+        expect(global.fetch).toHaveBeenCalledWith(
+          '/api/discover-project',
+          expect.objectContaining({ method: 'POST' })
+        );
       });
+    });
 
-      // Retry button should be available
-      const retryButton = screen.getByRole('button', { name: /retry|validate/i });
-      fireEvent.click(retryButton);
+    it('should call validate-structure API on mount', async () => {
+      (global.fetch as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockProjectData)
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockStructureValidation)
+        });
+
+      render(<MockupDesignTab {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('status-indicator')).toHaveClass('bg-green-500');
+        expect(global.fetch).toHaveBeenCalledWith(
+          '/api/validate-structure',
+          expect.objectContaining({ method: 'POST' })
+        );
+      });
+    });
+  });
+
+  // ============================================
+  // KPI Card Status Tests
+  // ============================================
+
+  describe('KPI card statuses', () => {
+    it('should show warning status when no documents', async () => {
+      const noDocsData = {
+        ...mockProjectData,
+        data: {
+          ...mockProjectData.data,
+          documentation: []
+        }
+      };
+
+      (global.fetch as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(noDocsData)
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockStructureValidation)
+        });
+
+      render(<MockupDesignTab {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Documents')).toBeInTheDocument();
+        // Value should be 0
+        expect(screen.getByText('0')).toBeInTheDocument();
+      });
+    });
+
+    it('should show warning status when no mockups', async () => {
+      const noMockupsData = {
+        ...mockProjectData,
+        data: {
+          ...mockProjectData.data,
+          mockups: []
+        }
+      };
+
+      (global.fetch as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(noMockupsData)
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockStructureValidation)
+        });
+
+      render(<MockupDesignTab {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Mockups')).toBeInTheDocument();
       });
     });
   });

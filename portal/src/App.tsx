@@ -13,19 +13,17 @@ import { Architecture } from './pages/Architecture'
 function App() {
   return (
     <BrowserRouter>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/projects" element={<Projects />} />
-          <Route path="/projects/new" element={<NewProject />} />
-          <Route path="/projects/:projectId" element={<ProjectChecklist />} />
-          <Route path="/waves" element={<Waves />} />
-          <Route path="/stories" element={<Stories />} />
-          <Route path="/activity" element={<Activity />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/architecture" element={<Architecture />} />
-        </Routes>
-      </Layout>
+      <Routes>
+        <Route path="/" element={<Layout><Dashboard /></Layout>} />
+        <Route path="/projects" element={<Layout><Projects /></Layout>} />
+        <Route path="/projects/new" element={<Layout><NewProject /></Layout>} />
+        <Route path="/projects/:projectId" element={<ProjectChecklist />} />
+        <Route path="/waves" element={<Layout><Waves /></Layout>} />
+        <Route path="/stories" element={<Layout><Stories /></Layout>} />
+        <Route path="/activity" element={<Layout><Activity /></Layout>} />
+        <Route path="/settings" element={<Layout><Settings /></Layout>} />
+        <Route path="/architecture" element={<Layout><Architecture /></Layout>} />
+      </Routes>
     </BrowserRouter>
   )
 }

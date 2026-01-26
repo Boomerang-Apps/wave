@@ -103,7 +103,7 @@ export function useOrchestratorEvents(
 
   // Refs for cleanup
   const eventSourceRef = useRef<EventSource | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /**
    * Process incoming domain event
@@ -241,8 +241,9 @@ export function useOrchestratorEvents(
 
     // Handle errors from server
     eventSource.addEventListener('error', (e) => {
-      if (e.data) {
-        const errorData = JSON.parse(e.data);
+      const messageEvent = e as MessageEvent;
+      if (messageEvent.data) {
+        const errorData = JSON.parse(messageEvent.data);
         setError(errorData.error || 'Unknown error');
       }
     });

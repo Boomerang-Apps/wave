@@ -18,6 +18,156 @@ import { validateMockups } from './utils/mockup-endpoint.js';
 import { validateFolderStructure, getStructureDeviations, calculateStructureComplianceScore } from './utils/folder-structure-validator.js';
 import { generateReorganizationPlan } from './utils/folder-reorganization.js';
 import {
+  detectProjectMode,
+  NEW_PROJECT_STEPS,
+  EXISTING_PROJECT_STEPS,
+  MONOREPO_STEPS,
+  SCORING_PROFILES,
+  analyzeStructure as analyzeFoundationStructure,
+  analyzeDocumentation as analyzeFoundationDocs,
+  analyzeMockups as analyzeFoundationMockups,
+  analyzeCompliance as analyzeFoundationCompliance,
+  analyzeTechStack as analyzeFoundationTechStack,
+  analyzeCodeArchitecture,
+  analyzeSourceFiles,
+  analyzeCodePatterns,
+  analyzeTestCoverage,
+  identifyIssues,
+  calculateReadinessScore as calculateFoundationScore,
+  // Monorepo functions (Grok Review Enhancement)
+  analyzeWorkspaces,
+  analyzeWorkspaceDependencies,
+  // Caching (Grok Review Enhancement)
+  getCachedOrCompute,
+  // Report generation
+  generateImprovementReport,
+} from './utils/foundation-analyzer.js';
+import { aiCodeReview, estimateReviewCost } from './utils/ai-code-review.js';
+import {
+  generatePRD,
+  validatePRD,
+  scorePRD,
+  getPRDScoreBreakdown,
+  PRD_SCORE_THRESHOLDS,
+} from './utils/prd-generator.js';
+import {
+  generateStories,
+  validateStories,
+  calculateAverageScore,
+  MIN_ACCEPTABLE_SCORE,
+} from './utils/stories-generator.js';
+import {
+  checkAlignment,
+  checkPRDStoriesAlignment,
+  checkStoryMockupsAlignment,
+  checkPRDMockupsAlignment,
+  ALIGNMENT_THRESHOLDS,
+} from './utils/alignment-checker.js';
+import {
+  validateEnhancedStory,
+  scoreStoryDetail,
+  getDetailScoreBreakdown,
+  DETAIL_SCORE_THRESHOLDS,
+  VALID_DOMAINS,
+  UI_DOMAINS,
+} from './utils/enhanced-story-schema.js';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FOUNDATION ANALYSIS PERSISTENCE
+// Save Gate 0 analysis results to Supabase
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function persistFoundationAnalysis(report) {
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.log('[FoundationAnalysis] No Supabase configured - results not persisted');
+    return null;
+  }
+
+  try {
+    // Grok Review Enhancement: Diff tracking - get previous analysis
+    let previousAnalysis = null;
+    let scoreDelta = null;
+
+    try {
+      const prevResponse = await fetch(
+        `${supabaseUrl}/rest/v1/foundation_analysis_results?project_path=eq.${encodeURIComponent(report.projectPath)}&order=created_at.desc&limit=1`,
+        {
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+          },
+        }
+      );
+      if (prevResponse.ok) {
+        const prevData = await prevResponse.json();
+        if (prevData.length > 0) {
+          previousAnalysis = prevData[0];
+          scoreDelta = report.readinessScore - previousAnalysis.readiness_score;
+          console.log(`[FoundationAnalysis] Score delta: ${scoreDelta > 0 ? '+' : ''}${scoreDelta}`);
+        }
+      }
+    } catch (e) {
+      // Continue without diff tracking if it fails
+    }
+
+    const record = {
+      project_path: report.projectPath,
+      project_name: path.basename(report.projectPath),
+      analysis_mode: report.mode,
+      validation_status: report.validationStatus,
+      readiness_score: report.readinessScore,
+      total_issues: report.issues?.length || 0,
+      critical_issues: report.blockingReasons?.length || 0,
+      warnings: report.recommendations?.length || 0,
+      docs_count: report.analysis?.documentation?.docsFound?.length || 0,
+      mockups_count: report.analysis?.mockups?.count || 0,
+      analysis_data: report,
+      findings: report.findings || [],
+      issues: report.issues || [],
+      recommendations: report.recommendations || [],
+      blocking_reasons: report.blockingReasons || [],
+      tech_stack: report.analysis?.techstack?.techStack || [],
+      // Diff tracking (Grok Review Enhancement)
+      previous_analysis_id: previousAnalysis?.id || null,
+      score_delta: scoreDelta,
+    };
+
+    const response = await fetch(`${supabaseUrl}/rest/v1/foundation_analysis_results`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Prefer': 'return=representation',
+      },
+      body: JSON.stringify(record),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[FoundationAnalysis] Failed to persist:', errorText);
+      return null;
+    }
+
+    const result = await response.json();
+    console.log('[FoundationAnalysis] Results persisted with ID:', result[0]?.id);
+
+    // Add diff info to result
+    if (scoreDelta !== null) {
+      result[0].score_delta = scoreDelta;
+      result[0].trend = scoreDelta > 0 ? 'improving' : scoreDelta < 0 ? 'declining' : 'stable';
+    }
+
+    return result[0];
+  } catch (error) {
+    console.error('[FoundationAnalysis] Persistence error:', error.message);
+    return null;
+  }
+}
+import {
   budgetSchema,
   budgetTrackSchema,
   gateOverrideSchema,
@@ -671,6 +821,1038 @@ app.post('/api/analyze-stream', async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECURITY: Path Sanitization (Grok Review - CRITICAL)
+// Prevents path traversal attacks and restricts to allowed directories
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const ALLOWED_PATH_ROOTS = [
+  '/Volumes/',
+  '/Users/',
+  '/home/',
+  '/tmp/',
+  process.env.ALLOWED_PROJECT_ROOT, // Optional custom root
+].filter(Boolean);
+
+function sanitizeProjectPath(inputPath) {
+  if (!inputPath || typeof inputPath !== 'string') {
+    throw new Error('Invalid project path: must be a non-empty string');
+  }
+
+  // Normalize to resolve .. and . segments
+  const normalized = path.normalize(inputPath);
+
+  // Block obvious traversal attempts
+  if (normalized.includes('..') || normalized.includes('\0')) {
+    throw new Error('Path traversal detected');
+  }
+
+  // Check against allowlist
+  const isAllowed = ALLOWED_PATH_ROOTS.some(root => normalized.startsWith(root));
+  if (!isAllowed) {
+    throw new Error(`Project path must be under allowed directories: ${ALLOWED_PATH_ROOTS.join(', ')}`);
+  }
+
+  // Resolve symlinks to get real path
+  try {
+    const realPath = fs.realpathSync(normalized);
+    // Re-check after symlink resolution
+    const stillAllowed = ALLOWED_PATH_ROOTS.some(root => realPath.startsWith(root));
+    if (!stillAllowed) {
+      throw new Error('Symlink resolves to disallowed location');
+    }
+    return realPath;
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      throw new Error('Project path does not exist');
+    }
+    throw err;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GATE 0: DESIGN FOUNDATION ANALYSIS (SSE Streaming)
+// FUNDAMENTAL: Supports NEW PROJECT, EXISTING PROJECT, and MONOREPO modes
+// ═══════════════════════════════════════════════════════════════════════════════
+
+app.post('/api/analyze-foundation-stream', async (req, res) => {
+  const {
+    projectPath: rawPath,
+    mode: requestedMode,
+    scoringProfile,
+    aiReview: enableAiReview = false, // AI Code Review (Grok Enhancement)
+    aiReviewDepth = 'quick', // 'quick' or 'deep'
+  } = req.body;
+
+  if (!rawPath) {
+    return res.status(400).json({ error: 'projectPath is required' });
+  }
+
+  // SECURITY: Sanitize and validate path
+  let projectPath;
+  try {
+    projectPath = sanitizeProjectPath(rawPath);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  // Set up SSE
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  const sendStep = (step, status, detail, proof = null) => {
+    res.write(`data: ${JSON.stringify({ step, status, detail, proof, timestamp: new Date().toISOString() })}\n\n`);
+  };
+
+  try {
+    // Detect project mode (NEW vs EXISTING)
+    const mode = requestedMode === 'auto' || !requestedMode
+      ? detectProjectMode(projectPath)
+      : requestedMode;
+
+    // Select steps based on mode (Grok Review: Added monorepo support)
+    const steps = mode === 'new' ? NEW_PROJECT_STEPS
+                : mode === 'monorepo' ? MONOREPO_STEPS
+                : EXISTING_PROJECT_STEPS;
+
+    // Validate scoring profile
+    const profile = scoringProfile && SCORING_PROFILES[scoringProfile]
+      ? scoringProfile
+      : 'default';
+
+    // Send mode detection result (include available scoring profiles)
+    res.write(`data: ${JSON.stringify({
+      type: 'mode',
+      mode,
+      totalSteps: steps.length,
+      scoringProfile: profile,
+      availableProfiles: Object.keys(SCORING_PROFILES),
+      timestamp: new Date().toISOString()
+    })}\n\n`);
+
+    const report = {
+      timestamp: new Date().toISOString(),
+      mode,
+      projectPath,
+      scoringProfile: profile,
+      analysis: {},
+      findings: [],
+      issues: [],
+      recommendations: [],
+    };
+
+    // Run analysis steps based on mode
+    if (mode === 'new') {
+      // NEW PROJECT MODE (6 steps)
+
+      // Step 1: Scan structure
+      sendStep(1, 'running', 'Scanning project structure...', null);
+      await sleep(300);
+      report.analysis.structure = analyzeFoundationStructure(projectPath);
+      sendStep(1, 'complete', `Found ${report.analysis.structure.findings.length} items`, report.analysis.structure.proof);
+
+      // Step 2: Validate documentation
+      sendStep(2, 'running', 'Validating documentation...', null);
+      await sleep(300);
+      report.analysis.documentation = analyzeFoundationDocs(projectPath);
+      sendStep(2, 'complete', `Found ${report.analysis.documentation.docsFound.length} documents`, report.analysis.documentation.proof);
+
+      // Step 3: Analyze mockups
+      sendStep(3, 'running', 'Analyzing design mockups...', null);
+      await sleep(300);
+      report.analysis.mockups = analyzeFoundationMockups(projectPath);
+      sendStep(3, 'complete', `Found ${report.analysis.mockups.count} mockups`, report.analysis.mockups.proof);
+
+      // Step 4: Check compliance
+      sendStep(4, 'running', 'Checking folder compliance...', null);
+      await sleep(300);
+      report.analysis.compliance = analyzeFoundationCompliance(projectPath);
+      sendStep(4, 'complete', `Compliance score: ${report.analysis.compliance.complianceScore}%`, report.analysis.compliance.proof);
+
+      // Step 5: Validate tech stack
+      sendStep(5, 'running', 'Validating tech stack definition...', null);
+      await sleep(300);
+      report.analysis.techstack = analyzeFoundationTechStack(projectPath);
+      sendStep(5, 'complete', `Detected: ${report.analysis.techstack.techStack.join(', ') || 'None'}`, report.analysis.techstack.proof);
+
+      // Step 6: Generate readiness score
+      sendStep(6, 'running', 'Generating readiness score...', null);
+      await sleep(300);
+      report.readinessScore = calculateFoundationScore(report.analysis, mode, profile);
+
+    } else {
+      // EXISTING PROJECT MODE (10 steps)
+
+      // Step 1: Scan structure
+      sendStep(1, 'running', 'Scanning project structure...', null);
+      await sleep(300);
+      report.analysis.structure = analyzeFoundationStructure(projectPath);
+      sendStep(1, 'complete', `Scanned project structure`, report.analysis.structure.proof);
+
+      // Step 2: Detect tech stack
+      sendStep(2, 'running', 'Detecting tech stack...', null);
+      await sleep(300);
+      report.analysis.techstack = analyzeFoundationTechStack(projectPath);
+      sendStep(2, 'complete', `Detected: ${report.analysis.techstack.techStack.join(', ') || 'None'}`, report.analysis.techstack.proof);
+
+      // Step 3: Analyze architecture
+      sendStep(3, 'running', 'Analyzing code architecture...', null);
+      await sleep(300);
+      report.analysis.architecture = analyzeCodeArchitecture(projectPath);
+      sendStep(3, 'complete', `Architecture: ${report.analysis.architecture.architecture.pattern}`, report.analysis.architecture.proof);
+
+      // Step 4: Count source files
+      sendStep(4, 'running', 'Counting source files...', null);
+      await sleep(300);
+      report.analysis.sourcefiles = analyzeSourceFiles(projectPath);
+      sendStep(4, 'complete', `Total: ${report.analysis.sourcefiles.total} files`, report.analysis.sourcefiles.proof);
+
+      // Step 5: Find documentation
+      sendStep(5, 'running', 'Finding documentation...', null);
+      await sleep(300);
+      report.analysis.documentation = analyzeFoundationDocs(projectPath);
+      sendStep(5, 'complete', `Found ${report.analysis.documentation.docsFound.length} documents`, report.analysis.documentation.proof);
+
+      // Step 6: Check mockups
+      sendStep(6, 'running', 'Checking design mockups...', null);
+      await sleep(300);
+      report.analysis.mockups = analyzeFoundationMockups(projectPath);
+      sendStep(6, 'complete', `Found ${report.analysis.mockups.count} mockups`, report.analysis.mockups.proof);
+
+      // Step 7: Analyze code patterns
+      sendStep(7, 'running', 'Analyzing code patterns...', null);
+      await sleep(300);
+      report.analysis.patterns = analyzeCodePatterns(projectPath);
+      sendStep(7, 'complete', `Detected code patterns`, report.analysis.patterns.proof);
+
+      // Step 8: Detect test coverage
+      sendStep(8, 'running', 'Detecting test coverage...', null);
+      await sleep(300);
+      report.analysis.testing = analyzeTestCoverage(projectPath);
+      sendStep(8, 'complete', `Found ${report.analysis.testing.testCount} test files`, report.analysis.testing.proof);
+
+      // Step 9: Identify issues
+      sendStep(9, 'running', 'Identifying potential issues...', null);
+      await sleep(300);
+      report.analysis.issues = identifyIssues(projectPath);
+      sendStep(9, 'complete', `Found ${report.analysis.issues.issues.length} potential issues`, report.analysis.issues.proof);
+
+      // Step 10: Generate report
+      sendStep(10, 'running', 'Generating comprehensive report...', null);
+      await sleep(300);
+      report.readinessScore = calculateFoundationScore(report.analysis, mode, profile);
+    }
+
+    // Aggregate findings and issues
+    for (const [key, result] of Object.entries(report.analysis)) {
+      if (result.findings) report.findings.push(...result.findings);
+      if (result.issues) report.issues.push(...result.issues);
+    }
+
+    // Determine validation status
+    const blockingReasons = [];
+    if (mode === 'new') {
+      if (report.analysis.documentation?.status === 'fail') {
+        blockingReasons.push('Missing PRD document');
+      }
+      if (report.analysis.mockups?.count === 0) {
+        blockingReasons.push('No design mockups found');
+      }
+    }
+    if (report.readinessScore < 40) {
+      blockingReasons.push(`Readiness score too low (${report.readinessScore}%)`);
+    }
+
+    report.validationStatus = blockingReasons.length === 0 ? 'ready' : 'blocked';
+    report.blockingReasons = blockingReasons;
+
+    // Generate recommendations
+    if (report.analysis.documentation?.status !== 'pass') {
+      report.recommendations.push('Add a PRD.md or AI-PRD.md document');
+    }
+    if (report.analysis.mockups?.count === 0) {
+      report.recommendations.push('Add HTML mockups to design_mockups/ folder');
+    }
+    if (mode === 'existing' && report.analysis.testing?.testCount === 0) {
+      report.recommendations.push('Consider adding tests');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // AI CODE REVIEW (Optional - Grok Enhancement)
+    // Run semantic analysis using LLMs for EXISTING projects
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (enableAiReview && (mode === 'existing' || mode === 'monorepo')) {
+      const stepNum = mode === 'existing' ? 11 : 10;
+      sendStep(stepNum, 'running', `Running AI Code Review (${aiReviewDepth})...`, null);
+
+      try {
+        const aiResult = await aiCodeReview(projectPath, {
+          depth: aiReviewDepth,
+          includeQuality: true,
+          generateSummary: true,
+        });
+
+        report.aiReview = aiResult;
+
+        // Apply score penalty from AI findings
+        if (aiResult.scorePenalty > 0) {
+          const originalScore = report.readinessScore;
+          report.readinessScore = Math.max(0, report.readinessScore - aiResult.scorePenalty);
+          console.log(`[AI Review] Score adjusted: ${originalScore} -> ${report.readinessScore} (-${aiResult.scorePenalty})`);
+        }
+
+        // Add AI findings to issues
+        if (aiResult.findings) {
+          const criticalFindings = aiResult.findings.filter(f => f.severity === 'critical');
+          for (const finding of criticalFindings) {
+            report.issues.push(`🤖 AI: ${finding.title || finding.description}`);
+          }
+        }
+
+        // Add AI recommendations
+        if (aiResult.nonDevSummary?.summary) {
+          report.recommendations.push(`AI Insight: ${aiResult.nonDevSummary.summary.slice(0, 200)}...`);
+        }
+
+        // Update blocking reasons if critical AI issues
+        if (aiResult.counts?.critical > 0) {
+          blockingReasons.push(`AI found ${aiResult.counts.critical} critical security/architecture issues`);
+          report.validationStatus = 'blocked';
+          report.blockingReasons = blockingReasons;
+        }
+
+        sendStep(stepNum, 'complete',
+          `AI Review: ${aiResult.counts?.total || 0} issues (${aiResult.counts?.critical || 0} critical)`,
+          aiResult.proof
+        );
+      } catch (aiError) {
+        console.error('[AI Review] Error:', aiError);
+        sendStep(stepNum, 'complete', 'AI Review skipped (error)', `Error: ${aiError.message}`);
+        report.aiReview = { status: 'error', error: aiError.message };
+      }
+    } else if (enableAiReview && mode === 'new') {
+      // For NEW projects, AI review is not applicable
+      report.aiReview = { status: 'skip', reason: 'AI review only available for existing projects' };
+    }
+
+    // Persist to database
+    const persistedRecord = await persistFoundationAnalysis(report);
+    if (persistedRecord) {
+      report.id = persistedRecord.id;
+      report.persisted = true;
+    }
+
+    // Generate and save improvement report
+    try {
+      const improvementMarkdown = generateImprovementReport(report, projectPath);
+      const docsDir = path.join(projectPath, 'docs');
+
+      // Create docs folder if it doesn't exist
+      if (!fs.existsSync(docsDir)) {
+        fs.mkdirSync(docsDir, { recursive: true });
+      }
+
+      const reportPath = path.join(docsDir, 'FOUNDATION-IMPROVEMENT-REPORT.md');
+      fs.writeFileSync(reportPath, improvementMarkdown, 'utf-8');
+      report.improvementReportPath = 'docs/FOUNDATION-IMPROVEMENT-REPORT.md';
+      console.log('[Foundation Analysis] Improvement report saved to', reportPath);
+    } catch (reportErr) {
+      console.warn('[Foundation Analysis] Could not save improvement report:', reportErr.message);
+    }
+
+    // Send final result
+    sendStep('done', 'complete', `Analysis complete! Score: ${report.readinessScore}%`, null);
+    res.write(`data: ${JSON.stringify({ type: 'result', report })}\n\n`);
+    res.end();
+
+  } catch (error) {
+    console.error('[Foundation Analysis] Error:', error);
+    sendStep('error', 'failed', error.message);
+    res.end();
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GATE 0: FOUNDATION ANALYSIS HISTORY
+// Retrieve past foundation analysis results from database
+// ═══════════════════════════════════════════════════════════════════════════════
+
+app.get('/api/foundation-analysis/history', async (req, res) => {
+  const { projectPath, limit = 10 } = req.query;
+
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    return res.status(503).json({ error: 'Database not configured' });
+  }
+
+  try {
+    let url = `${supabaseUrl}/rest/v1/foundation_analysis_results?order=created_at.desc&limit=${limit}`;
+
+    if (projectPath) {
+      url += `&project_path=eq.${encodeURIComponent(projectPath)}`;
+    }
+
+    const response = await fetch(url, {
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Database query failed: ${response.status}`);
+    }
+
+    const results = await response.json();
+    res.json({
+      success: true,
+      count: results.length,
+      results,
+    });
+  } catch (error) {
+    console.error('[Foundation History] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/foundation-analysis/:id', async (req, res) => {
+  const { id } = req.params;
+
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    return res.status(503).json({ error: 'Database not configured' });
+  }
+
+  try {
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/foundation_analysis_results?id=eq.${id}`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Database query failed: ${response.status}`);
+    }
+
+    const results = await response.json();
+    if (results.length === 0) {
+      return res.status(404).json({ error: 'Analysis not found' });
+    }
+
+    res.json({
+      success: true,
+      result: results[0],
+    });
+  } catch (error) {
+    console.error('[Foundation Analysis] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AI CODE REVIEW - Cost Estimation Endpoint
+// Returns estimated cost before running AI review
+// ═══════════════════════════════════════════════════════════════════════════════
+
+app.post('/api/ai-review/estimate', async (req, res) => {
+  const { projectPath: rawPath, depth = 'quick' } = req.body;
+
+  if (!rawPath) {
+    return res.status(400).json({ error: 'projectPath is required' });
+  }
+
+  // Sanitize path
+  let projectPath;
+  try {
+    projectPath = sanitizeProjectPath(rawPath);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  try {
+    const estimate = estimateReviewCost(projectPath, depth);
+
+    res.json({
+      success: true,
+      estimate: {
+        ...estimate,
+        depth,
+        recommendation: estimate.filesCount > 20 ? 'deep' : 'quick',
+        warning: estimate.estimatedCost[depth] > 0.50 ?
+          'AI review may cost more than $0.50' : null,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AI CODE REVIEW - Standalone Endpoint
+// Run AI review independently (for "Deep Review" button)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+app.post('/api/ai-review/run', async (req, res) => {
+  const { projectPath: rawPath, depth = 'quick' } = req.body;
+
+  if (!rawPath) {
+    return res.status(400).json({ error: 'projectPath is required' });
+  }
+
+  // Sanitize path
+  let projectPath;
+  try {
+    projectPath = sanitizeProjectPath(rawPath);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  // Set up SSE for streaming progress
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  const sendEvent = (type, data) => {
+    res.write(`data: ${JSON.stringify({ type, ...data, timestamp: new Date().toISOString() })}\n\n`);
+  };
+
+  try {
+    sendEvent('start', { depth, projectPath: path.basename(projectPath) });
+    sendEvent('progress', { step: 'extracting', message: 'Extracting key files...' });
+
+    const result = await aiCodeReview(projectPath, {
+      depth,
+      includeQuality: true,
+      generateSummary: true,
+    });
+
+    sendEvent('progress', { step: 'complete', message: 'Analysis complete' });
+    sendEvent('result', { result });
+    res.end();
+
+  } catch (error) {
+    console.error('[AI Review] Error:', error);
+    sendEvent('error', { error: error.message });
+    res.end();
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FOUNDATION IMPROVEMENT REPORT - Generate and save actionable fix instructions
+// ═══════════════════════════════════════════════════════════════════════════════
+
+app.post('/api/foundation/improvement-report', async (req, res) => {
+  const { projectPath: rawPath, report, save = true } = req.body;
+
+  if (!rawPath) {
+    return res.status(400).json({ error: 'projectPath is required' });
+  }
+
+  if (!report) {
+    return res.status(400).json({ error: 'report is required (foundation analysis results)' });
+  }
+
+  // Sanitize path
+  let projectPath;
+  try {
+    projectPath = sanitizeProjectPath(rawPath);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  try {
+    // Generate the improvement report markdown
+    const markdown = generateImprovementReport(report, projectPath);
+
+    // Save to project docs folder if requested
+    let savedPath = null;
+    if (save) {
+      const docsDir = path.join(projectPath, 'docs');
+
+      // Create docs folder if it doesn't exist
+      if (!fs.existsSync(docsDir)) {
+        fs.mkdirSync(docsDir, { recursive: true });
+      }
+
+      // Save with timestamp
+      const filename = `FOUNDATION-IMPROVEMENT-REPORT.md`;
+      savedPath = path.join(docsDir, filename);
+      fs.writeFileSync(savedPath, markdown, 'utf-8');
+
+      console.log(`[Improvement Report] Saved to ${savedPath}`);
+    }
+
+    res.json({
+      success: true,
+      markdown,
+      savedPath: savedPath ? path.relative(projectPath, savedPath) : null,
+      message: save ? `Report saved to ${savedPath}` : 'Report generated (not saved)',
+    });
+
+  } catch (error) {
+    console.error('[Improvement Report] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FOUNDATION QUICK SETUP
+// Automatically create missing directories and template files
+// ═══════════════════════════════════════════════════════════════════════════════
+
+app.post('/api/foundation/apply-fixes', async (req, res) => {
+  const { projectPath: rawPath, fixes = ['all'] } = req.body;
+
+  if (!rawPath) {
+    return res.status(400).json({ error: 'projectPath is required' });
+  }
+
+  // Sanitize path
+  let projectPath;
+  try {
+    projectPath = sanitizeProjectPath(rawPath);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  const results = {
+    success: true,
+    created: [],
+    skipped: [],
+    errors: []
+  };
+
+  try {
+    // Define the fixes we can apply
+    const fixActions = {
+      // Create required directories
+      directories: () => {
+        const dirs = ['docs', 'design_mockups', 'public'];
+        dirs.forEach(dir => {
+          const dirPath = path.join(projectPath, dir);
+          if (!fs.existsSync(dirPath)) {
+            fs.mkdirSync(dirPath, { recursive: true });
+            results.created.push({ type: 'directory', path: dir });
+          } else {
+            results.skipped.push({ type: 'directory', path: dir, reason: 'Already exists' });
+          }
+        });
+      },
+
+      // Create PRD.md template
+      prd: () => {
+        const prdPath = path.join(projectPath, 'docs', 'PRD.md');
+        if (!fs.existsSync(prdPath)) {
+          // Ensure docs directory exists
+          fs.mkdirSync(path.dirname(prdPath), { recursive: true });
+
+          const prdContent = `# Product Requirements Document
+
+## Overview
+[Describe your product/feature - what problem does it solve?]
+
+## Goals
+- [ ] Goal 1: [Primary objective]
+- [ ] Goal 2: [Secondary objective]
+- [ ] Goal 3: [Success metric]
+
+## Target Users
+- **Primary:** [Who will use this most?]
+- **Secondary:** [Other users]
+
+## Features
+
+### Feature 1: [Feature Name]
+**Priority:** High
+**Description:** [What does it do?]
+**Acceptance Criteria:**
+- [ ] Criteria 1
+- [ ] Criteria 2
+
+### Feature 2: [Feature Name]
+**Priority:** Medium
+**Description:** [What does it do?]
+**Acceptance Criteria:**
+- [ ] Criteria 1
+- [ ] Criteria 2
+
+## Technical Requirements
+- Framework: [e.g., Next.js 14, React 18]
+- Database: [e.g., Supabase, PostgreSQL]
+- Authentication: [e.g., Supabase Auth, NextAuth]
+
+## Success Metrics
+- Metric 1: [How will you measure success?]
+- Metric 2: [What KPIs matter?]
+
+## Timeline
+- Phase 1: [Scope]
+- Phase 2: [Scope]
+
+## Out of Scope
+- [What will NOT be included in this version?]
+`;
+          fs.writeFileSync(prdPath, prdContent, 'utf-8');
+          results.created.push({ type: 'file', path: 'docs/PRD.md' });
+        } else {
+          results.skipped.push({ type: 'file', path: 'docs/PRD.md', reason: 'Already exists' });
+        }
+      },
+
+      // Create CLAUDE.md template
+      claude: () => {
+        const claudePath = path.join(projectPath, 'docs', 'CLAUDE.md');
+        if (!fs.existsSync(claudePath)) {
+          fs.mkdirSync(path.dirname(claudePath), { recursive: true });
+
+          const claudeContent = `# CLAUDE.md - AI Agent Instructions
+
+## Project Overview
+[Brief description of this project and its purpose]
+
+## Tech Stack
+- **Framework:** [e.g., Next.js 14 with App Router]
+- **Language:** TypeScript
+- **Database:** [e.g., Supabase (PostgreSQL)]
+- **Styling:** [e.g., Tailwind CSS, shadcn/ui]
+- **Deployment:** [e.g., Vercel]
+
+## Project Structure
+\`\`\`
+├── app/              # Next.js App Router pages
+├── components/       # React components
+│   ├── ui/          # Reusable UI components
+│   └── features/    # Feature-specific components
+├── lib/             # Utility functions
+├── hooks/           # Custom React hooks
+├── types/           # TypeScript type definitions
+└── docs/            # Documentation
+\`\`\`
+
+## Key Files
+- \`app/page.tsx\` - Main entry point
+- \`lib/supabase.ts\` - Database client
+- \`components/ui/\` - Base UI components
+
+## Development Guidelines
+
+### Code Style
+- Use TypeScript strict mode
+- Follow existing code patterns
+- Use functional components with hooks
+- Prefer named exports over default exports
+
+### Naming Conventions
+- Components: PascalCase (e.g., \`UserProfile.tsx\`)
+- Utilities: camelCase (e.g., \`formatDate.ts\`)
+- Constants: SCREAMING_SNAKE_CASE
+
+### Testing
+- Write tests for new features
+- Test file: \`*.test.ts\` or \`*.spec.ts\`
+
+## Common Commands
+\`\`\`bash
+npm run dev      # Start development server
+npm run build    # Build for production
+npm run test     # Run tests
+npm run lint     # Lint code
+\`\`\`
+
+## Important Notes
+- [Any gotchas or special considerations]
+- [Environment variables needed]
+- [External services or APIs used]
+`;
+          fs.writeFileSync(claudePath, claudeContent, 'utf-8');
+          results.created.push({ type: 'file', path: 'docs/CLAUDE.md' });
+        } else {
+          results.skipped.push({ type: 'file', path: 'docs/CLAUDE.md', reason: 'Already exists' });
+        }
+      },
+
+      // Create SAFETY-PROTOCOL.md template
+      safety: () => {
+        const safetyPath = path.join(projectPath, 'docs', 'SAFETY-PROTOCOL.md');
+        if (!fs.existsSync(safetyPath)) {
+          fs.mkdirSync(path.dirname(safetyPath), { recursive: true });
+
+          const safetyContent = `# Safety Protocol
+
+## High-Risk Operations
+
+The following operations require extra caution:
+
+- **Database migrations** - Always backup before schema changes
+- **Payment processing** - Never store raw card data
+- **User authentication changes** - Test thoroughly in staging
+- **File system operations** - Validate all paths
+
+## Approval Requirements
+
+### Requires CTO/Lead Approval
+- Database schema changes in production
+- Authentication system modifications
+- Third-party API integrations
+- Infrastructure changes
+
+### Requires Code Review
+- All production deployments
+- Security-sensitive code
+- Performance-critical paths
+
+## Forbidden Operations
+
+**Never do the following without explicit approval:**
+
+- ❌ Direct production database access
+- ❌ Bypassing authentication or authorization
+- ❌ Hardcoding credentials or secrets
+- ❌ Disabling security middleware
+- ❌ Force pushing to main/master branch
+- ❌ Deleting user data without backup
+
+## Incident Response
+
+1. **Detect** - Monitor alerts and user reports
+2. **Assess** - Determine severity and scope
+3. **Contain** - Limit damage
+4. **Notify** - Alert stakeholders
+5. **Fix** - Implement solution
+6. **Review** - Post-mortem analysis
+
+## Security Best Practices
+
+- Use environment variables for secrets
+- Validate all user input
+- Sanitize data before database queries
+- Implement rate limiting
+- Use HTTPS everywhere
+- Keep dependencies updated
+`;
+          fs.writeFileSync(safetyPath, safetyContent, 'utf-8');
+          results.created.push({ type: 'file', path: 'docs/SAFETY-PROTOCOL.md' });
+        } else {
+          results.skipped.push({ type: 'file', path: 'docs/SAFETY-PROTOCOL.md', reason: 'Already exists' });
+        }
+      },
+
+      // Create README.md template
+      readme: () => {
+        const readmePath = path.join(projectPath, 'README.md');
+        if (!fs.existsSync(readmePath)) {
+          const projectName = path.basename(projectPath);
+          const readmeContent = `# ${projectName}
+
+## Overview
+[Brief description of what this project does]
+
+## Getting Started
+
+### Prerequisites
+- Node.js 18+
+- npm or yarn
+
+### Installation
+\`\`\`bash
+git clone <repository-url>
+cd ${projectName}
+npm install
+\`\`\`
+
+### Environment Setup
+\`\`\`bash
+cp .env.example .env.local
+# Edit .env.local with your values
+\`\`\`
+
+### Development
+\`\`\`bash
+npm run dev
+\`\`\`
+
+Open [http://localhost:3000](http://localhost:3000) to view the app.
+
+## Project Structure
+See \`docs/CLAUDE.md\` for detailed project structure.
+
+## Documentation
+- [PRD](docs/PRD.md) - Product Requirements Document
+- [CLAUDE.md](docs/CLAUDE.md) - AI Agent Instructions
+- [Safety Protocol](docs/SAFETY-PROTOCOL.md) - Security Guidelines
+
+## Contributing
+1. Create a feature branch
+2. Make your changes
+3. Submit a pull request
+
+## License
+[Your License]
+`;
+          fs.writeFileSync(readmePath, readmeContent, 'utf-8');
+          results.created.push({ type: 'file', path: 'README.md' });
+        } else {
+          results.skipped.push({ type: 'file', path: 'README.md', reason: 'Already exists' });
+        }
+      }
+    };
+
+    // Apply requested fixes
+    const applyAll = fixes.includes('all');
+
+    if (applyAll || fixes.includes('directories')) {
+      fixActions.directories();
+    }
+    if (applyAll || fixes.includes('prd')) {
+      fixActions.prd();
+    }
+    if (applyAll || fixes.includes('claude')) {
+      fixActions.claude();
+    }
+    if (applyAll || fixes.includes('safety')) {
+      fixActions.safety();
+    }
+    if (applyAll || fixes.includes('readme')) {
+      fixActions.readme();
+    }
+
+    console.log(`[Foundation Quick Setup] Applied to ${projectPath}:`, results);
+
+    res.json(results);
+
+  } catch (error) {
+    console.error('[Foundation Quick Setup] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      created: results.created,
+      skipped: results.skipped
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STRUCTURE REORGANIZATION
+// Apply reorganization plan to fix file structure issues
+// ═══════════════════════════════════════════════════════════════════════════════
+
+app.post('/api/foundation/reorganize', async (req, res) => {
+  const { projectPath: rawPath, actions = [] } = req.body;
+
+  if (!rawPath) {
+    return res.status(400).json({ error: 'projectPath is required' });
+  }
+
+  if (!actions || actions.length === 0) {
+    return res.status(400).json({ error: 'actions array is required' });
+  }
+
+  // Sanitize path
+  let projectPath;
+  try {
+    projectPath = sanitizeProjectPath(rawPath);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  const results = {
+    success: true,
+    created: [],
+    moved: [],
+    skipped: [],
+    errors: []
+  };
+
+  try {
+    for (const action of actions) {
+      try {
+        if (action.action === 'create' && action.folder) {
+          // Create directory
+          const dirPath = path.join(projectPath, action.folder);
+          if (!fs.existsSync(dirPath)) {
+            fs.mkdirSync(dirPath, { recursive: true });
+            results.created.push({ type: 'directory', path: action.folder });
+          } else {
+            results.skipped.push({ type: 'directory', path: action.folder, reason: 'Already exists' });
+          }
+        } else if (action.action === 'move' && action.file && action.destination) {
+          // Move file
+          const srcPath = path.join(projectPath, action.file);
+          const destPath = path.join(projectPath, action.destination);
+
+          if (!fs.existsSync(srcPath)) {
+            results.skipped.push({
+              type: 'move',
+              from: action.file,
+              to: action.destination,
+              reason: 'Source file not found'
+            });
+            continue;
+          }
+
+          // Ensure destination directory exists
+          const destDir = path.dirname(destPath);
+          if (!fs.existsSync(destDir)) {
+            fs.mkdirSync(destDir, { recursive: true });
+          }
+
+          // Check if destination already exists
+          if (fs.existsSync(destPath)) {
+            results.skipped.push({
+              type: 'move',
+              from: action.file,
+              to: action.destination,
+              reason: 'Destination already exists'
+            });
+            continue;
+          }
+
+          // Move the file
+          fs.renameSync(srcPath, destPath);
+          results.moved.push({
+            from: action.file,
+            to: action.destination
+          });
+        }
+      } catch (actionError) {
+        results.errors.push({
+          action: action,
+          error: actionError.message
+        });
+      }
+    }
+
+    // Update success status if there were errors
+    results.success = results.errors.length === 0;
+
+    console.log(`[Structure Reorganization] Applied to ${projectPath}:`, {
+      created: results.created.length,
+      moved: results.moved.length,
+      skipped: results.skipped.length,
+      errors: results.errors.length
+    });
+
+    res.json(results);
+
+  } catch (error) {
+    console.error('[Structure Reorganization] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      ...results
+    });
+  }
+});
+
 // Generate markdown report
 function generateMarkdownReport(report, projectPath) {
   const timestamp = new Date().toISOString();
@@ -882,6 +2064,531 @@ function getFileIcon(filename) {
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PRD GENERATOR API
+// Generate PRD from project sources using AI synthesis
+// ═══════════════════════════════════════════════════════════════════════════════
+
+app.post('/api/generate-prd', async (req, res) => {
+  const { projectPath: rawPath, sources, options = {} } = req.body;
+
+  if (!rawPath) {
+    return res.status(400).json({ error: 'projectPath is required' });
+  }
+
+  let projectPath;
+  try {
+    projectPath = sanitizeProjectPath(rawPath);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  if (!exists(projectPath)) {
+    return res.status(404).json({ error: `Project path not found: ${projectPath}` });
+  }
+
+  console.log(`\n📄 Generating PRD for: ${projectPath}`);
+
+  try {
+    // Generate PRD with skipLLM option for now (can enable LLM later)
+    const prd = await generatePRD(sources || {}, {
+      ...options,
+      skipLLM: options.skipLLM !== false // Default to skip LLM
+    });
+
+    // Validate and score
+    const validation = validatePRD(prd);
+    const score = scorePRD(prd);
+    const breakdown = getPRDScoreBreakdown(prd);
+
+    // Determine status
+    const status = score >= PRD_SCORE_THRESHOLDS.excellent ? 'excellent' :
+                   score >= PRD_SCORE_THRESHOLDS.good ? 'good' :
+                   score >= PRD_SCORE_THRESHOLDS.acceptable ? 'acceptable' :
+                   score >= PRD_SCORE_THRESHOLDS.minimum ? 'minimum' : 'insufficient';
+
+    res.json({
+      success: true,
+      prd,
+      validation,
+      score,
+      breakdown,
+      status,
+      thresholds: PRD_SCORE_THRESHOLDS,
+      message: validation.valid
+        ? `PRD generated successfully with score ${score}/100 (${status})`
+        : `PRD generated with ${validation.errors.length} errors - review required`,
+    });
+
+  } catch (error) {
+    console.error('[PRD Generator] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Validate existing PRD
+app.post('/api/validate-prd', async (req, res) => {
+  const { prd } = req.body;
+
+  if (!prd) {
+    return res.status(400).json({ error: 'prd object is required' });
+  }
+
+  try {
+    const validation = validatePRD(prd);
+    const score = scorePRD(prd);
+    const breakdown = getPRDScoreBreakdown(prd);
+
+    const status = score >= PRD_SCORE_THRESHOLDS.excellent ? 'excellent' :
+                   score >= PRD_SCORE_THRESHOLDS.good ? 'good' :
+                   score >= PRD_SCORE_THRESHOLDS.acceptable ? 'acceptable' :
+                   score >= PRD_SCORE_THRESHOLDS.minimum ? 'minimum' : 'insufficient';
+
+    res.json({
+      success: true,
+      validation,
+      score,
+      breakdown,
+      status,
+      thresholds: PRD_SCORE_THRESHOLDS,
+    });
+
+  } catch (error) {
+    console.error('[PRD Validator] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STORIES GENERATOR API
+// Generate stories from PRD features with enhanced schema validation
+// ═══════════════════════════════════════════════════════════════════════════════
+
+app.post('/api/generate-stories', async (req, res) => {
+  const { projectPath: rawPath, prd, options = {} } = req.body;
+
+  if (!rawPath) {
+    return res.status(400).json({ error: 'projectPath is required' });
+  }
+
+  if (!prd) {
+    return res.status(400).json({ error: 'prd object is required' });
+  }
+
+  let projectPath;
+  try {
+    projectPath = sanitizeProjectPath(rawPath);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  console.log(`\n📚 Generating Stories for: ${projectPath}`);
+
+  try {
+    // Generate stories from PRD
+    const stories = await generateStories(prd, projectPath, {
+      ...options,
+      skipLLM: options.skipLLM !== false // Default to skip LLM
+    });
+
+    // Validate stories
+    const validation = validateStories(stories);
+    const avgScore = calculateAverageScore(stories);
+
+    // Score each story
+    const storyScores = stories.map(story => ({
+      id: story.id,
+      title: story.title,
+      score: scoreStoryDetail(story),
+      breakdown: getDetailScoreBreakdown(story),
+      validation: validateEnhancedStory(story),
+    }));
+
+    const status = avgScore >= DETAIL_SCORE_THRESHOLDS.excellent ? 'excellent' :
+                   avgScore >= DETAIL_SCORE_THRESHOLDS.good ? 'good' :
+                   avgScore >= DETAIL_SCORE_THRESHOLDS.acceptable ? 'acceptable' :
+                   avgScore >= DETAIL_SCORE_THRESHOLDS.minimum ? 'minimum' : 'insufficient';
+
+    res.json({
+      success: true,
+      stories,
+      validation,
+      averageScore: avgScore,
+      storyScores,
+      status,
+      thresholds: DETAIL_SCORE_THRESHOLDS,
+      domains: VALID_DOMAINS,
+      uiDomains: UI_DOMAINS,
+      message: validation.valid
+        ? `${stories.length} stories generated with average score ${avgScore.toFixed(1)}/100 (${status})`
+        : `${stories.length} stories generated with ${validation.invalidCount} validation issues`,
+    });
+
+  } catch (error) {
+    console.error('[Stories Generator] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Validate existing stories
+app.post('/api/validate-stories', async (req, res) => {
+  const { stories } = req.body;
+
+  if (!stories || !Array.isArray(stories)) {
+    return res.status(400).json({ error: 'stories array is required' });
+  }
+
+  try {
+    const validation = validateStories(stories);
+    const avgScore = calculateAverageScore(stories);
+
+    const storyScores = stories.map(story => ({
+      id: story.id,
+      title: story.title,
+      score: scoreStoryDetail(story),
+      breakdown: getDetailScoreBreakdown(story),
+      validation: validateEnhancedStory(story),
+    }));
+
+    const status = avgScore >= DETAIL_SCORE_THRESHOLDS.excellent ? 'excellent' :
+                   avgScore >= DETAIL_SCORE_THRESHOLDS.good ? 'good' :
+                   avgScore >= DETAIL_SCORE_THRESHOLDS.acceptable ? 'acceptable' :
+                   avgScore >= DETAIL_SCORE_THRESHOLDS.minimum ? 'minimum' : 'insufficient';
+
+    res.json({
+      success: true,
+      validation,
+      averageScore: avgScore,
+      storyScores,
+      status,
+      thresholds: DETAIL_SCORE_THRESHOLDS,
+    });
+
+  } catch (error) {
+    console.error('[Stories Validator] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ALIGNMENT CHECKER API
+// Check alignment between PRD, Stories, and Mockups
+// ═══════════════════════════════════════════════════════════════════════════════
+
+app.post('/api/check-alignment', async (req, res) => {
+  const { projectPath: rawPath, prd, stories } = req.body;
+
+  if (!rawPath) {
+    return res.status(400).json({ error: 'projectPath is required' });
+  }
+
+  if (!prd) {
+    return res.status(400).json({ error: 'prd object is required' });
+  }
+
+  if (!stories || !Array.isArray(stories)) {
+    return res.status(400).json({ error: 'stories array is required' });
+  }
+
+  let projectPath;
+  try {
+    projectPath = sanitizeProjectPath(rawPath);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  console.log(`\n🔗 Checking Alignment for: ${projectPath}`);
+
+  try {
+    // Run full alignment check
+    const report = await checkAlignment(prd, stories, projectPath);
+
+    // Determine status based on score
+    const status = report.score >= ALIGNMENT_THRESHOLDS.excellent ? 'excellent' :
+                   report.score >= ALIGNMENT_THRESHOLDS.good ? 'good' :
+                   report.score >= ALIGNMENT_THRESHOLDS.acceptable ? 'acceptable' :
+                   report.score >= ALIGNMENT_THRESHOLDS.poor ? 'poor' : 'failing';
+
+    res.json({
+      success: true,
+      report,
+      status,
+      thresholds: ALIGNMENT_THRESHOLDS,
+      message: report.valid
+        ? `Alignment check passed with score ${report.score}/100 (${status})`
+        : `Alignment check failed with score ${report.score}/100 - ${report.gaps.featuresWithoutStories.length} features without stories`,
+    });
+
+  } catch (error) {
+    console.error('[Alignment Checker] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Quick alignment checks (individual)
+app.post('/api/check-prd-stories-alignment', async (req, res) => {
+  const { prd, stories } = req.body;
+
+  if (!prd || !stories) {
+    return res.status(400).json({ error: 'prd and stories are required' });
+  }
+
+  try {
+    const result = checkPRDStoriesAlignment(prd, stories);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('[PRD-Stories Alignment] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/check-stories-mockups-alignment', async (req, res) => {
+  const { stories, mockups } = req.body;
+
+  if (!stories || !mockups) {
+    return res.status(400).json({ error: 'stories and mockups are required' });
+  }
+
+  try {
+    const result = checkStoryMockupsAlignment(stories, mockups);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('[Stories-Mockups Alignment] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/check-prd-mockups-alignment', async (req, res) => {
+  const { prd, mockups } = req.body;
+
+  if (!prd || !mockups) {
+    return res.status(400).json({ error: 'prd and mockups are required' });
+  }
+
+  try {
+    const result = checkPRDMockupsAlignment(prd, mockups);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('[PRD-Mockups Alignment] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PRD/STORIES IMPROVEMENT REPORT
+// Generate markdown report with actionable fixes
+// ═══════════════════════════════════════════════════════════════════════════════
+
+app.post('/api/prd-stories/improvement-report', async (req, res) => {
+  const { projectPath: rawPath, prd, stories, alignmentReport, prdScore, storiesScore, save = true } = req.body;
+
+  if (!rawPath) {
+    return res.status(400).json({ error: 'projectPath is required' });
+  }
+
+  let projectPath;
+  try {
+    projectPath = sanitizeProjectPath(rawPath);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  const projectName = path.basename(projectPath);
+  const timestamp = new Date().toISOString();
+
+  try {
+    // Generate comprehensive markdown report
+    let markdown = `# PRD & Stories Improvement Report
+
+**Project:** ${projectName}
+**Generated:** ${timestamp}
+**Project Path:** ${projectPath}
+
+---
+
+## Executive Summary
+
+| Metric | Value | Status |
+|--------|-------|--------|
+| PRD Score | ${prdScore || 'N/A'}% | ${prdScore >= 80 ? '✅ Good' : prdScore >= 60 ? '⚠️ Needs Work' : '❌ Poor'} |
+| Stories Score | ${storiesScore || 'N/A'}% | ${storiesScore >= 80 ? '✅ Good' : storiesScore >= 60 ? '⚠️ Needs Work' : '❌ Poor'} |
+| Alignment Score | ${alignmentReport?.score || 'N/A'}% | ${alignmentReport?.valid ? '✅ Aligned' : '⚠️ Gaps Found'} |
+| Total Stories | ${stories?.length || 0} | ${stories?.length > 0 ? '✅' : '❌'} |
+| Features Covered | ${alignmentReport?.coverage?.featuresWithStories || 0}/${alignmentReport?.coverage?.totalFeatures || 0} | ${alignmentReport?.coverage?.featureCoverage >= 80 ? '✅' : '⚠️'} |
+
+---
+
+`;
+
+    // PRD Section
+    if (prd) {
+      markdown += `## PRD Analysis
+
+### Overview
+- **Name:** ${prd.overview?.name || 'Not specified'}
+- **Tagline:** ${prd.overview?.tagline || 'Not specified'}
+- **Features:** ${prd.features?.core?.length || 0} core features
+
+### Goals
+${prd.goals?.primary?.length > 0 ? prd.goals.primary.map(g => `- ✅ ${g}`).join('\n') : '- ⚠️ No primary goals defined'}
+
+### Technical Stack
+${prd.technical?.stack?.length > 0 ? prd.technical.stack.map(t => `- ${t}`).join('\n') : '- ⚠️ No tech stack defined'}
+
+---
+
+`;
+    }
+
+    // Alignment Gaps
+    if (alignmentReport?.gaps) {
+      const gaps = alignmentReport.gaps;
+      const hasGaps = gaps.featuresWithoutStories?.length > 0 ||
+                      gaps.storiesWithoutFeatures?.length > 0 ||
+                      gaps.uiStoriesWithoutMockups?.length > 0;
+
+      if (hasGaps) {
+        markdown += `## 🔴 Alignment Gaps to Fix
+
+`;
+
+        if (gaps.featuresWithoutStories?.length > 0) {
+          markdown += `### Features Without Stories
+These PRD features need corresponding user stories:
+
+| Feature ID | Name | Domain | Priority | Action |
+|------------|------|--------|----------|--------|
+${gaps.featuresWithoutStories.map(f => `| ${f.featureId} | ${f.featureName} | ${f.domain} | ${f.priority} | Create story |`).join('\n')}
+
+`;
+        }
+
+        if (gaps.storiesWithoutFeatures?.length > 0) {
+          markdown += `### Orphan Stories
+These stories don't map to any PRD feature:
+
+| Story ID | Title | Domain | Action |
+|----------|-------|--------|--------|
+${gaps.storiesWithoutFeatures.map(s => `| ${s.storyId} | ${s.title} | ${s.domain} | Link to feature or remove |`).join('\n')}
+
+`;
+        }
+
+        if (gaps.uiStoriesWithoutMockups?.length > 0) {
+          markdown += `### UI Stories Missing Mockups
+These UI stories need mockup references:
+
+| Story ID | Title | Domain | Action |
+|----------|-------|--------|--------|
+${gaps.uiStoriesWithoutMockups.map(s => `| ${s.storyId} | ${s.title} | ${s.domain} | Add mockupRefs |`).join('\n')}
+
+`;
+        }
+
+        if (gaps.domainMismatches?.length > 0) {
+          markdown += `### Domain Mismatches
+These items have inconsistent domain categorization:
+
+| Feature | Story | Feature Domain | Story Domain | Action |
+|---------|-------|----------------|--------------|--------|
+${gaps.domainMismatches.map(m => `| ${m.featureId} | ${m.storyId} | ${m.featureDomain} | ${m.storyDomain} | Align domains |`).join('\n')}
+
+`;
+        }
+
+        if (gaps.priorityMismatches?.length > 0) {
+          markdown += `### Priority Mismatches
+These items have inconsistent priority levels:
+
+| Feature | Story | Feature Priority | Story Priority | Action |
+|---------|-------|------------------|----------------|--------|
+${gaps.priorityMismatches.map(m => `| ${m.featureId} | ${m.storyId} | ${m.featurePriority} | ${m.storyPriority} | Align priorities |`).join('\n')}
+
+`;
+        }
+      } else {
+        markdown += `## ✅ No Alignment Gaps
+
+All features have corresponding stories and mockups are properly referenced.
+
+`;
+      }
+    }
+
+    // Recommendations
+    if (alignmentReport?.recommendations?.length > 0) {
+      markdown += `## 📋 Recommendations
+
+${alignmentReport.recommendations.map((rec, i) => `### ${i + 1}. ${rec.message}
+- **Type:** ${rec.type}
+- **Priority:** ${rec.priority.toUpperCase()}
+- **Target:** ${rec.target}
+`).join('\n')}
+
+`;
+    }
+
+    // Action Items Summary
+    markdown += `## 🎯 Action Items Summary
+
+`;
+
+    const highPriorityCount = alignmentReport?.recommendations?.filter(r => r.priority === 'high').length || 0;
+    const mediumPriorityCount = alignmentReport?.recommendations?.filter(r => r.priority === 'medium').length || 0;
+    const lowPriorityCount = alignmentReport?.recommendations?.filter(r => r.priority === 'low').length || 0;
+
+    markdown += `| Priority | Count | Action |
+|----------|-------|--------|
+| 🔴 High | ${highPriorityCount} | Fix immediately |
+| 🟡 Medium | ${mediumPriorityCount} | Fix before development |
+| 🟢 Low | ${lowPriorityCount} | Fix when convenient |
+
+---
+
+## Next Steps
+
+1. **Fix High Priority Gaps** - Create missing stories for critical features
+2. **Add Mockup References** - Link UI stories to design mockups
+3. **Align Domains/Priorities** - Ensure consistency between PRD and stories
+4. **Re-run Alignment Check** - Verify all gaps are resolved
+5. **Proceed to Execution Planning** - Once alignment score ≥ 70%
+
+---
+
+*Report generated by WAVE Portal - PRD & Stories Validation*
+*Timestamp: ${timestamp}*
+`;
+
+    // Save to project docs folder if requested
+    let savedPath = null;
+    if (save) {
+      const docsDir = path.join(projectPath, 'docs');
+
+      // Create docs folder if it doesn't exist
+      if (!fs.existsSync(docsDir)) {
+        fs.mkdirSync(docsDir, { recursive: true });
+      }
+
+      const filename = `PRD-STORIES-IMPROVEMENT-REPORT.md`;
+      savedPath = path.join(docsDir, filename);
+      fs.writeFileSync(savedPath, markdown, 'utf-8');
+
+      console.log(`[PRD-Stories Report] Saved to ${savedPath}`);
+    }
+
+    res.json({
+      success: true,
+      markdown,
+      savedPath: savedPath ? path.relative(projectPath, savedPath) : null,
+      message: save ? `Report saved to ${savedPath}` : 'Report generated (not saved)',
+    });
+
+  } catch (error) {
+    console.error('[PRD-Stories Report] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Main analysis endpoint
 app.post('/api/analyze', async (req, res) => {
@@ -7089,6 +8796,731 @@ app.post('/api/update-project-path', async (req, res) => {
   }
 });
 
+// ============================================================================
+// CONNECTION DETECTION ENDPOINTS
+// ============================================================================
+
+/**
+ * Detect all connections from a project path
+ * POST /api/connections/detect
+ */
+app.post('/api/connections/detect', async (req, res) => {
+  const { projectPath } = req.body;
+
+  if (!projectPath) {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath is required'
+    });
+  }
+
+  try {
+    const connections = {
+      local: { connected: false, path: projectPath, status: 'checking' },
+      github: { connected: false, repo: null, status: 'checking' },
+      supabase: { connected: false, projectId: null, status: 'checking' },
+      vercel: { connected: false, projectId: null, status: 'checking' }
+    };
+
+    // Check local path exists
+    try {
+      await fs.access(projectPath);
+      connections.local = { connected: true, path: projectPath, status: 'connected' };
+    } catch {
+      connections.local = { connected: false, path: projectPath, status: 'not_found' };
+    }
+
+    // Check for .git directory and extract remote
+    const gitPath = path.join(projectPath, '.git');
+    try {
+      await fs.access(gitPath);
+      const configPath = path.join(gitPath, 'config');
+      const gitConfig = await fs.readFile(configPath, 'utf-8');
+
+      // Extract remote URL from git config
+      const remoteMatch = gitConfig.match(/\[remote "origin"\][^[]*url\s*=\s*(.+)/);
+      if (remoteMatch) {
+        const remoteUrl = remoteMatch[1].trim();
+        // Parse GitHub URL
+        const githubMatch = remoteUrl.match(/github\.com[:/]([^/]+\/[^/]+?)(?:\.git)?$/);
+        if (githubMatch) {
+          connections.github = {
+            connected: true,
+            repo: githubMatch[1],
+            remoteUrl: remoteUrl,
+            status: 'connected'
+          };
+        }
+      }
+    } catch {
+      connections.github.status = 'no_git';
+    }
+
+    // Check for Supabase in .env or environment
+    try {
+      const envPath = path.join(projectPath, '.env');
+      let envContent = '';
+      try {
+        envContent = await fs.readFile(envPath, 'utf-8');
+      } catch {
+        // Try .env.local
+        try {
+          envContent = await fs.readFile(path.join(projectPath, '.env.local'), 'utf-8');
+        } catch {
+          // No env files
+        }
+      }
+
+      const supabaseUrlMatch = envContent.match(/(?:VITE_)?SUPABASE_URL\s*=\s*(.+)/);
+      const supabaseKeyMatch = envContent.match(/(?:VITE_)?SUPABASE_(?:ANON_KEY|SERVICE_ROLE_KEY)\s*=\s*(.+)/);
+
+      if (supabaseUrlMatch && supabaseKeyMatch) {
+        const supabaseUrl = supabaseUrlMatch[1].trim();
+        // Extract project ID from URL
+        const projectIdMatch = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/);
+        connections.supabase = {
+          connected: true,
+          projectId: projectIdMatch ? projectIdMatch[1] : null,
+          url: supabaseUrl,
+          status: 'connected'
+        };
+      } else {
+        connections.supabase.status = 'no_config';
+      }
+    } catch {
+      connections.supabase.status = 'no_config';
+    }
+
+    // Check for Vercel in .vercel directory or vercel.json
+    try {
+      const vercelPath = path.join(projectPath, '.vercel', 'project.json');
+      const vercelConfig = JSON.parse(await fs.readFile(vercelPath, 'utf-8'));
+      connections.vercel = {
+        connected: true,
+        projectId: vercelConfig.projectId,
+        orgId: vercelConfig.orgId,
+        status: 'connected'
+      };
+    } catch {
+      // Try vercel.json
+      try {
+        const vercelJsonPath = path.join(projectPath, 'vercel.json');
+        await fs.access(vercelJsonPath);
+        connections.vercel = {
+          connected: true,
+          projectId: null, // vercel.json doesn't contain project ID
+          status: 'config_only'
+        };
+      } catch {
+        connections.vercel.status = 'no_config';
+      }
+    }
+
+    return res.json({
+      success: true,
+      connections
+    });
+
+  } catch (err) {
+    console.error('[ConnectionDetect] Error:', err.message);
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+/**
+ * Get GitHub connection status and repository info
+ * POST /api/connections/github/status
+ */
+app.post('/api/connections/github/status', async (req, res) => {
+  const { projectPath } = req.body;
+
+  if (!projectPath) {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath is required'
+    });
+  }
+
+  try {
+    const gitPath = path.join(projectPath, '.git');
+    await fs.access(gitPath);
+
+    const configPath = path.join(gitPath, 'config');
+    const gitConfig = await fs.readFile(configPath, 'utf-8');
+
+    // Extract remote URL
+    const remoteMatch = gitConfig.match(/\[remote "origin"\][^[]*url\s*=\s*(.+)/);
+    if (!remoteMatch) {
+      return res.json({
+        success: true,
+        connected: false,
+        status: 'no_remote',
+        message: 'No remote origin configured'
+      });
+    }
+
+    const remoteUrl = remoteMatch[1].trim();
+    const githubMatch = remoteUrl.match(/github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?$/);
+
+    if (!githubMatch) {
+      return res.json({
+        success: true,
+        connected: false,
+        status: 'not_github',
+        remoteUrl,
+        message: 'Remote is not a GitHub repository'
+      });
+    }
+
+    const owner = githubMatch[1];
+    const repo = githubMatch[2];
+
+    // Get current branch
+    let currentBranch = 'main';
+    try {
+      const headPath = path.join(gitPath, 'HEAD');
+      const headContent = await fs.readFile(headPath, 'utf-8');
+      const branchMatch = headContent.match(/ref: refs\/heads\/(.+)/);
+      if (branchMatch) {
+        currentBranch = branchMatch[1].trim();
+      }
+    } catch {
+      // Use default
+    }
+
+    // Get last commit info
+    let lastCommit = null;
+    try {
+      const { execSync } = await import('child_process');
+      const commitInfo = execSync('git log -1 --format="%H|%s|%an|%ai"', {
+        cwd: projectPath,
+        encoding: 'utf-8'
+      }).trim();
+      const [hash, message, author, date] = commitInfo.split('|');
+      lastCommit = { hash, message, author, date };
+    } catch {
+      // Skip if git command fails
+    }
+
+    return res.json({
+      success: true,
+      connected: true,
+      status: 'connected',
+      owner,
+      repo,
+      fullName: `${owner}/${repo}`,
+      remoteUrl,
+      currentBranch,
+      lastCommit,
+      githubUrl: `https://github.com/${owner}/${repo}`
+    });
+
+  } catch (err) {
+    return res.json({
+      success: true,
+      connected: false,
+      status: 'no_git',
+      message: 'No git repository found'
+    });
+  }
+});
+
+/**
+ * Get Supabase connection status
+ * POST /api/connections/supabase/status
+ */
+app.post('/api/connections/supabase/status', async (req, res) => {
+  const { projectPath } = req.body;
+
+  if (!projectPath) {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath is required'
+    });
+  }
+
+  try {
+    // Check multiple possible env file locations
+    const envFiles = ['.env', '.env.local', '.env.development', '.env.production'];
+    let supabaseUrl = null;
+    let supabaseKey = null;
+    let foundInFile = null;
+
+    for (const envFile of envFiles) {
+      try {
+        const envPath = path.join(projectPath, envFile);
+        const envContent = await fs.readFile(envPath, 'utf-8');
+
+        const urlMatch = envContent.match(/(?:NEXT_PUBLIC_|VITE_)?SUPABASE_URL\s*=\s*["']?([^"'\n]+)["']?/);
+        const keyMatch = envContent.match(/(?:NEXT_PUBLIC_|VITE_)?SUPABASE_(?:ANON_KEY|KEY)\s*=\s*["']?([^"'\n]+)["']?/);
+
+        if (urlMatch) {
+          supabaseUrl = urlMatch[1].trim();
+          foundInFile = envFile;
+        }
+        if (keyMatch) {
+          supabaseKey = keyMatch[1].trim();
+        }
+
+        if (supabaseUrl && supabaseKey) break;
+      } catch {
+        continue;
+      }
+    }
+
+    if (!supabaseUrl) {
+      return res.json({
+        success: true,
+        connected: false,
+        status: 'no_config',
+        message: 'No Supabase configuration found in environment files'
+      });
+    }
+
+    // Extract project ID from URL
+    const projectIdMatch = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/);
+    const projectId = projectIdMatch ? projectIdMatch[1] : null;
+
+    // Test connection if we have credentials
+    let connectionTest = { success: false, message: 'Not tested' };
+    if (supabaseKey) {
+      try {
+        const response = await fetch(`${supabaseUrl}/rest/v1/`, {
+          method: 'GET',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`
+          }
+        });
+        connectionTest = {
+          success: response.ok,
+          status: response.status,
+          message: response.ok ? 'Connection successful' : 'Connection failed'
+        };
+      } catch (err) {
+        connectionTest = {
+          success: false,
+          message: `Connection error: ${err.message}`
+        };
+      }
+    }
+
+    return res.json({
+      success: true,
+      connected: !!supabaseUrl,
+      status: connectionTest.success ? 'connected' : 'config_found',
+      projectId,
+      url: supabaseUrl,
+      hasKey: !!supabaseKey,
+      foundInFile,
+      connectionTest,
+      dashboardUrl: projectId ? `https://supabase.com/dashboard/project/${projectId}` : null
+    });
+
+  } catch (err) {
+    console.error('[SupabaseStatus] Error:', err.message);
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+/**
+ * Get Vercel connection status
+ * POST /api/connections/vercel/status
+ */
+app.post('/api/connections/vercel/status', async (req, res) => {
+  const { projectPath } = req.body;
+
+  if (!projectPath) {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath is required'
+    });
+  }
+
+  try {
+    let vercelProject = null;
+    let vercelConfig = null;
+    let status = 'no_config';
+
+    // Check .vercel/project.json (created by vercel link)
+    try {
+      const vercelProjectPath = path.join(projectPath, '.vercel', 'project.json');
+      const projectContent = await fs.readFile(vercelProjectPath, 'utf-8');
+      vercelProject = JSON.parse(projectContent);
+      status = 'linked';
+    } catch {
+      // Not linked via CLI
+    }
+
+    // Check vercel.json for configuration
+    try {
+      const vercelJsonPath = path.join(projectPath, 'vercel.json');
+      const configContent = await fs.readFile(vercelJsonPath, 'utf-8');
+      vercelConfig = JSON.parse(configContent);
+      if (status === 'no_config') {
+        status = 'config_only';
+      }
+    } catch {
+      // No vercel.json
+    }
+
+    if (!vercelProject && !vercelConfig) {
+      return res.json({
+        success: true,
+        connected: false,
+        status: 'no_config',
+        message: 'No Vercel configuration found. Run `vercel link` to connect.'
+      });
+    }
+
+    // Try to get deployment info using Vercel API (if token available)
+    let deployments = null;
+    const vercelToken = process.env.VERCEL_TOKEN;
+    if (vercelToken && vercelProject?.projectId) {
+      try {
+        const response = await fetch(
+          `https://api.vercel.com/v6/deployments?projectId=${vercelProject.projectId}&limit=5`,
+          {
+            headers: {
+              'Authorization': `Bearer ${vercelToken}`
+            }
+          }
+        );
+        if (response.ok) {
+          const data = await response.json();
+          deployments = data.deployments?.map(d => ({
+            id: d.uid,
+            url: d.url,
+            state: d.state,
+            createdAt: d.createdAt,
+            target: d.target
+          }));
+        }
+      } catch {
+        // API call failed, continue without deployment info
+      }
+    }
+
+    return res.json({
+      success: true,
+      connected: true,
+      status,
+      projectId: vercelProject?.projectId || null,
+      orgId: vercelProject?.orgId || null,
+      config: vercelConfig,
+      deployments,
+      hasToken: !!vercelToken,
+      dashboardUrl: vercelProject?.projectId
+        ? `https://vercel.com/~/projects/${vercelProject.projectId}`
+        : null
+    });
+
+  } catch (err) {
+    console.error('[VercelStatus] Error:', err.message);
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+/**
+ * Verify and test GitHub connection with optional API token
+ * POST /api/connections/github/verify
+ */
+app.post('/api/connections/github/verify', async (req, res) => {
+  const { projectPath, token } = req.body;
+
+  if (!projectPath) {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath is required'
+    });
+  }
+
+  try {
+    // First get basic git info
+    const gitPath = path.join(projectPath, '.git');
+    await fs.access(gitPath);
+
+    const configPath = path.join(gitPath, 'config');
+    const gitConfig = await fs.readFile(configPath, 'utf-8');
+
+    const remoteMatch = gitConfig.match(/\[remote "origin"\][^[]*url\s*=\s*(.+)/);
+    if (!remoteMatch) {
+      return res.json({
+        success: false,
+        error: 'No remote origin configured'
+      });
+    }
+
+    const remoteUrl = remoteMatch[1].trim();
+    const githubMatch = remoteUrl.match(/github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?$/);
+
+    if (!githubMatch) {
+      return res.json({
+        success: false,
+        error: 'Remote is not a GitHub repository'
+      });
+    }
+
+    const owner = githubMatch[1];
+    const repo = githubMatch[2];
+
+    // If token provided, fetch additional repo info from GitHub API
+    const githubToken = token || process.env.GITHUB_TOKEN;
+    let repoInfo = null;
+    let branches = null;
+    let collaborators = null;
+
+    if (githubToken) {
+      try {
+        // Fetch repo info
+        const repoResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+          headers: {
+            'Authorization': `Bearer ${githubToken}`,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        });
+
+        if (repoResponse.ok) {
+          repoInfo = await repoResponse.json();
+        }
+
+        // Fetch branches
+        const branchResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/branches`, {
+          headers: {
+            'Authorization': `Bearer ${githubToken}`,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        });
+
+        if (branchResponse.ok) {
+          branches = await branchResponse.json();
+        }
+
+      } catch (err) {
+        console.error('[GitHubVerify] API error:', err.message);
+      }
+    }
+
+    return res.json({
+      success: true,
+      connected: true,
+      verified: !!repoInfo,
+      owner,
+      repo,
+      fullName: `${owner}/${repo}`,
+      remoteUrl,
+      githubUrl: `https://github.com/${owner}/${repo}`,
+      repoInfo: repoInfo ? {
+        private: repoInfo.private,
+        defaultBranch: repoInfo.default_branch,
+        stars: repoInfo.stargazers_count,
+        forks: repoInfo.forks_count,
+        openIssues: repoInfo.open_issues_count,
+        language: repoInfo.language,
+        createdAt: repoInfo.created_at,
+        updatedAt: repoInfo.updated_at
+      } : null,
+      branches: branches?.map(b => b.name) || null,
+      hasToken: !!githubToken
+    });
+
+  } catch (err) {
+    return res.json({
+      success: false,
+      connected: false,
+      error: err.message
+    });
+  }
+});
+
+/**
+ * Test Supabase connection with provided credentials
+ * POST /api/connections/supabase/verify
+ */
+app.post('/api/connections/supabase/verify', async (req, res) => {
+  const { url, anonKey, serviceKey } = req.body;
+
+  if (!url) {
+    return res.status(400).json({
+      success: false,
+      error: 'Supabase URL is required'
+    });
+  }
+
+  const key = serviceKey || anonKey;
+  if (!key) {
+    return res.status(400).json({
+      success: false,
+      error: 'Supabase key is required'
+    });
+  }
+
+  try {
+    // Extract project ID
+    const projectIdMatch = url.match(/https:\/\/([^.]+)\.supabase\.co/);
+    const projectId = projectIdMatch ? projectIdMatch[1] : null;
+
+    // Test connection
+    const response = await fetch(`${url}/rest/v1/`, {
+      method: 'GET',
+      headers: {
+        'apikey': key,
+        'Authorization': `Bearer ${key}`
+      }
+    });
+
+    if (!response.ok) {
+      return res.json({
+        success: false,
+        connected: false,
+        error: `Connection failed with status ${response.status}`
+      });
+    }
+
+    // Try to get table list
+    let tables = null;
+    try {
+      const tablesResponse = await fetch(`${url}/rest/v1/`, {
+        method: 'OPTIONS',
+        headers: {
+          'apikey': key,
+          'Authorization': `Bearer ${key}`
+        }
+      });
+      // Parse tables from response headers or body if available
+    } catch {
+      // Table list not available
+    }
+
+    return res.json({
+      success: true,
+      connected: true,
+      verified: true,
+      projectId,
+      url,
+      dashboardUrl: projectId ? `https://supabase.com/dashboard/project/${projectId}` : null
+    });
+
+  } catch (err) {
+    return res.json({
+      success: false,
+      connected: false,
+      error: err.message
+    });
+  }
+});
+
+/**
+ * Test Vercel connection with provided token
+ * POST /api/connections/vercel/verify
+ */
+app.post('/api/connections/vercel/verify', async (req, res) => {
+  const { token, projectId } = req.body;
+
+  const vercelToken = token || process.env.VERCEL_TOKEN;
+
+  if (!vercelToken) {
+    return res.status(400).json({
+      success: false,
+      error: 'Vercel token is required'
+    });
+  }
+
+  try {
+    // Get user info to verify token
+    const userResponse = await fetch('https://api.vercel.com/v2/user', {
+      headers: {
+        'Authorization': `Bearer ${vercelToken}`
+      }
+    });
+
+    if (!userResponse.ok) {
+      return res.json({
+        success: false,
+        connected: false,
+        error: 'Invalid Vercel token'
+      });
+    }
+
+    const user = await userResponse.json();
+
+    // Get projects if projectId provided
+    let project = null;
+    let deployments = null;
+
+    if (projectId) {
+      try {
+        const projectResponse = await fetch(`https://api.vercel.com/v9/projects/${projectId}`, {
+          headers: {
+            'Authorization': `Bearer ${vercelToken}`
+          }
+        });
+
+        if (projectResponse.ok) {
+          project = await projectResponse.json();
+        }
+
+        // Get recent deployments
+        const deploymentsResponse = await fetch(
+          `https://api.vercel.com/v6/deployments?projectId=${projectId}&limit=5`,
+          {
+            headers: {
+              'Authorization': `Bearer ${vercelToken}`
+            }
+          }
+        );
+
+        if (deploymentsResponse.ok) {
+          const data = await deploymentsResponse.json();
+          deployments = data.deployments?.map(d => ({
+            id: d.uid,
+            url: d.url,
+            state: d.state,
+            createdAt: d.createdAt,
+            target: d.target
+          }));
+        }
+      } catch {
+        // Project fetch failed
+      }
+    }
+
+    return res.json({
+      success: true,
+      connected: true,
+      verified: true,
+      user: {
+        id: user.user.id,
+        username: user.user.username,
+        email: user.user.email
+      },
+      project: project ? {
+        id: project.id,
+        name: project.name,
+        framework: project.framework,
+        createdAt: project.createdAt
+      } : null,
+      deployments
+    });
+
+  } catch (err) {
+    return res.json({
+      success: false,
+      connected: false,
+      error: err.message
+    });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`\n🚀 WAVE Portal Analysis Server running on http://localhost:${PORT}`);
@@ -7097,5 +9529,6 @@ app.listen(PORT, () => {
   console.log(`   POST /api/discover-project - Discover project metadata`);
   console.log(`   POST /api/validate-mockups - Validate HTML mockups`);
   console.log(`   POST /api/update-project-path - Update project folder path`);
+  console.log(`   POST /api/connections/detect - Detect all connections`);
   console.log(`   GET /api/health - Health check\n`);
 });

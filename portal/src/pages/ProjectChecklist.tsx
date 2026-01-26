@@ -56,15 +56,26 @@ import {
   Lock,
   Camera,
   Gauge,
+  Circle,
+  AlertCircle,
+  FolderTree,
+  Image,
+  Sparkles,
+  Server,
+  Hammer,
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { cn } from '../lib/utils'
-import { LaunchSequenceProgress } from '../components/LaunchSequenceProgress'
-import type { LaunchStep } from '../components/LaunchSequenceProgress'
+import { Layout } from '../components/Layout'
+import { HierarchicalSidebar } from '../components/HierarchicalSidebar'
+import type { NavSection } from '../components/HierarchicalSidebar'
 import { MockupDesignTab } from '../components/MockupDesignTab'
 import { PRDStoriesTab } from '../components/PRDStoriesTab'
 import { ExecutionPlanTab } from '../components/ExecutionPlanTab'
 import { InfoBox, KPICards, ActionBar, ResultSummary, ExpandableCard, TabContainer } from '../components/TabLayout'
+import { FileOrganizationPage } from '../components/pages/FileOrganizationPage'
+import { DesignMockupsPage } from '../components/pages/DesignMockupsPage'
+import { DocumentationPage } from '../components/pages/DocumentationPage'
 
 // Types
 type CheckStatusType = 'pass' | 'fail' | 'warn' | 'pending' | 'blocked'
@@ -305,7 +316,8 @@ export function ProjectChecklist() {
   const navigate = useNavigate()
   const [project, setProject] = useState<Project | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('project-overview')
+  const [activeTab, setActiveTab] = useState('mockup-design')
+  const [activeNavItem, setActiveNavItem] = useState<string | null>('design:files')
   const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString())
   const [supabaseConnected, setSupabaseConnected] = useState(false)
   const [storiesCount, setStoriesCount] = useState(0)
@@ -1322,21 +1334,106 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
     { id: 'infrastructure', label: 'Infrastructure', shortLabel: '4', status: foundationTabStatus },
     { id: 'compliance-safety', label: 'Aerospace', shortLabel: '5', status: safetyTabStatus },
     { id: 'rlm-protocol', label: 'RLM', shortLabel: '6', status: rlmTabStatus },
-    { id: 'notifications', label: 'Notifications', shortLabel: '7', status: 'pending' as CheckStatusType },
+    { id: 'notifications', label: 'Notifications', shortLabel: '7', status: (configValues.SLACK_WEBHOOK_URL ? 'pass' : 'warn') as CheckStatusType },
     { id: 'build-qa', label: 'Build', shortLabel: '8', status: (buildQaStatus === 'ready' ? 'pass' : buildQaStatus === 'blocked' ? 'fail' : buildQaStatus === 'validating' ? 'pending' : 'warn') as CheckStatusType },
     { id: 'agent-dispatch', label: 'Launch', shortLabel: '9', status: (agents.some(a => a.status === 'running') ? 'pass' : 'pending') as CheckStatusType },
   ]
 
-  // Convert tabs to LaunchStep format for progress visualization
-  const launchSteps: LaunchStep[] = tabs.map(tab => ({
-    id: tab.id,
-    label: tab.label,
-    status: tab.status === 'pass' ? 'ready' : tab.status === 'fail' ? 'blocked' : 'idle'
-  }))
-
-  // Find current step index (first non-ready step)
-  const currentStepIndex = launchSteps.findIndex(s => s.status !== 'ready')
-  const effectiveCurrentStep = currentStepIndex === -1 ? launchSteps.length - 1 : currentStepIndex
+  // Hierarchical navigation sections
+  const navSections: NavSection[] = [
+    {
+      id: 'design',
+      label: 'Design',
+      icon: <Image className="h-4 w-4" />,
+      status: mockupStatus === 'ready' ? 'complete' : mockupStatus === 'blocked' ? 'warning' : 'pending',
+      defaultExpanded: activeTab.startsWith('design'),
+      items: [
+        { id: 'files', label: 'File Organization', icon: <FolderTree className="h-3.5 w-3.5" />, status: 'complete' },
+        { id: 'mockups', label: 'Design Mockups', icon: <Image className="h-3.5 w-3.5" />, status: mockupStatus === 'ready' ? 'complete' : 'pending' },
+        { id: 'docs', label: 'Documentation', icon: <FileText className="h-3.5 w-3.5" />, status: 'complete' },
+      ],
+    },
+    {
+      id: 'prd',
+      label: 'PRD & Stories',
+      icon: <ScrollText className="h-4 w-4" />,
+      status: analysisReport ? 'complete' : 'pending',
+      items: [
+        { id: 'requirements', label: 'Requirements', icon: <FileText className="h-3.5 w-3.5" />, status: analysisReport ? 'complete' : 'pending' },
+        { id: 'stories', label: 'AI Stories', icon: <Sparkles className="h-3.5 w-3.5" />, status: storiesCount > 0 ? 'complete' : 'pending', badge: storiesCount > 0 ? `${storiesCount}` : undefined },
+        { id: 'gaps', label: 'Gap Analysis', icon: <Target className="h-3.5 w-3.5" />, status: 'pending' },
+      ],
+    },
+    {
+      id: 'execution',
+      label: 'Execution',
+      icon: <Target className="h-4 w-4" />,
+      status: 'complete',
+      items: [
+        { id: 'plan', label: 'Wave Plan', icon: <Waves className="h-3.5 w-3.5" />, status: 'complete' },
+        { id: 'dependencies', label: 'Dependencies', icon: <GitFork className="h-3.5 w-3.5" />, status: 'complete' },
+      ],
+    },
+    {
+      id: 'config',
+      label: 'Configuration',
+      icon: <Settings className="h-4 w-4" />,
+      status: allRequiredKeysSet ? 'complete' : someRequiredKeysSet ? 'warning' : 'pending',
+      items: [
+        { id: 'api-keys', label: 'API Keys', icon: <Key className="h-3.5 w-3.5" />, status: allRequiredKeysSet ? 'complete' : 'warning' },
+        { id: 'integrations', label: 'Integrations', icon: <Zap className="h-3.5 w-3.5" />, status: configValues.GITHUB_TOKEN ? 'complete' : 'pending' },
+      ],
+    },
+    {
+      id: 'infra',
+      label: 'Infrastructure',
+      icon: <Server className="h-4 w-4" />,
+      status: foundationStatus === 'ready' ? 'complete' : foundationStatus === 'blocked' ? 'warning' : 'pending',
+      items: [
+        { id: 'foundation', label: 'Foundation', icon: <Server className="h-3.5 w-3.5" />, status: foundationStatus === 'ready' ? 'complete' : 'pending' },
+        { id: 'docker', label: 'Docker', icon: <Container className="h-3.5 w-3.5" />, status: 'pending' },
+      ],
+    },
+    {
+      id: 'safety',
+      label: 'Safety & Compliance',
+      icon: <Shield className="h-4 w-4" />,
+      status: safetyStatus === 'ready' ? 'complete' : safetyStatus === 'blocked' ? 'warning' : 'pending',
+      items: [
+        { id: 'aerospace', label: 'Aerospace (DO-178C)', icon: <Shield className="h-3.5 w-3.5" />, status: safetyStatus === 'ready' ? 'complete' : 'pending' },
+        { id: 'rlm', label: 'RLM Protocol', icon: <Lock className="h-3.5 w-3.5" />, status: rlmStatus === 'ready' ? 'complete' : 'pending' },
+      ],
+    },
+    {
+      id: 'notifications',
+      label: 'Notifications',
+      icon: <Bell className="h-4 w-4" />,
+      status: configValues.SLACK_WEBHOOK_URL ? 'complete' : 'pending',
+      items: [
+        { id: 'slack', label: 'Slack', icon: <Bell className="h-3.5 w-3.5" />, status: configValues.SLACK_WEBHOOK_URL ? 'complete' : 'pending' },
+      ],
+    },
+    {
+      id: 'build',
+      label: 'Build & QA',
+      icon: <Hammer className="h-4 w-4" />,
+      status: buildQaStatus === 'ready' ? 'complete' : buildQaStatus === 'blocked' ? 'warning' : 'pending',
+      items: [
+        { id: 'validation', label: 'Validation', icon: <CheckCircle2 className="h-3.5 w-3.5" />, status: buildQaStatus === 'ready' ? 'complete' : 'pending' },
+        { id: 'tests', label: 'Tests', icon: <TestTube className="h-3.5 w-3.5" />, status: 'pending' },
+      ],
+    },
+    {
+      id: 'launch',
+      label: 'Launch',
+      icon: <Rocket className="h-4 w-4" />,
+      status: agents.some(a => a.status === 'running') ? 'complete' : 'pending',
+      items: [
+        { id: 'agents', label: 'Agent Dispatch', icon: <Bot className="h-3.5 w-3.5" />, status: agents.some(a => a.status === 'running') ? 'active' : 'pending' },
+        { id: 'audit', label: 'Audit Log', icon: <History className="h-3.5 w-3.5" />, status: 'pending' },
+      ],
+    },
+  ]
 
   const toggleShowKey = (key: string) => {
     setShowKeys(prev => ({ ...prev, [key]: !prev[key] }))
@@ -2914,124 +3011,92 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
     )
   }
 
+  // Handle nav item click
+  const handleNavItemClick = (sectionId: string, itemId: string) => {
+    setActiveNavItem(`${sectionId}:${itemId}`);
+    // Map sections to tabs for backward compatibility
+    const sectionToTab: Record<string, string> = {
+      'design': 'mockup-design',
+      'prd': 'project-overview',
+      'execution': 'execution-plan',
+      'config': 'system-config',
+      'infra': 'infrastructure',
+      'safety': 'compliance-safety',
+      'notifications': 'notifications',
+      'build': 'build-qa',
+      'launch': 'agent-dispatch',
+    };
+    if (sectionToTab[sectionId]) {
+      setActiveTab(sectionToTab[sectionId]);
+    }
+  };
+
+  // Get current section and item from activeNavItem
+  const [currentSection, currentItem] = activeNavItem?.split(':') || ['design', 'files'];
+
   return (
-    <div className="w-full max-w-[1600px] mx-auto pb-12">
+    <Layout secondarySidebar={
+      <HierarchicalSidebar
+        sections={navSections}
+        activeItem={activeNavItem}
+        onItemClick={handleNavItemClick}
+        projectName={project?.name}
+      />
+    }>
+    <div className="w-full max-w-[1400px] mx-auto pb-12">
       {/* DEV MODE Banner */}
       {validationMode !== 'strict' && (
         <div className={cn(
-          "px-4 py-2 text-center text-sm font-semibold",
-          validationMode === 'dev' ? "bg-amber-500/100 text-white" : "bg-blue-500/100 text-white"
+          "px-4 py-2 text-center text-sm font-semibold rounded-lg mb-4",
+          validationMode === 'dev' ? "bg-[#d97706]/20 text-[#d97706]" : "bg-[#3b82f6]/20 text-[#3b82f6]"
         )}>
           {validationMode === 'dev' ? (
-            <>⚠️ DEV MODE - Behavioral probes & drift checks DISABLED - NOT FOR PRODUCTION</>
+            <>DEV MODE - Behavioral probes & drift checks DISABLED</>
           ) : (
-            <>🔄 CI MODE - Optimized for automation - Limited interactive checks</>
+            <>CI MODE - Optimized for automation</>
           )}
         </div>
       )}
 
-      {/* Compact Header */}
-      <div className="flex items-center justify-between py-4 mb-6 border-b border-border">
-        <div>
-          <h1 className="text-lg font-semibold">{project?.name || 'Project'} - Automated Checklist</h1>
-          <p className="text-sm text-muted-foreground">Aerospace-Grade Validation · {lastUpdate}</p>
-        </div>
-        <div className="flex items-center gap-3">
-          {/* Validation Mode Selector */}
-          <div className="relative">
-            <select
-              value={validationMode}
-              onChange={(e) => setValidationMode(e.target.value as 'strict' | 'dev' | 'ci')}
-              className={cn(
-                "appearance-none pl-3 pr-8 py-1.5 rounded-full text-xs font-medium cursor-pointer",
-                validationMode === 'strict'
-                  ? "bg-green-500/10 text-green-500"
-                  : validationMode === 'dev'
-                  ? "bg-amber-500/10 text-amber-500"
-                  : "bg-blue-500/10 text-blue-500"
+      {/* Design Section Sub-pages */}
+      {currentSection === 'design' && currentItem === 'files' && (
+        <FileOrganizationPage projectPath={project?.root_path || ''} />
+      )}
+      {currentSection === 'design' && currentItem === 'mockups' && (
+        <DesignMockupsPage projectPath={project?.root_path || ''} />
+      )}
+      {currentSection === 'design' && currentItem === 'docs' && (
+        <DocumentationPage projectPath={project?.root_path || ''} />
+      )}
+
+      {/* PRD Section - use existing components for now */}
+      {currentSection === 'prd' && (
+        <>
+          {/* Compact Header */}
+          <div className="flex items-center justify-between py-4 mb-6 border-b border-[#2e2e2e]">
+            <div>
+              <h1 className="text-lg font-semibold text-[#fafafa]">PRD & Stories</h1>
+              <p className="text-sm text-[#666]">{lastUpdate}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Dynamic Ready/Not Ready status based on analysis */}
+              {analysisReport && analysisReport.summary.readiness_score >= 100 && analysisReport.summary.total_gaps === 0 ? (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-[#5a9a5a]/10 rounded-lg">
+                  <CheckCircle2 className="h-4 w-4 text-[#5a9a5a]" />
+                  <span className="text-sm font-medium text-[#5a9a5a]">Ready</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-[#d97706]/10 rounded-lg">
+                  <AlertTriangle className="h-4 w-4 text-[#d97706]" />
+                  <span className="text-sm font-medium text-[#d97706]">Not Ready</span>
+                </div>
               )}
-            >
-              <option value="strict">🛡️ Strict Mode</option>
-              <option value="dev">⚡ Dev Mode</option>
-              <option value="ci">🔄 CI Mode</option>
-            </select>
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 pointer-events-none text-muted-foreground" />
+            </div>
           </div>
-          <a
-            href="/architecture"
-            className="px-3 py-1.5 bg-primary text-primary-foreground rounded-full text-xs font-medium hover:opacity-90 flex items-center gap-1.5"
-          >
-            <Radio className="h-3.5 w-3.5" />
-            WAVE v1.0
-          </a>
-          {/* Dynamic Ready/Not Ready status based on analysis */}
-          {analysisReport && analysisReport.summary.readiness_score >= 100 && analysisReport.summary.total_gaps === 0 ? (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 rounded-full">
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
-              <span className="text-sm font-medium text-green-500">Ready</span>
-              <span className="text-xs text-muted-foreground">Phase 1</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 rounded-full">
-              <AlertTriangle className="h-4 w-4 text-red-500" />
-              <span className="text-sm font-medium text-red-500">Not Ready</span>
-              <span className="text-xs text-muted-foreground">Phase 1</span>
-            </div>
-          )}
-          <button className="px-3 py-1.5 bg-card border border-border rounded-full text-xs font-medium hover:bg-muted flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-            Circuit Breaker
-          </button>
-          <button className="px-3 py-1.5 bg-card border border-border rounded-full text-xs font-medium hover:bg-muted flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-            Emergency Stop
-          </button>
-        </div>
-      </div>
-
-      {/* Launch Sequence Progress */}
-      <LaunchSequenceProgress
-        steps={launchSteps}
-        currentStep={effectiveCurrentStep}
-      />
-
-      {/* Pill Tabs - Full Width Distribution */}
-      <div className="bg-muted p-1.5 rounded-2xl mb-8 flex w-full">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              'flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 text-sm font-medium transition-all rounded-xl whitespace-nowrap',
-              activeTab === tab.id
-                ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <span className="hidden sm:inline">{tab.shortLabel}.</span> {tab.label}
-            <StatusDot status={tab.status} />
-          </button>
-        ))}
-      </div>
-
-      {/* Main Content */}
-      <div>
-        {/* TAB 0: Mockup Design */}
-        {activeTab === 'mockup-design' && (
-          <MockupDesignTab
-            projectPath={project.root_path}
-            projectId={project.id}
-            validationStatus={mockupStatus}
-            onValidationComplete={(status) => setMockupStatus(status)}
-          />
-        )}
-
-        {/* TAB 1: AI PRD & Stories */}
-        {activeTab === 'project-overview' && (
           <PRDStoriesTab
-            projectPath={project.root_path}
-            projectName={project.name}
-            projectId={project.id}
+            projectPath={project?.root_path || ''}
+            projectName={project?.name || ''}
+            projectId={project?.id || ''}
             analysisReport={analysisReport}
             analysisRunning={analysisRunning}
             onRunAnalysis={runAnalysis}
@@ -3043,16 +3108,65 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
             syncMessage={syncMessage}
             onCopyPath={copyPath}
           />
-        )}
+        </>
+      )}
 
-        {/* TAB 2: Execution Plan */}
-        {activeTab === 'execution-plan' && (
-          <ExecutionPlanTab project={project} />
-        )}
+      {/* Other sections - keep original tabs for backward compatibility */}
+      {currentSection !== 'design' && currentSection !== 'prd' && (
+        <>
+          {/* Compact Header */}
+          <div className="flex items-center justify-between py-4 mb-6 border-b border-[#2e2e2e]">
+            <div>
+              <h1 className="text-lg font-semibold text-[#fafafa]">
+                {navSections.find(s => s.id === currentSection)?.label || 'Configuration'}
+              </h1>
+              <p className="text-sm text-[#666]">{lastUpdate}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Validation Mode Selector */}
+              <div className="relative">
+                <select
+                  value={validationMode}
+                  onChange={(e) => setValidationMode(e.target.value as 'strict' | 'dev' | 'ci')}
+                  className={cn(
+                    "appearance-none pl-3 pr-8 py-1.5 rounded-lg text-xs font-medium cursor-pointer bg-[#2e2e2e] border border-[#3e3e3e]",
+                    validationMode === 'strict'
+                      ? "text-[#5a9a5a]"
+                      : validationMode === 'dev'
+                      ? "text-[#d97706]"
+                      : "text-[#3b82f6]"
+                  )}
+                >
+                  <option value="strict">Strict Mode</option>
+                  <option value="dev">Dev Mode</option>
+                  <option value="ci">CI Mode</option>
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 pointer-events-none text-[#666]" />
+              </div>
+              {/* Dynamic Ready/Not Ready status based on analysis */}
+              {analysisReport && analysisReport.summary.readiness_score >= 100 && analysisReport.summary.total_gaps === 0 ? (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-[#5a9a5a]/10 rounded-lg">
+                  <CheckCircle2 className="h-4 w-4 text-[#5a9a5a]" />
+                  <span className="text-sm font-medium text-[#5a9a5a]">Ready</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-[#d97706]/10 rounded-lg">
+                  <AlertTriangle className="h-4 w-4 text-[#d97706]" />
+                  <span className="text-sm font-medium text-[#d97706]">Not Ready</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
-        {/* TAB 3: Foundation */}
-        {activeTab === 'infrastructure' && (
-          <TabContainer>
+      {/* Tabs Content - render based on activeTab */}
+      {activeTab === 'execution-plan' && currentSection !== 'design' && currentSection !== 'prd' && (
+        <ExecutionPlanTab project={project} />
+      )}
+
+      {activeTab === 'infrastructure' && (
+        <TabContainer>
             {/* 1. INFO BOX */}
             <InfoBox
               title="Step 4: Infrastructure Validation"
@@ -3841,11 +3955,11 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                 )}
               </div>
             </div>
-          </TabContainer>
-        )}
+        </TabContainer>
+      )}
 
-        {/* TAB 6: Build QA */}
-        {activeTab === 'build-qa' && (
+      {/* TAB 6: Build QA */}
+      {activeTab === 'build-qa' && (
           <TabContainer>
             {/* 1. INFO BOX */}
             <InfoBox
@@ -4286,11 +4400,11 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                 <p className="text-sm mt-1">Click "Run Full Validation" to check TypeScript, build, tests, lint, and security</p>
               </div>
             )}
-          </TabContainer>
-        )}
+        </TabContainer>
+      )}
 
-        {/* TAB 8: RLM Protocol */}
-        {activeTab === 'rlm-protocol' && (
+      {/* TAB 8: RLM Protocol */}
+      {activeTab === 'rlm-protocol' && (
           <TabContainer>
             {/* 1. INFO BOX */}
             <InfoBox
@@ -4858,11 +4972,11 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
                 </div>
               )}
             </div>
-          </TabContainer>
-        )}
+        </TabContainer>
+      )}
 
-        {/* TAB 5: Aerospace Safety */}
-        {activeTab === 'compliance-safety' && (
+      {/* TAB 5: Aerospace Safety */}
+      {activeTab === 'compliance-safety' && (
           <TabContainer>
             {/* 1. INFO BOX */}
             <InfoBox
@@ -5472,11 +5586,11 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               )}
             </div>
             </div>
-          </TabContainer>
-        )}
+        </TabContainer>
+      )}
 
-        {/* TAB 5: Configurations - API Keys & Environment Variables */}
-        {activeTab === 'system-config' && (
+      {/* TAB 5: Configurations - API Keys & Environment Variables */}
+      {activeTab === 'system-config' && (
           <TabContainer>
             {/* 1. INFO BOX */}
             <InfoBox
@@ -5880,11 +5994,11 @@ WAVE_PROJECT_ROOT=${project?.root_path || ''}`
                 </div>
               </div>
             </ExpandableCard>
-          </TabContainer>
-        )}
+        </TabContainer>
+      )}
 
-        {/* TAB 8: Notifications - Slack Feedback Loop */}
-        {activeTab === 'notifications' && (
+      {/* TAB 8: Notifications - Slack Feedback Loop */}
+      {activeTab === 'notifications' && (
           <TabContainer>
             {/* 1. INFO BOX */}
             <InfoBox
@@ -6461,11 +6575,11 @@ After setup, use the test buttons to verify each notification type.
                 </div>
               </div>
             </div>
-          </TabContainer>
-        )}
+        </TabContainer>
+      )}
 
-        {/* Agent Dispatch Tab */}
-        {activeTab === 'agent-dispatch' && (
+      {/* Agent Dispatch Tab */}
+      {activeTab === 'agent-dispatch' && (
           <TabContainer>
             {/* 1. INFO BOX */}
             <InfoBox
@@ -7272,11 +7386,11 @@ Project: ${project?.name || 'Unknown'}
                 </div>
               )}
             </div>
-          </TabContainer>
-        )}
+        </TabContainer>
+      )}
 
-        {/* Audit Log Tab */}
-        {activeTab === 'audit-log' && (
+      {/* Audit Log Tab */}
+      {activeTab === 'audit-log' && (
           <TabContainer>
             {/* 1. INFO BOX */}
             <InfoBox
@@ -7722,9 +7836,8 @@ ${auditLogSummary ? `
                 )}
               </div>
             </div>
-          </TabContainer>
-        )}
-      </div>
+        </TabContainer>
+      )}
 
       {/* Agent Terminal Modal */}
       {showAgentModal && selectedAgent && (
@@ -9563,5 +9676,6 @@ ${auditLogSummary ? `
         </div>
       )}
     </div>
+    </Layout>
   )
 }

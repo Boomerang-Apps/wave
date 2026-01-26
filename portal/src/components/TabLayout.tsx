@@ -304,6 +304,8 @@ interface ExpandableCardProps {
   icon?: ReactNode;
   status?: 'pass' | 'fail' | 'warn' | 'pending';
   defaultExpanded?: boolean;
+  expanded?: boolean; // Controlled mode
+  onExpandChange?: (expanded: boolean) => void; // Callback for controlled mode
   children: ReactNode;
   badge?: string;
 }
@@ -314,10 +316,25 @@ export function ExpandableCard({
   icon,
   status,
   defaultExpanded = false,
+  expanded: controlledExpanded,
+  onExpandChange,
   children,
   badge
 }: ExpandableCardProps) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
+  const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
+
+  // Use controlled or uncontrolled mode
+  const isControlled = controlledExpanded !== undefined;
+  const expanded = isControlled ? controlledExpanded : internalExpanded;
+
+  const handleToggle = () => {
+    const newValue = !expanded;
+    if (isControlled) {
+      onExpandChange?.(newValue);
+    } else {
+      setInternalExpanded(newValue);
+    }
+  };
 
   const statusIcon = {
     pass: <CheckCircle2 className="h-4 w-4 text-green-500" />,
@@ -329,7 +346,7 @@ export function ExpandableCard({
   return (
     <div className="border border-border rounded-xl overflow-hidden mb-3 bg-card">
       <button
-        onClick={() => setExpanded(!expanded)}
+        onClick={handleToggle}
         className="w-full px-4 py-3 flex items-center justify-between hover:bg-muted/50 transition-colors"
       >
         <div className="flex items-center gap-3">

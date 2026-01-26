@@ -9,215 +9,20 @@
  * Uses standardized TabLayout components for consistent UI
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   FolderOpen, FileText, Layout, CheckCircle2, AlertTriangle,
-  Building2, Users, BookOpen, ExternalLink, Play, RefreshCw,
-  Loader2, Sparkles, Folder, ChevronRight, Home, X, ArrowLeft,
-  Palette, Target, LayoutGrid, List
+  ExternalLink, RefreshCw, Loader2, Sparkles, X, Target, FileDown, Lightbulb,
+  ArrowRight, AlertCircle, Settings
 } from 'lucide-react';
-import { InfoBox, KPICards, ActionBar, ExpandableCard, TabContainer } from './TabLayout';
+import { KPICards, ExpandableCard, TabContainer } from './TabLayout';
 import { BestPracticesSection } from './BestPracticesSection';
 import { FileListView } from './FileListView';
+import { FoundationAnalysisProgress, type FoundationReport } from './FoundationAnalysisProgress';
+import { ConnectionCards } from './ConnectionCards';
+import { InlineAnalysis } from './InlineAnalysis';
+import { CorePillars } from './CorePillars';
 import { cn } from '@/lib/utils';
-
-// ============================================
-// Folder Browser Dialog
-// ============================================
-
-interface FolderItem {
-  name: string;
-  path: string;
-  isProject: boolean;
-}
-
-interface FolderBrowserDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSelect: (path: string) => void;
-}
-
-function FolderBrowserDialog({ isOpen, onClose, onSelect }: FolderBrowserDialogProps) {
-  const [currentPath, setCurrentPath] = useState('');
-  const [folders, setFolders] = useState<FolderItem[]>([]);
-  const [parentPath, setParentPath] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Browse a directory
-  const browsePath = useCallback(async (path: string) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch('/api/browse-folders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: path || undefined })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setFolders(data.folders || []);
-        setCurrentPath(data.currentPath || '');
-        setParentPath(data.parentPath || null);
-      } else {
-        setError('Failed to browse folder');
-      }
-    } catch (err) {
-      setError('Failed to connect to server');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  // Load initial path when dialog opens
-  useEffect(() => {
-    if (isOpen) {
-      browsePath('');
-    }
-  }, [isOpen, browsePath]);
-
-  // Handle folder click - navigate into it
-  const handleFolderClick = (folder: FolderItem) => {
-    browsePath(folder.path);
-  };
-
-  // Handle folder selection (double-click or select button)
-  const handleSelect = () => {
-    if (currentPath) {
-      onSelect(currentPath);
-      onClose();
-    }
-  };
-
-  // Go to parent directory
-  const handleGoUp = () => {
-    if (parentPath) {
-      browsePath(parentPath);
-    }
-  };
-
-  // Go to home directory
-  const handleGoHome = () => {
-    browsePath('');
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Dialog */}
-      <div className="relative bg-card border border-border rounded-2xl w-full max-w-xl shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <FolderOpen className="h-5 w-5 text-blue-500" />
-            Select Project Folder
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-muted rounded-lg transition-colors"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Navigation Bar */}
-        <div className="flex items-center gap-2 p-3 border-b border-border bg-muted/30">
-          <button
-            onClick={handleGoUp}
-            disabled={!parentPath}
-            className="p-2 hover:bg-muted rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            title="Go up"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-          <button
-            onClick={handleGoHome}
-            className="p-2 hover:bg-muted rounded-lg transition-colors"
-            title="Home"
-          >
-            <Home className="h-4 w-4" />
-          </button>
-          <div className="flex-1 px-3 py-1.5 bg-muted rounded-lg">
-            <code className="text-xs font-mono text-muted-foreground truncate block">
-              {currentPath || '~'}
-            </code>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-4 max-h-[400px] overflow-y-auto">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
-            </div>
-          ) : error ? (
-            <div className="text-center py-12">
-              <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">{error}</p>
-            </div>
-          ) : folders.length === 0 ? (
-            <div className="text-center py-12">
-              <Folder className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">No subfolders found</p>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {folders.map((folder) => (
-                <button
-                  key={folder.path}
-                  onClick={() => handleFolderClick(folder)}
-                  className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors text-left group"
-                >
-                  <Folder className={cn(
-                    "h-5 w-5",
-                    folder.isProject ? "text-blue-500" : "text-muted-foreground"
-                  )} />
-                  <span className="flex-1 text-sm font-medium truncate">
-                    {folder.name}
-                  </span>
-                  {folder.isProject && (
-                    <span className="text-xs bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full">
-                      Project
-                    </span>
-                  )}
-                  <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between p-4 border-t border-border bg-muted/30">
-          <p className="text-xs text-muted-foreground">
-            Navigate to your project folder and click Select
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSelect}
-              disabled={!currentPath}
-              className="px-4 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Select This Folder
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ============================================
 // Types
@@ -297,6 +102,327 @@ export interface MockupDesignTabProps {
 // ============================================
 // Sub-components
 // ============================================
+
+// Foundation Analysis Progress Modal - Full wizard experience
+function FoundationAnalysisProgressModal({
+  projectPath,
+  analysisReport: existingReport,
+  onAnalysisComplete,
+  onValidationComplete,
+  onClose
+}: {
+  projectPath: string;
+  analysisReport: FoundationReport | null;
+  onAnalysisComplete: (report: FoundationReport) => void;
+  onValidationComplete: (status: 'ready' | 'blocked') => void;
+  onClose: () => void;
+}) {
+  const [analysisRunning, setAnalysisRunning] = useState(false);
+  const [analysisMode, setAnalysisMode] = useState<'new' | 'existing' | 'monorepo' | null>(
+    existingReport?.mode || null
+  );
+  const [analysisSteps, setAnalysisSteps] = useState<Array<{
+    step: number;
+    status: 'pending' | 'running' | 'complete' | 'failed';
+    detail: string;
+    proof: string | null;
+  }>>([]);
+  const [analysisReport, setAnalysisReport] = useState<FoundationReport | null>(existingReport);
+  const [enableAiReview, setEnableAiReview] = useState(false);
+
+  const STEP_LABELS: Record<number, string> = {
+    1: 'Scanning project structure',
+    2: 'Validating documentation',
+    3: 'Analyzing design mockups',
+    4: 'Checking folder compliance',
+    5: 'Validating tech stack',
+    6: 'Generating readiness score',
+  };
+
+  // Start analysis
+  const startAnalysis = useCallback(async () => {
+    if (!projectPath || analysisRunning) return;
+
+    setAnalysisRunning(true);
+    setAnalysisReport(null);
+    setAnalysisSteps([]);
+
+    try {
+      const response = await fetch('/api/analyze-foundation-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectPath,
+          mode: 'auto',
+          enableAiReview,
+          aiReviewDepth: 'quick'
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to start analysis');
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response body');
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+
+              if (data.type === 'mode') {
+                setAnalysisMode(data.mode);
+                const totalSteps = data.totalSteps;
+                const initialSteps = [];
+                for (let i = 1; i <= totalSteps; i++) {
+                  initialSteps.push({
+                    step: i,
+                    status: 'pending' as const,
+                    detail: STEP_LABELS[i] || `Step ${i}`,
+                    proof: null
+                  });
+                }
+                setAnalysisSteps(initialSteps);
+              } else if (typeof data.step === 'number') {
+                setAnalysisSteps(prev => prev.map(s =>
+                  s.step === data.step
+                    ? { ...s, status: data.status, detail: data.detail || s.detail, proof: data.proof }
+                    : s
+                ));
+              } else if (data.step === 'done') {
+                setAnalysisSteps(prev => prev.map(s =>
+                  s.status === 'running' || s.status === 'pending'
+                    ? { ...s, status: 'complete' }
+                    : s
+                ));
+              } else if (data.type === 'result') {
+                setAnalysisReport(data.report);
+                onAnalysisComplete(data.report);
+                onValidationComplete(data.report.validationStatus);
+              }
+            } catch (parseErr) {
+              console.error('Failed to parse SSE:', parseErr);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Analysis failed:', err);
+    } finally {
+      setAnalysisRunning(false);
+    }
+  }, [projectPath, analysisRunning, enableAiReview, onAnalysisComplete, onValidationComplete]);
+
+  const isReady = analysisReport?.validationStatus === 'ready';
+  const score = analysisReport?.readinessScore ?? 0;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => !analysisRunning && onClose()} />
+
+      {/* Modal */}
+      <div className="relative bg-[#1e1e1e] border border-[#2e2e2e] rounded-xl w-full max-w-3xl shadow-2xl max-h-[85vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-[#2e2e2e]">
+          <div>
+            <h2 className="text-lg font-semibold text-[#fafafa]">Foundation Analysis</h2>
+            <p className="text-xs text-[#a3a3a3] mt-0.5">{projectPath}</p>
+          </div>
+          {!analysisRunning && (
+            <button
+              onClick={onClose}
+              className="p-2 text-[#a3a3a3] hover:text-[#a3a3a3] hover:bg-[#2e2e2e] rounded-lg transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="p-5 overflow-y-auto flex-1 space-y-4">
+          {/* Pre-analysis state */}
+          {!analysisRunning && analysisSteps.length === 0 && !analysisReport && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-[#2e2e2e] border border-[#2e2e2e]">
+                <h3 className="text-sm font-medium text-[#fafafa] mb-3">What We'll Check</h3>
+                <div className="grid grid-cols-3 gap-3">
+                  {['Structure', 'Documentation', 'Mockups', 'Tech Stack', 'Compliance', 'Readiness'].map((item) => (
+                    <div key={item} className="p-2 bg-[#1e1e1e] rounded text-center">
+                      <p className="text-xs text-[#a3a3a3]">{item}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* AI Review Option */}
+              <label className="flex items-center gap-2 p-3 rounded-lg bg-[#2e2e2e] border border-[#2e2e2e] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={enableAiReview}
+                  onChange={(e) => setEnableAiReview(e.target.checked)}
+                  className="w-4 h-4 rounded"
+                />
+                <span className="text-sm text-[#a3a3a3]">Include AI Deep Review (analyzes code quality)</span>
+              </label>
+            </div>
+          )}
+
+          {/* Running state - Step progress */}
+          {analysisSteps.length > 0 && !analysisReport && (
+            <div className="space-y-2">
+              {analysisSteps.map((step) => (
+                <div
+                  key={step.step}
+                  className={cn(
+                    "p-3 rounded-lg border bg-[#1e1e1e] border-[#2e2e2e]",
+                    step.status === 'running' && "border-[#2e2e2e]"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-6 h-6 rounded-full flex items-center justify-center text-xs bg-[#2e2e2e]",
+                      step.status === 'complete' ? "text-[#5a9a5a]" : "text-[#a3a3a3]"
+                    )}>
+                      {step.status === 'running' ? (
+                        <Loader2 className="h-3 w-3 animate-spin text-[#a3a3a3]" />
+                      ) : step.status === 'complete' ? (
+                        <CheckCircle2 className="h-3 w-3" />
+                      ) : (
+                        step.step
+                      )}
+                    </div>
+                    <span className={cn(
+                      "text-sm",
+                      step.status === 'running' ? "text-[#fafafa]" :
+                      step.status === 'complete' ? "text-[#a3a3a3]" :
+                      "text-[#a3a3a3]"
+                    )}>
+                      {step.detail}
+                    </span>
+                    {step.status === 'complete' && (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-[#5a9a5a] ml-auto" />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Results state */}
+          {analysisReport && (
+            <div className="space-y-4">
+              {/* Score Header */}
+              <div className="p-4 rounded-lg bg-[#2e2e2e] border border-[#2e2e2e]">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {isReady && <CheckCircle2 className="h-5 w-5 text-[#5a9a5a]" />}
+                    <div>
+                      <p className="text-sm font-medium text-[#fafafa]">
+                        {isReady ? 'Foundation Ready' : 'Needs Attention'}
+                      </p>
+                      <p className="text-xs text-[#a3a3a3] mt-0.5">
+                        {analysisReport.mode === 'existing' ? 'Existing Project' : 'New Project'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className={cn(
+                    "text-3xl font-bold tabular-nums",
+                    isReady ? "text-[#5a9a5a]" : "text-[#a3a3a3]"
+                  )}>
+                    {score}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Analysis Details */}
+              {analysisReport.analysis && (
+                <div className="space-y-2">
+                  {Object.entries(analysisReport.analysis).map(([key, value]) => {
+                    if (!value || typeof value !== 'object') return null;
+                    const data = value as { status?: string; findings?: string[]; issues?: string[] };
+                    const isPass = data.status === 'pass' || data.status === 'complete';
+
+                    return (
+                      <div key={key} className="p-3 rounded-lg bg-[#1e1e1e] border border-[#2e2e2e]">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-[#fafafa] capitalize">{key}</span>
+                          <div className="flex items-center gap-1.5">
+                            {isPass && <CheckCircle2 className="h-3.5 w-3.5 text-[#5a9a5a]" />}
+                            <span className="text-xs text-[#a3a3a3]">
+                              {isPass ? 'Pass' : data.status}
+                            </span>
+                          </div>
+                        </div>
+                        {data.findings && data.findings.length > 0 && (
+                          <p className="text-xs text-[#a3a3a3] mt-1">{data.findings[0]}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Blocking Reasons */}
+              {analysisReport.blockingReasons?.length > 0 && (
+                <div className="p-3 rounded-lg bg-[#1e1e1e] border border-[#2e2e2e]">
+                  <p className="text-xs font-medium text-[#a3a3a3] mb-2">Blocking Issues</p>
+                  {analysisReport.blockingReasons.map((reason, i) => (
+                    <p key={i} className="text-xs text-[#a3a3a3]">• {reason}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-[#2e2e2e] flex justify-between items-center">
+          <div className="text-xs text-[#a3a3a3]">
+            {analysisRunning && 'Analysis in progress...'}
+            {analysisReport && `Completed ${analysisSteps.length} checks`}
+          </div>
+          <div className="flex gap-2">
+            {!analysisRunning && !analysisReport && (
+              <button
+                onClick={startAnalysis}
+                className="px-4 py-2 text-sm bg-[#2e2e2e] text-[#fafafa] hover:bg-[#2e2e2e] rounded-lg transition-colors"
+              >
+                Start Analysis
+              </button>
+            )}
+            {analysisReport && (
+              <button
+                onClick={startAnalysis}
+                className="px-4 py-2 text-sm text-[#a3a3a3] hover:text-[#fafafa] hover:bg-[#2e2e2e] rounded-lg transition-colors"
+              >
+                Re-analyze
+              </button>
+            )}
+            {!analysisRunning && (
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-sm text-[#a3a3a3] hover:text-[#fafafa] hover:bg-[#2e2e2e] rounded-lg transition-colors"
+              >
+                Close
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Not Connected State - Clean folder selection with native Finder picker
 function NotConnectedState({
@@ -496,7 +622,10 @@ function ConnectedState({
   onRefresh,
   onChangePath,
   isRefreshing,
-  structureValidation
+  structureValidation,
+  analysisReport,
+  onAnalysisComplete,
+  onValidationComplete
 }: {
   project: ProjectData;
   projectPath: string;
@@ -504,98 +633,128 @@ function ConnectedState({
   onChangePath: () => void;
   isRefreshing: boolean;
   structureValidation: StructureValidation | null;
+  analysisReport: FoundationReport | null;
+  onAnalysisComplete: (report: FoundationReport) => void;
+  onValidationComplete: (status: 'ready' | 'blocked') => void;
 }) {
   const [previewMockup, setPreviewMockup] = useState<MockupFile | null>(null);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [reportGenerating, setReportGenerating] = useState(false);
+  const [reportSaved, setReportSaved] = useState<string | null>(null);
+  const [bestPracticesExpanded, setBestPracticesExpanded] = useState(false);
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+  const bestPracticesRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to Best Practices and expand when clicking the notification button
+  const handleViewIssues = () => {
+    setBestPracticesExpanded(true);
+    setTimeout(() => {
+      bestPracticesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
+
+  // Generate improvement report
+  const handleGenerateReport = async () => {
+    if (!analysisReport) return;
+
+    setReportGenerating(true);
+    setReportSaved(null);
+    try {
+      const response = await fetch('/api/foundation/improvement-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectPath,
+          report: analysisReport,
+          save: true,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setReportSaved(data.savedPath);
+      } else {
+        console.error('Report generation failed:', data.error);
+      }
+    } catch (error) {
+      console.error('Report generation error:', error);
+    } finally {
+      setReportGenerating(false);
+    }
+  };
 
   const handleOpenDoc = (doc: DocumentFile) => {
     window.open(`vscode://file${doc.path}`, '_blank');
   };
 
-  const getDocIcon = (type: string) => {
-    switch (type) {
-      case 'prd': return <FileText className="h-4 w-4" />;
-      case 'architecture': return <Building2 className="h-4 w-4" />;
-      case 'userStories': return <Users className="h-4 w-4" />;
-      case 'readme': return <BookOpen className="h-4 w-4" />;
-      default: return <FileText className="h-4 w-4" />;
-    }
-  };
-
-  const getDocColor = (type: string) => {
-    switch (type) {
-      case 'prd': return 'text-blue-500 bg-blue-500/10';
-      case 'architecture': return 'text-purple-500 bg-purple-500/10';
-      case 'userStories': return 'text-green-500 bg-green-500/10';
-      case 'readme': return 'text-amber-500 bg-amber-500/10';
-      default: return 'text-slate-500 bg-slate-500/10';
-    }
-  };
-
   // Determine status based on docs and mockups presence
   const hasAllRequired = project.documentation.length > 0 && project.mockups.length > 0;
 
+  // Use analysis results if available
+  const readinessScore = analysisReport?.readinessScore ?? 0;
+  const isAnalyzed = !!analysisReport;
+
   return (
     <>
-      {/* 1. INFO BOX */}
-      <InfoBox
-        title="Step 0: Design Foundation"
-        description={`${project.name} - ${project.tagline || 'Project connected and ready for validation'}. Review your documentation and design mockups before proceeding.`}
-        icon={<Palette className="h-4 w-4 text-blue-500" />}
+      {/* PROJECT HEADER - Minimal */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
+            <Target className="h-6 w-6 text-blue-500" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">{project.name}</h2>
+            <p className="text-sm text-muted-foreground">{project.tagline || 'Validate your foundation before development'}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+          </button>
+          <button
+            onClick={onChangePath}
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+            title="Change Folder"
+          >
+            <Settings className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* INLINE ANALYSIS - Main Focus */}
+      <InlineAnalysis
+        projectPath={projectPath}
+        onAnalysisComplete={onAnalysisComplete}
+        onValidationComplete={onValidationComplete}
+        analysisReport={analysisReport}
+        onOpenModal={() => setShowAnalysisModal(true)}
       />
 
-      {/* 2. KPI CARDS */}
-      <KPICards
-        items={[
-          {
-            label: 'Documents',
-            value: project.documentation.length,
-            status: project.documentation.length > 0 ? 'success' : 'warning',
-            icon: <FileText className="h-4 w-4" />
-          },
-          {
-            label: 'Mockups',
-            value: project.mockups.length,
-            status: project.mockups.length > 0 ? 'success' : 'warning',
-            icon: <Layout className="h-4 w-4" />
-          },
-          {
-            label: 'Technologies',
-            value: project.techStack.length,
-            status: 'neutral',
-            icon: <Target className="h-4 w-4" />
-          },
-          {
-            label: 'Status',
-            value: hasAllRequired ? 'Ready' : 'Missing',
-            status: hasAllRequired ? 'success' : 'warning',
-            icon: <CheckCircle2 className="h-4 w-4" />
-          },
-        ]}
-      />
+      {/* CORE PILLARS - Documents, Mockups, Structure */}
+      <div className="mt-6">
+        <CorePillars
+          documents={project.documentation}
+          mockups={project.mockups}
+          structureScore={structureValidation?.complianceScore ?? 0}
+          suggestionsCount={structureValidation?.deviations?.length ?? 0}
+          onViewSuggestions={handleViewIssues}
+        />
+      </div>
 
-      {/* 3. ACTION BAR */}
-      <ActionBar
-        category="DESIGN"
-        title={project.name}
-        description={projectPath}
-        statusBadge={{
-          label: project.connection.status === 'connected' ? 'Connected' : 'Disconnected',
-          icon: <FolderOpen className="h-3 w-3" />,
-          variant: project.connection.status === 'connected' ? 'success' : 'warning'
-        }}
-        primaryAction={{
-          label: 'Refresh',
-          onClick: onRefresh,
-          loading: isRefreshing,
-          icon: <RefreshCw className="h-4 w-4" />
-        }}
-        secondaryAction={{
-          label: 'Change Folder',
-          onClick: onChangePath,
-          icon: <FolderOpen className="h-4 w-4" />
-        }}
-      />
+      {/* CONNECTION STATUS - Collapsible */}
+      <details className="mt-6 group">
+        <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground flex items-center gap-2">
+          <span>Project Connections</span>
+          <span className="text-xs bg-muted px-2 py-0.5 rounded">4 services</span>
+        </summary>
+        <div className="mt-4">
+          <ConnectionCards projectPath={projectPath} layout="horizontal" />
+        </div>
+      </details>
 
       {/* Tech Stack Pills */}
       {project.techStack.length > 0 && (
@@ -608,47 +767,29 @@ function ConnectedState({
         </div>
       )}
 
-      {/* Best Practices Section */}
+      {/* Best Practices - as ExpandableCard */}
       {structureValidation && (
-        <div className="mb-6">
-          <BestPracticesSection
-            deviations={structureValidation.deviations}
-            reorganizationPlan={structureValidation.reorganizationPlan}
-            complianceScore={structureValidation.complianceScore}
-          />
+        <div ref={bestPracticesRef}>
+          <ExpandableCard
+            title="File Organization"
+            subtitle={`${structureValidation.deviations.length} suggestions (optional)`}
+            icon={<Lightbulb className="h-4 w-4" />}
+            status={structureValidation.complianceScore >= 80 ? 'pass' : structureValidation.complianceScore >= 50 ? 'warn' : 'fail'}
+            expanded={bestPracticesExpanded}
+            onExpandChange={setBestPracticesExpanded}
+            badge={`${structureValidation.complianceScore}%`}
+          >
+            <BestPracticesSection
+              deviations={structureValidation.deviations}
+              reorganizationPlan={structureValidation.reorganizationPlan}
+              complianceScore={structureValidation.complianceScore}
+              embedded={true}
+              projectPath={projectPath}
+              onFixesApplied={onRefresh}
+            />
+          </ExpandableCard>
         </div>
       )}
-
-      {/* View Toggle */}
-      <div className="flex items-center justify-end gap-1 mb-4">
-        <span className="text-xs text-muted-foreground mr-2">View:</span>
-        <button
-          onClick={() => setViewMode('list')}
-          className={cn(
-            "p-2 rounded-lg transition-colors",
-            viewMode === 'list'
-              ? "bg-blue-500/10 text-blue-500"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted"
-          )}
-          aria-label="List view"
-        >
-          <List className="h-4 w-4" />
-        </button>
-        <button
-          onClick={() => setViewMode('grid')}
-          className={cn(
-            "p-2 rounded-lg transition-colors",
-            viewMode === 'grid'
-              ? "bg-blue-500/10 text-blue-500"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted"
-          )}
-          aria-label="Grid view"
-        >
-          <LayoutGrid className="h-4 w-4" />
-        </button>
-      </div>
-
-      {/* 4. EXPANDABLE CARDS */}
 
       {/* Documentation */}
       <ExpandableCard
@@ -656,42 +797,24 @@ function ConnectedState({
         subtitle={`${project.documentation.length} files discovered`}
         icon={<FileText className="h-4 w-4" />}
         status={project.documentation.length > 0 ? 'pass' : 'warn'}
-        defaultExpanded={true}
+        defaultExpanded={false}
         badge={`${project.documentation.length} files`}
       >
         {project.documentation.length > 0 ? (
-          viewMode === 'list' ? (
-            <FileListView
-              files={project.documentation.map(doc => ({
-                id: doc.path,
-                title: doc.title,
-                filename: doc.filename,
-                path: doc.path,
-                type: doc.type,
-                modifiedAt: (doc as any).modifiedAt,
-                version: (doc as any).version,
-                size: (doc as any).size,
-              }))}
-              onOpen={(file) => handleOpenDoc(file as DocumentFile)}
-              fileType="document"
-            />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-              {project.documentation.map((doc, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleOpenDoc(doc)}
-                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors text-left group"
-                >
-                  <span className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", getDocColor(doc.type))}>
-                    {getDocIcon(doc.type)}
-                  </span>
-                  <span className="flex-1 text-sm font-medium truncate">{doc.title}</span>
-                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                </button>
-              ))}
-            </div>
-          )
+          <FileListView
+            files={project.documentation.map(doc => ({
+              id: doc.path,
+              title: doc.title,
+              filename: doc.filename,
+              path: doc.path,
+              type: doc.type,
+              modifiedAt: (doc as any).modifiedAt,
+              version: (doc as any).version,
+              size: (doc as any).size,
+            }))}
+            onOpen={(file) => handleOpenDoc(file as DocumentFile)}
+            fileType="document"
+          />
         ) : (
           <div className="text-center py-8">
             <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto mb-2" />
@@ -707,42 +830,24 @@ function ConnectedState({
         subtitle={`${project.mockups.length} HTML screens discovered`}
         icon={<Layout className="h-4 w-4" />}
         status={project.mockups.length > 0 ? 'pass' : 'warn'}
-        defaultExpanded={true}
+        defaultExpanded={false}
         badge={`${project.mockups.length} screens`}
       >
         {project.mockups.length > 0 ? (
-          viewMode === 'list' ? (
-            <FileListView
-              files={project.mockups.map(mockup => ({
-                id: mockup.path,
-                name: mockup.name,
-                filename: mockup.filename,
-                path: mockup.path,
-                order: mockup.order,
-                modifiedAt: (mockup as any).modifiedAt,
-                version: (mockup as any).version,
-                size: (mockup as any).size,
-              }))}
-              onOpen={(file) => setPreviewMockup(file as MockupFile)}
-              fileType="mockup"
-            />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-              {project.mockups.map((mockup, i) => (
-                <button
-                  key={i}
-                  onClick={() => setPreviewMockup(mockup)}
-                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors text-left group"
-                >
-                  <span className="w-8 h-8 rounded-lg flex items-center justify-center bg-purple-500/10 text-purple-500 shrink-0">
-                    <Layout className="h-4 w-4" />
-                  </span>
-                  <span className="flex-1 text-sm font-medium truncate">{mockup.name}</span>
-                  <Play className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                </button>
-              ))}
-            </div>
-          )
+          <FileListView
+            files={project.mockups.map(mockup => ({
+              id: mockup.path,
+              name: mockup.name,
+              filename: mockup.filename,
+              path: mockup.path,
+              order: mockup.order,
+              modifiedAt: (mockup as any).modifiedAt,
+              version: (mockup as any).version,
+              size: (mockup as any).size,
+            }))}
+            onOpen={(file) => setPreviewMockup(file as MockupFile)}
+            fileType="mockup"
+          />
         ) : (
           <div className="text-center py-8">
             <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto mb-2" />
@@ -772,6 +877,17 @@ function ConnectedState({
         mockup={previewMockup}
         onClose={() => setPreviewMockup(null)}
       />
+
+      {/* Foundation Analysis Modal - Uses existing FoundationAnalysisProgress */}
+      {showAnalysisModal && (
+        <FoundationAnalysisProgressModal
+          projectPath={projectPath}
+          analysisReport={analysisReport}
+          onAnalysisComplete={onAnalysisComplete}
+          onValidationComplete={onValidationComplete}
+          onClose={() => setShowAnalysisModal(false)}
+        />
+      )}
     </>
   );
 }
@@ -783,8 +899,8 @@ function ConnectedState({
 export function MockupDesignTab({
   projectPath,
   projectId,
-  validationStatus: _initialStatus,
-  onValidationComplete: _onValidationComplete
+  validationStatus: _validationStatus,
+  onValidationComplete
 }: MockupDesignTabProps) {
   const [state, setState] = useState<'not-connected' | 'discovering' | 'connected'>(
     projectPath ? 'discovering' : 'not-connected'
@@ -793,6 +909,12 @@ export function MockupDesignTab({
   const [currentPath, setCurrentPath] = useState(projectPath);
   const [isUpdating, setIsUpdating] = useState(false);
   const [structureValidation, setStructureValidation] = useState<StructureValidation | null>(null);
+  const [analysisReport, setAnalysisReport] = useState<FoundationReport | null>(null);
+
+  // Handle analysis completion
+  const handleAnalysisComplete = useCallback((report: FoundationReport) => {
+    setAnalysisReport(report);
+  }, []);
 
   // Discover project when path is set
   const discoverProject = useCallback(async (path: string) => {
@@ -915,6 +1037,9 @@ export function MockupDesignTab({
           onChangePath={handleChangePath}
           isRefreshing={false}
           structureValidation={structureValidation}
+          analysisReport={analysisReport}
+          onAnalysisComplete={handleAnalysisComplete}
+          onValidationComplete={onValidationComplete}
         />
       )}
     </TabContainer>
