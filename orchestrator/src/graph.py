@@ -43,7 +43,7 @@ except ImportError:
 
 # Import Supervisor for distributed execution
 try:
-    from src.supervisor import get_supervisor, Supervisor
+    from src.supervisor import get_supervisor, Supervisor, get_pm_timeout
     DISTRIBUTED_MODE = os.getenv("WAVE_DISTRIBUTED", "true").lower() == "true"
 except ImportError:
     DISTRIBUTED_MODE = False
@@ -360,8 +360,9 @@ def plan_node(state: WAVEState) -> dict:
                 project_path=project_path
             )
 
-            # Wait for PM agent to complete
-            result = supervisor.wait_for_result(task_id, timeout=120)
+            # Wait for PM agent to complete (uses configurable timeout from supervisor)
+            pm_timeout = get_pm_timeout()
+            result = supervisor.wait_for_result(task_id, timeout=pm_timeout)
 
             if result.get("status") == "completed":
                 plan = result.get("plan", {})
