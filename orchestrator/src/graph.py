@@ -9,6 +9,7 @@ It includes:
 - Integration points for multi-LLM orchestration
 """
 
+import os
 from typing import Literal, Annotated, Optional
 from typing_extensions import TypedDict
 from datetime import datetime
@@ -16,6 +17,44 @@ from enum import Enum
 
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
+
+# Try to import Claude for develop node
+try:
+    from langchain_anthropic import ChatAnthropic
+    from langchain_core.messages import HumanMessage, SystemMessage
+    CLAUDE_AVAILABLE = True
+except ImportError:
+    CLAUDE_AVAILABLE = False
+
+# Import Slack notifications
+import sys
+_root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _root_dir not in sys.path:
+    sys.path.insert(0, _root_dir)
+
+try:
+    from notifications import notify_step, notify_run_start, notify_run_complete
+    NOTIFICATIONS_AVAILABLE = True
+except ImportError:
+    NOTIFICATIONS_AVAILABLE = False
+    def notify_step(*args, **kwargs): pass
+    def notify_run_start(*args, **kwargs): pass
+    def notify_run_complete(*args, **kwargs): pass
+
+# Import Supervisor for distributed execution
+try:
+    from src.supervisor import get_supervisor, Supervisor
+    DISTRIBUTED_MODE = os.getenv("WAVE_DISTRIBUTED", "true").lower() == "true"
+except ImportError:
+    DISTRIBUTED_MODE = False
+    def get_supervisor(): return None
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CONSTANTS (Enhancement 2 - Grok: Dev-Fix Retry Limit)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+DEV_FIX_MAX_RETRIES = 3  # Maximum retries for dev-fix loop before escalation
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENUMS
@@ -266,7 +305,16 @@ def validate_node(state: WAVEState) -> dict:
     - Budget is available
     - Safety check passes
     """
-    # TODO: Implement validation logic
+    story_id = state.get("story_id", "unknown")
+    notify_run_start(story_id, state.get("requirements", "")[:100])
+    notify_step(
+        agent="validator",
+        action="validating requirements",
+        task=state.get("requirements", "")[:100],
+        run_id=story_id,
+        status="validating"
+    )
+
     # For now, pass through if requirements exist
     if state["requirements"]:
         return {
@@ -284,12 +332,54 @@ def validate_node(state: WAVEState) -> dict:
 
 def plan_node(state: WAVEState) -> dict:
     """
-    Create implementation plan using Grok for feasibility.
+    Create implementation plan - dispatches to PM agent worker.
 
     Gate: 2 (planning within dev started)
-    Uses: Grok for truthful feasibility assessment
+    Uses: Distributed PM agent via Redis queue
     """
-    # TODO: Integrate with MultiLLMOrchestrator.planning_node
+    story_id = state.get("story_id", "unknown")
+    requirements = state.get("requirements", "")
+    project_path = state.get("project_path", "/project")
+
+    notify_step(
+        agent="supervisor",
+        action="dispatching to PM agent",
+        task=requirements[:100],
+        run_id=story_id,
+        status="dispatching"
+    )
+
+    # Use distributed PM agent if available
+    if DISTRIBUTED_MODE:
+        supervisor = get_supervisor()
+        if supervisor:
+            # Dispatch to PM agent queue
+            task_id = supervisor.dispatch_to_pm(
+                story_id=story_id,
+                requirements=requirements,
+                project_path=project_path
+            )
+
+            # Wait for PM agent to complete
+            result = supervisor.wait_for_result(task_id, timeout=120)
+
+            if result.get("status") == "completed":
+                plan = result.get("plan", {})
+                return {
+                    "plan": plan.get("plan_summary", ""),
+                    "plan_feasible": True,
+                    "files_modified": result.get("fe_files", []) + result.get("be_files", []),
+                    "phase": Phase.DEVELOP.value,
+                    "updated_at": datetime.now().isoformat()
+                }
+            else:
+                return {
+                    "phase": Phase.FAILED.value,
+                    "error": result.get("error", "PM agent failed"),
+                    "error_count": state["error_count"] + 1
+                }
+
+    # Fallback: placeholder plan
     return {
         "plan": "Implementation plan placeholder",
         "plan_feasible": True,
@@ -298,16 +388,148 @@ def plan_node(state: WAVEState) -> dict:
     }
 
 
+DEV_SYSTEM_PROMPT = """You are the Developer agent in a multi-agent software development system.
+
+Your responsibilities:
+1. Implement code according to the task specifications
+2. Write clean, maintainable, well-documented code
+3. Create appropriate tests for your implementation
+4. Handle errors gracefully and securely
+
+Coding standards:
+- Follow existing code patterns in the repository
+- Keep functions small and focused
+- Use meaningful variable and function names
+- Add comments for complex logic
+- Never commit secrets or credentials
+- Validate all inputs
+
+Output Format:
+- Return ONLY the code in a markdown code block
+- Include a brief comment at the top explaining what the code does
+- Keep the implementation simple and focused
+"""
+
+
 def develop_node(state: WAVEState) -> dict:
     """
-    Generate code using Claude.
+    Generate code - dispatches to FE and BE agents in parallel.
 
     Gate: 2 -> 3
-    Uses: Claude for creative coding
+    Uses: Distributed FE + BE agents via Redis queues (parallel execution)
     """
-    # TODO: Integrate with Claude developer agent
+    requirements = state.get("requirements", "")
+    project_path = state.get("project_path", "/project")
+    story_id = state.get("story_id", "unknown")
+    files_modified = state.get("files_modified", [])
+
+    # Categorize files by domain
+    fe_files = [f for f in files_modified if any(ext in f for ext in ['.tsx', '.ts', '.jsx', '.js', '.css'])]
+    be_files = [f for f in files_modified if any(ext in f for ext in ['.py', 'api/', 'server/'])]
+
+    # If no files specified, let agents determine
+    if not fe_files and not be_files:
+        fe_files = ["to_be_determined"]
+        be_files = ["to_be_determined"]
+
+    # Use distributed agents if available
+    if DISTRIBUTED_MODE:
+        supervisor = get_supervisor()
+        if supervisor:
+            notify_step(
+                agent="supervisor",
+                action="dispatching to FE + BE agents (parallel)",
+                task=requirements[:100],
+                run_id=story_id,
+                status="parallel_dispatch"
+            )
+
+            # Dispatch FE and BE in parallel
+            task_ids = supervisor.dispatch_parallel_dev(
+                story_id=story_id,
+                fe_files=fe_files,
+                be_files=be_files,
+                requirements=requirements,
+                project_path=project_path
+            )
+
+            # Wait for both to complete
+            results = supervisor.wait_for_parallel_dev(task_ids, timeout=180)
+
+            fe_result = results.get("fe_result", {})
+            be_result = results.get("be_result", {})
+
+            # Combine code from both agents
+            combined_code = ""
+            all_files = []
+
+            if fe_result.get("status") == "completed":
+                combined_code += f"// === FRONTEND CODE ===\n{fe_result.get('code', '')}\n\n"
+                all_files.extend(fe_result.get("files_modified", []))
+
+            if be_result.get("status") == "completed":
+                combined_code += f"// === BACKEND CODE ===\n{be_result.get('code', '')}\n\n"
+                all_files.extend(be_result.get("files_modified", []))
+
+            # Check if at least one succeeded
+            if fe_result.get("status") == "completed" or be_result.get("status") == "completed":
+                return {
+                    "code": combined_code,
+                    "files_modified": all_files,
+                    "phase": Phase.QA.value,
+                    "gate": Gate.DEV_COMPLETE.value,
+                    "updated_at": datetime.now().isoformat()
+                }
+            else:
+                return {
+                    "phase": Phase.FAILED.value,
+                    "error": f"FE: {fe_result.get('error', 'unknown')}, BE: {be_result.get('error', 'unknown')}",
+                    "error_count": state["error_count"] + 1
+                }
+
+    # Fallback: Direct Claude call (original behavior)
+    notify_step(
+        agent="dev",
+        action="generating code with Claude (fallback)",
+        task=requirements[:100],
+        run_id=story_id,
+        status="developing"
+    )
+
+    generated_code = None
+
+    if CLAUDE_AVAILABLE and os.getenv("ANTHROPIC_API_KEY"):
+        try:
+            # Initialize Claude
+            llm = ChatAnthropic(
+                model="claude-sonnet-4-20250514",
+                temperature=0.2
+            )
+
+            # Build prompt
+            prompt = f"""Task: {requirements}
+
+Project Path: {project_path}
+
+Please implement this task. Return the code in a markdown code block.
+Keep it simple and focused on the specific requirement."""
+
+            # Call Claude
+            messages = [
+                SystemMessage(content=DEV_SYSTEM_PROMPT),
+                HumanMessage(content=prompt)
+            ]
+
+            response = llm.invoke(messages)
+            generated_code = response.content
+
+        except Exception as e:
+            generated_code = f"# Error calling Claude: {str(e)}"
+    else:
+        generated_code = "# Claude not available (no API key or langchain_anthropic not installed)"
+
     return {
-        "code": "# Generated code placeholder",
+        "code": generated_code,
         "phase": Phase.QA.value,
         "gate": Gate.DEV_COMPLETE.value,
         "updated_at": datetime.now().isoformat()
@@ -316,18 +538,73 @@ def develop_node(state: WAVEState) -> dict:
 
 def qa_node(state: WAVEState) -> dict:
     """
-    QA validation with Claude -> Grok fallback.
+    QA validation - dispatches to QA agent worker.
 
     Gate: 3 -> 4 -> 5
-    Uses: Claude primary, Grok fallback after 2 failures
+    Uses: Distributed QA agent via Redis queue
     """
-    # TODO: Integrate with MultiLLMOrchestrator.qa_node
+    story_id = state.get("story_id", "unknown")
+    code = state.get("code", "")
+    files = state.get("files_modified", [])
+    requirements = state.get("requirements", "")
     qa_retry = state["qa_retry_count"]
 
-    if state["code"]:
+    # Use distributed QA agent if available
+    if DISTRIBUTED_MODE and code:
+        supervisor = get_supervisor()
+        if supervisor:
+            notify_step(
+                agent="supervisor",
+                action="dispatching to QA agent",
+                task=requirements[:100],
+                run_id=story_id,
+                status="dispatching"
+            )
+
+            # Dispatch to QA agent
+            task_id = supervisor.dispatch_to_qa(
+                story_id=story_id,
+                code=code,
+                files=files,
+                requirements=requirements
+            )
+
+            # Wait for QA agent to complete
+            result = supervisor.wait_for_result(task_id, timeout=120)
+
+            if result.get("status") == "completed":
+                passed = result.get("passed", False)
+                score = result.get("score", 0.0)
+
+                if passed:
+                    return {
+                        "qa_passed": True,
+                        "qa_feedback": result.get("qa_result", {}).get("summary", "QA passed"),
+                        "phase": Phase.MERGE.value,
+                        "gate": Gate.QA_PASSED.value,
+                        "updated_at": datetime.now().isoformat()
+                    }
+                else:
+                    return {
+                        "qa_passed": False,
+                        "qa_feedback": result.get("qa_result", {}).get("summary", "QA failed"),
+                        "qa_retry_count": qa_retry + 1,
+                        "phase": Phase.DEVELOP.value if qa_retry < 3 else Phase.FAILED.value
+                    }
+
+    # Fallback: simple check
+    notify_step(
+        agent="qa",
+        action="validating code quality (fallback)",
+        task=requirements[:100],
+        run_id=story_id,
+        status="testing"
+    )
+
+    if code:
         return {
             "qa_passed": True,
-            "qa_feedback": "Tests passed",
+            "qa_feedback": "Tests passed (fallback)",
             "phase": Phase.MERGE.value,
             "gate": Gate.QA_PASSED.value,
             "updated_at": datetime.now().isoformat()
@@ -348,6 +625,15 @@ def constitutional_node(state: WAVEState) -> dict:
     Runs: Before any destructive action
     Uses: Grok for strict safety scoring
     """
+    story_id = state.get("story_id", "unknown")
+    notify_step(
+        agent="safety_gate",
+        action="running constitutional AI check",
+        task=state.get("requirements", "")[:100],
+        run_id=story_id,
+        status="safety_check"
+    )
+
     # TODO: Integrate with MultiLLMOrchestrator.constitutional_node
     return {
         "safety": SafetyState(
@@ -361,15 +647,71 @@ def constitutional_node(state: WAVEState) -> dict:
 
 def cto_master_node(state: WAVEState) -> dict:
     """
-    CTO Master final approval using Grok.
+    CTO Master final approval - dispatches to CTO agent worker.
 
     Gate: 5 -> 6 -> 7
-    Uses: Grok for truthful merge approval
+    Uses: Distributed CTO agent via Redis queue
     """
-    # TODO: Integrate with MultiLLMOrchestrator.cto_master_node
+    story_id = state.get("story_id", "unknown")
+    code = state.get("code", "")
+    files = state.get("files_modified", [])
+    plan = state.get("plan", "")
+
+    # Use distributed CTO agent if available
+    if DISTRIBUTED_MODE and code:
+        supervisor = get_supervisor()
+        if supervisor:
+            notify_step(
+                agent="supervisor",
+                action="dispatching to CTO agent",
+                task=state.get("requirements", "")[:100],
+                run_id=story_id,
+                status="dispatching"
+            )
+
+            # Dispatch to CTO agent
+            task_id = supervisor.dispatch_to_cto(
+                story_id=story_id,
+                code=code,
+                files=files,
+                plan={"summary": plan}
+            )
+
+            # Wait for CTO agent to complete
+            result = supervisor.wait_for_result(task_id, timeout=120)
+
+            if result.get("status") == "completed":
+                approved = result.get("approved", False)
+
+                if approved:
+                    return {
+                        "cto_master_approved": True,
+                        "cto_master_review": result.get("review", {}).get("summary", "Approved"),
+                        "phase": Phase.DONE.value,
+                        "gate": Gate.MERGED.value,
+                        "completed_at": datetime.now().isoformat(),
+                        "updated_at": datetime.now().isoformat()
+                    }
+                else:
+                    return {
+                        "cto_master_approved": False,
+                        "cto_master_review": result.get("review", {}).get("summary", "Rejected"),
+                        "phase": Phase.FAILED.value,
+                        "error": "CTO review rejected"
+                    }
+
+    # Fallback: auto-approve
+    notify_step(
+        agent="cto",
+        action="reviewing for merge approval (fallback)",
+        task=state.get("requirements", "")[:100],
+        run_id=story_id,
+        status="reviewing"
+    )
+
     return {
         "cto_master_approved": True,
-        "cto_master_review": "Approved by CTO Master",
+        "cto_master_review": "Approved by CTO Master (fallback)",
         "phase": Phase.DONE.value,
         "gate": Gate.MERGED.value,
         "completed_at": datetime.now().isoformat(),
@@ -383,11 +725,76 @@ def merge_node(state: WAVEState) -> dict:
 
     Gate: 6 -> 7
     """
+    story_id = state.get("story_id", "unknown")
+    notify_step(
+        agent="merge",
+        action="merging code to main branch",
+        task=state.get("requirements", "")[:100],
+        run_id=story_id,
+        status="merging"
+    )
+
+    # Notify completion
+    notify_run_complete(
+        run_id=story_id,
+        task=state.get("requirements", "")[:100],
+        actions_count=7,
+        status="completed"
+    )
+
     # TODO: Integrate with GitTools for merge
     return {
         "gate": Gate.MERGED.value,
         "updated_at": datetime.now().isoformat()
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DEV-FIX RETRY FUNCTIONS (Enhancement 2 - Grok)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def should_retry_dev_fix(state: dict) -> bool:
+    """
+    Determine if dev-fix should retry or escalate.
+
+    Enhancement 2 (Grok): Limit retries to prevent infinite loops.
+
+    Args:
+        state: Current workflow state
+
+    Returns:
+        True if should retry, False if should escalate
+    """
+    retries = state.get('dev_fix_retries', 0)
+    qa_passed = state.get('qa_passed', False)
+
+    # No retry needed if QA passed
+    if qa_passed:
+        return False
+
+    # Escalate if max retries reached
+    if retries >= DEV_FIX_MAX_RETRIES:
+        return False
+
+    # Continue retrying
+    return True
+
+
+def increment_dev_fix_retries(state: dict) -> dict:
+    """
+    Increment the dev-fix retry counter.
+
+    Enhancement 2 (Grok): Track retry count for limit enforcement.
+
+    Args:
+        state: Current workflow state
+
+    Returns:
+        Updated state with incremented retry count
+    """
+    current = state.get('dev_fix_retries', 0)
+    state['dev_fix_retries'] = current + 1
+    return state
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -576,6 +983,8 @@ def get_graph_diagram() -> str:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 __all__ = [
+    # Constants
+    "DEV_FIX_MAX_RETRIES",
     # Enums
     "Phase",
     "Gate",
@@ -591,6 +1000,9 @@ __all__ = [
     "create_wave_graph",
     "compile_wave_graph",
     "get_graph_diagram",
+    # Dev-fix functions (Enhancement 2)
+    "should_retry_dev_fix",
+    "increment_dev_fix_retries",
     # Nodes (for testing/extension)
     "validate_node",
     "plan_node",

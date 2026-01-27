@@ -12,6 +12,8 @@ Grok Modification: Hybrid LangGraph approach
 - LangGraph remains the primary orchestrator (state, routing, checkpoints)
 - Workers execute node logic via Redis queues
 - Results feed back into graph state
+
+Enhancement 1 (Grok): Configurable PM timeout via WAVE_PM_TIMEOUT env var
 """
 
 import os
@@ -19,6 +21,37 @@ import sys
 import uuid
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# TIMEOUT CONFIGURATION (Enhancement 1 - Grok)
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Default timeout values (seconds)
+PM_TIMEOUT_DEFAULT = 300  # 5 minutes (increased from 2 min per Grok recommendation)
+PM_TIMEOUT_MIN = 30       # Minimum 30 seconds
+PM_TIMEOUT_MAX = 600      # Maximum 10 minutes
+
+
+def get_pm_timeout() -> int:
+    """
+    Get PM timeout from environment or use default.
+
+    Environment variable: WAVE_PM_TIMEOUT (seconds)
+    Default: 300 seconds (5 minutes)
+    Min: 30 seconds
+    Max: 600 seconds (10 minutes)
+
+    Returns:
+        Timeout value in seconds, clamped to min/max bounds
+    """
+    try:
+        timeout = int(os.getenv('WAVE_PM_TIMEOUT', str(PM_TIMEOUT_DEFAULT)))
+    except ValueError:
+        timeout = PM_TIMEOUT_DEFAULT
+
+    # Clamp to bounds
+    return max(PM_TIMEOUT_MIN, min(PM_TIMEOUT_MAX, timeout))
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

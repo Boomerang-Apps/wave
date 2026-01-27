@@ -144,6 +144,75 @@ WAVE_PRINCIPLES = [
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# P006 EXPLICIT TRIGGERS (Enhancement 3 - Grok)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Confidence threshold for uncertainty escalation
+CONFIDENCE_THRESHOLD = 0.6
+
+# Keywords indicating ambiguous or uncertain requirements
+AMBIGUOUS_KEYWORDS = [
+    'maybe', 'perhaps', 'possibly', 'might',
+    'some kind of', 'something like', 'not sure',
+    'TBD', 'TODO', 'unclear', 'ambiguous',
+    'could be', 'either', 'or maybe', 'not certain',
+    'probably', 'i think', 'i guess', 'potentially',
+    'figure out', 'to be determined', 'decide later'
+]
+
+
+def should_escalate_p006(result: dict) -> bool:
+    """
+    Determine if P006 (Escalate Uncertainty) should trigger.
+
+    Enhancement 3 (Grok): Add explicit triggers for uncertainty escalation
+    instead of relying solely on LLM judgment.
+
+    Explicit triggers:
+    1. Confidence score < 0.6
+    2. Ambiguous keywords in requirements
+    3. Multiple valid options without selection
+    4. 'unsure' or similar decision
+
+    Args:
+        result: Dict containing decision context with possible keys:
+            - confidence_score: Float 0-1 indicating confidence
+            - requirements: String with task requirements
+            - options: List of available options
+            - selected: Selected option (or None)
+            - decision: Decision status string
+
+    Returns:
+        True if should escalate to human, False otherwise
+    """
+    # Trigger 1: Low confidence score
+    confidence = result.get('confidence_score', 1.0)
+    if confidence < CONFIDENCE_THRESHOLD:
+        return True
+
+    # Trigger 2: Ambiguous keywords in requirements
+    requirements = result.get('requirements', '').lower()
+    for keyword in AMBIGUOUS_KEYWORDS:
+        if keyword.lower() in requirements:
+            return True
+
+    # Trigger 3: Multiple options without selection
+    options = result.get('options', [])
+    selected = result.get('selected')
+    if len(options) > 1 and selected is None:
+        return True
+
+    # Trigger 4: Unsure/uncertain decision
+    decision = result.get('decision', '').lower()
+    uncertain_decisions = ['unsure', 'uncertain', 'unclear', 'unknown', 'undecided']
+    if decision in uncertain_decisions:
+        return True
+
+    # No escalation needed
+    return False
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # SAFETY RESULT TYPES
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -547,4 +616,8 @@ __all__ = [
     "check_action_safety",
     "create_constitutional_node",
     "ESTOP",
+    # P006 Explicit Triggers (Enhancement 3)
+    "AMBIGUOUS_KEYWORDS",
+    "CONFIDENCE_THRESHOLD",
+    "should_escalate_p006",
 ]
