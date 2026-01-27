@@ -49,6 +49,43 @@ services:
   # DOMAIN AGENTS (Versioned, Immutable Images)
   # ═══════════════════════════════════════════════════════════════════════════
 
+  # PM Agent (Project Manager - Task Planning)
+  pm-agent:
+    image: wave-orchestrator:v2
+    container_name: wave-pm-agent
+    command: ["python", "-m", "src.agents.pm_agent"]
+    environment:
+      - TZ=Asia/Jerusalem
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - REDIS_URL=redis://redis:6379
+      - WAVE_DOMAIN=pm
+      - AGENT_ID=pm-1
+      - ORCHESTRATOR_URL=http://orchestrator:8000
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - SLACK_ENABLED=true
+      - LANGSMITH_TRACING=true
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
+      - LANGSMITH_WORKSPACE_ID=${LANGSMITH_WORKSPACE_ID}
+      - LANGSMITH_PROJECT=wave-pm-agent
+    volumes:
+      - ${PROJECT_PATH:-/tmp/project}:/project
+      - agent-output-pm:/app/output
+    networks:
+      - wave-network
+    depends_on:
+      - orchestrator
+      - redis
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    healthcheck:
+      test: ["CMD", "python", "-c", "print('healthy')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   # Frontend Agent 1
   fe-agent-1:
     image: wave-agent-fe:${WAVE_VERSION:-v2-wave1}
@@ -254,6 +291,7 @@ networks:
 
 volumes:
   redis-data:
+  agent-output-pm:
   agent-output-fe-1:
   agent-output-fe-2:
   agent-output-be-1:
