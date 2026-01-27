@@ -42,6 +42,13 @@ RUN pip install --no-cache-dir /wheels/* \
 # Copy application code
 COPY src/ /app/src/
 COPY poc/ /app/poc/
+COPY tools/ /app/tools/
+COPY nodes/ /app/nodes/
+COPY notifications.py /app/notifications.py
+COPY state.py /app/state.py
+COPY config.py /app/config.py
+COPY graph.py /app/graph.py
+COPY main.py /app/main.py
 
 # Set ownership
 RUN chown -R wave:wave /app

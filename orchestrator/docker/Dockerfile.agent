@@ -1,0 +1,66 @@
+# WAVE Agent Worker Dockerfile
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Base image for all domain agent workers (PM, CTO, FE, BE, QA).
+# Each agent runs as a long-lived worker polling Redis for tasks.
+#
+# Build:
+#   docker build -f docker/Dockerfile.agent -t wave-agent:v2 ..
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+
+FROM python:3.11-slim
+
+# Labels
+LABEL maintainer="WAVE Team"
+LABEL description="WAVE Domain Agent Worker"
+LABEL version="2.0"
+
+# Create non-root user for security
+RUN groupadd -r wave && useradd -r -g wave wave
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for layer caching
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY src/ /app/src/
+COPY tools/ /app/tools/
+COPY nodes/ /app/nodes/
+COPY notifications.py /app/notifications.py
+COPY state.py /app/state.py
+COPY config.py /app/config.py
+COPY graph.py /app/graph.py
+COPY main.py /app/main.py
+
+# Set Python path
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+# Don't buffer stdout/stderr (important for Dozzle real-time logs)
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Default environment (overridden by docker-compose)
+ENV AGENT_DOMAIN=unknown
+ENV AGENT_ID=1
+ENV REDIS_URL=redis://redis:6379
+
+# Health check - verify agent can connect to Redis
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import redis; r=redis.from_url('$REDIS_URL'); r.ping()" || exit 1
+
+# Switch to non-root user
+USER wave
+
+# Default command (overridden in docker-compose)
+CMD ["python", "-c", "print('Specify agent module via command override')"]
