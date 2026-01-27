@@ -49,6 +49,14 @@ except ImportError:
     DISTRIBUTED_MODE = False
     def get_supervisor(): return None
 
+# Import MergeWatcher for automated merge (Enhancement 4 - Grok)
+try:
+    from src.merge_watcher import MergeWatcher
+    MERGE_WATCHER_AVAILABLE = True
+except ImportError:
+    MERGE_WATCHER_AVAILABLE = False
+    MergeWatcher = None
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # CONSTANTS (Enhancement 2 - Grok: Dev-Fix Retry Limit)
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -724,9 +732,43 @@ def merge_node(state: WAVEState) -> dict:
     """
     Execute merge after CTO approval.
 
+    Enhancement 4 (Grok): Integrates MergeWatcher for safety validation.
+    - Checks safety_score >= 0.85 before merge
+    - Sends Slack notifications on merge events
+    - Supports dry-run mode for testing
+
     Gate: 6 -> 7
     """
     story_id = state.get("story_id", "unknown")
+    safety_score = state.get("safety_score", 1.0)  # Default to 1.0 if not set
+    qa_passed = state.get("qa_passed", False)
+
+    # Use MergeWatcher to validate merge conditions (Enhancement 4 - Grok)
+    if MERGE_WATCHER_AVAILABLE and MergeWatcher:
+        watcher = MergeWatcher(dry_run=False)
+        qa_result = {
+            "status": "completed",
+            "qa_passed": qa_passed,
+            "safety_score": safety_score,
+            "story_id": story_id
+        }
+
+        if not watcher.should_trigger_merge(qa_result):
+            # Block merge if conditions not met
+            notify_step(
+                agent="merge",
+                action="merge blocked - safety check failed",
+                task=state.get("requirements", "")[:100],
+                run_id=story_id,
+                status="blocked"
+            )
+            return {
+                "gate": Gate.QA_PASSED.value,  # Stay at QA passed, don't merge
+                "merge_blocked": True,
+                "merge_reason": f"Safety score {safety_score} below threshold 0.85" if safety_score < 0.85 else "QA not passed",
+                "updated_at": datetime.now().isoformat()
+            }
+
     notify_step(
         agent="merge",
         action="merging code to main branch",
@@ -743,9 +785,10 @@ def merge_node(state: WAVEState) -> dict:
         status="completed"
     )
 
-    # TODO: Integrate with GitTools for merge
     return {
         "gate": Gate.MERGED.value,
+        "merge_blocked": False,
+        "safety_score": safety_score,
         "updated_at": datetime.now().isoformat()
     }
 

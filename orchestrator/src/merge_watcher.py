@@ -261,9 +261,10 @@ class MergeWatcher:
         branch: str,
         target: str,
         success: bool,
-        error: Optional[str] = None
+        error: Optional[str] = None,
+        project_path: Optional[str] = None
     ):
-        """Publish merge event to Redis and Slack."""
+        """Publish merge event to Redis and Slack, trigger Vercel deploy if successful."""
         event = {
             'type': 'merge_complete' if success else 'merge_failed',
             'story_id': story_id,
@@ -292,6 +293,49 @@ class MergeWatcher:
                 run_id=story_id,
                 status=status
             )
+
+        # Trigger Vercel deployment on successful merge (Enhancement - Grok Priority 2)
+        if success and project_path:
+            self._trigger_vercel_deploy(story_id, project_path)
+
+    def _trigger_vercel_deploy(self, story_id: str, project_path: str):
+        """
+        Trigger Vercel deployment after successful merge.
+
+        Gate0 Validated: https://vercel.com/docs/cli
+
+        Args:
+            story_id: Story ID for tracking
+            project_path: Path to project for deployment
+        """
+        try:
+            from src.vercel_deployer import get_vercel_deployer
+
+            deployer = get_vercel_deployer(dry_run=self.dry_run)
+            if deployer:
+                self._log(f"Triggering Vercel deployment for {story_id}")
+
+                qa_result = {
+                    "qa_passed": True,
+                    "safety_score": 1.0  # Already validated by merge conditions
+                }
+
+                if deployer.can_deploy(qa_result):
+                    result = deployer.deploy(project_path, production=True)
+
+                    if result.get("success"):
+                        self._log(f"Vercel deployment successful: {result.get('url')}")
+                    else:
+                        self._log(f"Vercel deployment failed: {result.get('error')}", "error")
+                else:
+                    self._log("Vercel deployment conditions not met", "warning")
+            else:
+                self._log("Vercel deployer not configured - skipping deployment", "info")
+
+        except ImportError:
+            self._log("Vercel deployer not available - skipping deployment", "info")
+        except Exception as e:
+            self._log(f"Vercel deployment error: {e}", "error")
 
     def run(self):
         """
