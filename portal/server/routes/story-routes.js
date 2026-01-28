@@ -989,6 +989,28 @@ router.post('/review', async (req, res) => {
 // GATE LOCKING APIs - Enforce strict 9-gate workflow
 // ============================================================================
 
+// API Key authentication middleware for gate endpoints (Grok Security Refinement)
+const GATE_API_KEY = process.env.WAVE_GATE_API_KEY || process.env.WAVE_API_KEY;
+
+const authenticateGateAPI = (req, res, next) => {
+  // Skip auth in development if no key configured
+  if (!GATE_API_KEY) {
+    return next();
+  }
+
+  const apiKey = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '');
+
+  if (!apiKey || apiKey !== GATE_API_KEY) {
+    return res.status(403).json({
+      success: false,
+      error: 'Unauthorized: Invalid or missing API key',
+      hint: 'Set x-api-key header or configure WAVE_GATE_API_KEY'
+    });
+  }
+
+  next();
+};
+
 // In-memory gate state (in production, use Redis)
 const gateStates = new Map();
 
@@ -1007,8 +1029,9 @@ const GATE_DEFINITIONS = [
 /**
  * GET /api/gate/status/:storyId
  * Get current gate status for a story - determines which buttons are enabled
+ * Auth: Requires x-api-key header if WAVE_GATE_API_KEY is set
  */
-router.get('/gate/status/:storyId', async (req, res) => {
+router.get('/gate/status/:storyId', authenticateGateAPI, async (req, res) => {
   try {
     const { storyId } = req.params;
 
@@ -1058,8 +1081,9 @@ router.get('/gate/status/:storyId', async (req, res) => {
 /**
  * POST /api/gate/advance/:storyId
  * Advance to next gate after validation - the LOCK mechanism
+ * Auth: Requires x-api-key header if WAVE_GATE_API_KEY is set
  */
-router.post('/gate/advance/:storyId', async (req, res) => {
+router.post('/gate/advance/:storyId', authenticateGateAPI, async (req, res) => {
   try {
     const { storyId } = req.params;
     const { gate_data } = req.body;
@@ -1130,8 +1154,9 @@ router.post('/gate/advance/:storyId', async (req, res) => {
 /**
  * POST /api/gate/validate/:storyId/:gateNum
  * Validate a specific gate's requirements without advancing
+ * Auth: Requires x-api-key header if WAVE_GATE_API_KEY is set
  */
-router.post('/gate/validate/:storyId/:gateNum', async (req, res) => {
+router.post('/gate/validate/:storyId/:gateNum', authenticateGateAPI, async (req, res) => {
   try {
     const { storyId, gateNum } = req.params;
     const { gate_data } = req.body;
@@ -1155,8 +1180,9 @@ router.post('/gate/validate/:storyId/:gateNum', async (req, res) => {
 /**
  * POST /api/gate/reset/:storyId
  * Reset gate state for a story (requires confirmation)
+ * Auth: Requires x-api-key header if WAVE_GATE_API_KEY is set
  */
-router.post('/gate/reset/:storyId', async (req, res) => {
+router.post('/gate/reset/:storyId', authenticateGateAPI, async (req, res) => {
   try {
     const { storyId } = req.params;
     const { confirm } = req.body;
@@ -1253,5 +1279,92 @@ function getBlockers(state) {
   const validation = validateGateRequirements(currentGate, state, state.gates_data[currentGate] || {});
   return validation.blockers;
 }
+
+// ============================================================================
+// RLM STATUS API (Grok Refinement - Real-Time Monitoring)
+// ============================================================================
+
+// In-memory RLM budget tracking (in production, use Redis with persistence)
+const rlmBudget = {
+  limit_usd: 5.00,
+  used_usd: 0.00,
+  tokens_used: 0,
+  tokens_limit: 500000,
+  last_updated: new Date().toISOString(),
+  alerts: []
+};
+
+/**
+ * GET /api/rlm/status
+ * Get current RLM budget status for monitoring panel
+ */
+router.get('/rlm/status', async (req, res) => {
+  try {
+    const percentage = (rlmBudget.used_usd / rlmBudget.limit_usd) * 100;
+    const remaining_usd = rlmBudget.limit_usd - rlmBudget.used_usd;
+
+    res.json({
+      success: true,
+      budget: {
+        limit_usd: rlmBudget.limit_usd,
+        used_usd: rlmBudget.used_usd,
+        remaining_usd: remaining_usd,
+        percentage_used: Math.round(percentage * 100) / 100,
+        tokens_used: rlmBudget.tokens_used,
+        tokens_limit: rlmBudget.tokens_limit,
+        status: percentage >= 100 ? 'exceeded' :
+                percentage >= 90 ? 'critical' :
+                percentage >= 75 ? 'warning' : 'normal'
+      },
+      alerts: rlmBudget.alerts,
+      last_updated: rlmBudget.last_updated
+    });
+  } catch (error) {
+    console.error('RLM status error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/rlm/track
+ * Track token usage (called by orchestrator)
+ */
+router.post('/rlm/track', authenticateGateAPI, async (req, res) => {
+  try {
+    const { tokens, cost_usd, operation } = req.body;
+
+    if (tokens) rlmBudget.tokens_used += tokens;
+    if (cost_usd) rlmBudget.used_usd += cost_usd;
+    rlmBudget.last_updated = new Date().toISOString();
+
+    // Check thresholds and add alerts
+    const percentage = (rlmBudget.used_usd / rlmBudget.limit_usd) * 100;
+    if (percentage >= 100) {
+      rlmBudget.alerts.push({
+        level: 'critical',
+        message: 'Budget exceeded - halting operations',
+        timestamp: new Date().toISOString()
+      });
+    } else if (percentage >= 90 && !rlmBudget.alerts.some(a => a.level === 'warning' && a.message.includes('90%'))) {
+      rlmBudget.alerts.push({
+        level: 'warning',
+        message: 'Budget at 90% - approaching limit',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    res.json({
+      success: true,
+      budget: {
+        used_usd: rlmBudget.used_usd,
+        remaining_usd: rlmBudget.limit_usd - rlmBudget.used_usd,
+        percentage_used: percentage
+      }
+    });
+  } catch (error) {
+    console.error('RLM track error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 export default router;

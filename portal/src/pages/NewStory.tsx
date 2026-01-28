@@ -148,6 +148,37 @@ export default function NewStory() {
   const [gateStatus, setGateStatus] = useState<GateStatus | null>(null);
   const [gateBlockers, setGateBlockers] = useState<string[]>([]);
 
+  // RLM Budget State (Grok Refinement - Real-Time Monitoring)
+  const [rlmBudget, setRlmBudget] = useState<{
+    used_usd: number;
+    limit_usd: number;
+    remaining_usd: number;
+    percentage_used: number;
+    status: string;
+  } | null>(null);
+  const [rlmAlerts, setRlmAlerts] = useState<{ level: string; message: string }[]>([]);
+
+  // Fetch RLM budget status
+  const fetchRlmStatus = useCallback(async () => {
+    try {
+      const response = await fetch('/api/story/rlm/status');
+      const data = await response.json();
+      if (data.success) {
+        setRlmBudget(data.budget);
+        setRlmAlerts(data.alerts || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch RLM status:', err);
+    }
+  }, []);
+
+  // Fetch RLM status on mount and periodically
+  useEffect(() => {
+    fetchRlmStatus();
+    const interval = setInterval(fetchRlmStatus, 30000); // Every 30s
+    return () => clearInterval(interval);
+  }, [fetchRlmStatus]);
+
   // Fetch gate status from backend
   const fetchGateStatus = useCallback(async (sid: string) => {
     if (!sid) return;
@@ -686,27 +717,27 @@ ${projectContext?.tech_stack?.map(t => `- ${t}`).join('\n') || '- Not analyzed y
         </p>
       </div>
 
-      {/* Gate Progress - Locked Wizard with Status Icons */}
+      {/* Gate Progress - Locked Wizard with Status Icons (Mobile Responsive) */}
       <Card className="mb-6">
-        <CardContent className="pt-4 pb-2">
-          <div className="flex items-center justify-between mb-2">
+        <CardContent className="pt-4 pb-2 px-2 sm:px-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 mb-2">
             <span className="text-xs font-medium text-muted-foreground">
               LOCKED WORKFLOW - Gates must be completed in sequence
             </span>
             {gateStatus && (
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline" className="text-xs w-fit">
                 {gateStatus.gates_completed.length}/9 completed
               </Badge>
             )}
           </div>
-          <div className="flex justify-between mb-2 overflow-x-auto">
+          <div className="flex justify-between mb-2 overflow-x-auto pb-2 -mx-2 px-2 sm:mx-0 sm:px-0 scrollbar-thin">
             {GATES.map((gate) => {
               const status = getGateStatusIcon(gate.num);
               const isComplete = status === 'completed';
               const isCurrent = status === 'current';
               const isLocked = status === 'locked';
               return (
-                <div key={gate.num} className="flex flex-col items-center min-w-[60px]">
+                <div key={gate.num} className="flex flex-col items-center min-w-[50px] sm:min-w-[60px]">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs border-2
                     ${isComplete ? 'bg-green-500 text-white border-green-600' :
                       isCurrent ? 'bg-blue-500 text-white border-blue-600 animate-pulse' :
@@ -734,35 +765,48 @@ ${projectContext?.tech_stack?.map(t => `- ${t}`).join('\n') || '- Not analyzed y
         </CardContent>
       </Card>
 
-      {/* Monitoring Panel - RLM Budget & Alerts */}
+      {/* Monitoring Panel - RLM Budget & Alerts (Mobile Responsive) */}
       <Card className="mb-6 border-blue-500/20">
         <CardContent className="py-3">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             {/* RLM Budget Bar */}
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                   <Sparkles className="w-3 h-3" /> RLM Token Budget
                 </span>
-                <span className="text-xs text-muted-foreground">$4.00 / $5.00 available</span>
+                <span className="text-xs text-muted-foreground">
+                  ${rlmBudget?.remaining_usd?.toFixed(2) || '5.00'} / ${rlmBudget?.limit_usd?.toFixed(2) || '5.00'} available
+                </span>
               </div>
               <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-green-500 to-yellow-500" style={{ width: '20%' }} />
+                <div
+                  className={`h-full bg-gradient-to-r ${
+                    rlmBudget?.status === 'critical' || rlmBudget?.status === 'exceeded'
+                      ? 'from-red-500 to-red-600'
+                      : rlmBudget?.status === 'warning'
+                      ? 'from-yellow-500 to-orange-500'
+                      : 'from-green-500 to-yellow-500'
+                  }`}
+                  style={{ width: `${Math.min(rlmBudget?.percentage_used || 0, 100)}%` }}
+                />
               </div>
             </div>
 
-            {/* Divider */}
-            <div className="h-8 w-px bg-border" />
+            {/* Divider - hidden on mobile */}
+            <div className="hidden sm:block h-8 w-px bg-border" />
 
             {/* Issue Alerts */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3 sm:gap-2">
               <div className="flex items-center gap-1 text-xs">
-                <div className="w-2 h-2 rounded-full bg-green-500" />
-                <span className="text-muted-foreground">0 Critical</span>
+                <div className={`w-2 h-2 rounded-full ${rlmAlerts.filter(a => a.level === 'critical').length > 0 ? 'bg-red-500' : 'bg-green-500'}`} />
+                <span className="text-muted-foreground">{rlmAlerts.filter(a => a.level === 'critical').length} Critical</span>
               </div>
               <div className="flex items-center gap-1 text-xs">
                 <div className="w-2 h-2 rounded-full bg-yellow-500" />
-                <span className="text-muted-foreground">{preflightChecks.filter(c => c.status === 'warn').length} Warnings</span>
+                <span className="text-muted-foreground">
+                  {rlmAlerts.filter(a => a.level === 'warning').length + preflightChecks.filter(c => c.status === 'warn').length} Warnings
+                </span>
               </div>
             </div>
 
