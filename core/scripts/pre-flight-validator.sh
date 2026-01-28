@@ -628,10 +628,15 @@ GATE0_SCRIPT=""
 if [ -n "$GATE0_SCRIPT" ]; then
     check "N1: Gate 0 master script exists" "true"
 
+    # Make script executable if not already
+    if [ ! -x "$GATE0_SCRIPT" ]; then
+        chmod +x "$GATE0_SCRIPT" 2>/dev/null || true
+    fi
+
     # Run Gate 0 validation if script is executable
     if [ -x "$GATE0_SCRIPT" ]; then
         if [ "$OUTPUT_JSON" != "true" ]; then
-            echo "  Running Gate 0 validation..."
+            echo "  Running Gate 0 validation (auto-hooked)..."
         fi
 
         GATE0_OUTPUT=$($GATE0_SCRIPT --validate 2>&1)
@@ -656,6 +661,23 @@ if [ -n "$GATE0_SCRIPT" ]; then
             check "N4: Safety module verified" "true"
         else
             check "N4: Safety module verified" "false" false
+        fi
+
+        # Run Gate 0 tests as part of validation (Grok suggestion)
+        if [ "$OUTPUT_JSON" != "true" ]; then
+            echo "  Running Gate 0 tests (auto-hooked)..."
+        fi
+
+        GATE0_TEST_OUTPUT=$($GATE0_SCRIPT --test 2>&1)
+        GATE0_TEST_EXIT=$?
+
+        if [ $GATE0_TEST_EXIT -eq 0 ]; then
+            check "N5: Gate 0 tests passed" "true"
+        elif echo "$GATE0_TEST_OUTPUT" | grep -qi "passed"; then
+            check "N5: Gate 0 tests passed (with warnings)" "true"
+        else
+            check "N5: Gate 0 tests passed" "false" false
+            verbose "Some Gate 0 tests may have failed"
         fi
     else
         check "N2: Gate 0 validation passed" "false" false

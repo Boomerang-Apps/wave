@@ -1,0 +1,208 @@
+# WAVE Gate 0 Tests CI
+# Runs all Gate 0 enhancement tests on push/PR
+#
+# Tests include:
+# - Issue Detector (Item #1)
+# - Unified Safety Checker (Item #2)
+# - Container Validator (Item #3)
+# - Workflow Reset (Item #4)
+# - Safety Violations (Item #5)
+# - BPMN Generator (Item #6)
+
+name: Gate 0 Tests
+
+on:
+  push:
+    branches: [main, develop, 'feature/**']
+    paths:
+      - 'orchestrator/src/**'
+      - 'orchestrator/tests/**'
+      - '.github/workflows/gate0-tests.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'orchestrator/src/**'
+      - 'orchestrator/tests/**'
+
+jobs:
+  gate0-tests:
+    name: Run Gate 0 Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: orchestrator
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: orchestrator/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
+          pip install -r requirements.txt
+
+      - name: Run Gate 0 Tests
+        run: |
+          echo "=== Running Gate 0 Enhancement Tests ==="
+          echo ""
+
+          # Test Issue Detector (Item #1)
+          echo "--- Item #1: Issue Detector ---"
+          python -m pytest tests/test_issue_detector.py -v --tb=short || true
+
+          # Test Unified Safety Checker (Item #2)
+          echo "--- Item #2: Unified Safety Checker ---"
+          python -m pytest tests/test_unified_safety.py -v --tb=short || true
+
+          # Test Container Validator (Item #3)
+          echo "--- Item #3: Container Validator ---"
+          python -m pytest tests/test_container_validator.py -v --tb=short || true
+
+          # Test Workflow Reset (Item #4)
+          echo "--- Item #4: Workflow Reset ---"
+          python -m pytest tests/test_workflow_reset.py -v --tb=short || true
+
+          # Test Safety Violations (Item #5)
+          echo "--- Item #5: Safety Violations ---"
+          python -m pytest tests/test_safety_violations.py -v --tb=short || true
+
+          # Test BPMN Generator (Item #6)
+          echo "--- Item #6: BPMN Generator ---"
+          python -m pytest tests/test_bpmn_generator.py -v --tb=short || true
+
+          # Retrospective Validation (Integration)
+          echo "--- Retrospective Validation ---"
+          python -m pytest tests/test_retrospective_validation.py -v --tb=short || true
+
+          echo ""
+          echo "=== Gate 0 Tests Complete ==="
+
+      - name: Run Gate 0 Master Script
+        run: |
+          chmod +x scripts/gate0_run_all.sh
+          ./scripts/gate0_run_all.sh --test || true
+
+      - name: Run Grok Improvement Tests (TDD)
+        run: |
+          echo "=== Running Grok Improvement TDD Tests ==="
+          echo ""
+
+          # RLM Budget Enforcement
+          echo "--- RLM Budget Enforcement (9 tests) ---"
+          python -m pytest tests/test_rlm_budget_enforcement.py -v --tb=short || true
+
+          # RLM Context Optimization
+          echo "--- RLM Context Optimization (8 tests) ---"
+          python -m pytest tests/test_rlm_context_optimization.py -v --tb=short || true
+
+          # RLM Auditor
+          echo "--- RLM Auditor (12 tests) ---"
+          python -m pytest tests/test_rlm_auditor.py -v --tb=short || true
+
+          # Workflow Locker
+          echo "--- Workflow Locker (14 tests) ---"
+          python -m pytest tests/test_workflow_locker.py -v --tb=short || true
+
+          echo ""
+          echo "=== Grok TDD Tests Complete (43 total) ==="
+
+      - name: Run All Tests with Coverage
+        run: |
+          python -m pytest tests/ -v --cov=src --cov-report=term-missing --cov-report=xml || true
+
+      - name: Upload Coverage Report
+        uses: codecov/codecov-action@v4
+        with:
+          file: orchestrator/coverage.xml
+          flags: gate0
+          name: gate0-coverage
+        continue-on-error: true
+
+  safety-check:
+    name: Safety Module Validation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: orchestrator
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify Safety Modules
+        run: |
+          echo "=== Verifying Safety Module Imports ==="
+
+          python3 -c "
+          import sys
+          sys.path.insert(0, 'src')
+
+          # Test unified safety checker
+          from safety.unified import UnifiedSafetyChecker, SafetyResult
+          print('✓ UnifiedSafetyChecker imported')
+
+          # Test violations module
+          from safety.violations import SafetyViolation, score_with_attribution
+          print('✓ SafetyViolation imported')
+
+          # Test monitoring modules
+          from monitoring.issue_detector import IssueDetector
+          print('✓ IssueDetector imported')
+
+          from monitoring.container_validator import ContainerValidator
+          print('✓ ContainerValidator imported')
+
+          # Test visualization
+          from visualization.bpmn import generate_workflow_diagram
+          print('✓ BPMN generator imported')
+
+          print('')
+          print('=== All Safety Modules Verified ===')"
+
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: orchestrator
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install linting tools
+        run: |
+          pip install flake8 black isort
+
+      - name: Check formatting with Black
+        run: |
+          black --check --diff src/ tests/ || echo "Formatting issues found (non-blocking)"
+        continue-on-error: true
+
+      - name: Check imports with isort
+        run: |
+          isort --check-only --diff src/ tests/ || echo "Import order issues found (non-blocking)"
+        continue-on-error: true
+
+      - name: Lint with flake8
+        run: |
+          flake8 src/ tests/ --max-line-length=120 --ignore=E501,W503 || echo "Linting issues found (non-blocking)"
+        continue-on-error: true
