@@ -1,0 +1,32 @@
+[
+    {
+        "thread_id": "wave1-AUTH-001-20260127155806",
+        "story_id": "AUTH-001",
+        "phase": "failed",
+        "gate": 2,
+        "progress": 25.0,
+        "is_complete": true,
+        "error": "FE: Failed constitutional safety check, BE: Failed constitutional safety check",
+        "updated_at": "2026-01-27T16:04:46.376771"
+    },
+    {
+        "thread_id": "wave1-AUTH-001-20260127160803",
+        "story_id": "AUTH-001",
+        "phase": "validate",
+        "gate": 1,
+        "progress": 12.5,
+        "is_complete": false,
+        "error": null,
+        "updated_at": "2026-01-27T16:08:03.483451"
+    },
+    {
+        "thread_id": "wave1-AUTH-002-20260127160841",
+        "story_id": "AUTH-002",
+        "phase": "develop",
+        "gate": 3,
+        "progress": 37.5,
+        "is_complete": false,
+        "error": "FE: Failed constitutional safety check, BE: Failed constitutional safety check",
+        "updated_at": "2026-01-27T16:16:17.939961"
+    }
+]

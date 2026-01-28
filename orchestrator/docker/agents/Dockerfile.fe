@@ -1,0 +1,47 @@
+# WAVE Frontend Agent Image
+# Specialized agent for React/Next.js/TypeScript code generation
+# Version: v2-footprint
+
+ARG BASE_IMAGE=wave-agent-base:latest
+FROM ${BASE_IMAGE}
+
+# Build args
+ARG WAVE_NUMBER=1
+ARG DOMAIN=fe
+
+# Labels
+LABEL domain="frontend"
+LABEL wave="${WAVE_NUMBER}"
+LABEL description="WAVE FE Agent - React/Next.js/TypeScript code generation"
+
+USER root
+
+# Install Node.js for FE tooling (linting, type checking)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create FE-specific directories
+WORKDIR /app/fe-deps
+
+# Copy FE domain dependencies (React, Next.js ecosystem)
+COPY docker/agents/fe-deps/package.json /app/fe-deps/
+RUN npm ci --only=production 2>/dev/null || echo "No FE deps package.json yet"
+
+# Copy stories directory (will be filtered at runtime)
+COPY stories/ /app/stories/
+
+# Copy prompts
+COPY src/prompts/ /app/src/prompts/
+
+# Set domain environment
+ENV WAVE_DOMAIN=fe
+ENV WAVE_NUMBER=${WAVE_NUMBER}
+ENV NODE_ENV=production
+
+# Switch back to non-root
+USER wave
+WORKDIR /app
+
+# Agent entrypoint - runs FE dev node
+CMD ["python", "-c", "from nodes.dev import dev_node; print('FE Agent ready')"]

@@ -9,6 +9,8 @@ import { Stories } from './pages/Stories'
 import { Activity } from './pages/Activity'
 import { Settings } from './pages/Settings'
 import { Architecture } from './pages/Architecture'
+import { FoundationChecklist } from './pages/FoundationChecklist'
+import NewStory from './pages/NewStory'
 
 function App() {
   return (
@@ -18,8 +20,10 @@ function App() {
         <Route path="/projects" element={<Layout><Projects /></Layout>} />
         <Route path="/projects/new" element={<Layout><NewProject /></Layout>} />
         <Route path="/projects/:projectId" element={<ProjectChecklist />} />
+        <Route path="/projects/:projectId/foundation" element={<FoundationChecklist />} />
         <Route path="/waves" element={<Layout><Waves /></Layout>} />
         <Route path="/stories" element={<Layout><Stories /></Layout>} />
+        <Route path="/stories/new" element={<Layout><NewStory /></Layout>} />
         <Route path="/activity" element={<Layout><Activity /></Layout>} />
         <Route path="/settings" element={<Layout><Settings /></Layout>} />
         <Route path="/architecture" element={<Layout><Architecture /></Layout>} />

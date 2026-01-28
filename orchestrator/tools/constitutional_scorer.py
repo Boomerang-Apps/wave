@@ -169,7 +169,8 @@ def should_block(score: float) -> bool:
     Returns:
         True if action should be blocked
     """
-    threshold = float(os.getenv("CONSTITUTIONAL_BLOCK_THRESHOLD", "0.7"))
+    # Tightened from 0.7 to 0.85 per Grok validation (2026-01-27)
+    threshold = float(os.getenv("CONSTITUTIONAL_BLOCK_THRESHOLD", "0.85"))
     return score < threshold
 
 

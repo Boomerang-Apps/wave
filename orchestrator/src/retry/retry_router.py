@@ -39,7 +39,7 @@ def qa_retry_router(state: Dict[str, Any]) -> RetryRoute:
     # Get retry state
     retry = state.get("retry", {})
     retry_count = retry.get("count", 0)
-    max_retries = retry.get("max_retries", 3)
+    max_retries = retry.get("max_retries", 7)  # Grok: temporarily increased to 7
 
     # Get safety state
     safety = state.get("safety", {})
@@ -87,7 +87,7 @@ def get_escalation_reason(state: Dict[str, Any]) -> str:
     """
     retry = state.get("retry", {})
     retry_count = retry.get("count", 0)
-    max_retries = retry.get("max_retries", 3)
+    max_retries = retry.get("max_retries", 7)  # Grok: temporarily increased to 7
 
     safety = state.get("safety", {})
     safety_score = safety.get("constitutional_score", 1.0)

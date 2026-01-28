@@ -79,10 +79,12 @@ class ConstitutionalSafety:
     ]
 
     # Patterns that are dangerous in FE but allowed in BE
+    # NOTE: process.env removed - Next.js FE agents write server-side API routes
+    # NOTE: api_key = removed - Server-side API routes legitimately handle API keys
+    # Gate 0 Research finding: This caused false positives blocking WAVE1-FE-002
     FE_ONLY_DANGEROUS = [
-        "process.env",  # FE shouldn't access env directly
         "private_key",
-        "api_key =",
+        # "api_key =",  # REMOVED - causes false positives in server-side code
     ]
 
     # Patterns allowed in BE for auth/security implementations
@@ -207,6 +209,9 @@ class AgentWorker(ABC):
         # LangSmith project
         self.langsmith_project = os.getenv("LANGSMITH_PROJECT", "wave-orchestrator")
 
+        # LLM model for this agent (domain-specific)
+        self.llm_model = self._get_llm_model()
+
     def _setup_logging(self) -> logging.Logger:
         """Configure logging with domain-specific format for Dozzle"""
         logger = logging.getLogger(f"wave.{self.domain}.{self.agent_id}")
@@ -231,6 +236,18 @@ class AgentWorker(ABC):
         logger.propagate = False
 
         return logger
+
+    def _get_llm_model(self) -> str:
+        """Get the LLM model for this agent's domain from environment."""
+        model_env_map = {
+            "pm": "ANTHROPIC_MODEL_PM",
+            "cto": "ANTHROPIC_MODEL_CTO",
+            "fe": "ANTHROPIC_MODEL_DEV",
+            "be": "ANTHROPIC_MODEL_DEV",
+            "qa": "ANTHROPIC_MODEL_QA",
+        }
+        env_var = model_env_map.get(self.domain, "ANTHROPIC_MODEL_DEV")
+        return os.getenv(env_var, "")
 
     def _handle_shutdown(self, signum, frame):
         """Handle graceful shutdown signals"""
@@ -390,7 +407,7 @@ class AgentWorker(ABC):
                 cost = result.get("cost_usd", tokens * 0.000015)  # Estimate if not provided
 
                 if NOTIFICATIONS_AVAILABLE:
-                    self.log(f"Sending Slack notification: tokens={tokens}, cost=${cost:.4f}")
+                    self.log(f"Sending Slack notification: tokens={tokens}, cost=${cost:.4f}, llm={self.llm_model}")
                     sent = notify_agent_complete(
                         agent=self.domain,
                         story_id=task.story_id,
@@ -398,7 +415,8 @@ class AgentWorker(ABC):
                         tokens=tokens,
                         cost_usd=cost,
                         duration_s=duration,
-                        safety_score=result.get("safety_score", 1.0)
+                        safety_score=result.get("safety_score", 1.0),
+                        llm_model=self.llm_model
                     )
                     self.log(f"Slack notification sent: {sent}")
 

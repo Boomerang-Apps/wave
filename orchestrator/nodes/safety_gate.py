@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Dict, Any
 from state import WAVEState, AgentAction, SafetyState
 from tools.constitutional_scorer import should_block, should_escalate
+from notifications import notify_step
 
 
 def safety_gate_node(state: WAVEState) -> Dict[str, Any]:
@@ -45,6 +46,20 @@ def safety_gate_node(state: WAVEState) -> Dict[str, Any]:
         new_status = state.get("status", "running")
         gate_decision = "pass"
         hold_reason = None
+
+    task = state.get("task", "")
+    run_id = state.get("run_id", "unknown")
+
+    # Send Slack notification with gate decision
+    notify_step(
+        agent="safety_gate",
+        action=f"safety check: {gate_decision.upper()}",
+        task=task,
+        run_id=run_id,
+        score=f"{score:.2f}",
+        decision=gate_decision,
+        violations=len(violations)
+    )
 
     # Create action record
     action = AgentAction(

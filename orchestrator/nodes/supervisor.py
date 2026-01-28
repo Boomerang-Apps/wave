@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from typing import Dict, Any, Literal, List
 from state import WAVEState, AgentAction
 from src.domains.domain_router import analyze_story_domains
+from notifications import notify_step
 
 
 SUPERVISOR_SYSTEM_PROMPT = """You are the Supervisor agent in a multi-agent software development system.
@@ -130,6 +131,17 @@ def supervisor_node(state: WAVEState) -> Dict[str, Any]:
             "primary_domain": primary_domain,
             "status": "hierarchical_supervisor"
         }
+    )
+
+    # Send Slack notification
+    run_id = state.get("run_id", "unknown")
+    notify_step(
+        agent="supervisor",
+        action=f"routing to {next_agent}",
+        task=task,
+        run_id=run_id,
+        next_agent=next_agent,
+        domains=", ".join(detected_domains) if detected_domains else "general"
     )
 
     # Return state updates including domain

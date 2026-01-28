@@ -1,0 +1,58 @@
+# WAVE Agent Base Image
+# Foundation for all domain-specific agents
+# Version: v2-footprint
+
+FROM python:3.11-slim AS base
+
+# Build args for versioning
+ARG WAVE_VERSION=v2
+ARG GIT_HASH=unknown
+ARG BUILD_DATE=unknown
+
+# Labels for traceability
+LABEL maintainer="WAVE Team"
+LABEL version="${WAVE_VERSION}"
+LABEL git.hash="${GIT_HASH}"
+LABEL build.date="${BUILD_DATE}"
+LABEL description="WAVE Agent Base - Multi-agent orchestration foundation"
+
+# Create non-root user for security
+RUN groupadd -r wave && useradd -r -g wave wave
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy and install Python dependencies
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy orchestrator core code
+COPY nodes/ /app/nodes/
+COPY tools/ /app/tools/
+COPY src/ /app/src/
+COPY state.py /app/
+COPY config.py /app/
+COPY notifications.py /app/
+COPY graph.py /app/
+
+# Create directories for stories and output
+RUN mkdir -p /app/stories /app/output /app/project \
+    && chown -R wave:wave /app
+
+# Environment
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+ENV WAVE_VERSION=${WAVE_VERSION}
+
+# Switch to non-root user
+USER wave
+
+# Health check for agent
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD python -c "import nodes; print('healthy')" || exit 1

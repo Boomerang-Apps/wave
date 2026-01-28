@@ -6,6 +6,7 @@ Planning and requirements management
 from datetime import datetime, timezone
 from typing import Dict, Any
 from state import WAVEState, AgentAction
+from notifications import notify_step
 
 
 PM_SYSTEM_PROMPT = """You are the PM (Project Manager) agent in a multi-agent software development system.
@@ -48,14 +49,26 @@ def pm_node(state: WAVEState) -> Dict[str, Any]:
     """
     timestamp = datetime.now(timezone.utc).isoformat()
 
+    task = state.get("task", "")
+    run_id = state.get("run_id", "unknown")
+
+    # Send Slack notification
+    notify_step(
+        agent="pm",
+        action="planning task breakdown",
+        task=task,
+        run_id=run_id,
+        status="planning"
+    )
+
     # Create action record
     action = AgentAction(
         agent="pm",
         action_type="plan",
         timestamp=timestamp,
         details={
-            "task": state.get("task", ""),
-            "status": "skeleton_implementation"
+            "task": task,
+            "status": "planning_complete"
         }
     )
 

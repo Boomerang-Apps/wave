@@ -1,0 +1,393 @@
+# WAVE v2 Distributed Multi-Agent Docker Compose
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Architecture:
+#   - Orchestrator: LangGraph supervisor, dispatches tasks to queues
+#   - PM Agent: Planning and story breakdown
+#   - CTO Agent: Architecture review and approval
+#   - FE Agents (x2): Frontend development (parallel)
+#   - BE Agents (x2): Backend development (parallel)
+#   - QA Agent: Quality assurance validation
+#   - Redis: Task queues with AOF persistence
+#   - Dozzle: Real-time container log viewer
+#
+# Usage:
+#   docker-compose -f docker/docker-compose.distributed.yml up -d
+#
+# View Logs:
+#   http://localhost:9090 (Dozzle - see all agents in real-time)
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+
+services:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # ORCHESTRATOR (LangGraph Supervisor)
+  # ═══════════════════════════════════════════════════════════════════════════
+  orchestrator:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: wave-orchestrator:v2-distributed
+    container_name: wave-orchestrator
+    hostname: orchestrator
+    ports:
+      - "8000:8000"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - SLACK_ENABLED=true
+      - REDIS_URL=redis://redis:6379
+      - LANGSMITH_TRACING=true
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
+      - LANGSMITH_WORKSPACE_ID=${LANGSMITH_WORKSPACE_ID}
+      - LANGSMITH_PROJECT=wave-orchestrator
+    volumes:
+      - ../stories:/app/stories:ro
+      - ${PROJECT_PATH:-/tmp/project}:/project
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - wave-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    labels:
+      - "wave.role=orchestrator"
+      - "wave.component=supervisor"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # PM AGENT (Planning)
+  # ═══════════════════════════════════════════════════════════════════════════
+  pm-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    image: wave-agent:v2
+    container_name: wave-pm-agent
+    hostname: pm-agent
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL_PM=${ANTHROPIC_MODEL_PM:-claude-sonnet-4-20250514}
+      - REDIS_URL=redis://redis:6379
+      - AGENT_DOMAIN=pm
+      - AGENT_ID=1
+      - LANGSMITH_TRACING=true
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
+      - LANGSMITH_WORKSPACE_ID=${LANGSMITH_WORKSPACE_ID}
+      - LANGSMITH_PROJECT=wave-pm-agent
+    volumes:
+      - ${PROJECT_PATH:-/tmp/project}:/project:ro
+    command: ["python", "-m", "src.agents.pm_agent", "1"]
+    depends_on:
+      redis:
+        condition: service_healthy
+      orchestrator:
+        condition: service_started
+    networks:
+      - wave-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    labels:
+      - "wave.role=agent"
+      - "wave.domain=pm"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # CTO AGENT (Architecture Review)
+  # ═══════════════════════════════════════════════════════════════════════════
+  cto-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    image: wave-agent:v2
+    container_name: wave-cto-agent
+    hostname: cto-agent
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL_CTO=${ANTHROPIC_MODEL_CTO:-claude-sonnet-4-20250514}
+      - REDIS_URL=redis://redis:6379
+      - AGENT_DOMAIN=cto
+      - AGENT_ID=1
+      - LANGSMITH_TRACING=true
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
+      - LANGSMITH_WORKSPACE_ID=${LANGSMITH_WORKSPACE_ID}
+      - LANGSMITH_PROJECT=wave-cto-agent
+    volumes:
+      - ${PROJECT_PATH:-/tmp/project}:/project:ro
+    command: ["python", "-m", "src.agents.cto_agent", "1"]
+    depends_on:
+      redis:
+        condition: service_healthy
+      orchestrator:
+        condition: service_started
+    networks:
+      - wave-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    labels:
+      - "wave.role=agent"
+      - "wave.domain=cto"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # FE AGENTS (Frontend Development) - 2 instances for parallelism
+  # ═══════════════════════════════════════════════════════════════════════════
+  fe-agent-1:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    image: wave-agent:v2
+    container_name: wave-fe-agent-1
+    hostname: fe-agent-1
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL_DEV=${ANTHROPIC_MODEL_DEV:-claude-sonnet-4-20250514}
+      - REDIS_URL=redis://redis:6379
+      - AGENT_DOMAIN=fe
+      - AGENT_ID=1
+      - LANGSMITH_TRACING=true
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
+      - LANGSMITH_WORKSPACE_ID=${LANGSMITH_WORKSPACE_ID}
+      - LANGSMITH_PROJECT=wave-fe-agent
+    volumes:
+      - ${PROJECT_PATH:-/tmp/project}:/project
+    command: ["python", "-m", "src.agents.fe_agent", "1"]
+    depends_on:
+      redis:
+        condition: service_healthy
+      orchestrator:
+        condition: service_started
+    networks:
+      - wave-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    labels:
+      - "wave.role=agent"
+      - "wave.domain=fe"
+      - "wave.instance=1"
+
+  fe-agent-2:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    image: wave-agent:v2
+    container_name: wave-fe-agent-2
+    hostname: fe-agent-2
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL_DEV=${ANTHROPIC_MODEL_DEV:-claude-sonnet-4-20250514}
+      - REDIS_URL=redis://redis:6379
+      - AGENT_DOMAIN=fe
+      - AGENT_ID=2
+      - LANGSMITH_TRACING=true
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
+      - LANGSMITH_WORKSPACE_ID=${LANGSMITH_WORKSPACE_ID}
+      - LANGSMITH_PROJECT=wave-fe-agent
+    volumes:
+      - ${PROJECT_PATH:-/tmp/project}:/project
+    command: ["python", "-m", "src.agents.fe_agent", "2"]
+    depends_on:
+      redis:
+        condition: service_healthy
+      orchestrator:
+        condition: service_started
+    networks:
+      - wave-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    labels:
+      - "wave.role=agent"
+      - "wave.domain=fe"
+      - "wave.instance=2"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # BE AGENTS (Backend Development) - 2 instances for parallelism
+  # ═══════════════════════════════════════════════════════════════════════════
+  be-agent-1:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    image: wave-agent:v2
+    container_name: wave-be-agent-1
+    hostname: be-agent-1
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL_DEV=${ANTHROPIC_MODEL_DEV:-claude-sonnet-4-20250514}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - REDIS_URL=redis://redis:6379
+      - AGENT_DOMAIN=be
+      - AGENT_ID=1
+      - LANGSMITH_TRACING=true
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
+      - LANGSMITH_WORKSPACE_ID=${LANGSMITH_WORKSPACE_ID}
+      - LANGSMITH_PROJECT=wave-be-agent
+    volumes:
+      - ${PROJECT_PATH:-/tmp/project}:/project
+    command: ["python", "-m", "src.agents.be_agent", "1"]
+    depends_on:
+      redis:
+        condition: service_healthy
+      orchestrator:
+        condition: service_started
+    networks:
+      - wave-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    labels:
+      - "wave.role=agent"
+      - "wave.domain=be"
+      - "wave.instance=1"
+
+  be-agent-2:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    image: wave-agent:v2
+    container_name: wave-be-agent-2
+    hostname: be-agent-2
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL_DEV=${ANTHROPIC_MODEL_DEV:-claude-sonnet-4-20250514}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - REDIS_URL=redis://redis:6379
+      - AGENT_DOMAIN=be
+      - AGENT_ID=2
+      - LANGSMITH_TRACING=true
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
+      - LANGSMITH_WORKSPACE_ID=${LANGSMITH_WORKSPACE_ID}
+      - LANGSMITH_PROJECT=wave-be-agent
+    volumes:
+      - ${PROJECT_PATH:-/tmp/project}:/project
+    command: ["python", "-m", "src.agents.be_agent", "2"]
+    depends_on:
+      redis:
+        condition: service_healthy
+      orchestrator:
+        condition: service_started
+    networks:
+      - wave-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    labels:
+      - "wave.role=agent"
+      - "wave.domain=be"
+      - "wave.instance=2"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # QA AGENT (Quality Assurance)
+  # ═══════════════════════════════════════════════════════════════════════════
+  qa-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    image: wave-agent:v2
+    container_name: wave-qa-agent
+    hostname: qa-agent
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL_QA=${ANTHROPIC_MODEL_QA:-claude-sonnet-4-20250514}
+      - REDIS_URL=redis://redis:6379
+      - AGENT_DOMAIN=qa
+      - AGENT_ID=1
+      - LANGSMITH_TRACING=true
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
+      - LANGSMITH_WORKSPACE_ID=${LANGSMITH_WORKSPACE_ID}
+      - LANGSMITH_PROJECT=wave-qa-agent
+    volumes:
+      - ${PROJECT_PATH:-/tmp/project}:/project:ro
+    command: ["python", "-m", "src.agents.qa_agent", "1"]
+    depends_on:
+      redis:
+        condition: service_healthy
+      orchestrator:
+        condition: service_started
+    networks:
+      - wave-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    labels:
+      - "wave.role=agent"
+      - "wave.domain=qa"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # INFRASTRUCTURE
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  redis:
+    image: redis:7-alpine
+    container_name: wave-redis
+    hostname: redis
+    # AOF persistence as per Grok requirement
+    command: redis-server --appendonly yes --appendfsync everysec
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - wave-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    labels:
+      - "wave.role=infrastructure"
+      - "wave.component=redis"
+
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: wave-dozzle
+    hostname: dozzle
+    ports:
+      - "9090:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      # Filter to only show wave containers
+      - DOZZLE_FILTER=name=wave-*
+      - DOZZLE_LEVEL=info
+    networks:
+      - wave-network
+    labels:
+      - "wave.role=infrastructure"
+      - "wave.component=dozzle"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# NETWORKS & VOLUMES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+networks:
+  wave-network:
+    driver: bridge
+    name: wave-network
+
+volumes:
+  redis-data:
+    name: wave-redis-data

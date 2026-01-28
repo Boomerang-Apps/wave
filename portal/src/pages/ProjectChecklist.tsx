@@ -58,11 +58,18 @@ import {
   Gauge,
   Circle,
   AlertCircle,
+  Compass,
+  Folder,
   FolderTree,
   Image,
   Sparkles,
   Server,
   Hammer,
+  Box,
+  Globe,
+  Activity,
+  Plus,
+  FilePlus,
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { cn } from '../lib/utils'
@@ -76,6 +83,14 @@ import { InfoBox, KPICards, ActionBar, ResultSummary, ExpandableCard, TabContain
 import { FileOrganizationPage } from '../components/pages/FileOrganizationPage'
 import { DesignMockupsPage } from '../components/pages/DesignMockupsPage'
 import { DocumentationPage } from '../components/pages/DocumentationPage'
+import { ContentPage } from '../components/ContentPage'
+import { FoundationAnalysisProgress } from '../components/FoundationAnalysisProgress'
+import type { FoundationReport } from '../components/FoundationAnalysisProgress'
+import { BlueprintSummaryBar } from '../components/BlueprintSummaryBar'
+import { BlueprintFlyout } from '../components/BlueprintFlyout'
+import { FoundationAnalysisWizard } from '../components/FoundationAnalysisWizard'
+import { ChecklistResultsPage } from '../components/ChecklistResultsPage'
+import { Gate0Wizard } from '../components/Gate0Wizard'
 
 // Types
 type CheckStatusType = 'pass' | 'fail' | 'warn' | 'pending' | 'blocked'
@@ -316,8 +331,8 @@ export function ProjectChecklist() {
   const navigate = useNavigate()
   const [project, setProject] = useState<Project | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('mockup-design')
-  const [activeNavItem, setActiveNavItem] = useState<string | null>('design:files')
+  const [activeTab, setActiveTab] = useState('project-structure')
+  const [activeNavItem, setActiveNavItem] = useState<string | null>('design:structure')
   const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString())
   const [supabaseConnected, setSupabaseConnected] = useState(false)
   const [storiesCount, setStoriesCount] = useState(0)
@@ -593,6 +608,65 @@ export function ProjectChecklist() {
 
   // Mockup Design validation state (Step 0)
   const [mockupStatus, setMockupStatus] = useState<'idle' | 'validating' | 'ready' | 'blocked'>('idle')
+
+  // Blueprint Analysis state (Gate 0 - uses FoundationAnalysisProgress)
+  const [blueprintReport, setBlueprintReport] = useState<FoundationReport | null>(() => {
+    // Load from localStorage on mount
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('wave_blueprint_report');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {
+          return null;
+        }
+      }
+    }
+    return null;
+  })
+  const [blueprintAnalyzing, setBlueprintAnalyzing] = useState(false)
+  const [showBlueprintFlyout, setShowBlueprintFlyout] = useState(false)
+  const [showFoundationWizard, setShowFoundationWizard] = useState(false)
+  const [showChecklistResults, setShowChecklistResults] = useState(false)
+  const [showGate0Wizard, setShowGate0Wizard] = useState(false)
+  const [blueprintHistory, setBlueprintHistory] = useState<FoundationReport[]>(() => {
+    // Load history from localStorage
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('wave_blueprint_history');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {
+          return [];
+        }
+      }
+    }
+    return [];
+  })
+
+  // Persist blueprint report to localStorage
+  useEffect(() => {
+    if (blueprintReport) {
+      localStorage.setItem('wave_blueprint_report', JSON.stringify(blueprintReport));
+    }
+  }, [blueprintReport])
+
+  // Persist blueprint history to localStorage
+  useEffect(() => {
+    if (blueprintHistory.length > 0) {
+      localStorage.setItem('wave_blueprint_history', JSON.stringify(blueprintHistory));
+    }
+  }, [blueprintHistory])
+
+  // Handler for blueprint analysis completion
+  const handleBlueprintAnalysisComplete = useCallback((report: FoundationReport) => {
+    setBlueprintReport(report);
+    setBlueprintAnalyzing(false);
+    // Add to history (keep last 10)
+    setBlueprintHistory(prev => [report, ...prev.slice(0, 9)]);
+    // Update mockup status based on report
+    setMockupStatus(report.validationStatus === 'ready' ? 'ready' : 'blocked');
+  }, []);
 
   // Foundation validation state
   const [foundationValidating, setFoundationValidating] = useState(false)
@@ -1327,7 +1401,7 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
   // WAVE 10-Step Launch Sequence (Steps 0-9)
   // Based on aerospace pre-flight checklist - sequential gates, no skipping
   const tabs = [
-    { id: 'mockup-design', label: 'Design', shortLabel: '0', status: (mockupStatus === 'ready' ? 'pass' : mockupStatus === 'blocked' ? 'fail' : 'pending') as CheckStatusType },
+    { id: 'mockup-design', label: 'Blueprint', shortLabel: '0', status: (mockupStatus === 'ready' ? 'pass' : mockupStatus === 'blocked' ? 'fail' : 'pending') as CheckStatusType },
     { id: 'project-overview', label: 'PRD', shortLabel: '1', status: (analysisReport ? 'pass' : 'warn') as CheckStatusType },
     { id: 'execution-plan', label: 'Execution', shortLabel: '2', status: 'pass' as CheckStatusType },
     { id: 'system-config', label: 'Configurations', shortLabel: '3', status: (allRequiredKeysSet ? 'pass' : someRequiredKeysSet ? 'warn' : 'fail') as CheckStatusType },
@@ -1343,12 +1417,14 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
   const navSections: NavSection[] = [
     {
       id: 'design',
-      label: 'Design',
-      icon: <Image className="h-4 w-4" />,
+      label: 'Foundation',
+      icon: <Compass className="h-4 w-4" />,
       status: mockupStatus === 'ready' ? 'complete' : mockupStatus === 'blocked' ? 'warning' : 'pending',
       defaultExpanded: activeTab.startsWith('design'),
       items: [
-        { id: 'files', label: 'File Organization', icon: <FolderTree className="h-3.5 w-3.5" />, status: 'complete' },
+        { id: 'start', label: 'Start here', icon: <Sparkles className="h-3.5 w-3.5" />, status: blueprintReport ? 'complete' : 'pending' },
+        { id: 'checklist', label: 'Checklist', icon: <CheckCircle2 className="h-3.5 w-3.5" />, status: blueprintReport ? 'complete' : 'pending' },
+        { id: 'structure', label: 'Project Structure', icon: <FolderTree className="h-3.5 w-3.5" />, status: 'complete' },
         { id: 'mockups', label: 'Design Mockups', icon: <Image className="h-3.5 w-3.5" />, status: mockupStatus === 'ready' ? 'complete' : 'pending' },
         { id: 'docs', label: 'Documentation', icon: <FileText className="h-3.5 w-3.5" />, status: 'complete' },
       ],
@@ -1381,7 +1457,7 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
       status: allRequiredKeysSet ? 'complete' : someRequiredKeysSet ? 'warning' : 'pending',
       items: [
         { id: 'api-keys', label: 'API Keys', icon: <Key className="h-3.5 w-3.5" />, status: allRequiredKeysSet ? 'complete' : 'warning' },
-        { id: 'integrations', label: 'Integrations', icon: <Zap className="h-3.5 w-3.5" />, status: configValues.GITHUB_TOKEN ? 'complete' : 'pending' },
+        { id: 'mcp', label: 'MCP Servers', icon: <Cpu className="h-3.5 w-3.5" />, status: 'pending' },
       ],
     },
     {
@@ -1390,8 +1466,13 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
       icon: <Server className="h-4 w-4" />,
       status: foundationStatus === 'ready' ? 'complete' : foundationStatus === 'blocked' ? 'warning' : 'pending',
       items: [
-        { id: 'foundation', label: 'Foundation', icon: <Server className="h-3.5 w-3.5" />, status: foundationStatus === 'ready' ? 'complete' : 'pending' },
-        { id: 'docker', label: 'Docker', icon: <Container className="h-3.5 w-3.5" />, status: 'pending' },
+        { id: 'git', label: 'Git', icon: <GitBranch className="h-3.5 w-3.5" />, status: foundationChecks.filter(c => c.category === 'Git Repository').every(c => c.status === 'pass') ? 'complete' : 'pending' },
+        { id: 'environment', label: 'Environment', icon: <Terminal className="h-3.5 w-3.5" />, status: foundationChecks.filter(c => c.category === 'Environment Variables').every(c => c.status === 'pass') ? 'complete' : 'pending' },
+        { id: 'build', label: 'Build & Dependencies', icon: <Package className="h-3.5 w-3.5" />, status: foundationChecks.filter(c => c.category === 'Build & Dependencies').every(c => c.status === 'pass') ? 'complete' : 'pending' },
+        { id: 'wave-config', label: 'WAVE Config', icon: <Waves className="h-3.5 w-3.5" />, status: foundationChecks.filter(c => c.category === 'WAVE Configuration').every(c => c.status === 'pass') ? 'complete' : 'pending' },
+        { id: 'docker', label: 'Docker', icon: <Container className="h-3.5 w-3.5" />, status: foundationChecks.filter(c => c.category === 'Docker Build').every(c => c.status === 'pass') ? 'complete' : 'pending' },
+        { id: 'worktrees', label: 'Worktrees', icon: <GitFork className="h-3.5 w-3.5" />, status: foundationChecks.filter(c => c.category === 'Git Worktrees').every(c => c.status === 'pass') ? 'complete' : 'pending' },
+        { id: 'signals', label: 'Signals', icon: <Radio className="h-3.5 w-3.5" />, status: foundationChecks.filter(c => c.category === 'Signal Files (Speed Layer)').every(c => c.status === 'pass') ? 'complete' : 'pending' },
       ],
     },
     {
@@ -1411,6 +1492,7 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
       status: configValues.SLACK_WEBHOOK_URL ? 'complete' : 'pending',
       items: [
         { id: 'slack', label: 'Slack', icon: <Bell className="h-3.5 w-3.5" />, status: configValues.SLACK_WEBHOOK_URL ? 'complete' : 'pending' },
+        { id: 'dozzle', label: 'Dozzle', icon: <Container className="h-3.5 w-3.5" />, status: 'pending' },
       ],
     },
     {
@@ -1431,6 +1513,111 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
       items: [
         { id: 'agents', label: 'Agent Dispatch', icon: <Bot className="h-3.5 w-3.5" />, status: agents.some(a => a.status === 'running') ? 'active' : 'pending' },
         { id: 'audit', label: 'Audit Log', icon: <History className="h-3.5 w-3.5" />, status: 'pending' },
+      ],
+    },
+  ]
+
+  // Simplified sections for Simple Mode (non-developers)
+  const simpleSections: NavSection[] = [
+    {
+      id: 'design',
+      label: 'Blueprint',
+      simpleLabel: 'Design Your App',
+      description: 'Define what you want to build',
+      icon: <Compass className="h-4 w-4" />,
+      status: mockupStatus === 'ready' ? 'complete' : mockupStatus === 'blocked' ? 'warning' : 'pending',
+      defaultExpanded: true,
+      items: [
+        {
+          id: 'structure',
+          label: 'Project Structure',
+          simpleLabel: 'Project Files',
+          description: 'Your app\'s folder organization',
+          icon: <FolderTree className="h-3.5 w-3.5" />,
+          status: 'complete'
+        },
+        {
+          id: 'mockups',
+          label: 'Design Mockups',
+          simpleLabel: 'Visual Designs',
+          description: 'How your app will look',
+          icon: <Image className="h-3.5 w-3.5" />,
+          status: mockupStatus === 'ready' ? 'complete' : 'pending'
+        },
+        {
+          id: 'docs',
+          label: 'Documentation',
+          simpleLabel: 'App Description',
+          description: 'Written details about your app',
+          icon: <FileText className="h-3.5 w-3.5" />,
+          status: 'complete'
+        },
+      ],
+    },
+    {
+      id: 'prd',
+      label: 'PRD & Stories',
+      simpleLabel: 'Plan Features',
+      description: 'What your app will do',
+      icon: <ScrollText className="h-4 w-4" />,
+      status: analysisReport ? 'complete' : 'pending',
+      defaultExpanded: true,
+      items: [
+        {
+          id: 'requirements',
+          label: 'Requirements',
+          simpleLabel: 'App Requirements',
+          description: 'Core features and needs',
+          icon: <FileText className="h-3.5 w-3.5" />,
+          status: analysisReport ? 'complete' : 'pending'
+        },
+        {
+          id: 'stories',
+          label: 'AI Stories',
+          simpleLabel: 'Feature Stories',
+          description: 'User stories for development',
+          icon: <Sparkles className="h-3.5 w-3.5" />,
+          status: storiesCount > 0 ? 'complete' : 'pending',
+          badge: storiesCount > 0 ? `${storiesCount}` : undefined
+        },
+      ],
+    },
+    {
+      id: 'execution',
+      label: 'Execution',
+      simpleLabel: 'Build Plan',
+      description: 'How AI will build your app',
+      icon: <Target className="h-4 w-4" />,
+      status: 'complete',
+      defaultExpanded: false,
+      items: [
+        {
+          id: 'plan',
+          label: 'Wave Plan',
+          simpleLabel: 'Development Waves',
+          description: 'Step-by-step build plan',
+          icon: <Waves className="h-3.5 w-3.5" />,
+          status: 'complete'
+        },
+      ],
+    },
+    {
+      id: 'launch',
+      label: 'Launch',
+      simpleLabel: 'Start Building',
+      description: 'Launch AI agents to build',
+      icon: <Rocket className="h-4 w-4" />,
+      status: agents.some(a => a.status === 'running') ? 'complete' : 'pending',
+      defaultExpanded: true,
+      items: [
+        {
+          id: 'agents',
+          label: 'Agent Dispatch',
+          simpleLabel: 'AI Builders',
+          description: 'AI agents building your app',
+          icon: <Bot className="h-3.5 w-3.5" />,
+          status: agents.some(a => a.status === 'running') ? 'active' : 'pending'
+        },
       ],
     },
   ]
@@ -3014,7 +3201,27 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
   // Handle nav item click
   const handleNavItemClick = (sectionId: string, itemId: string) => {
     setActiveNavItem(`${sectionId}:${itemId}`);
-    // Map sections to tabs for backward compatibility
+
+    // Item-specific tab mappings (takes precedence)
+    const itemToTab: Record<string, string> = {
+      'design:structure': 'project-structure',
+      'design:mockups': 'design-mockups',
+      'design:docs': 'documentation',
+      'safety:rlm': 'rlm-protocol',
+      'safety:aerospace': 'compliance-safety',
+      'infra:git': 'infra-git',
+      'infra:environment': 'infra-environment',
+      'infra:build': 'infra-build',
+      'infra:wave-config': 'infra-wave-config',
+      'infra:docker': 'infra-docker',
+      'infra:worktrees': 'infra-worktrees',
+      'infra:signals': 'infra-signals',
+      'notifications:dozzle': 'dozzle',
+      'notifications:slack': 'notifications',
+      'config:mcp': 'mcp-servers',
+    };
+
+    // Section-level tab mappings (fallback)
     const sectionToTab: Record<string, string> = {
       'design': 'mockup-design',
       'prd': 'project-overview',
@@ -3026,18 +3233,23 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
       'build': 'build-qa',
       'launch': 'agent-dispatch',
     };
-    if (sectionToTab[sectionId]) {
+
+    const itemKey = `${sectionId}:${itemId}`;
+    if (itemToTab[itemKey]) {
+      setActiveTab(itemToTab[itemKey]);
+    } else if (sectionToTab[sectionId]) {
       setActiveTab(sectionToTab[sectionId]);
     }
   };
 
   // Get current section and item from activeNavItem
-  const [currentSection, currentItem] = activeNavItem?.split(':') || ['design', 'files'];
+  const [currentSection, currentItem] = activeNavItem?.split(':') || ['design', 'structure'];
 
   return (
     <Layout secondarySidebar={
       <HierarchicalSidebar
         sections={navSections}
+        simpleSections={simpleSections}
         activeItem={activeNavItem}
         onItemClick={handleNavItemClick}
         projectName={project?.name}
@@ -3058,9 +3270,576 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
         </div>
       )}
 
-      {/* Design Section Sub-pages */}
-      {currentSection === 'design' && currentItem === 'files' && (
-        <FileOrganizationPage projectPath={project?.root_path || ''} />
+      {/* ============================================ */}
+      {/* FOUNDATION SECTION - Start here (WAVE Welcome) */}
+      {/* ============================================ */}
+      {currentSection === 'design' && currentItem === 'start' && (
+        <div className="space-y-8">
+          {/* Hero Section */}
+          <div className="text-center py-12 px-8 rounded-2xl bg-gradient-to-b from-[#1e1e1e] to-[#1e1e1e] border border-[#2e2e2e]">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#2e2e2e] border border-[#262626] mb-6">
+              <Waves className="h-4 w-4 text-[#3b82f6]" />
+              <span className="text-xs font-medium text-[#a3a3a3]">WAVE Framework v1.0</span>
+            </div>
+            <h1 className="text-3xl font-bold text-[#fafafa] mb-3">Welcome to WAVE</h1>
+            <p className="text-base text-[#525252] max-w-xl mx-auto mb-8">
+              The Workflow Automation & Validation Engine helps you build software with AI agents.
+              Start by analyzing your project foundation.
+            </p>
+            <button
+              onClick={() => setShowGate0Wizard(true)}
+              className="inline-flex items-center gap-3 px-8 py-4 bg-[#fafafa] text-[#1e1e1e] rounded-xl text-base font-medium hover:bg-[#e5e5e5] transition-all"
+            >
+              <Sparkles className="h-5 w-5" />
+              Start Analysis
+            </button>
+          </div>
+
+          {/* What We Analyze */}
+          <div>
+            <h2 className="text-sm font-medium text-[#525252] uppercase tracking-wider mb-4">What We Analyze</h2>
+            <div className="grid grid-cols-5 gap-3">
+              <div className="p-4 rounded-xl bg-[#1e1e1e] border border-[#2e2e2e] text-center">
+                <FolderTree className="h-5 w-5 text-[#525252] mx-auto mb-2" />
+                <p className="text-xs text-[#a3a3a3]">Structure</p>
+              </div>
+              <div className="p-4 rounded-xl bg-[#1e1e1e] border border-[#2e2e2e] text-center">
+                <FileText className="h-5 w-5 text-[#525252] mx-auto mb-2" />
+                <p className="text-xs text-[#a3a3a3]">Docs</p>
+              </div>
+              <div className="p-4 rounded-xl bg-[#1e1e1e] border border-[#2e2e2e] text-center">
+                <Layers className="h-5 w-5 text-[#525252] mx-auto mb-2" />
+                <p className="text-xs text-[#a3a3a3]">Mockups</p>
+              </div>
+              <div className="p-4 rounded-xl bg-[#1e1e1e] border border-[#2e2e2e] text-center">
+                <Zap className="h-5 w-5 text-[#525252] mx-auto mb-2" />
+                <p className="text-xs text-[#a3a3a3]">Tech Stack</p>
+              </div>
+              <div className="p-4 rounded-xl bg-[#1e1e1e] border border-[#2e2e2e] text-center">
+                <Shield className="h-5 w-5 text-[#525252] mx-auto mb-2" />
+                <p className="text-xs text-[#a3a3a3]">Compliance</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Analysis Status (if completed) */}
+          {blueprintReport && (
+            <div className="p-6 rounded-xl bg-[#1e1e1e] border border-[#2e2e2e]">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-[#22c55e]" />
+                  <span className="text-sm font-medium text-[#fafafa]">Analysis Complete</span>
+                </div>
+                <span className={cn(
+                  "text-2xl font-bold",
+                  blueprintReport.readinessScore >= 80 ? "text-[#22c55e]" :
+                  blueprintReport.readinessScore >= 60 ? "text-[#f59e0b]" :
+                  "text-[#404040]"
+                )}>
+                  {blueprintReport.readinessScore}%
+                </span>
+              </div>
+              <div className="h-2 bg-[#2e2e2e] rounded-full overflow-hidden mb-4">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all",
+                    blueprintReport.readinessScore >= 80 ? "bg-[#22c55e]" :
+                    blueprintReport.readinessScore >= 60 ? "bg-[#f59e0b]" :
+                    "bg-[#404040]"
+                  )}
+                  style={{ width: `${blueprintReport.readinessScore}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-[#404040]">
+                  {blueprintReport.analysis?.documentation?.docsFound?.length || 0} docs • {blueprintReport.analysis?.mockups?.count || 0} mockups • {blueprintReport.issues?.length || 0} issues
+                </p>
+                <button
+                  onClick={() => setActiveNavItem('design:checklist')}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#fafafa] text-[#1e1e1e] rounded-lg text-sm font-medium hover:bg-[#e5e5e5] transition-colors"
+                >
+                  <ArrowRight className="h-4 w-4" />
+                  View Checklist
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Process Steps */}
+          <div>
+            <h2 className="text-sm font-medium text-[#525252] uppercase tracking-wider mb-4">How It Works</h2>
+            <div className="grid grid-cols-4 gap-4">
+              <div className="p-5 rounded-xl bg-[#1e1e1e] border border-[#2e2e2e]">
+                <div className="w-8 h-8 rounded-lg bg-[#2e2e2e] flex items-center justify-center mb-3">
+                  <span className="text-sm font-bold text-[#525252]">1</span>
+                </div>
+                <h3 className="text-sm font-medium text-[#fafafa] mb-1">Analyze</h3>
+                <p className="text-xs text-[#404040]">Scan your project structure and assets</p>
+              </div>
+              <div className="p-5 rounded-xl bg-[#1e1e1e] border border-[#2e2e2e]">
+                <div className="w-8 h-8 rounded-lg bg-[#2e2e2e] flex items-center justify-center mb-3">
+                  <span className="text-sm font-bold text-[#525252]">2</span>
+                </div>
+                <h3 className="text-sm font-medium text-[#fafafa] mb-1">Review</h3>
+                <p className="text-xs text-[#404040]">Check the generated checklist</p>
+              </div>
+              <div className="p-5 rounded-xl bg-[#1e1e1e] border border-[#2e2e2e]">
+                <div className="w-8 h-8 rounded-lg bg-[#2e2e2e] flex items-center justify-center mb-3">
+                  <span className="text-sm font-bold text-[#525252]">3</span>
+                </div>
+                <h3 className="text-sm font-medium text-[#fafafa] mb-1">Complete</h3>
+                <p className="text-xs text-[#404040]">Resolve any missing items</p>
+              </div>
+              <div className="p-5 rounded-xl bg-[#1e1e1e] border border-[#2e2e2e]">
+                <div className="w-8 h-8 rounded-lg bg-[#2e2e2e] flex items-center justify-center mb-3">
+                  <span className="text-sm font-bold text-[#525252]">4</span>
+                </div>
+                <h3 className="text-sm font-medium text-[#fafafa] mb-1">Launch</h3>
+                <p className="text-xs text-[#404040]">Start development with AI agents</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================ */}
+      {/* FOUNDATION SECTION - Checklist */}
+      {/* ============================================ */}
+      {currentSection === 'design' && currentItem === 'checklist' && (
+        <ChecklistResultsPage
+          report={blueprintReport!}
+          projectPath={project?.root_path || ''}
+          projectName={project?.name || 'Project'}
+          onBack={() => setActiveNavItem('design:start')}
+          onStartDevelopment={() => {
+            setActiveNavItem('prd:stories');
+          }}
+        />
+      )}
+
+      {/* ============================================ */}
+      {/* FOUNDATION SECTION - Project Structure */}
+      {/* ============================================ */}
+      {currentSection === 'design' && currentItem === 'structure' && (
+        <ContentPage
+          title="Project Structure"
+          titleIcon={<FolderTree className="h-5 w-5 text-[#888]" />}
+          description="Root directory structure and project organization."
+          searchPlaceholder="Search folders..."
+          onAddItem={() => console.log('Add file clicked')}
+          addItemLabel="Add file"
+          onSync={async () => {
+            // Trigger foundation analysis
+            const analysisBtn = document.querySelector('[data-analysis-trigger]') as HTMLButtonElement;
+            if (analysisBtn) analysisBtn.click();
+          }}
+          syncLabel="Sync"
+          showViewToggle={true}
+          showCheckboxes={true}
+          rows={[
+            {
+              id: 'docs',
+              name: 'docs/',
+              icon: 'folder' as const,
+              description: 'Project documentation including PRD, CLAUDE.md, and architecture docs',
+              status: 'pass' as const,
+              command: 'ls -la docs/',
+              cells: {
+                status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#22c55e]/20 text-[#22c55e]">Found</span>,
+                type: <span className="text-[#a3a3a3]">Documentation</span>,
+                description: <span className="text-[#888] text-sm">PRD, CLAUDE.md, architecture</span>,
+              },
+              children: [
+                {
+                  id: 'docs-prd',
+                  name: 'PRD.md',
+                  icon: 'file' as const,
+                  description: 'Product Requirements Document - defines features and requirements',
+                  status: 'pass' as const,
+                  filePath: `${project?.root_path}/docs/PRD.md`,
+                  cells: {
+                    status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#22c55e]/20 text-[#22c55e]">Found</span>,
+                    type: <span className="text-[#a3a3a3]">Requirements</span>,
+                    description: <span className="text-[#888] text-sm">Product requirements</span>,
+                  },
+                },
+                {
+                  id: 'docs-claude',
+                  name: 'CLAUDE.md',
+                  icon: 'file' as const,
+                  description: 'AI Agent protocol and guidelines',
+                  status: 'pass' as const,
+                  filePath: `${project?.root_path}/docs/CLAUDE.md`,
+                  cells: {
+                    status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#22c55e]/20 text-[#22c55e]">Found</span>,
+                    type: <span className="text-[#a3a3a3]">Protocol</span>,
+                    description: <span className="text-[#888] text-sm">Agent guidelines</span>,
+                  },
+                },
+                {
+                  id: 'docs-arch',
+                  name: 'ARCHITECTURE.md',
+                  icon: 'file' as const,
+                  description: 'System architecture and design decisions',
+                  status: 'pass' as const,
+                  filePath: `${project?.root_path}/docs/ARCHITECTURE.md`,
+                  cells: {
+                    status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#22c55e]/20 text-[#22c55e]">Found</span>,
+                    type: <span className="text-[#a3a3a3]">Architecture</span>,
+                    description: <span className="text-[#888] text-sm">System design</span>,
+                  },
+                },
+                {
+                  id: 'docs-readme',
+                  name: 'README.md',
+                  icon: 'file' as const,
+                  description: 'Project overview and setup instructions',
+                  status: 'warn' as const,
+                  filePath: `${project?.root_path}/README.md`,
+                  fixGuide: 'Create or update README.md with project overview and setup instructions.',
+                  cells: {
+                    status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#4a4a2d] text-[#d97706]">Incomplete</span>,
+                    type: <span className="text-[#a3a3a3]">Overview</span>,
+                    description: <span className="text-[#888] text-sm">Setup instructions</span>,
+                  },
+                },
+              ],
+            },
+            {
+              id: 'design_mockups',
+              name: 'design_mockups/',
+              icon: 'folder' as const,
+              description: 'HTML prototypes and visual designs that guide development',
+              status: 'pass' as const,
+              command: 'ls -la design_mockups/',
+              cells: {
+                status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#22c55e]/20 text-[#22c55e]">Found</span>,
+                type: <span className="text-[#a3a3a3]">Design</span>,
+                description: <span className="text-[#888] text-sm">HTML prototypes, visual designs</span>,
+              },
+              children: [
+                {
+                  id: 'mockups-dashboard',
+                  name: 'dashboard.html',
+                  icon: 'file' as const,
+                  description: 'Main dashboard layout with navigation and widgets',
+                  status: 'pass' as const,
+                  cells: {
+                    status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#22c55e]/20 text-[#22c55e]">Found</span>,
+                    type: <span className="text-[#a3a3a3]">Prototype</span>,
+                    description: <span className="text-[#888] text-sm">Dashboard layout</span>,
+                  },
+                },
+                {
+                  id: 'mockups-auth',
+                  name: 'auth-flow.html',
+                  icon: 'file' as const,
+                  description: 'Authentication flow screens',
+                  status: 'pass' as const,
+                  cells: {
+                    status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#22c55e]/20 text-[#22c55e]">Found</span>,
+                    type: <span className="text-[#a3a3a3]">Prototype</span>,
+                    description: <span className="text-[#888] text-sm">Login, signup screens</span>,
+                  },
+                },
+                {
+                  id: 'mockups-components',
+                  name: 'components/',
+                  icon: 'folder' as const,
+                  description: 'Reusable UI component mockups',
+                  status: 'pass' as const,
+                  cells: {
+                    status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#22c55e]/20 text-[#22c55e]">Found</span>,
+                    type: <span className="text-[#a3a3a3]">Components</span>,
+                    description: <span className="text-[#888] text-sm">UI components</span>,
+                  },
+                },
+              ],
+            },
+            {
+              id: 'src',
+              name: 'src/',
+              icon: 'folder' as const,
+              description: 'Source code for the application',
+              status: 'pass' as const,
+              command: 'ls -la src/',
+              cells: {
+                status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#22c55e]/20 text-[#22c55e]">Found</span>,
+                type: <span className="text-[#a3a3a3]">Source Code</span>,
+                description: <span className="text-[#888] text-sm">Application source code</span>,
+              },
+              children: [
+                {
+                  id: 'src-components',
+                  name: 'components/',
+                  icon: 'folder' as const,
+                  description: 'React UI components',
+                  status: 'pass' as const,
+                  cells: {
+                    status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#22c55e]/20 text-[#22c55e]">Found</span>,
+                    type: <span className="text-[#a3a3a3]">React</span>,
+                    description: <span className="text-[#888] text-sm">UI components</span>,
+                  },
+                },
+                {
+                  id: 'src-pages',
+                  name: 'pages/',
+                  icon: 'folder' as const,
+                  description: 'Page-level components',
+                  status: 'pass' as const,
+                  cells: {
+                    status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#22c55e]/20 text-[#22c55e]">Found</span>,
+                    type: <span className="text-[#a3a3a3]">React</span>,
+                    description: <span className="text-[#888] text-sm">Page components</span>,
+                  },
+                },
+                {
+                  id: 'src-hooks',
+                  name: 'hooks/',
+                  icon: 'folder' as const,
+                  description: 'Custom React hooks',
+                  status: 'pass' as const,
+                  cells: {
+                    status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#22c55e]/20 text-[#22c55e]">Found</span>,
+                    type: <span className="text-[#a3a3a3]">React</span>,
+                    description: <span className="text-[#888] text-sm">Custom hooks</span>,
+                  },
+                },
+                {
+                  id: 'src-lib',
+                  name: 'lib/',
+                  icon: 'folder' as const,
+                  description: 'Utility functions and helpers',
+                  status: 'pass' as const,
+                  cells: {
+                    status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#22c55e]/20 text-[#22c55e]">Found</span>,
+                    type: <span className="text-[#a3a3a3]">Utils</span>,
+                    description: <span className="text-[#888] text-sm">Utility functions</span>,
+                  },
+                },
+                {
+                  id: 'src-app',
+                  name: 'App.tsx',
+                  icon: 'file' as const,
+                  description: 'Main application entry point',
+                  status: 'pass' as const,
+                  cells: {
+                    status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#22c55e]/20 text-[#22c55e]">Found</span>,
+                    type: <span className="text-[#a3a3a3]">Entry</span>,
+                    description: <span className="text-[#888] text-sm">App entry point</span>,
+                  },
+                },
+              ],
+            },
+            {
+              id: 'server',
+              name: 'server/',
+              icon: 'folder' as const,
+              description: 'Backend server code and API endpoints',
+              status: 'pass' as const,
+              command: 'ls -la server/',
+              cells: {
+                status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#22c55e]/20 text-[#22c55e]">Found</span>,
+                type: <span className="text-[#a3a3a3]">Backend</span>,
+                description: <span className="text-[#888] text-sm">API server and routes</span>,
+              },
+              children: [
+                {
+                  id: 'server-index',
+                  name: 'index.js',
+                  icon: 'file' as const,
+                  description: 'Express server entry point',
+                  status: 'pass' as const,
+                  cells: {
+                    status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#22c55e]/20 text-[#22c55e]">Found</span>,
+                    type: <span className="text-[#a3a3a3]">Entry</span>,
+                    description: <span className="text-[#888] text-sm">Server entry</span>,
+                  },
+                },
+                {
+                  id: 'server-routes',
+                  name: 'routes/',
+                  icon: 'folder' as const,
+                  description: 'API route handlers',
+                  status: 'pass' as const,
+                  cells: {
+                    status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#22c55e]/20 text-[#22c55e]">Found</span>,
+                    type: <span className="text-[#a3a3a3]">Routes</span>,
+                    description: <span className="text-[#888] text-sm">API endpoints</span>,
+                  },
+                },
+                {
+                  id: 'server-middleware',
+                  name: 'middleware/',
+                  icon: 'folder' as const,
+                  description: 'Request middleware',
+                  status: 'pass' as const,
+                  cells: {
+                    status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#22c55e]/20 text-[#22c55e]">Found</span>,
+                    type: <span className="text-[#a3a3a3]">Middleware</span>,
+                    description: <span className="text-[#888] text-sm">Request handling</span>,
+                  },
+                },
+                {
+                  id: 'server-utils',
+                  name: 'utils/',
+                  icon: 'folder' as const,
+                  description: 'Server utility functions',
+                  status: 'pass' as const,
+                  cells: {
+                    status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#22c55e]/20 text-[#22c55e]">Found</span>,
+                    type: <span className="text-[#a3a3a3]">Utils</span>,
+                    description: <span className="text-[#888] text-sm">Server utilities</span>,
+                  },
+                },
+              ],
+            },
+            {
+              id: 'worktrees',
+              name: 'worktrees/',
+              icon: 'folder' as const,
+              description: 'Isolated git worktrees for parallel agent development',
+              status: 'pending' as const,
+              command: 'ls -la worktrees/',
+              fixGuide: 'Create the worktrees directory:\nmkdir -p worktrees\n\nThen set up agent worktrees:\ngit worktree add worktrees/fe-dev -b fe-dev\ngit worktree add worktrees/be-dev -b be-dev\ngit worktree add worktrees/qa -b qa',
+              cells: {
+                status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#f97316]/20 text-[#f97316]">Pending</span>,
+                type: <span className="text-[#a3a3a3]">Git Worktrees</span>,
+                description: <span className="text-[#888] text-sm">Agent isolation workspaces</span>,
+              },
+              children: [
+                {
+                  id: 'worktrees-fe',
+                  name: 'fe-dev/',
+                  icon: 'folder' as const,
+                  description: 'Frontend developer agent worktree',
+                  status: 'pending' as const,
+                  cells: {
+                    status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#f97316]/20 text-[#f97316]">Pending</span>,
+                    type: <span className="text-[#a3a3a3]">Agent</span>,
+                    description: <span className="text-[#888] text-sm">Frontend agent</span>,
+                  },
+                },
+                {
+                  id: 'worktrees-be',
+                  name: 'be-dev/',
+                  icon: 'folder' as const,
+                  description: 'Backend developer agent worktree',
+                  status: 'pending' as const,
+                  cells: {
+                    status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#f97316]/20 text-[#f97316]">Pending</span>,
+                    type: <span className="text-[#a3a3a3]">Agent</span>,
+                    description: <span className="text-[#888] text-sm">Backend agent</span>,
+                  },
+                },
+                {
+                  id: 'worktrees-qa',
+                  name: 'qa/',
+                  icon: 'folder' as const,
+                  description: 'QA tester agent worktree',
+                  status: 'pending' as const,
+                  cells: {
+                    status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#f97316]/20 text-[#f97316]">Pending</span>,
+                    type: <span className="text-[#a3a3a3]">Agent</span>,
+                    description: <span className="text-[#888] text-sm">QA agent</span>,
+                  },
+                },
+              ],
+            },
+            {
+              id: 'signals',
+              name: 'signals/',
+              icon: 'folder' as const,
+              description: 'JSON signal files for agent coordination (speed layer)',
+              status: 'pending' as const,
+              command: 'ls -la signals/',
+              fixGuide: 'Create the signals directory:\nmkdir -p signals\n\nThen create signal files:\ntouch signals/escalation.json\ntouch signals/heartbeat.json\ntouch signals/budget.json',
+              cells: {
+                status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#f97316]/20 text-[#f97316]">Pending</span>,
+                type: <span className="text-[#a3a3a3]">Speed Layer</span>,
+                description: <span className="text-[#888] text-sm">Agent coordination signals</span>,
+              },
+              children: [
+                {
+                  id: 'signals-escalation',
+                  name: 'escalation.json',
+                  icon: 'file' as const,
+                  description: 'Critical issue escalation signal',
+                  status: 'pending' as const,
+                  cells: {
+                    status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#f97316]/20 text-[#f97316]">Pending</span>,
+                    type: <span className="text-[#a3a3a3]">Signal</span>,
+                    description: <span className="text-[#888] text-sm">Escalation alerts</span>,
+                  },
+                },
+                {
+                  id: 'signals-heartbeat',
+                  name: 'heartbeat.json',
+                  icon: 'file' as const,
+                  description: 'Agent status heartbeat signal',
+                  status: 'pending' as const,
+                  cells: {
+                    status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#f97316]/20 text-[#f97316]">Pending</span>,
+                    type: <span className="text-[#a3a3a3]">Signal</span>,
+                    description: <span className="text-[#888] text-sm">Agent heartbeat</span>,
+                  },
+                },
+                {
+                  id: 'signals-budget',
+                  name: 'budget.json',
+                  icon: 'file' as const,
+                  description: 'Token budget tracking signal',
+                  status: 'pending' as const,
+                  cells: {
+                    status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#f97316]/20 text-[#f97316]">Pending</span>,
+                    type: <span className="text-[#a3a3a3]">Signal</span>,
+                    description: <span className="text-[#888] text-sm">Budget tracking</span>,
+                  },
+                },
+              ],
+            },
+            {
+              id: 'config',
+              name: 'wave.config.json',
+              icon: 'file' as const,
+              description: 'WAVE orchestrator configuration file',
+              status: 'pass' as const,
+              command: 'cat wave.config.json',
+              codeSnippet: '// wave.config.json\n{\n  "project": {\n    "name": "my-project",\n    "version": "1.0.0"\n  },\n  "agents": {\n    "fe-dev": { "branch": "fe-dev" },\n    "be-dev": { "branch": "be-dev" },\n    "qa": { "branch": "qa" }\n  }\n}',
+              cells: {
+                status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#22c55e]/20 text-[#22c55e]">Found</span>,
+                type: <span className="text-[#a3a3a3]">Config</span>,
+                description: <span className="text-[#888] text-sm">WAVE orchestrator settings</span>,
+              },
+            },
+            {
+              id: 'package',
+              name: 'package.json',
+              icon: 'file' as const,
+              description: 'Node.js project manifest and dependencies',
+              status: 'pass' as const,
+              command: 'cat package.json',
+              cells: {
+                status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#22c55e]/20 text-[#22c55e]">Found</span>,
+                type: <span className="text-[#a3a3a3]">Config</span>,
+                description: <span className="text-[#888] text-sm">Dependencies, scripts</span>,
+              },
+            },
+            {
+              id: 'tsconfig',
+              name: 'tsconfig.json',
+              icon: 'file' as const,
+              description: 'TypeScript compiler configuration',
+              status: 'pass' as const,
+              command: 'cat tsconfig.json',
+              cells: {
+                status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#22c55e]/20 text-[#22c55e]">Found</span>,
+                type: <span className="text-[#a3a3a3]">Config</span>,
+                description: <span className="text-[#888] text-sm">TypeScript config</span>,
+              },
+            },
+          ]}
+        />
       )}
       {currentSection === 'design' && currentItem === 'mockups' && (
         <DesignMockupsPage projectPath={project?.root_path || ''} />
@@ -3956,6 +4735,378 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
               </div>
             </div>
         </TabContainer>
+      )}
+
+      {/* Infrastructure: Git */}
+      {activeTab === 'infra-git' && (
+        <ContentPage
+          title="Git"
+          titleIcon={<GitBranch className="h-5 w-5 text-[#888]" />}
+          description="Version control foundation - required for worktrees and agent collaboration."
+          searchPlaceholder="Search checks..."
+          onSync={async () => validateFoundation()}
+          syncLabel="Validate"
+          showViewToggle={true}
+          showCheckboxes={true}
+          isLoading={foundationValidating}
+          rows={(() => {
+            const checks = foundationChecks.filter(c => c.category === 'Git Repository');
+            const defaultChecks = [
+              { name: 'Git Installed', description: 'Git CLI is available in PATH', command: 'git --version', fixGuide: 'Install Git from https://git-scm.com/downloads' },
+              { name: 'Git Repository', description: 'Project is a valid Git repository', command: 'git rev-parse --is-inside-work-tree', fixGuide: 'Initialize git with: git init' },
+              { name: 'Remote Origin', description: 'Remote origin is configured for push/pull', command: 'git remote get-url origin', fixGuide: 'Add remote origin:\ngit remote add origin <repository-url>' },
+              { name: 'Working Directory Clean', description: 'No uncommitted changes blocking operations', command: 'git status --porcelain', fixGuide: 'Commit or stash changes:\ngit add . && git commit -m "message"\n# or\ngit stash' },
+            ];
+            const rows = checks.length > 0 ? checks : defaultChecks.map(d => ({ ...d, status: 'pending' as const, message: 'Run validation to check', category: 'Git Repository', fixGuideKey: '' }));
+            return rows.map(check => ({
+              id: check.name,
+              name: check.name,
+              icon: 'file' as const,
+              status: check.status as 'pass' | 'fail' | 'warn' | 'pending',
+              type: 'Check',
+              lastUpdate: (check as FoundationCheck).timestamp || 'Not validated',
+              description: check.message || check.description || 'Run validation to check',
+              command: check.command || defaultChecks.find(d => d.name === check.name)?.command,
+              fixGuide: check.status === 'fail' || check.status === 'warn' ? (defaultChecks.find(d => d.name === check.name)?.fixGuide) : undefined,
+              cells: {
+                status: (
+                  <span className={cn(
+                    "px-2 py-0.5 text-xs rounded-md",
+                    check.status === 'pass' ? "bg-[#2d4a2d] text-[#5a9a5a]" :
+                    check.status === 'fail' ? "bg-[#4a2d2d] text-[#dc2626]" :
+                    check.status === 'warn' ? "bg-[#4a4a2d] text-[#d97706]" :
+                    "bg-[#3e3e3e] text-[#888]"
+                  )}>
+                    {check.status === 'pass' ? 'Pass' : check.status === 'fail' ? 'Fail' : check.status === 'warn' ? 'Warning' : 'Pending'}
+                  </span>
+                ),
+                message: <span className="text-[#888] text-sm">{check.message || 'Not yet validated'}</span>,
+              },
+            }));
+          })()}
+        />
+      )}
+
+      {/* Infrastructure: Environment */}
+      {activeTab === 'infra-environment' && (
+        <ContentPage
+          title="Environment"
+          titleIcon={<Terminal className="h-5 w-5 text-[#888]" />}
+          description="API keys and environment configuration for WAVE automation."
+          searchPlaceholder="Search environment variables..."
+          onAddItem={() => console.log('Add env variable')}
+          addItemLabel="Add Variable"
+          onSync={async () => validateFoundation()}
+          syncLabel="Validate"
+          showViewToggle={true}
+          showCheckboxes={true}
+          isLoading={foundationValidating}
+          rows={(() => {
+            const checks = foundationChecks.filter(c => c.category === 'Environment Variables');
+            const defaultChecks = [
+              { name: '.env File Exists', description: 'Environment file present in project root', command: 'test -f .env && echo "exists"', fixGuide: 'Create .env file:\ncp .env.example .env\n# or\ntouch .env' },
+              { name: 'ANTHROPIC_API_KEY', description: 'API key for Claude AI access', command: 'grep ANTHROPIC_API_KEY .env', codeSnippet: 'ANTHROPIC_API_KEY=sk-ant-...', fixGuide: 'Add to .env file:\nANTHROPIC_API_KEY=sk-ant-your-key\n\nGet key from: https://console.anthropic.com/' },
+              { name: 'SUPABASE_URL', description: 'Supabase project URL for database', command: 'grep SUPABASE_URL .env', codeSnippet: 'SUPABASE_URL=https://xxx.supabase.co', fixGuide: 'Add to .env file:\nSUPABASE_URL=https://your-project.supabase.co\n\nGet from: Supabase Dashboard > Settings > API' },
+              { name: 'SUPABASE_ANON_KEY', description: 'Supabase anonymous key for client access', command: 'grep SUPABASE_ANON_KEY .env', codeSnippet: 'SUPABASE_ANON_KEY=eyJ...', fixGuide: 'Add to .env file:\nSUPABASE_ANON_KEY=your-anon-key\n\nGet from: Supabase Dashboard > Settings > API' },
+            ];
+            const rows = checks.length > 0 ? checks : defaultChecks.map(d => ({ ...d, status: 'pending' as const, message: 'Run validation to check', category: 'Environment Variables', fixGuideKey: '' }));
+            return rows.map(check => ({
+              id: check.name,
+              name: check.name,
+              icon: 'file' as const,
+              status: check.status as 'pass' | 'fail' | 'warn' | 'pending',
+              type: 'Environment',
+              lastUpdate: (check as FoundationCheck).timestamp || 'Not validated',
+              description: check.message || check.description || 'Run validation to check',
+              command: check.command || defaultChecks.find(d => d.name === check.name)?.command,
+              codeSnippet: defaultChecks.find(d => d.name === check.name)?.codeSnippet,
+              fixGuide: check.status === 'fail' || check.status === 'warn' ? (defaultChecks.find(d => d.name === check.name)?.fixGuide) : undefined,
+              editable: check.name.includes('API_KEY') || check.name.includes('URL'),
+              value: check.status === 'pass' ? '••••••••' : '',
+              cells: {
+                status: (
+                  <span className={cn(
+                    "px-2 py-0.5 text-xs rounded-md",
+                    check.status === 'pass' ? "bg-[#2d4a2d] text-[#5a9a5a]" :
+                    check.status === 'fail' ? "bg-[#4a2d2d] text-[#dc2626]" :
+                    check.status === 'warn' ? "bg-[#4a4a2d] text-[#d97706]" :
+                    "bg-[#3e3e3e] text-[#888]"
+                  )}>
+                    {check.status === 'pass' ? 'Pass' : check.status === 'fail' ? 'Fail' : check.status === 'warn' ? 'Warning' : 'Pending'}
+                  </span>
+                ),
+                message: <span className="text-[#888] text-sm">{check.message || 'Not yet validated'}</span>,
+              },
+            }));
+          })()}
+        />
+      )}
+
+      {/* Infrastructure: Build & Dependencies */}
+      {activeTab === 'infra-build' && (
+        <ContentPage
+          title="Build & Dependencies"
+          titleIcon={<Package className="h-5 w-5 text-[#888]" />}
+          description="Package configuration and node modules for the project."
+          searchPlaceholder="Search dependencies..."
+          onSync={async () => validateFoundation()}
+          syncLabel="Validate"
+          showViewToggle={true}
+          showCheckboxes={true}
+          isLoading={foundationValidating}
+          rows={(() => {
+            const checks = foundationChecks.filter(c => c.category === 'Build & Dependencies');
+            const defaultChecks = [
+              { name: 'package.json', description: 'Package manifest exists with valid JSON', command: 'cat package.json | jq .name', fixGuide: 'Create package.json:\nnpm init -y' },
+              { name: 'Dependencies Installed', description: 'node_modules directory present', command: 'test -d node_modules && echo "installed"', fixGuide: 'Install dependencies:\nnpm install\n# or\npnpm install' },
+              { name: 'TypeScript Config', description: 'tsconfig.json configured correctly', command: 'cat tsconfig.json | jq .compilerOptions', fixGuide: 'Create TypeScript config:\nnpx tsc --init' },
+              { name: 'Build Script', description: 'Build command defined in package.json', command: 'cat package.json | jq .scripts.build', codeSnippet: '"scripts": {\n  "build": "vite build",\n  "dev": "vite"\n}', fixGuide: 'Add build script to package.json:\n"scripts": { "build": "vite build" }' },
+            ];
+            const rows = checks.length > 0 ? checks : defaultChecks.map(d => ({ ...d, status: 'pending' as const, message: 'Run validation to check', category: 'Build & Dependencies', fixGuideKey: '' }));
+            return rows.map(check => ({
+              id: check.name,
+              name: check.name,
+              icon: 'file' as const,
+              status: check.status as 'pass' | 'fail' | 'warn' | 'pending',
+              type: 'Build',
+              lastUpdate: (check as FoundationCheck).timestamp || 'Not validated',
+              description: check.message || check.description || 'Run validation to check',
+              command: check.command || defaultChecks.find(d => d.name === check.name)?.command,
+              codeSnippet: defaultChecks.find(d => d.name === check.name)?.codeSnippet,
+              fixGuide: check.status === 'fail' || check.status === 'warn' ? (defaultChecks.find(d => d.name === check.name)?.fixGuide) : undefined,
+              cells: {
+                status: (
+                  <span className={cn(
+                    "px-2 py-0.5 text-xs rounded-md",
+                    check.status === 'pass' ? "bg-[#2d4a2d] text-[#5a9a5a]" :
+                    check.status === 'fail' ? "bg-[#4a2d2d] text-[#dc2626]" :
+                    check.status === 'warn' ? "bg-[#4a4a2d] text-[#d97706]" :
+                    "bg-[#3e3e3e] text-[#888]"
+                  )}>
+                    {check.status === 'pass' ? 'Pass' : check.status === 'fail' ? 'Fail' : check.status === 'warn' ? 'Warning' : 'Pending'}
+                  </span>
+                ),
+                message: <span className="text-[#888] text-sm">{check.message || 'Not yet validated'}</span>,
+              },
+            }));
+          })()}
+        />
+      )}
+
+      {/* Infrastructure: WAVE Config */}
+      {activeTab === 'infra-wave-config' && (
+        <ContentPage
+          title="WAVE Configuration"
+          titleIcon={<Waves className="h-5 w-5 text-[#888]" />}
+          description="Stories and protocol files for WAVE automation."
+          searchPlaceholder="Search configuration..."
+          onSync={async () => validateFoundation()}
+          syncLabel="Validate"
+          showViewToggle={true}
+          showCheckboxes={true}
+          isLoading={foundationValidating}
+          rows={(() => {
+            const checks = foundationChecks.filter(c => c.category === 'WAVE Configuration');
+            const defaultChecks = [
+              { name: 'Stories Directory', description: 'stories/ folder exists with JSON files', command: 'ls -la stories/', fixGuide: 'Create stories directory:\nmkdir -p stories' },
+              { name: 'Story Files Valid', description: 'All story files have valid JSON schema', command: 'cat stories/*.json | jq .', codeSnippet: '{\n  "id": "GAP-001",\n  "title": "Story Title",\n  "status": "ready"\n}', fixGuide: 'Ensure story JSON files have valid schema' },
+              { name: 'CLAUDE.md Protocol', description: 'AI agent guidelines file present', command: 'test -f CLAUDE.md && echo "exists"', fixGuide: 'Create CLAUDE.md with agent guidelines:\ntouch CLAUDE.md' },
+              { name: 'Budget Limit Set', description: 'WAVE_BUDGET_LIMIT configured in environment', command: 'grep WAVE_BUDGET_LIMIT .env', codeSnippet: 'WAVE_BUDGET_LIMIT=10.00', fixGuide: 'Add to .env:\nWAVE_BUDGET_LIMIT=10.00' },
+            ];
+            const rows = checks.length > 0 ? checks : defaultChecks.map(d => ({ ...d, status: 'pending' as const, message: 'Run validation to check', category: 'WAVE Configuration', fixGuideKey: '' }));
+            return rows.map(check => ({
+              id: check.name,
+              name: check.name,
+              icon: 'file' as const,
+              status: check.status as 'pass' | 'fail' | 'warn' | 'pending',
+              type: 'Config',
+              lastUpdate: (check as FoundationCheck).timestamp || 'Not validated',
+              description: check.message || check.description || 'Run validation to check',
+              command: check.command || defaultChecks.find(d => d.name === check.name)?.command,
+              codeSnippet: defaultChecks.find(d => d.name === check.name)?.codeSnippet,
+              fixGuide: check.status === 'fail' || check.status === 'warn' ? (defaultChecks.find(d => d.name === check.name)?.fixGuide) : undefined,
+              cells: {
+                status: (
+                  <span className={cn(
+                    "px-2 py-0.5 text-xs rounded-md",
+                    check.status === 'pass' ? "bg-[#2d4a2d] text-[#5a9a5a]" :
+                    check.status === 'fail' ? "bg-[#4a2d2d] text-[#dc2626]" :
+                    check.status === 'warn' ? "bg-[#4a4a2d] text-[#d97706]" :
+                    "bg-[#3e3e3e] text-[#888]"
+                  )}>
+                    {check.status === 'pass' ? 'Pass' : check.status === 'fail' ? 'Fail' : check.status === 'warn' ? 'Warning' : 'Pending'}
+                  </span>
+                ),
+                message: <span className="text-[#888] text-sm">{check.message || 'Not yet validated'}</span>,
+              },
+            }));
+          })()}
+        />
+      )}
+
+      {/* Infrastructure: Docker */}
+      {activeTab === 'infra-docker' && (
+        <ContentPage
+          title="Docker"
+          titleIcon={<Container className="h-5 w-5 text-[#888]" />}
+          description="Container infrastructure for deployment and agent isolation."
+          searchPlaceholder="Search containers..."
+          onSync={async () => validateFoundation()}
+          syncLabel="Validate"
+          showViewToggle={true}
+          showCheckboxes={true}
+          isLoading={foundationValidating}
+          rows={(() => {
+            const checks = foundationChecks.filter(c => c.category === 'Docker Build');
+            const defaultChecks = [
+              { name: 'Docker Installed', description: 'Docker CLI available and daemon running', command: 'docker --version', fixGuide: 'Install Docker Desktop from:\nhttps://docker.com/get-started' },
+              { name: 'Docker Compose', description: 'docker-compose.yml present in project', command: 'test -f docker-compose.yml && echo "exists"', codeSnippet: 'version: "3.8"\nservices:\n  app:\n    build: .\n    ports:\n      - "3000:3000"', fixGuide: 'Create docker-compose.yml in project root' },
+              { name: 'Images Built', description: 'Required Docker images are built', command: 'docker images | grep wave', fixGuide: 'Build Docker images:\ndocker compose build' },
+              { name: 'Containers Running', description: 'Development containers are running', command: 'docker compose ps', fixGuide: 'Start containers:\ndocker compose up -d' },
+            ];
+            const rows = checks.length > 0 ? checks : defaultChecks.map(d => ({ ...d, status: 'pending' as const, message: 'Run validation to check', category: 'Docker Build', fixGuideKey: '' }));
+            return rows.map(check => ({
+              id: check.name,
+              name: check.name,
+              icon: 'file' as const,
+              status: check.status as 'pass' | 'fail' | 'warn' | 'pending',
+              type: 'Container',
+              lastUpdate: (check as FoundationCheck).timestamp || 'Not validated',
+              description: check.message || check.description || 'Run validation to check',
+              command: check.command || defaultChecks.find(d => d.name === check.name)?.command,
+              codeSnippet: defaultChecks.find(d => d.name === check.name)?.codeSnippet,
+              fixGuide: check.status === 'fail' || check.status === 'warn' ? (defaultChecks.find(d => d.name === check.name)?.fixGuide) : undefined,
+              cells: {
+                status: (
+                  <span className={cn(
+                    "px-2 py-0.5 text-xs rounded-md",
+                    check.status === 'pass' ? "bg-[#2d4a2d] text-[#5a9a5a]" :
+                    check.status === 'fail' ? "bg-[#4a2d2d] text-[#dc2626]" :
+                    check.status === 'warn' ? "bg-[#4a4a2d] text-[#d97706]" :
+                    "bg-[#3e3e3e] text-[#888]"
+                  )}>
+                    {check.status === 'pass' ? 'Pass' : check.status === 'fail' ? 'Fail' : check.status === 'warn' ? 'Warning' : 'Pending'}
+                  </span>
+                ),
+                message: <span className="text-[#888] text-sm">{check.message || 'Not yet validated'}</span>,
+              },
+            }));
+          })()}
+        />
+      )}
+
+      {/* Infrastructure: Worktrees */}
+      {activeTab === 'infra-worktrees' && (
+        <ContentPage
+          title="Worktrees"
+          titleIcon={<GitFork className="h-5 w-5 text-[#888]" />}
+          description="Isolated worktrees for parallel agent development."
+          searchPlaceholder="Search worktrees..."
+          onAddItem={() => console.log('Add worktree')}
+          addItemLabel="Add Worktree"
+          onSync={async () => validateFoundation()}
+          syncLabel="Validate"
+          showViewToggle={true}
+          showCheckboxes={true}
+          isLoading={foundationValidating}
+          rows={(() => {
+            const checks = foundationChecks.filter(c => c.category === 'Git Worktrees');
+            const defaultChecks = [
+              { name: 'Worktrees Directory', description: 'worktrees/ folder exists for agent isolation', command: 'ls -la worktrees/', fixGuide: 'Create the worktrees directory:\nmkdir -p worktrees\n\nThis folder will contain isolated git worktrees for each agent.' },
+              { name: 'fe-dev Worktree', description: 'Frontend developer worktree configured', command: 'git worktree list | grep fe-dev', fixGuide: 'Create the frontend developer worktree:\ngit worktree add worktrees/fe-dev -b fe-dev', codeSnippet: '# Create worktree for frontend dev\ngit worktree add worktrees/fe-dev -b fe-dev\n\n# To remove if needed\ngit worktree remove worktrees/fe-dev' },
+              { name: 'be-dev Worktree', description: 'Backend developer worktree configured', command: 'git worktree list | grep be-dev', fixGuide: 'Create the backend developer worktree:\ngit worktree add worktrees/be-dev -b be-dev', codeSnippet: '# Create worktree for backend dev\ngit worktree add worktrees/be-dev -b be-dev\n\n# To remove if needed\ngit worktree remove worktrees/be-dev' },
+              { name: 'qa Worktree', description: 'QA tester worktree configured', command: 'git worktree list | grep qa', fixGuide: 'Create the QA tester worktree:\ngit worktree add worktrees/qa -b qa', codeSnippet: '# Create worktree for QA\ngit worktree add worktrees/qa -b qa\n\n# To remove if needed\ngit worktree remove worktrees/qa' },
+              { name: 'No Uncommitted Changes', description: 'All worktrees have clean state', command: 'for w in worktrees/*; do echo "=== $w ===" && git -C "$w" status --short; done', fixGuide: 'Commit or stash changes in worktrees:\n\n# In each worktree with changes:\ngit add .\ngit commit -m "WIP: Save changes"\n\n# Or stash:\ngit stash' },
+            ];
+            const rows = checks.length > 0 ? checks : defaultChecks.map(d => ({ ...d, status: 'pending' as const, message: 'Run validation to check', category: 'Git Worktrees', fixGuideKey: '' }));
+            return rows.map(check => {
+              const defaultCheck = defaultChecks.find(d => d.name === check.name);
+              return {
+                id: check.name,
+                name: check.name,
+                icon: 'file' as const,
+                description: check.message || defaultCheck?.description || 'Run validation to check',
+                status: check.status as 'pass' | 'fail' | 'warn' | 'pending',
+                type: 'Worktree',
+                lastUpdate: (check as FoundationCheck).timestamp || 'Not validated',
+                command: defaultCheck?.command,
+                codeSnippet: defaultCheck?.codeSnippet,
+                fixGuide: check.status === 'fail' || check.status === 'warn' ? defaultCheck?.fixGuide : undefined,
+                cells: {
+                  status: (
+                    <span className={cn(
+                      "px-2 py-0.5 text-xs rounded-md",
+                      check.status === 'pass' ? "bg-[#2d4a2d] text-[#5a9a5a]" :
+                      check.status === 'fail' ? "bg-[#4a2d2d] text-[#dc2626]" :
+                      check.status === 'warn' ? "bg-[#4a4a2d] text-[#d97706]" :
+                      "bg-[#3e3e3e] text-[#888]"
+                    )}>
+                      {check.status === 'pass' ? 'Pass' : check.status === 'fail' ? 'Fail' : check.status === 'warn' ? 'Warning' : 'Pending'}
+                    </span>
+                  ),
+                  message: <span className="text-[#888] text-sm">{check.message || 'Not yet validated'}</span>,
+                },
+              };
+            });
+          })()}
+        />
+      )}
+
+      {/* Infrastructure: Signals */}
+      {activeTab === 'infra-signals' && (
+        <ContentPage
+          title="Signals"
+          titleIcon={<Radio className="h-5 w-5 text-[#888]" />}
+          description="Signal JSON files for agent coordination (speed layer)."
+          searchPlaceholder="Search signals..."
+          onAddItem={() => console.log('Add signal')}
+          addItemLabel="Add Signal"
+          onSync={async () => validateFoundation()}
+          syncLabel="Validate"
+          showViewToggle={true}
+          showCheckboxes={true}
+          isLoading={foundationValidating}
+          rows={(() => {
+            const checks = foundationChecks.filter(c => c.category === 'Signal Files (Speed Layer)');
+            const defaultChecks = [
+              { name: 'signals/ Directory', description: 'Signal files directory exists', command: 'ls -la signals/', fixGuide: 'Create the signals directory:\nmkdir -p signals\n\nThis folder will contain JSON signal files for agent coordination.' },
+              { name: 'escalation.json', description: 'Escalation signal file for critical issues', command: 'cat signals/escalation.json', fixGuide: 'Create the escalation signal file:\ntouch signals/escalation.json', codeSnippet: '// signals/escalation.json\n{\n  "type": "escalation",\n  "level": "none",\n  "timestamp": null,\n  "message": null,\n  "agent": null\n}' },
+              { name: 'heartbeat.json', description: 'Agent heartbeat signal for monitoring', command: 'cat signals/heartbeat.json', fixGuide: 'Create the heartbeat signal file:\ntouch signals/heartbeat.json', codeSnippet: '// signals/heartbeat.json\n{\n  "type": "heartbeat",\n  "agents": {\n    "fe-dev": { "lastSeen": null, "status": "idle" },\n    "be-dev": { "lastSeen": null, "status": "idle" },\n    "qa": { "lastSeen": null, "status": "idle" }\n  }\n}' },
+              { name: 'budget.json', description: 'Budget tracking signal file', command: 'cat signals/budget.json', fixGuide: 'Create the budget signal file:\ntouch signals/budget.json', codeSnippet: '// signals/budget.json\n{\n  "type": "budget",\n  "total": 100.00,\n  "spent": 0.00,\n  "remaining": 100.00,\n  "threshold": 10.00,\n  "lastUpdated": null\n}' },
+              { name: 'Signal Schema Valid', description: 'All signal files match expected schema', command: 'node -e "require(\'./signals/escalation.json\')"', fixGuide: 'Ensure all signal JSON files are valid JSON and match expected schema.\n\nCommon issues:\n- Invalid JSON syntax\n- Missing required fields\n- Wrong data types' },
+            ];
+            const rows = checks.length > 0 ? checks : defaultChecks.map(d => ({ ...d, status: 'pending' as const, message: 'Run validation to check', category: 'Signal Files (Speed Layer)', fixGuideKey: '' }));
+            return rows.map(check => {
+              const defaultCheck = defaultChecks.find(d => d.name === check.name);
+              return {
+                id: check.name,
+                name: check.name,
+                icon: 'file' as const,
+                description: check.message || defaultCheck?.description || 'Run validation to check',
+                status: check.status as 'pass' | 'fail' | 'warn' | 'pending',
+                type: 'Signal',
+                lastUpdate: (check as FoundationCheck).timestamp || 'Not validated',
+                command: defaultCheck?.command,
+                codeSnippet: defaultCheck?.codeSnippet,
+                fixGuide: check.status === 'fail' || check.status === 'warn' ? defaultCheck?.fixGuide : undefined,
+                cells: {
+                  status: (
+                    <span className={cn(
+                      "px-2 py-0.5 text-xs rounded-md",
+                      check.status === 'pass' ? "bg-[#2d4a2d] text-[#5a9a5a]" :
+                      check.status === 'fail' ? "bg-[#4a2d2d] text-[#dc2626]" :
+                      check.status === 'warn' ? "bg-[#4a4a2d] text-[#d97706]" :
+                      "bg-[#3e3e3e] text-[#888]"
+                    )}>
+                      {check.status === 'pass' ? 'Pass' : check.status === 'fail' ? 'Fail' : check.status === 'warn' ? 'Warning' : 'Pending'}
+                    </span>
+                  ),
+                  message: <span className="text-[#888] text-sm">{check.message || 'Not yet validated'}</span>,
+                },
+              };
+            });
+          })()}
+        />
       )}
 
       {/* TAB 6: Build QA */}
@@ -5997,6 +7148,87 @@ WAVE_PROJECT_ROOT=${project?.root_path || ''}`
         </TabContainer>
       )}
 
+      {/* MCP Servers Tab */}
+      {activeTab === 'mcp-servers' && (
+        <ContentPage
+          title="MCP Servers"
+          titleIcon={<Cpu className="h-5 w-5 text-[#888]" />}
+          description="Model Context Protocol servers provide tools and capabilities to AI agents."
+          searchPlaceholder="Search MCP servers..."
+          onAddItem={() => console.log('Add MCP server')}
+          addItemLabel="Add Server"
+          onSync={async () => console.log('Sync MCP servers')}
+          syncLabel="Sync"
+          showViewToggle={true}
+          showCheckboxes={true}
+          rows={[
+            {
+              id: 'filesystem',
+              name: 'Filesystem',
+              icon: 'file' as const,
+              status: 'pending' as const,
+              type: 'MCP Server',
+              lastUpdate: 'Not configured',
+              description: 'Read, write, and manage files in the project directory',
+              cells: {
+                status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#3e3e3e] text-[#888]">Not Configured</span>,
+                tools: <span className="text-[#888] text-sm">read, write, list, search</span>,
+                description: <span className="text-[#888] text-sm">File system operations</span>,
+              },
+            },
+            {
+              id: 'github',
+              name: 'GitHub',
+              icon: 'file' as const,
+              status: 'pending' as const,
+              type: 'MCP Server',
+              lastUpdate: 'Not configured',
+              description: 'Interact with GitHub repositories, issues, and pull requests',
+              cells: {
+                status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#3e3e3e] text-[#888]">Not Configured</span>,
+                tools: <span className="text-[#888] text-sm">repos, issues, prs, commits</span>,
+                description: <span className="text-[#888] text-sm">GitHub API integration</span>,
+              },
+            },
+            {
+              id: 'postgres',
+              name: 'PostgreSQL',
+              icon: 'file' as const,
+              status: 'pending' as const,
+              type: 'MCP Server',
+              lastUpdate: 'Not configured',
+              description: 'Query and manage PostgreSQL databases',
+              cells: {
+                status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#3e3e3e] text-[#888]">Not Configured</span>,
+                tools: <span className="text-[#888] text-sm">query, schema, tables</span>,
+                description: <span className="text-[#888] text-sm">Database operations</span>,
+              },
+            },
+            {
+              id: 'puppeteer',
+              name: 'Puppeteer',
+              icon: 'file' as const,
+              status: 'pending' as const,
+              type: 'MCP Server',
+              lastUpdate: 'Not configured',
+              description: 'Browser automation for testing and scraping',
+              cells: {
+                status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#3e3e3e] text-[#888]">Not Configured</span>,
+                tools: <span className="text-[#888] text-sm">navigate, screenshot, click</span>,
+                description: <span className="text-[#888] text-sm">Browser automation</span>,
+              },
+            },
+          ]}
+          emptyState={
+            <div className="text-center py-8">
+              <Cpu className="h-12 w-12 text-[#3e3e3e] mx-auto mb-3" />
+              <p className="text-[#666] mb-2">No MCP servers configured</p>
+              <p className="text-xs text-[#555]">Add MCP servers to extend agent capabilities</p>
+            </div>
+          }
+        />
+      )}
+
       {/* TAB 8: Notifications - Slack Feedback Loop */}
       {activeTab === 'notifications' && (
           <TabContainer>
@@ -6532,49 +7764,128 @@ After setup, use the test buttons to verify each notification type.
               )}
             </div>
 
-            {/* Dozzle Section - Secondary, at bottom */}
-            <div className="p-5 bg-card border border-border rounded-2xl">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-cyan-500/15 flex items-center justify-center">
-                    <Eye className="h-5 w-5 text-cyan-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-zinc-900">Dozzle Log Viewer</h3>
-                    <p className="text-sm text-muted-foreground">Docker container log viewer</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button className="px-4 py-2 border border-border hover:border-border/80 text-muted-foreground hover:text-foreground rounded-lg text-sm font-medium transition-colors">
-                    Check Status
-                  </button>
-                  <a
-                    href="http://localhost:8080"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2 border border-border hover:border-border/80 text-muted-foreground hover:text-foreground rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Open Dozzle
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                </div>
-              </div>
+        </TabContainer>
+      )}
 
-              <div className="p-4 bg-muted rounded-xl">
-                <p className="text-xs text-muted-foreground mb-2">Start Dozzle if not running:</p>
+      {/* Dozzle Tab */}
+      {activeTab === 'dozzle' && (
+          <TabContainer>
+            {/* 1. INFO BOX */}
+            <InfoBox
+              title="Dozzle Log Viewer"
+              description="Real-time Docker container log viewer. Dozzle provides a lightweight web UI to monitor all running containers, tail logs, and search across multiple services simultaneously."
+              icon={<Eye className="h-4 w-4 text-blue-500" />}
+            />
+
+            {/* 2. KPI CARDS */}
+            <KPICards
+              items={[
+                {
+                  label: 'Dozzle',
+                  value: 'localhost:8080',
+                  status: 'neutral',
+                  icon: <Eye className="h-4 w-4" />
+                },
+                {
+                  label: 'Protocol',
+                  value: 'HTTP',
+                  status: 'neutral',
+                  icon: <Globe className="h-4 w-4" />
+                },
+                {
+                  label: 'Port',
+                  value: '8080',
+                  status: 'neutral',
+                  icon: <Radio className="h-4 w-4" />
+                },
+                {
+                  label: 'Status',
+                  value: 'Check Below',
+                  status: 'neutral',
+                  icon: <Activity className="h-4 w-4" />
+                },
+              ]}
+            />
+
+            {/* 3. ACTION BAR */}
+            <ActionBar
+              category="MONITORING"
+              title="Docker Log Viewer"
+              description="Real-time container log monitoring"
+              primaryAction={{
+                label: 'Open Dozzle',
+                onClick: () => window.open('http://localhost:8080', '_blank'),
+                icon: <ExternalLink className="h-4 w-4" />
+              }}
+              secondaryAction={{
+                label: 'Check Status',
+                onClick: () => {},
+                icon: <Activity className="h-4 w-4" />
+              }}
+            />
+
+            {/* 4. RESULT SUMMARY */}
+            <ResultSummary
+              status="idle"
+              message="Open Dozzle to view real-time logs from all running Docker containers."
+            />
+
+            {/* Quick Start */}
+            <SectionHeader
+              badge={<Terminal className="h-4 w-4 text-[#888]" />}
+              badgeColor="bg-[#2a2a2a]"
+              title="Quick Start"
+              description="Start Dozzle if not running"
+              timestamp={lastUpdate}
+              status="pending"
+            />
+            <ExpandableCard title="Installation Command" defaultExpanded>
+              <div className="space-y-4">
+                <p className="text-sm text-[#888]">Run this command to start Dozzle:</p>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 bg-background text-foreground px-3 py-2 rounded-lg text-xs font-mono overflow-x-auto">
+                  <code className="flex-1 bg-[#1e1e1e] text-[#a3a3a3] px-3 py-2 rounded-lg text-xs font-mono overflow-x-auto">
                     docker run -d --name dozzle -p 8080:8080 -v /var/run/docker.sock:/var/run/docker.sock amir20/dozzle
                   </code>
                   <button
                     onClick={() => navigator.clipboard.writeText('docker run -d --name dozzle -p 8080:8080 -v /var/run/docker.sock:/var/run/docker.sock amir20/dozzle')}
-                    className="p-2 border border-border hover:border-border/80 rounded-lg transition-colors"
+                    className="p-2 border border-[#3e3e3e] hover:border-[#5a5a5a] rounded-lg transition-colors"
                   >
-                    <Copy className="h-4 w-4 text-muted-foreground" />
+                    <Copy className="h-4 w-4 text-[#888]" />
                   </button>
                 </div>
+                <p className="text-xs text-[#666]">Then open <a href="http://localhost:8080" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">http://localhost:8080</a> in your browser.</p>
               </div>
-            </div>
+            </ExpandableCard>
+
+            {/* Features */}
+            <SectionHeader
+              badge={<Sparkles className="h-4 w-4 text-[#888]" />}
+              badgeColor="bg-[#2a2a2a]"
+              title="Features"
+              description="What Dozzle provides"
+              timestamp={lastUpdate}
+              status="pass"
+            />
+            <ExpandableCard title="Features List" defaultExpanded>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm text-[#a3a3a3]">
+                  <CheckCircle2 className="h-4 w-4 text-[#5a9a5a]" />
+                  <span>Real-time log streaming from all containers</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-[#a3a3a3]">
+                  <CheckCircle2 className="h-4 w-4 text-[#5a9a5a]" />
+                  <span>Search and filter across multiple services</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-[#a3a3a3]">
+                  <CheckCircle2 className="h-4 w-4 text-[#5a9a5a]" />
+                  <span>No database or storage required</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-[#a3a3a3]">
+                  <CheckCircle2 className="h-4 w-4 text-[#5a9a5a]" />
+                  <span>Lightweight web UI</span>
+                </div>
+              </div>
+            </ExpandableCard>
         </TabContainer>
       )}
 
@@ -9676,6 +10987,68 @@ ${auditLogSummary ? `
         </div>
       )}
     </div>
+
+      {/* Blueprint Flyout - Results and History */}
+      <BlueprintFlyout
+        isOpen={showBlueprintFlyout}
+        onClose={() => setShowBlueprintFlyout(false)}
+        report={blueprintReport}
+        history={blueprintHistory}
+        onRunAnalysis={() => {
+          setBlueprintAnalyzing(true);
+          setShowBlueprintFlyout(false);
+        }}
+        onSelectHistoryItem={(report) => {
+          setBlueprintReport(report);
+        }}
+        onClearHistory={() => {
+          setBlueprintHistory([]);
+          localStorage.removeItem('wave_blueprint_history');
+        }}
+        isAnalyzing={blueprintAnalyzing}
+        projectPath={project?.root_path || ''}
+      />
+
+      {/* Foundation Analysis Wizard */}
+      <FoundationAnalysisWizard
+        isOpen={showFoundationWizard}
+        onClose={() => setShowFoundationWizard(false)}
+        onStartAnalysis={({ aiDeepReview }) => {
+          console.log('Starting analysis with AI Deep Review:', aiDeepReview);
+        }}
+        projectPath={project?.root_path || ''}
+        projectName={project?.name || 'Project'}
+        isAnalyzing={blueprintAnalyzing}
+        analysisComponent={
+          <FoundationAnalysisProgress
+            projectPath={project?.root_path || ''}
+            onAnalysisComplete={(report) => {
+              handleBlueprintAnalysisComplete(report);
+              setShowFoundationWizard(false);
+            }}
+            onValidationComplete={(status) => {
+              setMockupStatus(status === 'ready' ? 'ready' : 'blocked');
+            }}
+          />
+        }
+      />
+
+      {/* Gate 0 Full Wizard - 5 Step Flow */}
+      <Gate0Wizard
+        isOpen={showGate0Wizard}
+        onClose={() => setShowGate0Wizard(false)}
+        onComplete={(data) => {
+          console.log('Gate0 Wizard complete:', data);
+          // Update blueprint report from wizard data
+          if (data.analysisReport) {
+            setBlueprintReport(data.analysisReport as typeof blueprintReport);
+          }
+          setShowGate0Wizard(false);
+          // Show checklist results after completing wizard
+          setShowChecklistResults(true);
+        }}
+        initialPath={project?.root_path || ''}
+      />
     </Layout>
   )
 }

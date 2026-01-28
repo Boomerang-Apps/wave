@@ -1,0 +1,166 @@
+# WAVE Result Details
+─────────────────────────────────────────
+KEY: wave:result:qa-SLACK-TEST-918803dc
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:qa-DEMO-001-b8538006
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:qa-AUTH-002-cf76b95f
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:fe-AUTH-002-e0e902e8
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:fe-SLACK-TEST-bb92f533
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:qa-DEMO-001-05f22c13
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:be-AUTH-001-b1a9991a
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:be-AUTH-001-d2185f55
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:be-DEMO-001-208b78f3
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:fe-AUTH-001-3c5a5040
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:fe-DEMO-001-f24282c8
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:be-AUTH-001-659297f1
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:be-DEMO-001-e665bd93
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:be-AUTH-001-854d9bcf
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:be-AUTH-002-e5a2a430
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:be-AUTH-001-6db123d0
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:fe-AUTH-001-4f1b2d68
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:be-AUTH-001-2e11635f
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:be-SLACK-TEST-cc6e2691
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:be-DEMO-001-0b6ff3a5
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:fe-DEMO-001-ceca3a27
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:fe-AUTH-001-f3e2d262
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:be-AUTH-002-c9f60271
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:be-AUTH-001-1fa40ba4
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:fe-AUTH-001-9ff5de32
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:qa-AUTH-002-4b61a531
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:fe-AUTH-002-83387fe7
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:fe-AUTH-002-37d6d96e
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:fe-DEMO-001-d5e8ab9e
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:fe-AUTH-001-9a001d1f
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:qa-DEMO-001-b29aa189
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:fe-AUTH-001-648fce72
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+
+─────────────────────────────────────────
+KEY: wave:result:fe-AUTH-001-c2213051
+WRONGTYPE Operation against a key holding the wrong kind of value
+
+

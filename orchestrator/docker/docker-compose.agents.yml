@@ -57,6 +57,7 @@ services:
     environment:
       - TZ=Asia/Jerusalem
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL_PM=${ANTHROPIC_MODEL_PM:-claude-opus-4-20250514}
       - REDIS_URL=redis://redis:6379
       - WAVE_DOMAIN=pm
       - AGENT_ID=pm-1
@@ -94,6 +95,7 @@ services:
     environment:
       - TZ=Asia/Jerusalem
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL_DEV=${ANTHROPIC_MODEL_DEV:-claude-sonnet-4-20250514}
       - REDIS_URL=redis://redis:6379
       - WAVE_DOMAIN=fe
       - AGENT_ID=fe-1
@@ -126,6 +128,7 @@ services:
     environment:
       - TZ=Asia/Jerusalem
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL_DEV=${ANTHROPIC_MODEL_DEV:-claude-sonnet-4-20250514}
       - REDIS_URL=redis://redis:6379
       - WAVE_DOMAIN=fe
       - AGENT_ID=fe-2
@@ -158,6 +161,7 @@ services:
     environment:
       - TZ=Asia/Jerusalem
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL_DEV=${ANTHROPIC_MODEL_DEV:-claude-sonnet-4-20250514}
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_KEY=${SUPABASE_KEY}
       - REDIS_URL=redis://redis:6379
@@ -192,6 +196,7 @@ services:
     environment:
       - TZ=Asia/Jerusalem
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL_DEV=${ANTHROPIC_MODEL_DEV:-claude-sonnet-4-20250514}
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_KEY=${SUPABASE_KEY}
       - REDIS_URL=redis://redis:6379
@@ -226,6 +231,8 @@ services:
     environment:
       - TZ=Asia/Jerusalem
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL_QA=${ANTHROPIC_MODEL_QA:-claude-3-5-haiku-20241022}
+      - GROK_API_KEY=${GROK_API_KEY:-}
       - REDIS_URL=redis://redis:6379
       - WAVE_DOMAIN=qa
       - AGENT_ID=qa-1
@@ -249,6 +256,43 @@ services:
       resources:
         limits:
           memory: 2G
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # MERGE WATCHER (Monitors QA pass → triggers merge)
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  merge-watcher:
+    image: wave-orchestrator:v2
+    container_name: wave-merge-watcher
+    command: ["python", "-m", "src.merge_watcher"]
+    environment:
+      - TZ=Asia/Jerusalem
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - REDIS_URL=redis://redis:6379
+      - PROJECT_PATH=/project
+      - WAVE_NUMBER=1
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - VERCEL_TOKEN=${VERCEL_TOKEN:-}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - SLACK_ENABLED=true
+      - SAFETY_THRESHOLD=0.85
+    volumes:
+      - ${PROJECT_PATH:-/tmp/project}:/project
+    networks:
+      - wave-network
+    depends_on:
+      - orchestrator
+      - redis
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "python", "-c", "print('healthy')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   # ═══════════════════════════════════════════════════════════════════════════
   # INFRASTRUCTURE

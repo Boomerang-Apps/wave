@@ -1,0 +1,63 @@
+{
+  "id": "WAVE1-FE-002",
+  "title": "Create Carbon Calculator Input Form Component",
+  "domain": "general",
+  "priority": "high",
+  "wave": 1,
+  "objective": {
+    "as_a": "user tracking my carbon footprint",
+    "i_want": "to input my daily activities like transportation and food choices",
+    "so_that": "I can calculate and track my personal carbon emissions"
+  },
+  "acceptance_criteria": [
+    {
+      "id": "AC-001",
+      "description": "Form includes transportation section with mode selection (car, bus, bike, walk)"
+    },
+    {
+      "id": "AC-002",
+      "description": "Form includes food section with meal type options (meat, vegetarian, vegan)"
+    },
+    {
+      "id": "AC-003",
+      "description": "Form includes energy section for home electricity usage input"
+    },
+    {
+      "id": "AC-004",
+      "description": "Form validates all inputs before submission with clear error messages"
+    },
+    {
+      "id": "AC-005",
+      "description": "Form calculates and displays estimated emissions in real-time"
+    }
+  ],
+  "files": {
+    "create": [
+      "src/components/CarbonCalculator.tsx",
+      "src/components/FormInput.tsx",
+      "src/utils/emissions-calculator.ts"
+    ],
+    "modify": [],
+    "forbidden": [
+      ".env",
+      ".env.local",
+      "package-lock.json",
+      "node_modules/**"
+    ]
+  },
+  "safety": {
+    "stop_conditions": [
+      "Never store sensitive user data in localStorage without encryption",
+      "Never commit directly to main branch",
+      "Stop if constitutional AI score drops below 0.9",
+      "Stop if form validation can be bypassed"
+    ],
+    "escalation_triggers": [
+      "User data persistence changes",
+      "API integration modifications"
+    ]
+  },
+  "estimated_tokens": 20000,
+  "dependencies": [],
+  "agent_assignment": "fe-dev-1"
+}

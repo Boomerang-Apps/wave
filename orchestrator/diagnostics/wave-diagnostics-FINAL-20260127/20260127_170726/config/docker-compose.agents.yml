@@ -1,0 +1,251 @@
+# WAVE Multi-Agent Docker Compose
+# Runs versioned, immutable agent images for parallel domain execution
+#
+# Usage:
+#   docker-compose -f docker/docker-compose.agents.yml up
+#
+# Prerequisites:
+#   ./scripts/build-agents.sh 1  # Build wave 1 images first
+
+version: '3.8'
+
+services:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # ORCHESTRATOR (Main API Server)
+  # ═══════════════════════════════════════════════════════════════════════════
+  orchestrator:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: wave-orchestrator:v2
+    container_name: wave-orchestrator
+    ports:
+      - "8000:8000"
+    environment:
+      - TZ=Asia/Jerusalem
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - SLACK_ENABLED=true
+      - REDIS_URL=redis://redis:6379
+      - LANGSMITH_TRACING=true
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
+      - LANGSMITH_WORKSPACE_ID=${LANGSMITH_WORKSPACE_ID}
+    volumes:
+      - ../stories:/app/stories:ro
+      - ${PROJECT_PATH:-/tmp/project}:/project
+    depends_on:
+      - redis
+    networks:
+      - wave-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # DOMAIN AGENTS (Versioned, Immutable Images)
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  # Frontend Agent 1
+  fe-agent-1:
+    image: wave-agent-fe:${WAVE_VERSION:-v2-wave1}
+    container_name: wave-fe-agent-1
+    command: ["python", "-m", "src.agents.fe_agent"]
+    environment:
+      - TZ=Asia/Jerusalem
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - REDIS_URL=redis://redis:6379
+      - WAVE_DOMAIN=fe
+      - AGENT_ID=fe-1
+      - ORCHESTRATOR_URL=http://orchestrator:8000
+      - LANGSMITH_TRACING=true
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
+      - LANGSMITH_WORKSPACE_ID=${LANGSMITH_WORKSPACE_ID}
+      - LANGSMITH_PROJECT=wave-fe-agent
+    volumes:
+      - ${PROJECT_PATH:-/tmp/project}:/project
+      - agent-output-fe-1:/app/output
+    networks:
+      - wave-network
+    depends_on:
+      - orchestrator
+      - redis
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  # Frontend Agent 2 (for parallel execution)
+  fe-agent-2:
+    image: wave-agent-fe:${WAVE_VERSION:-v2-wave1}
+    container_name: wave-fe-agent-2
+    command: ["python", "-m", "src.agents.fe_agent"]
+    environment:
+      - TZ=Asia/Jerusalem
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - REDIS_URL=redis://redis:6379
+      - WAVE_DOMAIN=fe
+      - AGENT_ID=fe-2
+      - ORCHESTRATOR_URL=http://orchestrator:8000
+      - LANGSMITH_TRACING=true
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
+      - LANGSMITH_WORKSPACE_ID=${LANGSMITH_WORKSPACE_ID}
+      - LANGSMITH_PROJECT=wave-fe-agent
+    volumes:
+      - ${PROJECT_PATH:-/tmp/project}:/project
+      - agent-output-fe-2:/app/output
+    networks:
+      - wave-network
+    depends_on:
+      - orchestrator
+      - redis
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  # Backend Agent 1
+  be-agent-1:
+    image: wave-agent-be:${WAVE_VERSION:-v2-wave1}
+    container_name: wave-be-agent-1
+    command: ["python", "-m", "src.agents.be_agent"]
+    environment:
+      - TZ=Asia/Jerusalem
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - REDIS_URL=redis://redis:6379
+      - WAVE_DOMAIN=be
+      - AGENT_ID=be-1
+      - ORCHESTRATOR_URL=http://orchestrator:8000
+      - LANGSMITH_TRACING=true
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
+      - LANGSMITH_WORKSPACE_ID=${LANGSMITH_WORKSPACE_ID}
+      - LANGSMITH_PROJECT=wave-be-agent
+    volumes:
+      - ${PROJECT_PATH:-/tmp/project}:/project
+      - agent-output-be-1:/app/output
+    networks:
+      - wave-network
+    depends_on:
+      - orchestrator
+      - redis
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  # Backend Agent 2
+  be-agent-2:
+    image: wave-agent-be:${WAVE_VERSION:-v2-wave1}
+    container_name: wave-be-agent-2
+    command: ["python", "-m", "src.agents.be_agent"]
+    environment:
+      - TZ=Asia/Jerusalem
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - REDIS_URL=redis://redis:6379
+      - WAVE_DOMAIN=be
+      - AGENT_ID=be-2
+      - ORCHESTRATOR_URL=http://orchestrator:8000
+      - LANGSMITH_TRACING=true
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
+      - LANGSMITH_WORKSPACE_ID=${LANGSMITH_WORKSPACE_ID}
+      - LANGSMITH_PROJECT=wave-be-agent
+    volumes:
+      - ${PROJECT_PATH:-/tmp/project}:/project
+      - agent-output-be-2:/app/output
+    networks:
+      - wave-network
+    depends_on:
+      - orchestrator
+      - redis
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  # QA Agent
+  qa-agent:
+    image: wave-agent-qa:${WAVE_VERSION:-v2-wave1}
+    container_name: wave-qa-agent
+    command: ["python", "-m", "src.agents.qa_agent"]
+    environment:
+      - TZ=Asia/Jerusalem
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - REDIS_URL=redis://redis:6379
+      - WAVE_DOMAIN=qa
+      - AGENT_ID=qa-1
+      - ORCHESTRATOR_URL=http://orchestrator:8000
+      - LANGSMITH_TRACING=true
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
+      - LANGSMITH_WORKSPACE_ID=${LANGSMITH_WORKSPACE_ID}
+      - LANGSMITH_PROJECT=wave-qa-agent
+    volumes:
+      - ${PROJECT_PATH:-/tmp/project}:/project
+      - agent-output-qa:/app/output
+    networks:
+      - wave-network
+    depends_on:
+      - orchestrator
+      - redis
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # INFRASTRUCTURE
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  redis:
+    image: redis:7-alpine
+    container_name: wave-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - wave-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Dozzle for container log viewing
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: wave-dozzle
+    ports:
+      - "9090:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - wave-network
+
+# ═══════════════════════════════════════════════════════════════════════════
+# NETWORKS & VOLUMES
+# ═══════════════════════════════════════════════════════════════════════════
+
+networks:
+  wave-network:
+    driver: bridge
+    name: wave-network
+
+volumes:
+  redis-data:
+  agent-output-fe-1:
+  agent-output-fe-2:
+  agent-output-be-1:
+  agent-output-be-2:
+  agent-output-qa:

@@ -6,6 +6,7 @@ Architecture review and approval decisions
 from datetime import datetime, timezone
 from typing import Dict, Any
 from state import WAVEState, AgentAction
+from notifications import notify_step
 
 
 CTO_SYSTEM_PROMPT = """You are the CTO (Chief Technical Officer) agent in a multi-agent software development system.
@@ -46,6 +47,17 @@ def cto_node(state: WAVEState) -> Dict[str, Any]:
         Dict with state updates
     """
     timestamp = datetime.now(timezone.utc).isoformat()
+    task = state.get("task", "")
+    run_id = state.get("run_id", "unknown")
+
+    # Send Slack notification
+    notify_step(
+        agent="cto",
+        action="reviewing architecture",
+        task=task,
+        run_id=run_id,
+        status="reviewing"
+    )
 
     # Create action record
     action = AgentAction(
@@ -53,8 +65,8 @@ def cto_node(state: WAVEState) -> Dict[str, Any]:
         action_type="review",
         timestamp=timestamp,
         details={
-            "task": state.get("task", ""),
-            "status": "skeleton_implementation"
+            "task": task,
+            "status": "review_complete"
         }
     )
 

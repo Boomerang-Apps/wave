@@ -34,6 +34,20 @@ CRITICAL: You MUST follow Test-Driven Development (TDD) methodology:
 2. THEN: Write minimal code to pass tests (GREEN state)
 3. FINALLY: Refactor while keeping tests green
 
+CRITICAL: ACCEPTANCE CRITERIA (AC) MAPPING - Grok Suggestion #1
+- Map ALL acceptance criteria to components/hooks - no truncation
+- Generate FULL, COMPLETE code for every AC item
+- Do NOT leave placeholder comments like "// TODO" or "// implement later"
+- Every AC must have corresponding test coverage
+- If AC mentions preview, form validation, error states - implement them ALL
+- Address ALL AC explicitly in code AND tests
+
+CRITICAL: BACKEND INTEGRATION - Grok Suggestion (8.8/10 Review)
+- If auth/API features are needed, integrate with authService.ts or similar BE services
+- Create mock services for testing if BE not available
+- Include proper API error handling and loading states
+- Define TypeScript interfaces for all API responses
+
 Your responsibilities (IN THIS ORDER):
 1. Write component tests FIRST (before any component code)
 2. Implement React/TypeScript components to pass tests
@@ -50,11 +64,12 @@ Tech Stack:
 - Vitest + React Testing Library for tests
 
 TDD Process (MANDATORY):
-1. Analyze requirements and acceptance criteria
+1. Analyze requirements and acceptance criteria - LIST ALL AC items
 2. Write test file FIRST: `__tests__/ComponentName.test.tsx`
 3. Tests should FAIL initially (RED state) - this proves they test something
 4. Write component code to make tests pass (GREEN state)
 5. Refactor while ensuring tests still pass
+6. VERIFY: Every AC item has implementation AND test coverage
 
 Code Standards:
 - Use functional components with hooks
@@ -62,6 +77,7 @@ Code Standards:
 - Extract reusable logic into custom hooks
 - Follow existing project patterns
 - Test coverage must be >=80%
+- NO TRUNCATION - generate complete implementations
 
 Output Format:
 Return tests FIRST, then implementation code.
@@ -76,6 +92,7 @@ Use markdown code blocks with file paths:
 ```
 
 Be thorough and production-ready. Include error handling and loading states.
+Generate COMPLETE code - no placeholders, no truncation.
 """
 
 

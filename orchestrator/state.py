@@ -11,10 +11,12 @@ Classes:
 - WAVEState: Master state for LangGraph
 """
 
-from typing import TypedDict, List, Optional, Any, Literal
+from typing import TypedDict, List, Optional, Any, Literal, Dict
 from langchain_core.messages import BaseMessage
 
 from src.retry.retry_state import RetryState, create_retry_state
+from tools.p_variable import load_p_variable, load_rlm_config, get_project_context
+from tools.story_loader import load_stories
 
 
 class GitState(TypedDict):
@@ -100,12 +102,22 @@ class WAVEState(TypedDict):
     # LLM-generated summary (Phase 1: Hierarchical Supervisor)
     rlm_summary: str
 
+    # P Variable / RLM context
+    p_variable: Optional[Dict[str, Any]]
+    rlm_config: Optional[Dict[str, Any]]
+    project_context: str
+
     # Retry state (Phase 3: Dev-Fix Loop)
     retry: RetryState
 
     # QA result tracking (Phase 3: Dev-Fix Loop)
     qa_passed: bool
     qa_feedback: str
+
+    # Stories from Supabase (SOURCE OF TRUTH)
+    stories: List[Dict[str, Any]]
+    story_ids: List[str]  # Specific story IDs to process
+    current_story: Optional[Dict[str, Any]]  # Active story being worked on
 
 
 def create_initial_state(
@@ -114,7 +126,10 @@ def create_initial_state(
     repo_path: str = "",
     branch: str = "main",
     token_limit: int = 100000,
-    cost_limit_usd: float = 10.0
+    cost_limit_usd: float = 10.0,
+    project_id: str = "",
+    wave_number: int = 1,
+    story_ids: List[str] = None
 ) -> WAVEState:
     """
     Factory function to create a new WAVEState with defaults.
@@ -126,10 +141,37 @@ def create_initial_state(
         branch: Git branch name
         token_limit: Maximum tokens allowed
         cost_limit_usd: Maximum cost in USD
+        project_id: Supabase project ID for story loading
+        wave_number: Wave number for story loading
+        story_ids: Optional list of specific story IDs to process
 
     Returns:
         Initialized WAVEState
     """
+    # Load P Variable (RLM context) if repo_path provided
+    p_variable = None
+    rlm_config = None
+    project_context = ""
+
+    if repo_path:
+        p_variable = load_p_variable(repo_path)
+        rlm_config = load_rlm_config(repo_path)
+        if p_variable:
+            project_context = get_project_context(p_variable)
+            print(f"[RLM] P Variable loaded for {repo_path}")
+
+    # Load stories from Supabase (SOURCE OF TRUTH) with filesystem fallback
+    stories = []
+    if repo_path or project_id:
+        stories = load_stories(
+            project_id=project_id,
+            repo_path=repo_path,
+            wave_number=wave_number,
+            story_ids=story_ids or []
+        )
+        source = stories[0].get('_source', 'unknown') if stories else 'none'
+        print(f"[STORIES] Loaded {len(stories)} stories from {source}")
+
     return WAVEState(
         run_id=run_id,
         task=task,
@@ -159,7 +201,13 @@ def create_initial_state(
         retry_count=0,
         needs_human=False,
         rlm_summary="",
+        p_variable=p_variable,
+        rlm_config=rlm_config,
+        project_context=project_context,
         retry=create_retry_state(),
         qa_passed=False,
-        qa_feedback=""
+        qa_feedback="",
+        stories=stories,
+        story_ids=story_ids or [],
+        current_story=stories[0] if stories else None
     )

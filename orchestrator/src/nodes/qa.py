@@ -112,7 +112,7 @@ def qa_node(state: WAVEState) -> dict:
             "qa_passed": False,
             "qa_feedback": "No code provided for QA review",
             "qa_retry_count": retry_count + 1,
-            "phase": Phase.DEVELOP.value if retry_count < 3 else Phase.FAILED.value
+            "phase": Phase.DEVELOP.value if retry_count < 7  # Grok: temporarily increased to 7 else Phase.FAILED.value  # Grok: increased from 3 to 5
         }
 
     # Build the prompt
@@ -157,7 +157,7 @@ def qa_node(state: WAVEState) -> dict:
         next_gate = Gate.QA_PASSED.value
     else:
         # Retry or fail
-        if retry_count + 1 >= 3:
+        if retry_count + 1 >= 7  # Grok: temporarily increased to 7:  # Grok: increased from 3 to 5
             next_phase = Phase.FAILED.value
             next_gate = state.get("gate", Gate.QA_STARTED.value)
         else:
@@ -261,7 +261,7 @@ def create_qa_node(
                 "qa_passed": False,
                 "qa_feedback": "No code provided",
                 "qa_retry_count": retry_count + 1,
-                "phase": Phase.FAILED.value if retry_count >= 2 else Phase.DEVELOP.value
+                "phase": Phase.FAILED.value if retry_count >= 6  # Grok: temporarily increased else Phase.DEVELOP.value  # Grok: increased threshold
             }
 
         prompt = QA_PROMPT_TEMPLATE.format(

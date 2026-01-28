@@ -1,0 +1,51 @@
+# WAVE QA Agent Image
+# Specialized agent for testing, validation, and quality assurance
+# Version: v2-footprint
+
+ARG BASE_IMAGE=wave-agent-base:latest
+FROM ${BASE_IMAGE}
+
+# Build args
+ARG WAVE_NUMBER=1
+ARG DOMAIN=qa
+
+# Labels
+LABEL domain="qa"
+LABEL wave="${WAVE_NUMBER}"
+LABEL description="WAVE QA Agent - Testing, validation, and quality assurance"
+
+USER root
+
+# Install Node.js for JS/TS testing tools
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install testing frameworks
+RUN pip install --no-cache-dir \
+    pytest>=8.0.0 \
+    pytest-asyncio>=0.24.0 \
+    pytest-cov>=6.0.0 \
+    hypothesis>=6.0.0
+
+# Install JS testing tools globally
+RUN npm install -g \
+    jest \
+    @testing-library/react \
+    typescript \
+    eslint 2>/dev/null || echo "NPM global install skipped"
+
+# Copy all stories and prompts (QA validates all domains)
+COPY stories/ /app/stories/
+COPY src/prompts/ /app/src/prompts/
+
+# Set domain environment
+ENV WAVE_DOMAIN=qa
+ENV WAVE_NUMBER=${WAVE_NUMBER}
+
+# Switch back to non-root
+USER wave
+WORKDIR /app
+
+# Agent entrypoint
+CMD ["python", "-c", "from nodes.qa import qa_node; print('QA Agent ready')"]

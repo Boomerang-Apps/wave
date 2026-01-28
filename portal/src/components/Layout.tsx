@@ -12,10 +12,17 @@ import {
   Folder,
   ChevronDown,
   Plus,
-  Check
+  Check,
+  Bell,
+  HelpCircle,
+  PanelLeftClose,
+  PanelLeft,
+  User
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import { ModeProvider } from '../contexts/ModeContext'
+import { ModeSwitch } from './ModeSwitch'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -153,6 +160,7 @@ export function Layout({ children, secondarySidebar }: LayoutProps) {
   const [projects, setProjects] = useState<Project[]>([])
   const [currentProject, setCurrentProject] = useState<Project | null>(null)
   const [supabaseConnected, setSupabaseConnected] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   useEffect(() => {
     async function fetchProjects() {
@@ -216,10 +224,10 @@ export function Layout({ children, secondarySidebar }: LayoutProps) {
   }
 
   const hasSecondarySidebar = !!secondarySidebar
-  const mainLeftOffset = hasSecondarySidebar ? 'pl-[310px]' : 'pl-[50px]'
-  const topLeftOffset = hasSecondarySidebar ? 'left-[310px]' : 'left-[50px]'
+  const showSecondarySidebar = hasSecondarySidebar && !sidebarCollapsed
 
   return (
+    <ModeProvider>
     <LayoutContext.Provider value={{ projects, currentProject, setCurrentProject, supabaseConnected }}>
       <div className="min-h-screen bg-[#1e1e1e]">
         {/* Primary Sidebar - Icons only (50px) */}
@@ -233,6 +241,16 @@ export function Layout({ children, secondarySidebar }: LayoutProps) {
 
           {/* Navigation Icons */}
           <nav className="flex-1 flex flex-col items-center py-3 gap-1">
+            {/* Sidebar Toggle - Before nav items */}
+            {hasSecondarySidebar && (
+              <button
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-[#666] hover:text-[#a3a3a3] hover:bg-[#2e2e2e] transition-colors mb-1"
+                title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+              </button>
+            )}
             {navItems.map((item) => {
               const Icon = item.icon
               const active = isActive(item.path)
@@ -255,8 +273,9 @@ export function Layout({ children, secondarySidebar }: LayoutProps) {
             })}
           </nav>
 
-          {/* Bottom - Settings & Status */}
+          {/* Bottom - Settings, Status & User */}
           <div className="pb-3 flex flex-col items-center gap-2">
+            <ModeSwitch />
             <div className={cn(
               "w-2 h-2 rounded-full",
               supabaseConnected ? "bg-[#5a9a5a]" : "bg-[#d97706]"
@@ -273,17 +292,18 @@ export function Layout({ children, secondarySidebar }: LayoutProps) {
             >
               <Settings className="h-4 w-4" />
             </Link>
+            {/* User Avatar */}
+            <button
+              className="w-8 h-8 rounded-full bg-[#3e3e3e] flex items-center justify-center text-[#a3a3a3] hover:bg-[#4e4e4e] transition-colors"
+              title="User Account"
+            >
+              <User className="h-4 w-4" />
+            </button>
           </div>
         </aside>
 
-        {/* Secondary Sidebar - Step Navigation (200px) - Optional */}
-        {secondarySidebar}
-
-        {/* Top Navigation Bar */}
-        <header className={cn(
-          "fixed top-0 right-0 z-30 h-14 bg-[#1e1e1e] border-b border-[#2e2e2e] flex items-center px-4 gap-3",
-          topLeftOffset
-        )}>
+        {/* Top Navigation Bar - Fixed, starts after primary sidebar */}
+        <header className="fixed top-0 left-[50px] right-0 z-30 h-14 bg-[#1e1e1e] border-b border-[#2e2e2e] flex items-center px-4 gap-3">
           <WorkspaceDropdown />
           <span className="text-[#2e2e2e]">/</span>
           <ProjectDropdown
@@ -293,15 +313,36 @@ export function Layout({ children, secondarySidebar }: LayoutProps) {
             onNew={() => navigate('/projects/new')}
           />
           <div className="flex-1" />
+
+          {/* Right side icons */}
+          <button
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-[#666] hover:text-[#a3a3a3] hover:bg-[#2e2e2e] transition-colors"
+            title="Notifications"
+          >
+            <Bell className="h-4 w-4" />
+          </button>
+          <button
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-[#666] hover:text-[#a3a3a3] hover:bg-[#2e2e2e] transition-colors"
+            title="Help"
+          >
+            <HelpCircle className="h-4 w-4" />
+          </button>
         </header>
 
-        {/* Main Content */}
-        <main className={cn(mainLeftOffset, "pt-14")}>
-          <div className="p-6">
-            {children}
+        {/* Main Content Area - Contains secondary sidebar and page content */}
+        <main className="pl-[50px] pt-14 min-h-screen">
+          <div className="flex h-[calc(100vh-56px)]">
+            {/* Secondary Sidebar - Inside main content, not fixed */}
+            {showSecondarySidebar && secondarySidebar}
+
+            {/* Page Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {children}
+            </div>
           </div>
         </main>
       </div>
     </LayoutContext.Provider>
+    </ModeProvider>
   )
 }

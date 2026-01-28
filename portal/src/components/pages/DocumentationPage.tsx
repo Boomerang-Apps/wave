@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Plus, RefreshCw, FileText, CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
+import { Plus, RefreshCw, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
 import { ContentPage } from '../ContentPage';
 import type { TableColumn, TableRow, ActionButton, ContentTab } from '../ContentPage';
 
@@ -29,19 +29,15 @@ export function DocumentationPage({ projectPath }: DocumentationPageProps) {
           icon: 'file' as const,
           description: 'Product Requirements Document - defines features and requirements',
           cells: {
+            status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#2d4a2d] text-[#5a9a5a]">Active</span>,
             type: <span className="text-[#a3a3a3]">Requirements</span>,
-            status: (
+            validation: (
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="h-4 w-4 text-[#5a9a5a]" />
                 <span className="text-[#5a9a5a]">Valid</span>
               </div>
             ),
             lastModified: <span className="text-[#666]">1 hour ago</span>,
-            actions: (
-              <button className="p-1.5 hover:bg-[#3e3e3e] rounded transition-colors">
-                <ExternalLink className="h-4 w-4 text-[#666]" />
-              </button>
-            ),
           },
         },
         {
@@ -50,19 +46,15 @@ export function DocumentationPage({ projectPath }: DocumentationPageProps) {
           icon: 'file' as const,
           description: 'AI Agent protocol and guidelines',
           cells: {
+            status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#2d4a2d] text-[#5a9a5a]">Active</span>,
             type: <span className="text-[#a3a3a3]">Protocol</span>,
-            status: (
+            validation: (
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="h-4 w-4 text-[#5a9a5a]" />
                 <span className="text-[#5a9a5a]">Valid</span>
               </div>
             ),
             lastModified: <span className="text-[#666]">2 days ago</span>,
-            actions: (
-              <button className="p-1.5 hover:bg-[#3e3e3e] rounded transition-colors">
-                <ExternalLink className="h-4 w-4 text-[#666]" />
-              </button>
-            ),
           },
         },
         {
@@ -71,19 +63,15 @@ export function DocumentationPage({ projectPath }: DocumentationPageProps) {
           icon: 'file' as const,
           description: 'Project overview and setup instructions',
           cells: {
+            status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#4a4a2d] text-[#d97706]">Pending</span>,
             type: <span className="text-[#a3a3a3]">Overview</span>,
-            status: (
+            validation: (
               <div className="flex items-center gap-1.5">
                 <AlertCircle className="h-4 w-4 text-[#d97706]" />
                 <span className="text-[#d97706]">Missing sections</span>
               </div>
             ),
             lastModified: <span className="text-[#666]">1 week ago</span>,
-            actions: (
-              <button className="p-1.5 hover:bg-[#3e3e3e] rounded transition-colors">
-                <ExternalLink className="h-4 w-4 text-[#666]" />
-              </button>
-            ),
           },
         },
         {
@@ -92,19 +80,15 @@ export function DocumentationPage({ projectPath }: DocumentationPageProps) {
           icon: 'file' as const,
           description: 'System architecture and design decisions',
           cells: {
+            status: <span className="px-2 py-0.5 text-xs rounded-md bg-[#2d4a2d] text-[#5a9a5a]">Active</span>,
             type: <span className="text-[#a3a3a3]">Architecture</span>,
-            status: (
+            validation: (
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="h-4 w-4 text-[#5a9a5a]" />
                 <span className="text-[#5a9a5a]">Valid</span>
               </div>
             ),
             lastModified: <span className="text-[#666]">3 days ago</span>,
-            actions: (
-              <button className="p-1.5 hover:bg-[#3e3e3e] rounded transition-colors">
-                <ExternalLink className="h-4 w-4 text-[#666]" />
-              </button>
-            ),
           },
         },
       ];
@@ -125,11 +109,11 @@ export function DocumentationPage({ projectPath }: DocumentationPageProps) {
   ];
 
   const columns: TableColumn[] = [
-    { id: 'name', label: 'Name', width: '40%' },
-    { id: 'type', label: 'Type', width: '15%' },
-    { id: 'status', label: 'Status', width: '20%' },
-    { id: 'lastModified', label: 'Modified', width: '15%' },
-    { id: 'actions', label: '', width: '10%' },
+    { id: 'name', label: 'Name', width: '25%' },
+    { id: 'status', label: 'Status', width: '10%' },
+    { id: 'type', label: 'Type', width: '12%' },
+    { id: 'validation', label: 'Validation', width: '18%' },
+    { id: 'lastModified', label: 'Modified', width: '12%' },
   ];
 
   const actions: ActionButton[] = [
@@ -151,6 +135,7 @@ export function DocumentationPage({ projectPath }: DocumentationPageProps) {
   return (
     <ContentPage
       title="Documentation"
+      titleIcon={<FileText className="h-5 w-5 text-[#888]" />}
       description="Project documents that define requirements, architecture, and AI agent protocols."
       tabs={tabs}
       activeTab={activeTab}

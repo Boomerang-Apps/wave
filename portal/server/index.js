@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
+import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { validateInfrastructure } from './validate-infrastructure.js';
@@ -43,6 +44,16 @@ import {
   generateImprovementReport,
 } from './utils/foundation-analyzer.js';
 import { aiCodeReview, estimateReviewCost } from './utils/ai-code-review.js';
+import {
+  createFolder,
+  createFileFromTemplate,
+  generateEnvFile,
+  installDocker,
+  installSafetyScripts,
+  installRLM,
+  createMockupTemplate,
+  checkDockerAvailable,
+} from './utils/task-executor.js';
 import {
   generatePRD,
   validatePRD,
@@ -9521,6 +9532,1115 @@ app.post('/api/connections/vercel/verify', async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// FILE READING API
+// ═══════════════════════════════════════════════════════════════════════════════
+
+app.post('/api/read-file', async (req, res) => {
+  const { filePath } = req.body;
+
+  if (!filePath) {
+    return res.status(400).json({ error: 'filePath is required' });
+  }
+
+  // Security: Only allow reading certain file types
+  const allowedExtensions = ['.md', '.txt', '.json', '.yaml', '.yml', '.toml'];
+  const ext = path.extname(filePath).toLowerCase();
+
+  if (!allowedExtensions.includes(ext)) {
+    return res.status(403).json({ error: 'File type not allowed' });
+  }
+
+  // Security: Prevent directory traversal
+  const normalizedPath = path.normalize(filePath);
+  if (normalizedPath.includes('..')) {
+    return res.status(403).json({ error: 'Invalid path' });
+  }
+
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    res.json({ success: true, content, fileName: path.basename(filePath) });
+  } catch (err) {
+    res.status(404).json({ error: 'File not found', message: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TASK EXECUTION ENDPOINTS
+// One-click actions from Checklist Results Page
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Create a folder in the project
+ * POST /api/tasks/create-folder
+ */
+app.post('/api/tasks/create-folder', async (req, res) => {
+  const { projectPath, folderPath } = req.body;
+
+  if (!projectPath || !folderPath) {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath and folderPath are required'
+    });
+  }
+
+  // Security: Prevent directory traversal
+  if (folderPath.includes('..')) {
+    return res.status(403).json({
+      success: false,
+      error: 'Invalid folder path'
+    });
+  }
+
+  const result = await createFolder(projectPath, folderPath);
+  res.json(result);
+});
+
+/**
+ * Create a file from template
+ * POST /api/tasks/create-file
+ */
+app.post('/api/tasks/create-file', async (req, res) => {
+  const { projectPath, template, customPath } = req.body;
+
+  if (!projectPath || !template) {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath and template are required'
+    });
+  }
+
+  // Security: Prevent directory traversal
+  if (customPath && customPath.includes('..')) {
+    return res.status(403).json({
+      success: false,
+      error: 'Invalid file path'
+    });
+  }
+
+  const result = await createFileFromTemplate(projectPath, template, customPath);
+  res.json(result);
+});
+
+/**
+ * Generate .env file based on tech stack
+ * POST /api/tasks/generate-env
+ */
+app.post('/api/tasks/generate-env', async (req, res) => {
+  const { projectPath, techStack } = req.body;
+
+  if (!projectPath) {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath is required'
+    });
+  }
+
+  const result = await generateEnvFile(projectPath, techStack || []);
+  res.json(result);
+});
+
+/**
+ * Install Docker configuration
+ * POST /api/tasks/install-docker
+ */
+app.post('/api/tasks/install-docker', async (req, res) => {
+  const { projectPath } = req.body;
+
+  if (!projectPath) {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath is required'
+    });
+  }
+
+  const result = await installDocker(projectPath);
+  res.json(result);
+});
+
+/**
+ * Install safety scripts (pre-commit hooks, validation)
+ * POST /api/tasks/install-safety-scripts
+ */
+app.post('/api/tasks/install-safety-scripts', async (req, res) => {
+  const { projectPath } = req.body;
+
+  if (!projectPath) {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath is required'
+    });
+  }
+
+  const result = await installSafetyScripts(projectPath);
+  res.json(result);
+});
+
+/**
+ * Install RLM (Rate Limiting & Moderation) configuration
+ * POST /api/tasks/install-rlm
+ */
+app.post('/api/tasks/install-rlm', async (req, res) => {
+  const { projectPath } = req.body;
+
+  if (!projectPath) {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath is required'
+    });
+  }
+
+  const result = await installRLM(projectPath);
+  res.json(result);
+});
+
+/**
+ * Create mockup template
+ * POST /api/tasks/create-mockup-template
+ */
+app.post('/api/tasks/create-mockup-template', async (req, res) => {
+  const { projectPath } = req.body;
+
+  if (!projectPath) {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath is required'
+    });
+  }
+
+  const result = await createMockupTemplate(projectPath);
+  res.json(result);
+});
+
+/**
+ * Check Docker availability
+ * GET /api/tasks/docker-status
+ */
+app.get('/api/tasks/docker-status', async (req, res) => {
+  const available = await checkDockerAvailable();
+  res.json({ available });
+});
+
+/**
+ * Execute multiple tasks (batch operation)
+ * POST /api/tasks/batch
+ */
+app.post('/api/tasks/batch', async (req, res) => {
+  const { projectPath, tasks } = req.body;
+
+  if (!projectPath || !tasks || !Array.isArray(tasks)) {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath and tasks array are required'
+    });
+  }
+
+  const results = [];
+
+  for (const task of tasks) {
+    let result;
+
+    switch (task.type) {
+      case 'create-folder':
+        result = await createFolder(projectPath, task.folderPath);
+        break;
+      case 'create-file':
+        result = await createFileFromTemplate(projectPath, task.template, task.customPath);
+        break;
+      case 'generate-env':
+        result = await generateEnvFile(projectPath, task.techStack || []);
+        break;
+      case 'install-docker':
+        result = await installDocker(projectPath);
+        break;
+      case 'install-safety-scripts':
+        result = await installSafetyScripts(projectPath);
+        break;
+      case 'install-rlm':
+        result = await installRLM(projectPath);
+        break;
+      case 'create-mockup-template':
+        result = await createMockupTemplate(projectPath);
+        break;
+      default:
+        result = { success: false, error: `Unknown task type: ${task.type}` };
+    }
+
+    results.push({
+      taskId: task.id,
+      type: task.type,
+      ...result
+    });
+  }
+
+  const allSuccessful = results.every(r => r.success);
+  res.json({
+    success: allSuccessful,
+    results,
+    summary: {
+      total: results.length,
+      successful: results.filter(r => r.success).length,
+      failed: results.filter(r => !r.success).length
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GATE 0 PROGRESS PERSISTENCE ENDPOINTS
+// Save and retrieve task/progress state from Supabase
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Get progress for a project
+ * GET /api/gate0/progress/:projectPath
+ */
+app.get('/api/gate0/progress/:projectPath(*)', async (req, res) => {
+  const { projectPath } = req.params;
+
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    return res.status(503).json({ error: 'Supabase not configured' });
+  }
+
+  try {
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/gate0_progress?project_path=eq.${encodeURIComponent(projectPath)}`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        }
+      }
+    );
+
+    const data = await response.json();
+    res.json({ success: true, progress: data[0] || null });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Get all tasks for a project
+ * GET /api/gate0/tasks/:projectPath
+ */
+app.get('/api/gate0/tasks/:projectPath(*)', async (req, res) => {
+  const { projectPath } = req.params;
+
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    return res.status(503).json({ error: 'Supabase not configured' });
+  }
+
+  try {
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/gate0_tasks?project_path=eq.${encodeURIComponent(projectPath)}&order=category,created_at`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        }
+      }
+    );
+
+    const data = await response.json();
+    res.json({ success: true, tasks: data });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Update task status
+ * POST /api/gate0/tasks/update
+ */
+app.post('/api/gate0/tasks/update', async (req, res) => {
+  const { projectPath, taskKey, category, status, executionResult, errorMessage } = req.body;
+
+  if (!projectPath || !taskKey || !category || !status) {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath, taskKey, category, and status are required'
+    });
+  }
+
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    return res.status(503).json({ error: 'Supabase not configured' });
+  }
+
+  try {
+    const updateData = {
+      status,
+      updated_at: new Date().toISOString()
+    };
+
+    if (status === 'completed') {
+      updateData.completed_at = new Date().toISOString();
+      updateData.completed_by = 'user';
+    }
+
+    if (executionResult) {
+      updateData.execution_result = executionResult;
+    }
+
+    if (errorMessage) {
+      updateData.error_message = errorMessage;
+    }
+
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/gate0_tasks?project_path=eq.${encodeURIComponent(projectPath)}&task_key=eq.${encodeURIComponent(taskKey)}&category=eq.${encodeURIComponent(category)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(updateData)
+      }
+    );
+
+    const data = await response.json();
+    res.json({ success: true, task: data[0] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Sync tasks from analysis report (upsert all tasks)
+ * POST /api/gate0/tasks/sync
+ */
+app.post('/api/gate0/tasks/sync', async (req, res) => {
+  const { projectPath, tasks } = req.body;
+
+  if (!projectPath || !tasks || !Array.isArray(tasks)) {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath and tasks array are required'
+    });
+  }
+
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    return res.status(503).json({ error: 'Supabase not configured' });
+  }
+
+  try {
+    // Upsert all tasks
+    const tasksWithPath = tasks.map(task => ({
+      project_path: projectPath,
+      category: task.category,
+      task_key: task.id,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      priority: task.priority,
+      action_type: task.action?.type,
+      action_endpoint: task.action?.endpoint,
+      action_params: task.action?.params || {}
+    }));
+
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/gate0_tasks`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates,return=representation'
+        },
+        body: JSON.stringify(tasksWithPath)
+      }
+    );
+
+    const data = await response.json();
+    res.json({ success: true, synced: data.length, tasks: data });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Run pre-flight checks
+ * POST /api/preflight/run
+ */
+app.post('/api/preflight/run', async (req, res) => {
+  const { projectPath } = req.body;
+
+  if (!projectPath) {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath is required'
+    });
+  }
+
+  const checks = [];
+
+  // Check 1: Git Connected
+  try {
+    await fs.promises.access(path.join(projectPath, '.git'));
+    checks.push({ id: 'git', name: 'Git Connected', status: 'passed', required: true });
+  } catch {
+    checks.push({ id: 'git', name: 'Git Connected', status: 'failed', required: true, message: 'No .git directory found' });
+  }
+
+  // Check 2: Environment Variables
+  try {
+    await fs.promises.access(path.join(projectPath, '.env'));
+    checks.push({ id: 'env', name: 'Environment Variables', status: 'passed', required: true });
+  } catch {
+    checks.push({ id: 'env', name: 'Environment Variables', status: 'failed', required: true, message: 'No .env file found' });
+  }
+
+  // Check 3: API Keys Valid (check if .env has required keys)
+  try {
+    const envContent = await fs.promises.readFile(path.join(projectPath, '.env'), 'utf-8');
+    const hasAnthropicKey = envContent.includes('ANTHROPIC_API_KEY') && !envContent.includes('ANTHROPIC_API_KEY=\n') && !envContent.includes('ANTHROPIC_API_KEY=your');
+    checks.push({
+      id: 'api_keys',
+      name: 'API Keys Valid',
+      status: hasAnthropicKey ? 'passed' : 'warning',
+      required: true,
+      message: hasAnthropicKey ? 'API key configured' : 'ANTHROPIC_API_KEY may not be set'
+    });
+  } catch {
+    checks.push({ id: 'api_keys', name: 'API Keys Valid', status: 'failed', required: true, message: 'Could not read .env' });
+  }
+
+  // Check 4: Dependencies Installed
+  try {
+    await fs.promises.access(path.join(projectPath, 'node_modules'));
+    checks.push({ id: 'dependencies', name: 'Dependencies Installed', status: 'passed', required: false });
+  } catch {
+    checks.push({ id: 'dependencies', name: 'Dependencies Installed', status: 'warning', required: false, message: 'Run npm install' });
+  }
+
+  // Check 5: Docker Available (system-level check)
+  try {
+    const { execSync } = require('child_process');
+    execSync('docker --version', { stdio: 'ignore' });
+    checks.push({ id: 'docker', name: 'Docker Available', status: 'passed', required: false });
+  } catch {
+    checks.push({ id: 'docker', name: 'Docker Available', status: 'warning', required: false, message: 'Docker not installed' });
+  }
+
+  // Check 6: Safety Scripts
+  try {
+    await fs.promises.access(path.join(projectPath, 'scripts', 'safety'));
+    checks.push({ id: 'safety', name: 'Safety Enabled', status: 'passed', required: false });
+  } catch {
+    checks.push({ id: 'safety', name: 'Safety Enabled', status: 'warning', required: false, message: 'Safety scripts not installed' });
+  }
+
+  // Calculate overall status
+  const allPassed = checks.every(c => c.status === 'passed' || (!c.required && c.status !== 'failed'));
+  const requiredFailed = checks.some(c => c.required && c.status === 'failed');
+
+  res.json({
+    success: true,
+    passed: allPassed,
+    requiredFailed,
+    checks
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// REAL-TIME PROGRESS STREAMING (SSE)
+// Stream progress updates to connected clients
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Store active SSE connections per project
+const progressConnections = new Map();
+
+/**
+ * Subscribe to progress updates for a project
+ * GET /api/gate0/progress/stream/:projectPath
+ */
+app.get('/api/gate0/progress/stream/:projectPath(*)', (req, res) => {
+  const { projectPath } = req.params;
+
+  // Set up SSE
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*'
+  });
+
+  // Send initial connection event
+  res.write(`data: ${JSON.stringify({ type: 'connected', projectPath })}\n\n`);
+
+  // Store connection
+  if (!progressConnections.has(projectPath)) {
+    progressConnections.set(projectPath, new Set());
+  }
+  progressConnections.get(projectPath).add(res);
+
+  // Keep-alive ping every 30 seconds
+  const keepAlive = setInterval(() => {
+    res.write(`data: ${JSON.stringify({ type: 'ping' })}\n\n`);
+  }, 30000);
+
+  // Cleanup on close
+  req.on('close', () => {
+    clearInterval(keepAlive);
+    const connections = progressConnections.get(projectPath);
+    if (connections) {
+      connections.delete(res);
+      if (connections.size === 0) {
+        progressConnections.delete(projectPath);
+      }
+    }
+  });
+});
+
+/**
+ * Broadcast progress update to all connected clients for a project
+ */
+function broadcastProgress(projectPath, data) {
+  const connections = progressConnections.get(projectPath);
+  if (connections) {
+    const message = `data: ${JSON.stringify(data)}\n\n`;
+    connections.forEach(res => {
+      try {
+        res.write(message);
+      } catch (e) {
+        // Connection closed, will be cleaned up
+      }
+    });
+  }
+}
+
+/**
+ * Update task and broadcast progress
+ * POST /api/gate0/tasks/update-live
+ */
+app.post('/api/gate0/tasks/update-live', async (req, res) => {
+  const { projectPath, taskKey, category, status, executionResult } = req.body;
+
+  if (!projectPath || !taskKey || !category || !status) {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath, taskKey, category, and status are required'
+    });
+  }
+
+  // Update in database (reuse existing logic)
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+  let dbResult = null;
+
+  if (supabaseUrl && supabaseKey) {
+    try {
+      const updateData = {
+        status,
+        updated_at: new Date().toISOString()
+      };
+
+      if (status === 'completed') {
+        updateData.completed_at = new Date().toISOString();
+      }
+
+      if (executionResult) {
+        updateData.execution_result = executionResult;
+      }
+
+      const response = await fetch(
+        `${supabaseUrl}/rest/v1/gate0_tasks?project_path=eq.${encodeURIComponent(projectPath)}&task_key=eq.${encodeURIComponent(taskKey)}&category=eq.${encodeURIComponent(category)}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(updateData)
+        }
+      );
+
+      dbResult = await response.json();
+    } catch (error) {
+      console.error('DB update failed:', error);
+    }
+  }
+
+  // Broadcast to connected clients
+  broadcastProgress(projectPath, {
+    type: 'task_update',
+    taskKey,
+    category,
+    status,
+    executionResult,
+    timestamp: new Date().toISOString()
+  });
+
+  res.json({ success: true, task: dbResult?.[0] || { taskKey, status } });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FILE UPLOAD ENDPOINTS
+// Handle document uploads for Gate 0 wizard
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Configure multer for file uploads
+const upload = multer({
+  dest: '/tmp/wave-uploads/',
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+    files: 10
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['.pdf', '.md', '.txt', '.json', '.zip', '.html'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedTypes.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`File type ${ext} not allowed`));
+    }
+  }
+});
+
+/**
+ * Upload documents for a project
+ * POST /api/gate0/upload
+ */
+app.post('/api/gate0/upload', upload.array('files', 10), async (req, res) => {
+  const { projectPath } = req.body;
+
+  if (!projectPath) {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath is required'
+    });
+  }
+
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({
+      success: false,
+      error: 'No files uploaded'
+    });
+  }
+
+  const results = [];
+
+  for (const file of req.files) {
+    try {
+      // Determine destination based on file type
+      const ext = path.extname(file.originalname).toLowerCase();
+      let destDir = 'docs';
+
+      if (ext === '.html') {
+        destDir = 'design_mockups';
+      }
+
+      const destPath = path.join(projectPath, destDir);
+
+      // Ensure directory exists
+      await fs.promises.mkdir(destPath, { recursive: true });
+
+      // Move file to destination
+      const finalPath = path.join(destPath, file.originalname);
+      await fs.promises.rename(file.path, finalPath);
+
+      results.push({
+        success: true,
+        originalName: file.originalname,
+        destination: path.relative(projectPath, finalPath),
+        size: file.size
+      });
+    } catch (error) {
+      results.push({
+        success: false,
+        originalName: file.originalname,
+        error: error.message
+      });
+
+      // Clean up temp file on error
+      try {
+        await fs.promises.unlink(file.path);
+      } catch {}
+    }
+  }
+
+  res.json({
+    success: results.every(r => r.success),
+    uploaded: results.filter(r => r.success).length,
+    failed: results.filter(r => !r.success).length,
+    results
+  });
+});
+
+/**
+ * Extract content from uploaded documents
+ * POST /api/gate0/extract
+ */
+app.post('/api/gate0/extract', async (req, res) => {
+  const { projectPath, files } = req.body;
+
+  if (!projectPath) {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath is required'
+    });
+  }
+
+  const extractions = [];
+
+  // If no specific files, scan docs directory
+  const filesToProcess = files || [];
+
+  if (filesToProcess.length === 0) {
+    try {
+      const docsDir = path.join(projectPath, 'docs');
+      const entries = await fs.promises.readdir(docsDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isFile()) {
+          filesToProcess.push(path.join('docs', entry.name));
+        }
+      }
+    } catch {
+      // docs directory doesn't exist
+    }
+  }
+
+  for (const filePath of filesToProcess) {
+    try {
+      const fullPath = path.join(projectPath, filePath);
+      const ext = path.extname(filePath).toLowerCase();
+      const content = await fs.promises.readFile(fullPath, 'utf-8');
+
+      let extracted = {
+        file: filePath,
+        type: ext.slice(1),
+        size: content.length
+      };
+
+      // Extract key information based on file type
+      if (ext === '.md' || ext === '.txt') {
+        // Extract headings
+        const headings = content.match(/^#+\s+.+$/gm) || [];
+        extracted.headings = headings.slice(0, 10);
+
+        // Detect document type
+        const lowerContent = content.toLowerCase();
+        if (lowerContent.includes('product requirement') || lowerContent.includes('prd')) {
+          extracted.documentType = 'PRD';
+        } else if (lowerContent.includes('architecture') || lowerContent.includes('system design')) {
+          extracted.documentType = 'Architecture';
+        } else if (lowerContent.includes('readme')) {
+          extracted.documentType = 'README';
+        } else {
+          extracted.documentType = 'Documentation';
+        }
+
+        // Extract word count
+        extracted.wordCount = content.split(/\s+/).length;
+      } else if (ext === '.json') {
+        try {
+          const json = JSON.parse(content);
+          extracted.keys = Object.keys(json).slice(0, 20);
+          extracted.documentType = 'JSON Data';
+        } catch {
+          extracted.documentType = 'Invalid JSON';
+        }
+      }
+
+      extractions.push(extracted);
+    } catch (error) {
+      extractions.push({
+        file: filePath,
+        error: error.message
+      });
+    }
+  }
+
+  res.json({
+    success: true,
+    count: extractions.length,
+    extractions
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LIVE EXECUTION VIEW ENDPOINTS
+// Real-time agent execution monitoring
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Store active execution sessions
+const executionSessions = new Map();
+
+/**
+ * Start a live execution session
+ * POST /api/execution/start
+ */
+app.post('/api/execution/start', (req, res) => {
+  const { projectPath, agentType, taskDescription } = req.body;
+
+  if (!projectPath || !agentType) {
+    return res.status(400).json({
+      success: false,
+      error: 'projectPath and agentType are required'
+    });
+  }
+
+  const sessionId = `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+  const session = {
+    id: sessionId,
+    projectPath,
+    agentType,
+    taskDescription,
+    status: 'running',
+    startedAt: new Date().toISOString(),
+    steps: [],
+    currentStep: null,
+    output: [],
+    approvalPending: null
+  };
+
+  executionSessions.set(sessionId, session);
+
+  res.json({
+    success: true,
+    sessionId,
+    session
+  });
+});
+
+/**
+ * Stream execution updates
+ * GET /api/execution/stream/:sessionId
+ */
+app.get('/api/execution/stream/:sessionId', (req, res) => {
+  const { sessionId } = req.params;
+  const session = executionSessions.get(sessionId);
+
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found' });
+  }
+
+  // Set up SSE
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*'
+  });
+
+  // Send current state
+  res.write(`data: ${JSON.stringify({ type: 'state', session })}\n\n`);
+
+  // Store connection for updates
+  if (!session.connections) {
+    session.connections = new Set();
+  }
+  session.connections.add(res);
+
+  // Keep-alive
+  const keepAlive = setInterval(() => {
+    res.write(`data: ${JSON.stringify({ type: 'ping' })}\n\n`);
+  }, 30000);
+
+  req.on('close', () => {
+    clearInterval(keepAlive);
+    session.connections?.delete(res);
+  });
+});
+
+/**
+ * Push execution update
+ * POST /api/execution/update/:sessionId
+ */
+app.post('/api/execution/update/:sessionId', (req, res) => {
+  const { sessionId } = req.params;
+  const { type, data } = req.body;
+  const session = executionSessions.get(sessionId);
+
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found' });
+  }
+
+  // Update session based on event type
+  switch (type) {
+    case 'step_start':
+      session.currentStep = data.step;
+      session.steps.push({ ...data.step, startedAt: new Date().toISOString() });
+      break;
+    case 'step_complete':
+      if (session.steps.length > 0) {
+        session.steps[session.steps.length - 1].completedAt = new Date().toISOString();
+        session.steps[session.steps.length - 1].result = data.result;
+      }
+      session.currentStep = null;
+      break;
+    case 'output':
+      session.output.push({
+        timestamp: new Date().toISOString(),
+        content: data.content,
+        level: data.level || 'info'
+      });
+      break;
+    case 'approval_required':
+      session.approvalPending = data;
+      session.status = 'waiting_approval';
+      break;
+    case 'complete':
+      session.status = 'completed';
+      session.completedAt = new Date().toISOString();
+      session.result = data.result;
+      break;
+    case 'error':
+      session.status = 'error';
+      session.error = data.error;
+      break;
+    case 'paused':
+      session.status = 'paused';
+      break;
+    case 'resumed':
+      session.status = 'running';
+      break;
+  }
+
+  // Broadcast to connected clients
+  const message = `data: ${JSON.stringify({ type, data, timestamp: new Date().toISOString() })}\n\n`;
+  session.connections?.forEach(conn => {
+    try {
+      conn.write(message);
+    } catch {}
+  });
+
+  res.json({ success: true });
+});
+
+/**
+ * Control execution (pause/resume/stop)
+ * POST /api/execution/control/:sessionId
+ */
+app.post('/api/execution/control/:sessionId', (req, res) => {
+  const { sessionId } = req.params;
+  const { action } = req.body;
+  const session = executionSessions.get(sessionId);
+
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found' });
+  }
+
+  switch (action) {
+    case 'pause':
+      session.status = 'paused';
+      break;
+    case 'resume':
+      session.status = 'running';
+      break;
+    case 'stop':
+      session.status = 'stopped';
+      session.stoppedAt = new Date().toISOString();
+      break;
+    default:
+      return res.status(400).json({ error: 'Invalid action' });
+  }
+
+  // Broadcast status change
+  const message = `data: ${JSON.stringify({ type: 'status_change', status: session.status })}\n\n`;
+  session.connections?.forEach(conn => {
+    try {
+      conn.write(message);
+    } catch {}
+  });
+
+  res.json({ success: true, status: session.status });
+});
+
+/**
+ * Respond to approval request
+ * POST /api/execution/approve/:sessionId
+ */
+app.post('/api/execution/approve/:sessionId', (req, res) => {
+  const { sessionId } = req.params;
+  const { approved, response } = req.body;
+  const session = executionSessions.get(sessionId);
+
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found' });
+  }
+
+  if (!session.approvalPending) {
+    return res.status(400).json({ error: 'No approval pending' });
+  }
+
+  const approvalResult = {
+    approved,
+    response,
+    respondedAt: new Date().toISOString()
+  };
+
+  session.approvalPending = null;
+  session.status = 'running';
+
+  // Broadcast approval response
+  const message = `data: ${JSON.stringify({ type: 'approval_response', ...approvalResult })}\n\n`;
+  session.connections?.forEach(conn => {
+    try {
+      conn.write(message);
+    } catch {}
+  });
+
+  res.json({ success: true, ...approvalResult });
+});
+
+/**
+ * Get execution session state
+ * GET /api/execution/:sessionId
+ */
+app.get('/api/execution/:sessionId', (req, res) => {
+  const { sessionId } = req.params;
+  const session = executionSessions.get(sessionId);
+
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found' });
+  }
+
+  // Return session without connections
+  const { connections, ...sessionData } = session;
+  res.json({ success: true, session: sessionData });
+});
+
+/**
+ * List active execution sessions for a project
+ * GET /api/execution/list/:projectPath
+ */
+app.get('/api/execution/list/:projectPath(*)', (req, res) => {
+  const { projectPath } = req.params;
+
+  const sessions = [];
+  executionSessions.forEach((session, id) => {
+    if (session.projectPath === projectPath) {
+      const { connections, ...sessionData } = session;
+      sessions.push(sessionData);
+    }
+  });
+
+  res.json({ success: true, sessions });
+});
+
+// Story creation routes (WAVE v2 New Story form)
+import storyRoutes from './routes/story-routes.js';
+app.use('/api/story', storyRoutes);
+
 // Start server
 app.listen(PORT, () => {
   console.log(`\n🚀 WAVE Portal Analysis Server running on http://localhost:${PORT}`);
@@ -9530,5 +10650,6 @@ app.listen(PORT, () => {
   console.log(`   POST /api/validate-mockups - Validate HTML mockups`);
   console.log(`   POST /api/update-project-path - Update project folder path`);
   console.log(`   POST /api/connections/detect - Detect all connections`);
+  console.log(`   POST /api/read-file - Read file contents`);
   console.log(`   GET /api/health - Health check\n`);
 });

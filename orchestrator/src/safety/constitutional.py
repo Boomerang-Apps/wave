@@ -60,6 +60,96 @@ class SafetyPrinciple:
     patterns: List[str] = field(default_factory=list)  # Regex patterns to detect
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# SERVER-SIDE WHITELIST (Fix for process.env false positives)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# File patterns that are server-side only (process.env is safe here)
+SERVER_SIDE_FILE_PATTERNS = [
+    r"app/api/.*\.ts$",           # Next.js App Router API routes
+    r"app/api/.*\.js$",           # Next.js App Router API routes (JS)
+    r"pages/api/.*\.ts$",         # Next.js Pages API routes
+    r"pages/api/.*\.js$",         # Next.js Pages API routes (JS)
+    r"server/.*\.ts$",            # Server modules
+    r"server/.*\.js$",            # Server modules (JS)
+    r"lib/server/.*\.ts$",        # Server-only lib
+    r"scripts/.*\.ts$",           # Build/deploy scripts
+    r"scripts/.*\.js$",           # Build/deploy scripts (JS)
+    r"\.server\.ts$",             # .server.ts convention
+    r"\.server\.js$",             # .server.js convention
+    r"route\.ts$",                # Next.js route handlers
+    r"route\.js$",                # Next.js route handlers (JS)
+]
+
+# Patterns that are safe in server-side context
+SERVER_SIDE_SAFE_PATTERNS = [
+    r"process\.env",              # Environment variables
+    r"process\.env\.\w+",         # Named env vars
+]
+
+
+def is_server_side_file(file_path: str) -> bool:
+    """
+    Check if a file path indicates server-side code.
+
+    Args:
+        file_path: Path to the file being checked
+
+    Returns:
+        True if file is server-side only, False otherwise
+    """
+    if not file_path:
+        return False
+
+    # Normalize path separators
+    normalized = file_path.replace("\\", "/")
+
+    for pattern in SERVER_SIDE_FILE_PATTERNS:
+        if re.search(pattern, normalized):
+            return True
+
+    return False
+
+
+# Content patterns that indicate server-side code
+SERVER_SIDE_CONTENT_PATTERNS = [
+    r"// app/api/",                    # File path comment
+    r"// pages/api/",                  # File path comment
+    r"// route\.ts",                   # Route file indicator
+    r"export\s+(async\s+)?function\s+(GET|POST|PUT|DELETE|PATCH)",  # Next.js API handlers
+    r"NextRequest",                    # Next.js server request
+    r"NextResponse",                   # Next.js server response
+    r"S3Client",                       # AWS SDK (server only)
+    r"new\s+S3Client",                 # S3 client instantiation
+    r"@aws-sdk",                       # AWS SDK import
+    r"createClient.*supabase.*service_role",  # Supabase admin client
+    r"app/api/.*route\.ts",            # API route path in content
+]
+
+
+def is_server_side_content(content: str) -> bool:
+    """
+    Check if code content indicates server-side execution.
+
+    This is used when file_path is not available to detect
+    server-side code patterns in the content itself.
+
+    Args:
+        content: The code content to check
+
+    Returns:
+        True if content appears to be server-side code
+    """
+    if not content:
+        return False
+
+    for pattern in SERVER_SIDE_CONTENT_PATTERNS:
+        if re.search(pattern, content, re.IGNORECASE):
+            return True
+
+    return False
+
+
 # Core WAVE safety principles
 WAVE_PRINCIPLES = [
     SafetyPrinciple(
@@ -267,12 +357,17 @@ class ConstitutionalChecker:
             self._client = MultiLLMClient()
         return self._client
 
-    def check_patterns(self, content: str) -> List[SafetyViolation]:
+    def check_patterns(
+        self,
+        content: str,
+        file_path: Optional[str] = None
+    ) -> List[SafetyViolation]:
         """
         Check content against safety patterns.
 
         Args:
             content: Text content to check
+            file_path: Optional file path for context-aware checking
 
         Returns:
             List of violations found
@@ -280,8 +375,28 @@ class ConstitutionalChecker:
         violations = []
         content_lower = content.lower()
 
+        # Check if this is server-side code (by file path OR content patterns)
+        is_server_side = (
+            is_server_side_file(file_path) if file_path else False
+        ) or is_server_side_content(content)
+
+        # Patterns to skip for server-side files (P002 security patterns)
+        server_side_skip_patterns = {
+            r"API_KEY",
+            r"SECRET",
+            r"PASSWORD",
+            r"PRIVATE_KEY",
+            r"AWS_ACCESS",
+            r"credentials",
+            r"token\s*=",
+        }
+
         for principle in self.principles:
             for pattern in principle.patterns:
+                # Skip certain patterns for server-side code
+                if is_server_side and pattern in server_side_skip_patterns:
+                    continue
+
                 if re.search(pattern, content, re.IGNORECASE):
                     violations.append(SafetyViolation(
                         principle_id=principle.id,
@@ -421,19 +536,25 @@ REASON: Brief explanation
             return EscalationLevel.WARNING
         return EscalationLevel.NONE
 
-    def check(self, content: str, context: str = "") -> SafetyResult:
+    def check(
+        self,
+        content: str,
+        context: str = "",
+        file_path: Optional[str] = None
+    ) -> SafetyResult:
         """
         Full safety check combining pattern matching and LLM analysis.
 
         Args:
             content: Content to check
             context: Additional context
+            file_path: Optional file path for context-aware checking
 
         Returns:
             Complete SafetyResult
         """
-        # First, quick pattern check
-        pattern_violations = self.check_patterns(content)
+        # First, quick pattern check (with file context)
+        pattern_violations = self.check_patterns(content, file_path)
 
         # If critical violations found by patterns, no need for LLM
         if any(v.severity >= 1.0 for v in pattern_violations):
@@ -477,7 +598,8 @@ REASON: Brief explanation
 def check_action_safety(
     action: str,
     context: str = "",
-    use_grok: bool = True
+    use_grok: bool = True,
+    file_path: Optional[str] = None
 ) -> SafetyResult:
     """
     Quick helper to check an action's safety.
@@ -486,12 +608,13 @@ def check_action_safety(
         action: The action/command to check
         context: Additional context
         use_grok: Whether to use Grok for analysis
+        file_path: Optional file path for context-aware checking
 
     Returns:
         SafetyResult
     """
     checker = ConstitutionalChecker(use_grok=use_grok)
-    return checker.check(action, context)
+    return checker.check(action, context, file_path)
 
 
 def create_constitutional_node(
@@ -512,6 +635,17 @@ def create_constitutional_node(
         """Check state for safety violations."""
         # Get content to check
         content_to_check = []
+
+        # Extract file path from state for context-aware checking
+        file_path = None
+        files_modified = state.get("files_modified", [])
+        current_file = state.get("current_file")
+
+        if current_file:
+            file_path = current_file
+        elif files_modified and len(files_modified) > 0:
+            # Use the most recently modified file
+            file_path = files_modified[-1] if isinstance(files_modified[-1], str) else None
 
         if state.get("code"):
             content_to_check.append(f"Code:\n{state['code']}")
@@ -538,11 +672,11 @@ def create_constitutional_node(
                 }
             }
 
-        # Check all content
+        # Check all content (with file context for server-side awareness)
         full_content = "\n\n".join(content_to_check)
         context = f"Story: {state.get('story_id', 'unknown')}"
 
-        result = _checker.check(full_content, context)
+        result = _checker.check(full_content, context, file_path)
 
         # Build safety state update
         violations = [
@@ -620,4 +754,10 @@ __all__ = [
     "AMBIGUOUS_KEYWORDS",
     "CONFIDENCE_THRESHOLD",
     "should_escalate_p006",
+    # Server-side whitelist (Fix for process.env false positives)
+    "SERVER_SIDE_FILE_PATTERNS",
+    "SERVER_SIDE_SAFE_PATTERNS",
+    "SERVER_SIDE_CONTENT_PATTERNS",
+    "is_server_side_file",
+    "is_server_side_content",
 ]

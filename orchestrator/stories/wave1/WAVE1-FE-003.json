@@ -1,0 +1,64 @@
+{
+  "id": "WAVE1-FE-003",
+  "title": "Create Navigation Bar Component with Routing",
+  "domain": "layout",
+  "priority": "high",
+  "wave": 1,
+  "objective": {
+    "as_a": "user of the Footprint application",
+    "i_want": "to navigate between different pages using a consistent navigation bar",
+    "so_that": "I can easily access dashboard, calculator, and profile sections"
+  },
+  "acceptance_criteria": [
+    {
+      "id": "AC-001",
+      "description": "NavBar displays links to Home, Dashboard, Calculator, and Profile pages"
+    },
+    {
+      "id": "AC-002",
+      "description": "NavBar highlights the currently active page"
+    },
+    {
+      "id": "AC-003",
+      "description": "NavBar is responsive with hamburger menu on mobile"
+    },
+    {
+      "id": "AC-004",
+      "description": "NavBar includes the Footprint logo and brand name"
+    },
+    {
+      "id": "AC-005",
+      "description": "NavBar uses React Router for client-side navigation"
+    }
+  ],
+  "files": {
+    "create": [
+      "src/components/NavBar.tsx",
+      "src/components/MobileMenu.tsx"
+    ],
+    "modify": [
+      "src/App.tsx"
+    ],
+    "forbidden": [
+      ".env",
+      ".env.local",
+      "package-lock.json",
+      "node_modules/**"
+    ]
+  },
+  "safety": {
+    "stop_conditions": [
+      "Never hardcode URLs that should be environment-based",
+      "Never commit directly to main branch",
+      "Stop if constitutional AI score drops below 0.9",
+      "Stop if accessibility requirements are not met"
+    ],
+    "escalation_triggers": [
+      "Routing structure changes",
+      "Layout component modifications"
+    ]
+  },
+  "estimated_tokens": 12000,
+  "dependencies": [],
+  "agent_assignment": "fe-dev-2"
+}

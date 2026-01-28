@@ -1,0 +1,27 @@
+{
+  "project": "WAVE V2 Orchestrator",
+  "version": "2.0.0",
+  "preflight": {
+    "required": true,
+    "script": "orchestrator/scripts/preflight_lock.py",
+    "commands": [
+      "python3 scripts/preflight_lock.py --audit",
+      "python3 scripts/preflight_lock.py --check"
+    ]
+  },
+  "architecture": {
+    "guide": "orchestrator/docs/WAVE-V2-IMPLEMENTATION-GUIDE.md",
+    "lock_file": "orchestrator/.claude/PREFLIGHT.lock"
+  },
+  "safety": {
+    "principles": "orchestrator/src/safety/constitutional.py",
+    "emergency_stop": "orchestrator/src/safety/emergency_stop.py",
+    "domains": ["auth", "payments", "profile", "api", "ui", "data"]
+  },
+  "rules": [
+    "ALWAYS run preflight validation before any implementation",
+    "NEVER assume components are missing without grep verification",
+    "ALWAYS map checklist terms to codebase naming conventions",
+    "NEVER create duplicate implementations"
+  ]
+}

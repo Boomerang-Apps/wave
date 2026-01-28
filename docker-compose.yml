@@ -29,6 +29,7 @@ services:
       - WAVE_NUMBER=${WAVE_NUMBER:-1}
       - PROJECT_PATH=/project
       - WAVE_PATH=/wave-framework
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
     volumes:
       - ${PROJECT_PATH:-.}:/project
       - ./:/wave-framework:ro
@@ -55,6 +56,10 @@ services:
       - PROJECT_PATH=/project
       - WAVE_BUDGET=${WAVE_BUDGET:-2.00}
       - MAX_RETRIES=${MAX_RETRIES:-3}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - LANGSMITH_TRACING=${LANGSMITH_TRACING:-true}
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
     volumes:
       - ${PROJECT_PATH:-.}:/project
       - ./:/wave-framework:ro

@@ -1,0 +1,39 @@
+WAVE System Status Report
+Generated: 2026-01-27T17:07:30+02:00
+═══════════════════════════════════════════════════════════════════════════
+
+CONTAINER STATUS
+────────────────
+NAMES               STATUS                         PORTS
+wave-fe-agent-1     Up 59 minutes (healthy)        
+wave-be-agent-1     Up 59 minutes (healthy)        
+wave-qa-agent       Up 59 minutes (healthy)        
+wave-be-agent-2     Up 59 minutes (healthy)        
+wave-fe-agent-2     Up 59 minutes (healthy)        
+wave-orchestrator   Up About an hour (unhealthy)   0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp
+wave-redis          Up About an hour (healthy)     0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
+wave-dozzle         Up About an hour               0.0.0.0:9090->8080/tcp, [::]:9090->8080/tcp
+
+RESOURCE USAGE
+──────────────
+NAME                CPU %     MEM USAGE / LIMIT
+wave-fe-agent-1     0.35%     71.21MiB / 2GiB
+wave-be-agent-1     0.37%     68.29MiB / 2GiB
+wave-qa-agent       0.30%     69.89MiB / 2GiB
+wave-be-agent-2     0.00%     64.21MiB / 2GiB
+wave-fe-agent-2     0.36%     67.79MiB / 2GiB
+wave-orchestrator   0.61%     176.1MiB / 7.653GiB
+wave-redis          1.29%     10.91MiB / 7.653GiB
+wave-dozzle         0.25%     22.17MiB / 7.653GiB
+
+NETWORK
+───────
+wave-be-agent-1: 192.168.96.8/20
+wave-dozzle: 192.168.96.3/20
+wave-orchestrator: 192.168.96.4/20
+wave-fe-agent-1: 192.168.96.6/20
+wave-redis: 192.168.96.2/20
+wave-be-agent-2: 192.168.96.9/20
+wave-fe-agent-2: 192.168.96.5/20
+wave-qa-agent: 192.168.96.7/20
+

@@ -34,6 +34,15 @@ except ImportError:
     from graph import Phase, Gate, create_initial_state, compile_wave_graph
     from persistence import create_checkpointer, generate_thread_id
 
+# Import notification functions
+try:
+    from notifications import notify_wave_start, notify_wave_summary
+    NOTIFICATIONS_AVAILABLE = True
+except ImportError:
+    NOTIFICATIONS_AVAILABLE = False
+    def notify_wave_start(*args, **kwargs): return False
+    def notify_wave_summary(*args, **kwargs): return False
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # REQUEST/RESPONSE MODELS
@@ -66,6 +75,14 @@ if FASTAPI_AVAILABLE:
         is_complete: bool
         error: Optional[str] = None
         updated_at: str
+
+    class ResetRequest(BaseModel):
+        """Request to reset a workflow."""
+        clear_tasks: bool = True
+        clear_results: bool = True
+        reset_to_gate: Optional[int] = None
+        clear_state: bool = False
+        reason: Optional[str] = None
 else:
     # Fallback dataclasses
     @dataclass
@@ -94,6 +111,14 @@ else:
         is_complete: bool
         error: Optional[str] = None
         updated_at: str = ""
+
+    @dataclass
+    class ResetRequest:
+        clear_tasks: bool = True
+        clear_results: bool = True
+        reset_to_gate: Optional[int] = None
+        clear_state: bool = False
+        reason: Optional[str] = None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -148,6 +173,32 @@ class WorkflowManager:
                 "status": "pending"
             }
 
+            # Send Wave Start notification
+            if NOTIFICATIONS_AVAILABLE:
+                # Get LLM models from environment
+                agents_config = {
+                    "pm": os.getenv("ANTHROPIC_MODEL_PM", "claude-opus-4-20250514"),
+                    "fe": os.getenv("ANTHROPIC_MODEL_DEV", "claude-sonnet-4-20250514"),
+                    "be": os.getenv("ANTHROPIC_MODEL_DEV", "claude-sonnet-4-20250514"),
+                    "qa": os.getenv("ANTHROPIC_MODEL_QA", "claude-3-5-haiku-20241022"),
+                }
+
+                # Parse acceptance criteria from requirements (simple extraction)
+                ac_list = []
+                if "AC-" in request.requirements:
+                    import re
+                    ac_matches = re.findall(r'(AC-\d+[^.]*\.)', request.requirements)
+                    ac_list = [{"description": ac.strip()} for ac in ac_matches]
+
+                notify_wave_start(
+                    story_id=request.story_id,
+                    title=request.requirements[:100],
+                    wave_number=request.wave_number,
+                    acceptance_criteria=ac_list,
+                    files_to_generate=[],  # Will be determined by PM
+                    agents_config=agents_config
+                )
+
             return WorkflowResponse(
                 success=True,
                 thread_id=thread_id,
@@ -191,6 +242,66 @@ class WorkflowManager:
             workflow["status"] = "complete" if result["phase"] in [
                 Phase.DONE.value, Phase.FAILED.value
             ] else "running"
+
+            # Send Wave Summary notification if complete
+            if NOTIFICATIONS_AVAILABLE and workflow["status"] == "complete":
+                # Calculate duration
+                started_at = datetime.fromisoformat(workflow["started_at"])
+                duration_s = (datetime.now() - started_at).total_seconds()
+
+                # Determine status
+                status = "success" if result["phase"] == Phase.DONE.value else "failed"
+
+                # Build agent results from state
+                agent_results = {}
+                if result.get("pm_result"):
+                    agent_results["pm"] = {
+                        "status": "completed",
+                        "tasks_planned": len(result.get("tasks", [])),
+                        "llm_model": os.getenv("ANTHROPIC_MODEL_PM", ""),
+                        "duration_s": result.get("pm_result", {}).get("duration_s", 0)
+                    }
+                if result.get("fe_result"):
+                    agent_results["fe"] = {
+                        "status": result.get("fe_result", {}).get("status", "completed"),
+                        "files_count": len(result.get("fe_result", {}).get("files_modified", [])),
+                        "llm_model": os.getenv("ANTHROPIC_MODEL_DEV", ""),
+                        "duration_s": result.get("fe_result", {}).get("duration_s", 0)
+                    }
+                if result.get("be_result"):
+                    agent_results["be"] = {
+                        "status": result.get("be_result", {}).get("status", "completed"),
+                        "files_count": len(result.get("be_result", {}).get("files_modified", [])),
+                        "llm_model": os.getenv("ANTHROPIC_MODEL_DEV", ""),
+                        "duration_s": result.get("be_result", {}).get("duration_s", 0)
+                    }
+                if result.get("qa_result"):
+                    agent_results["qa"] = {
+                        "status": result.get("qa_result", {}).get("status", "completed"),
+                        "qa_score": result.get("qa_result", {}).get("score", 0),
+                        "llm_model": os.getenv("ANTHROPIC_MODEL_QA", ""),
+                        "duration_s": result.get("qa_result", {}).get("duration_s", 0)
+                    }
+
+                # Calculate totals
+                total_files = (
+                    len(result.get("fe_result", {}).get("files_modified", [])) +
+                    len(result.get("be_result", {}).get("files_modified", []))
+                )
+
+                notify_wave_summary(
+                    story_id=result.get("story_id", ""),
+                    title=result.get("requirements", "")[:100],
+                    status=status,
+                    gate=result.get("gate", 0),
+                    duration_s=duration_s,
+                    agent_results=agent_results,
+                    total_tokens=result.get("total_tokens", 0),
+                    total_cost=result.get("total_cost", 0.0),
+                    safety_score=result.get("safety_score", 1.0),
+                    files_generated=total_files,
+                    error=result.get("error")
+                )
 
             return WorkflowResponse(
                 success=True,
@@ -275,6 +386,83 @@ class WorkflowManager:
             self.get_status(tid)
             for tid in self._active_workflows.keys()
         ]
+
+    def reset_workflow(
+        self,
+        thread_id: str,
+        clear_tasks: bool = True,
+        clear_results: bool = True,
+        reset_to_gate: Optional[int] = None,
+        clear_state: bool = False,
+        reason: Optional[str] = None
+    ) -> WorkflowResponse:
+        """
+        Reset a workflow to allow retry.
+
+        Clears Redis state and optionally resets to a specific gate.
+
+        Args:
+            thread_id: Workflow thread ID
+            clear_tasks: Clear pending tasks from Redis
+            clear_results: Clear stored results from Redis
+            reset_to_gate: Reset workflow to specific gate
+            clear_state: Remove workflow from active tracking
+            reason: Audit trail reason
+
+        Returns:
+            WorkflowResponse with cleanup summary
+        """
+        if thread_id not in self._active_workflows:
+            return WorkflowResponse(
+                success=False,
+                thread_id=thread_id,
+                message=f"Workflow {thread_id} not found"
+            )
+
+        cleared_summary = {"tasks": 0, "results": 0, "queues": []}
+
+        try:
+            # Clear Redis state if task queue available
+            if clear_tasks or clear_results:
+                try:
+                    from src.task_queue import get_task_queue
+                    queue = get_task_queue()
+                    cleared_summary = queue.clear_workflow_tasks(thread_id)
+                except ImportError:
+                    pass  # Task queue not available
+
+            # Reset to specific gate
+            if reset_to_gate is not None:
+                workflow = self._active_workflows[thread_id]
+                workflow["state"]["gate"] = reset_to_gate
+                workflow["state"]["phase"] = Phase.PLANNING.value if reset_to_gate == 0 else workflow["state"]["phase"]
+                workflow["status"] = "pending"
+
+            # Clear state entirely
+            if clear_state:
+                del self._active_workflows[thread_id]
+
+            # Log reset action
+            if reason:
+                print(f"[WorkflowManager] Reset {thread_id}: {reason}")
+
+            return WorkflowResponse(
+                success=True,
+                thread_id=thread_id,
+                message=f"Workflow {thread_id} reset successfully",
+                data={
+                    "cleared": cleared_summary,
+                    "reset_to_gate": reset_to_gate,
+                    "reason": reason
+                }
+            )
+
+        except Exception as e:
+            return WorkflowResponse(
+                success=False,
+                thread_id=thread_id,
+                message=f"Reset failed: {str(e)}"
+            )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -366,6 +554,34 @@ def create_app() -> "FastAPI":
         manager = get_manager()
         return manager.list_workflows()
 
+    @app.post("/workflow/{thread_id}/reset", response_model=WorkflowResponse)
+    async def reset_workflow(thread_id: str, request: ResetRequest = None):
+        """
+        Reset a workflow to allow retry.
+
+        Clears Redis state and optionally resets to a specific gate.
+        Use this when a workflow is stuck or needs to be retried.
+        """
+        manager = get_manager()
+
+        # Handle optional request body
+        if request is None:
+            request = ResetRequest()
+
+        result = manager.reset_workflow(
+            thread_id=thread_id,
+            clear_tasks=request.clear_tasks,
+            clear_results=request.clear_results,
+            reset_to_gate=request.reset_to_gate,
+            clear_state=request.clear_state,
+            reason=request.reason
+        )
+
+        if not result.success:
+            raise HTTPException(status_code=404, detail=result.message)
+
+        return result
+
     return app
 
 
@@ -379,6 +595,7 @@ __all__ = [
     "WorkflowResponse",
     "WorkflowStatus",
     "WorkflowManager",
+    "ResetRequest",
     "get_manager",
     "FASTAPI_AVAILABLE",
 ]

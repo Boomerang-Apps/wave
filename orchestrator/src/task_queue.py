@@ -387,6 +387,53 @@ class TaskQueue:
         """Clear all tasks from a queue (use carefully)"""
         self.redis.delete(queue.value)
 
+    def clear_workflow_tasks(self, workflow_id: str) -> Dict[str, Any]:
+        """
+        Clear all Redis keys for a workflow.
+
+        Removes:
+        - Task data keys matching workflow_id
+        - Result keys matching workflow_id
+        - Task IDs from domain queues
+
+        Args:
+            workflow_id: Workflow/thread ID to clear
+
+        Returns:
+            Summary of cleared items
+        """
+        cleared = {"tasks": 0, "results": 0, "queues": []}
+
+        try:
+            # Find and delete task keys
+            task_pattern = f"wave:task:*{workflow_id}*"
+            for key in self.redis.scan_iter(task_pattern):
+                self.redis.delete(key)
+                cleared["tasks"] += 1
+
+            # Find and delete result keys
+            result_pattern = f"wave:result:*{workflow_id}*"
+            for key in self.redis.scan_iter(result_pattern):
+                self.redis.delete(key)
+                cleared["results"] += 1
+
+            # Remove from domain queues
+            for queue in DomainQueue:
+                if queue == DomainQueue.RESULTS:
+                    continue
+                # Get all items in queue
+                queue_items = self.redis.lrange(queue.value, 0, -1)
+                for item in queue_items:
+                    if workflow_id in item:
+                        removed = self.redis.lrem(queue.value, 0, item)
+                        if removed > 0:
+                            cleared["queues"].append(queue.name)
+
+        except Exception as e:
+            print(f"[TaskQueue] Clear workflow tasks error: {e}")
+
+        return cleared
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # HELPER FUNCTIONS

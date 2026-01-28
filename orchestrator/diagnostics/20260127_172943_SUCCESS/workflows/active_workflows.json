@@ -1,0 +1,22 @@
+[
+    {
+        "thread_id": "wave1-DEMO-001-20260127171101",
+        "story_id": "DEMO-001",
+        "phase": "develop",
+        "gate": 3,
+        "progress": 37.5,
+        "is_complete": false,
+        "error": "Task timed out after 120s",
+        "updated_at": "2026-01-27T17:21:17.381869"
+    },
+    {
+        "thread_id": "wave1-SLACK-TEST-20260127172339",
+        "story_id": "SLACK-TEST",
+        "phase": "develop",
+        "gate": 3,
+        "progress": 37.5,
+        "is_complete": false,
+        "error": "Task timed out after 120s",
+        "updated_at": "2026-01-27T17:31:50.748303"
+    }
+]

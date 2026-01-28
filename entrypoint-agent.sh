@@ -170,7 +170,7 @@ run_merge_watcher() {
 
     # Run the merge watcher script if it exists
     if [[ -f "/scripts/merge-watcher-v12.sh" ]]; then
-        exec /scripts/merge-watcher-v12.sh
+        exec /scripts/merge-watcher-v12.sh --project "$PROJECT_PATH" --wave "$WAVE_NUMBER"
     else
         log_warn "Merge watcher script not found, entering monitoring loop"
         while true; do
@@ -195,7 +195,7 @@ run_orchestrator() {
 
     # Run the orchestrator script if it exists
     if [[ -f "/scripts/wave-orchestrator.sh" ]]; then
-        exec /scripts/wave-orchestrator.sh
+        exec /scripts/wave-orchestrator.sh --project "$PROJECT_PATH"
     else
         log_warn "Orchestrator script not found, entering management loop"
         while true; do

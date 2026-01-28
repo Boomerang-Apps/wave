@@ -1,4 +1,7 @@
 # WAVE v2 Safety Module
+#
+# Critical safety infrastructure for autonomous agent execution.
+# All safety gates must pass before enabling --dangerously-skip-permissions.
 
 from .constitutional import (
     ConstitutionalChecker,
@@ -8,6 +11,7 @@ from .constitutional import (
     WAVE_PRINCIPLES,
     check_action_safety,
     create_constitutional_node,
+    ESTOP,
 )
 
 from .budget import (
@@ -16,6 +20,16 @@ from .budget import (
     BudgetResult,
     check_budget,
     create_budget_node,
+)
+
+from .emergency_stop import (
+    EmergencyStop,
+    EmergencyStopError,
+    EmergencyStopEvent,
+    check_emergency_stop,
+    require_no_emergency_stop,
+    EMERGENCY_STOP_FILE,
+    EMERGENCY_STOP_CHANNEL,
 )
 
 __all__ = [
@@ -27,10 +41,19 @@ __all__ = [
     "WAVE_PRINCIPLES",
     "check_action_safety",
     "create_constitutional_node",
+    "ESTOP",
     # Budget
     "BudgetTracker",
     "BudgetAlert",
     "BudgetResult",
     "check_budget",
     "create_budget_node",
+    # Emergency Stop
+    "EmergencyStop",
+    "EmergencyStopError",
+    "EmergencyStopEvent",
+    "check_emergency_stop",
+    "require_no_emergency_stop",
+    "EMERGENCY_STOP_FILE",
+    "EMERGENCY_STOP_CHANNEL",
 ]

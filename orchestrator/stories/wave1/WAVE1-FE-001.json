@@ -1,0 +1,64 @@
+{
+  "id": "WAVE1-FE-001",
+  "title": "Create Dashboard Component with Carbon Emissions Overview",
+  "domain": "general",
+  "priority": "high",
+  "wave": 1,
+  "objective": {
+    "as_a": "environmental conscious user",
+    "i_want": "to see my total carbon emissions at a glance on a dashboard",
+    "so_that": "I can quickly understand my environmental impact and track progress"
+  },
+  "acceptance_criteria": [
+    {
+      "id": "AC-001",
+      "description": "Dashboard displays total carbon emissions in kg CO2e format"
+    },
+    {
+      "id": "AC-002",
+      "description": "Dashboard shows emissions breakdown by category (transport, food, energy)"
+    },
+    {
+      "id": "AC-003",
+      "description": "Dashboard includes a monthly trend chart showing last 6 months"
+    },
+    {
+      "id": "AC-004",
+      "description": "Dashboard displays reduction goal progress as percentage"
+    },
+    {
+      "id": "AC-005",
+      "description": "Component is responsive and works on mobile devices"
+    }
+  ],
+  "files": {
+    "create": [
+      "src/components/Dashboard.tsx",
+      "src/components/EmissionsChart.tsx"
+    ],
+    "modify": [
+      "src/App.tsx"
+    ],
+    "forbidden": [
+      ".env",
+      ".env.local",
+      "package-lock.json",
+      "node_modules/**"
+    ]
+  },
+  "safety": {
+    "stop_conditions": [
+      "Never expose API keys or secrets in client-side code",
+      "Never commit directly to main branch",
+      "Stop if constitutional AI score drops below 0.9",
+      "Stop if any test failures occur in CI"
+    ],
+    "escalation_triggers": [
+      "Database schema changes",
+      "Authentication flow modifications"
+    ]
+  },
+  "estimated_tokens": 15000,
+  "dependencies": [],
+  "agent_assignment": "fe-dev-1"
+}

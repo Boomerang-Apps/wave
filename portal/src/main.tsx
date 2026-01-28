@@ -23,10 +23,13 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: '20px', fontFamily: 'system-ui' }}>
-          <h1>Something went wrong</h1>
-          <pre style={{ background: '#f5f5f5', padding: '10px', overflow: 'auto' }}>
-            {this.state.error?.message}
+        <div style={{ padding: '20px', fontFamily: 'system-ui', color: '#fff', background: '#1e1e1e' }}>
+          <h1 style={{ color: '#ef4444' }}>Something went wrong</h1>
+          <pre style={{ background: '#2e2e2e', padding: '15px', overflow: 'auto', color: '#fafafa', borderRadius: '8px', marginTop: '10px' }}>
+            {this.state.error?.message || 'Unknown error'}
+          </pre>
+          <pre style={{ background: '#2e2e2e', padding: '15px', overflow: 'auto', color: '#888', borderRadius: '8px', marginTop: '10px', fontSize: '12px' }}>
+            {this.state.error?.stack || 'No stack trace available'}
           </pre>
         </div>
       )

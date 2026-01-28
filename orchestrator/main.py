@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 from config import settings
 from graph import wave_graph
 from state import create_initial_state, WAVEState
+from notifications import notify_run_start, notify_run_complete
 
 
 # ===========================================
@@ -32,6 +33,11 @@ class RunRequest(BaseModel):
     branch: Optional[str] = Field("main", description="Git branch name")
     token_limit: Optional[int] = Field(None, description="Token limit override")
     cost_limit_usd: Optional[float] = Field(None, description="Cost limit override")
+    # Story loading (Supabase SOURCE OF TRUTH)
+    project_id: Optional[str] = Field(None, description="Supabase project UUID for story loading")
+    wave_number: Optional[int] = Field(1, description="Wave number for story loading")
+    stories: Optional[List[str]] = Field(None, description="Specific story IDs to process (e.g., ['AUTH-001'])")
+    parallel_domains: Optional[bool] = Field(False, description="Enable parallel domain execution")
 
 
 class RunResponse(BaseModel):
@@ -108,15 +114,21 @@ async def create_run(request: RunRequest):
     run_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
 
-    # Create initial state
+    # Create initial state with story loading from Supabase
     initial_state = create_initial_state(
         run_id=run_id,
         task=request.task,
         repo_path=request.repo_path or "",
         branch=request.branch or "main",
         token_limit=request.token_limit or settings.default_token_limit,
-        cost_limit_usd=request.cost_limit_usd or settings.default_cost_limit_usd
+        cost_limit_usd=request.cost_limit_usd or settings.default_cost_limit_usd,
+        project_id=request.project_id or "",
+        wave_number=request.wave_number or 1,
+        story_ids=request.stories or []
     )
+
+    # Notify run start
+    notify_run_start(run_id, request.task)
 
     # Execute graph synchronously (skeleton)
     final_state = None
@@ -145,6 +157,9 @@ async def create_run(request: RunRequest):
         "actions": actions,
         "created_at": created_at
     }
+
+    # Notify run complete
+    notify_run_complete(run_id, request.task, len(actions), status)
 
     return RunResponse(
         run_id=run_id,

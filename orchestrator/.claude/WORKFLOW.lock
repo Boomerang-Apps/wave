@@ -1,0 +1,15 @@
+{
+  "gates": [
+    "Gate 0: Research",
+    "Gate 1: Planning",
+    "Gate 2: TDD",
+    "Gate 3: Branching",
+    "Gate 4: Develop",
+    "Gate 5: Refactor",
+    "Gate 6: Safety Gate",
+    "Gate 7: QA",
+    "Gate 8: Merge/Deploy"
+  ],
+  "locked_at": "2026-01-28T12:00:39.225311",
+  "timestamp": 1769594439.225317
+}
