@@ -99,6 +99,7 @@ class PreFlightValidator:
             ("Agent Framework", self.check_agents),
             ("Multi-LLM Routing", self.check_multi_llm),
             ("Gate System", self.check_gate_system),
+            ("Gate Enforcement", self.check_gate_enforcement),
             ("Test Coverage", self.check_tests),
         ]
 
@@ -228,6 +229,47 @@ class PreFlightValidator:
         if not self._file_contains(file_path, required):
             self.errors.append(f"Gate system missing in {file_path}")
             return False
+        return True
+
+    def check_gate_enforcement(self) -> bool:
+        """Verify workflow locker and gate enforcement are in place."""
+        # Check for workflow_locker.py
+        locker_file = "scripts/workflow_locker.py"
+        if not (PROJECT_ROOT / locker_file).exists():
+            self.warnings.append(f"Workflow locker not found: {locker_file}")
+            # Not a blocker, just a warning
+            return True
+
+        # Check workflow locker has required enforcement
+        required = [
+            "class WorkflowLocker",
+            "def check_gate",
+            "def advance_gate",
+            "def detect_drift",
+            "Sequential"
+        ]
+        if not self._file_contains(locker_file, required):
+            self.errors.append(f"Workflow locker missing enforcement methods")
+            return False
+
+        # Check for WORKFLOW.lock file
+        lock_file = PROJECT_ROOT / ".claude" / "WORKFLOW.lock"
+        if not lock_file.exists():
+            self.warnings.append("WORKFLOW.lock not found - run workflow_locker.py --lock")
+
+        # Check P.json for gate state
+        p_json_file = PROJECT_ROOT / ".claude" / "P.json"
+        if p_json_file.exists():
+            try:
+                import json
+                p_data = json.loads(p_json_file.read_text())
+                current_gate = p_data.get("wave_state", {}).get("current_gate", 0)
+                if current_gate < 0 or current_gate > 8:
+                    self.errors.append(f"Invalid gate number in P.json: {current_gate}")
+                    return False
+            except Exception as e:
+                self.warnings.append(f"Could not parse P.json: {e}")
+
         return True
 
     def check_tests(self) -> bool:

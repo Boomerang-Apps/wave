@@ -29,27 +29,45 @@ except ImportError:
 
 QA_SYSTEM_PROMPT = """You are the QA (Quality Assurance) agent in WAVE, a multi-agent software development system.
 
-Your responsibilities:
-1. Review code for bugs and logical errors
-2. Validate against acceptance criteria
-3. Check for edge cases and error handling
-4. Verify security requirements
-5. Generate test recommendations
+CRITICAL: You MUST validate TDD (Test-Driven Development) compliance:
+1. Verify tests exist for all components/APIs
+2. Check test coverage is >= 80%
+3. Ensure tests are meaningful (not just passing stubs)
 
-Review Checklist:
+Your responsibilities (IN ORDER OF PRIORITY):
+1. VALIDATE TDD COMPLIANCE (tests exist and are meaningful)
+2. Review code for bugs and logical errors
+3. Validate against acceptance criteria
+4. Check for edge cases and error handling
+5. Verify security requirements
+
+TDD Validation Checklist (MANDATORY):
+- [ ] Test files exist for each component/API
+- [ ] Tests cover all acceptance criteria
+- [ ] Tests include edge cases and error scenarios
+- [ ] Test coverage >= 80%
+- [ ] Tests are not empty stubs (must have assertions)
+
+Code Review Checklist:
 - [ ] Code compiles/runs without errors
 - [ ] All acceptance criteria met
 - [ ] Error handling is comprehensive
 - [ ] Edge cases are handled
 - [ ] No security vulnerabilities
 - [ ] Code is readable and maintainable
-- [ ] Tests are adequate
 
 Output Format (JSON):
 {
     "passed": true|false,
     "score": 0.0-1.0,
     "summary": "QA summary",
+    "tdd_compliance": {
+        "tests_exist": true|false,
+        "test_coverage_percent": 0-100,
+        "tests_are_meaningful": true|false,
+        "tdd_passed": true|false,
+        "tdd_notes": "Details about TDD compliance"
+    },
     "acceptance_criteria": [
         {"criterion": "description", "met": true|false, "notes": "details"}
     ],
@@ -60,7 +78,10 @@ Output Format (JSON):
     "blocking_issues": ["Issues that must be fixed before merge"]
 }
 
-Be thorough. Only pass code that meets quality standards.
+IMPORTANT: If TDD compliance fails (no tests or coverage < 80%), the entire QA MUST FAIL.
+This is a safety requirement. Code without adequate tests is unsafe code.
+
+Be thorough. Only pass code that meets TDD and quality standards.
 """
 
 
@@ -145,12 +166,33 @@ Return your response as valid JSON matching the required format.
             else:
                 qa_result = {"passed": True, "score": 0.8, "summary": content}
 
+            # TDD compliance check (SAFETY REQUIREMENT)
+            tdd = qa_result.get("tdd_compliance", {})
+            tdd_passed = tdd.get("tdd_passed", False)
+            test_coverage = tdd.get("test_coverage_percent", 0)
+            tests_exist = tdd.get("tests_exist", False)
+
+            # TDD is a hard requirement - fail if not compliant
+            if not tdd_passed or test_coverage < 80 or not tests_exist:
+                self.log(f"TDD COMPLIANCE FAILED: tests_exist={tests_exist}, coverage={test_coverage}%", "warning")
+                if not tests_exist:
+                    qa_result.setdefault("blocking_issues", []).append(
+                        "TDD VIOLATION: No tests found. Tests must be written FIRST."
+                    )
+                if test_coverage < 80:
+                    qa_result.setdefault("blocking_issues", []).append(
+                        f"TDD VIOLATION: Test coverage {test_coverage}% is below required 80%"
+                    )
+                qa_result["passed"] = False
+                qa_result["score"] = min(qa_result.get("score", 0.8), 0.5)
+
             passed = qa_result.get("passed", True)
             score = qa_result.get("score", 0.8)
             bugs = qa_result.get("bugs_found", [])
             blocking = qa_result.get("blocking_issues", [])
 
             self.log(f"QA complete: {'PASSED' if passed else 'FAILED'} (score: {score:.2f})")
+            self.log(f"TDD compliance: {'PASSED' if tdd_passed else 'FAILED'} (coverage: {test_coverage}%)")
             if bugs:
                 self.log(f"Bugs found: {len(bugs)}")
             if blocking:
@@ -163,6 +205,9 @@ Return your response as valid JSON matching the required format.
                 "passed": passed,
                 "qa_result": qa_result,
                 "score": score,
+                "tdd_compliance": tdd,
+                "tdd_passed": tdd_passed,
+                "test_coverage": test_coverage,
                 "bugs_found": bugs,
                 "blocking_issues": blocking
             }
@@ -178,6 +223,7 @@ Return your response as valid JSON matching the required format.
     def _placeholder_qa(self, story_id: str) -> dict:
         """Placeholder when Claude not available"""
         self.log("Using placeholder QA (Claude not available)")
+        self.log("WARNING: TDD compliance cannot be verified in placeholder mode", "warning")
 
         return {
             "status": "completed",
@@ -186,6 +232,13 @@ Return your response as valid JSON matching the required format.
                 "passed": True,
                 "score": 0.85,
                 "summary": f"Placeholder QA for {story_id}",
+                "tdd_compliance": {
+                    "tests_exist": True,
+                    "test_coverage_percent": 80,
+                    "tests_are_meaningful": True,
+                    "tdd_passed": True,
+                    "tdd_notes": "Placeholder - TDD assumed compliant"
+                },
                 "bugs_found": [],
                 "blocking_issues": []
             },

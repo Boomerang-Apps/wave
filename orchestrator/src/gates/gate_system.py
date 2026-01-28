@@ -22,7 +22,7 @@ from typing import Dict, List
 
 
 class Gate(IntEnum):
-    """WAVE 10-Gate Launch Sequence"""
+    """WAVE 10-Gate Launch Sequence with TDD Support"""
 
     # Design Foundation (Gate 0)
     DESIGN_VALIDATED = 0
@@ -33,9 +33,18 @@ class Gate(IntEnum):
     # Execution Plan (Gate 2)
     PLAN_APPROVED = 2
 
+    # TDD: Tests Written FIRST (Gate 2.5 - mapped to 25)
+    # Tests must be written and FAIL (RED state) before code
+    TESTS_WRITTEN = 25
+
     # Development (Gates 3-4)
+    # Code written to make tests pass (GREEN state)
     DEV_STARTED = 3
     DEV_COMPLETE = 4
+
+    # TDD: Refactor (Gate 4.5 - mapped to 45)
+    # Refactor while keeping tests green
+    REFACTOR_COMPLETE = 45
 
     # QA (Gate 5)
     QA_PASSED = 5
@@ -54,12 +63,18 @@ class Gate(IntEnum):
 
 
 # Gate dependencies - each gate requires all previous gates
+# TDD Flow: Plan -> Tests Written (RED) -> Dev (GREEN) -> Refactor
 GATE_DEPENDENCIES: Dict[Gate, List[Gate]] = {
     Gate.STORY_ASSIGNED: [Gate.DESIGN_VALIDATED],
     Gate.PLAN_APPROVED: [Gate.STORY_ASSIGNED],
-    Gate.DEV_STARTED: [Gate.PLAN_APPROVED],
+    # TDD: Tests must be written BEFORE development starts
+    Gate.TESTS_WRITTEN: [Gate.PLAN_APPROVED],
+    # Dev can only start after tests are written (TDD enforcement)
+    Gate.DEV_STARTED: [Gate.TESTS_WRITTEN],
     Gate.DEV_COMPLETE: [Gate.DEV_STARTED],
-    Gate.QA_PASSED: [Gate.DEV_COMPLETE],
+    # TDD: Refactor after tests pass
+    Gate.REFACTOR_COMPLETE: [Gate.DEV_COMPLETE],
+    Gate.QA_PASSED: [Gate.REFACTOR_COMPLETE],
     Gate.SAFETY_CLEARED: [Gate.QA_PASSED],
     Gate.REVIEW_APPROVED: [Gate.SAFETY_CLEARED],
     Gate.MERGED: [Gate.REVIEW_APPROVED],
@@ -72,9 +87,11 @@ GATE_DESCRIPTIONS: Dict[Gate, str] = {
     Gate.DESIGN_VALIDATED: "Design foundation verified - mockups, PRD, folder structure",
     Gate.STORY_ASSIGNED: "Story assigned to development team",
     Gate.PLAN_APPROVED: "Execution plan reviewed and approved",
-    Gate.DEV_STARTED: "Development work has begun",
-    Gate.DEV_COMPLETE: "Development work is complete",
-    Gate.QA_PASSED: "All QA tests have passed",
+    Gate.TESTS_WRITTEN: "TDD RED: Failing tests written BEFORE code (test-first)",
+    Gate.DEV_STARTED: "TDD GREEN: Development started - writing code to pass tests",
+    Gate.DEV_COMPLETE: "TDD GREEN: All tests now passing - development complete",
+    Gate.REFACTOR_COMPLETE: "TDD REFACTOR: Code refactored while keeping tests green",
+    Gate.QA_PASSED: "All QA tests have passed with >=80% coverage",
     Gate.SAFETY_CLEARED: "Safety checkpoint cleared - constitutional AI approved",
     Gate.REVIEW_APPROVED: "Code review approved by reviewers",
     Gate.MERGED: "Code merged to main branch",

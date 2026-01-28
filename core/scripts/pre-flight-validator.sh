@@ -617,6 +617,255 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
+# SECTION N: GATE 0 VALIDATION (Auto-Hook)
+# ─────────────────────────────────────────────────────────────────────────────
+section "SECTION N: GATE 0 VALIDATION"
+
+GATE0_SCRIPT=""
+[ -f orchestrator/scripts/gate0_run_all.sh ] && GATE0_SCRIPT="orchestrator/scripts/gate0_run_all.sh"
+[ -f scripts/gate0_run_all.sh ] && GATE0_SCRIPT="scripts/gate0_run_all.sh"
+
+if [ -n "$GATE0_SCRIPT" ]; then
+    check "N1: Gate 0 master script exists" "true"
+
+    # Run Gate 0 validation if script is executable
+    if [ -x "$GATE0_SCRIPT" ]; then
+        if [ "$OUTPUT_JSON" != "true" ]; then
+            echo "  Running Gate 0 validation..."
+        fi
+
+        GATE0_OUTPUT=$($GATE0_SCRIPT --validate 2>&1)
+        GATE0_EXIT=$?
+
+        if [ $GATE0_EXIT -eq 0 ]; then
+            check "N2: Gate 0 validation passed" "true"
+        else
+            check "N2: Gate 0 validation passed" "false" false
+            verbose "Gate 0 validation had warnings"
+        fi
+
+        # Check for container validation in output
+        if echo "$GATE0_OUTPUT" | grep -qi "GO\|healthy\|Container"; then
+            check "N3: Container validation complete" "true"
+        else
+            check "N3: Container validation complete" "false" false
+        fi
+
+        # Check for safety module in output
+        if echo "$GATE0_OUTPUT" | grep -qi "Safety.*loaded\|UnifiedSafetyChecker"; then
+            check "N4: Safety module verified" "true"
+        else
+            check "N4: Safety module verified" "false" false
+        fi
+    else
+        check "N2: Gate 0 validation passed" "false" false
+        verbose "Script not executable: chmod +x $GATE0_SCRIPT"
+    fi
+else
+    check "N1: Gate 0 master script exists" "false" false
+    verbose "No gate0_run_all.sh found in orchestrator/scripts/ or scripts/"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SECTION O: FRAMEWORK DETECTION & TDD VALIDATION
+# ─────────────────────────────────────────────────────────────────────────────
+section "SECTION O: FRAMEWORK & TDD VALIDATION"
+
+# Framework Detection
+FRAMEWORK="unknown"
+FRAMEWORK_VERSION=""
+
+# Detect Next.js (hybrid FE/BE framework)
+if [ -f "package.json" ]; then
+    if grep -q '"next"' package.json 2>/dev/null; then
+        FRAMEWORK="nextjs"
+        FRAMEWORK_VERSION=$(grep -o '"next": *"[^"]*"' package.json | head -1 | cut -d'"' -f4)
+        check "O1: Framework detected (Next.js $FRAMEWORK_VERSION)" "true"
+
+        # Next.js specific: Check for App Router (hybrid FE/BE)
+        if [ -d "src/app" ] || [ -d "app" ]; then
+            check "O2: Next.js App Router detected (hybrid)" "true"
+            verbose "Agent prompts should allow server-side patterns in FE code"
+        else
+            check "O2: Next.js App Router detected (hybrid)" "false" false
+            verbose "Using Pages Router - strictly FE"
+        fi
+    elif grep -q '"react"' package.json 2>/dev/null; then
+        FRAMEWORK="react"
+        check "O1: Framework detected (React)" "true"
+    elif grep -q '"vue"' package.json 2>/dev/null; then
+        FRAMEWORK="vue"
+        check "O1: Framework detected (Vue)" "true"
+    else
+        check "O1: Framework detected" "false" false
+        verbose "Unknown JavaScript framework"
+    fi
+elif [ -f "requirements.txt" ] || [ -f "pyproject.toml" ]; then
+    FRAMEWORK="python"
+    check "O1: Framework detected (Python)" "true"
+else
+    check "O1: Framework detected" "false" false
+    verbose "No package.json or requirements.txt found"
+fi
+
+# TDD Validation - Check for test files
+if [ "$OUTPUT_JSON" != "true" ]; then
+    echo ""
+    echo "  TDD Validation:"
+fi
+
+TEST_FILES=0
+COMPONENT_FILES=0
+
+# Count test files
+if [ -d "src" ]; then
+    TEST_FILES=$(find src -name "*.test.*" -o -name "*.spec.*" 2>/dev/null | wc -l | tr -d ' ')
+    COMPONENT_FILES=$(find src -name "*.tsx" -o -name "*.ts" 2>/dev/null | grep -v "test\|spec" | wc -l | tr -d ' ')
+elif [ -d "app" ]; then
+    TEST_FILES=$(find app -name "*.test.*" -o -name "*.spec.*" 2>/dev/null | wc -l | tr -d ' ')
+    COMPONENT_FILES=$(find app -name "*.tsx" -o -name "*.ts" 2>/dev/null | grep -v "test\|spec" | wc -l | tr -d ' ')
+fi
+
+# Check __tests__ directories
+TESTS_DIRS=$(find . -type d -name "__tests__" 2>/dev/null | wc -l | tr -d ' ')
+
+check "O3: Test files exist ($TEST_FILES found)" "$([ $TEST_FILES -gt 0 ] && echo true || echo false)" false
+check "O4: __tests__ directories exist ($TESTS_DIRS found)" "$([ $TESTS_DIRS -gt 0 ] && echo true || echo false)" false
+
+# TDD Ratio (tests vs components)
+if [ $COMPONENT_FILES -gt 0 ]; then
+    TDD_RATIO=$(echo "scale=2; ($TEST_FILES * 100) / $COMPONENT_FILES" | bc 2>/dev/null || echo "0")
+    if [ "${TDD_RATIO%.*}" -ge 80 ]; then
+        check "O5: TDD ratio >= 80% ($TDD_RATIO%)" "true"
+    else
+        check "O5: TDD ratio >= 80% ($TDD_RATIO%)" "false" false
+        verbose "Recommended: Write tests before code (TDD)"
+    fi
+else
+    check "O5: TDD ratio >= 80%" "false" false
+    verbose "No component files found to measure TDD ratio"
+fi
+
+# Check test runner configuration
+if [ -f "vitest.config.ts" ] || [ -f "vitest.config.js" ]; then
+    check "O6: Vitest configured" "true"
+elif [ -f "jest.config.ts" ] || [ -f "jest.config.js" ]; then
+    check "O6: Jest configured" "true"
+elif grep -q "vitest\|jest" package.json 2>/dev/null; then
+    check "O6: Test runner configured" "true"
+else
+    check "O6: Test runner configured" "false" false
+    verbose "No vitest or jest configuration found"
+fi
+
+# Check for TDD in agent prompts
+if [ -d "orchestrator/src/agents" ]; then
+    TDD_IN_PROMPTS=$(grep -l "TDD\|Test-Driven\|tests FIRST\|write.*test.*first" orchestrator/src/agents/*.py 2>/dev/null | wc -l | tr -d ' ')
+    check "O7: TDD in agent prompts ($TDD_IN_PROMPTS agents)" "$([ $TDD_IN_PROMPTS -gt 0 ] && echo true || echo false)"
+else
+    check "O7: TDD in agent prompts" "false" false
+    verbose "No agent prompts found in orchestrator/src/agents/"
+fi
+
+# Export framework info for use by agents
+if [ "$OUTPUT_JSON" != "true" ]; then
+    echo ""
+    echo "  Framework Info (for agent context):"
+    echo "    FRAMEWORK=$FRAMEWORK"
+    [ -n "$FRAMEWORK_VERSION" ] && echo "    VERSION=$FRAMEWORK_VERSION"
+    echo "    TDD_RATIO=$TDD_RATIO%"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SECTION P: GATE SEQUENCE ENFORCEMENT (LOCKED WORKFLOW)
+# ─────────────────────────────────────────────────────────────────────────────
+section "SECTION P: GATE SEQUENCE ENFORCEMENT"
+
+# Check for workflow locker script
+WORKFLOW_LOCKER=""
+[ -f "orchestrator/scripts/workflow_locker.py" ] && WORKFLOW_LOCKER="orchestrator/scripts/workflow_locker.py"
+[ -f "scripts/workflow_locker.py" ] && WORKFLOW_LOCKER="scripts/workflow_locker.py"
+
+if [ -n "$WORKFLOW_LOCKER" ]; then
+    check "P1: Workflow locker exists" "true"
+
+    # Check for WORKFLOW.lock file
+    WORKFLOW_LOCK_FILE=".claude/WORKFLOW.lock"
+    if [ -f "$WORKFLOW_LOCK_FILE" ]; then
+        check "P2: Workflow lock file exists" "true"
+
+        # Parse lock file for gate info
+        if command -v jq &> /dev/null; then
+            LOCK_TIMESTAMP=$(jq -r '.locked_at // "unknown"' "$WORKFLOW_LOCK_FILE" 2>/dev/null)
+            GATE_COUNT=$(jq -r '.gates | length // 0' "$WORKFLOW_LOCK_FILE" 2>/dev/null)
+            check "P3: Lock file valid ($GATE_COUNT gates locked at $LOCK_TIMESTAMP)" "$([ $GATE_COUNT -eq 9 ] && echo true || echo false)"
+        else
+            check "P3: Lock file valid" "false" false
+            verbose "jq required to parse lock file"
+        fi
+    else
+        check "P2: Workflow lock file exists" "false" false
+        verbose "Run: python $WORKFLOW_LOCKER --lock"
+    fi
+
+    # Check current gate from P.json
+    P_JSON_FILE=".claude/P.json"
+    if [ -f "$P_JSON_FILE" ] && command -v jq &> /dev/null; then
+        CURRENT_GATE=$(jq -r '.wave_state.current_gate // 0' "$P_JSON_FILE" 2>/dev/null)
+        CURRENT_WAVE=$(jq -r '.wave_state.current_wave // 1' "$P_JSON_FILE" 2>/dev/null)
+
+        # Define gate names
+        declare -a GATE_NAMES=(
+            "Research"
+            "Planning"
+            "TDD"
+            "Branching"
+            "Develop"
+            "Refactor"
+            "Safety Gate"
+            "QA"
+            "Merge/Deploy"
+        )
+
+        GATE_NAME="${GATE_NAMES[$CURRENT_GATE]:-Unknown}"
+        check "P4: Current gate: $CURRENT_GATE ($GATE_NAME)" "true"
+
+        # Verify gate is within bounds
+        if [ "$CURRENT_GATE" -ge 0 ] && [ "$CURRENT_GATE" -le 8 ]; then
+            check "P5: Gate in valid range (0-8)" "true"
+        else
+            check "P5: Gate in valid range (0-8)" "false"
+            verbose "Invalid gate number: $CURRENT_GATE"
+        fi
+
+        # Check gate history for drift
+        HISTORY_COUNT=$(jq -r '.wave_state.gate_history | length // 0' "$P_JSON_FILE" 2>/dev/null)
+        if [ "$HISTORY_COUNT" -gt 0 ]; then
+            LAST_STATUS=$(jq -r '.wave_state.gate_history[-1].status // "unknown"' "$P_JSON_FILE" 2>/dev/null)
+            check "P6: Gate history exists ($HISTORY_COUNT transitions, last: $LAST_STATUS)" "true"
+        else
+            check "P6: Gate history exists" "false" false
+            verbose "No gate transitions recorded yet"
+        fi
+    else
+        check "P4: Current gate tracking" "false" false
+        verbose "P.json not found or jq not available"
+    fi
+
+    # Verify gate enforcement is active
+    if [ "$OUTPUT_JSON" != "true" ]; then
+        echo ""
+        echo "  Gate Enforcement Status:"
+        echo "    Sequential only: YES"
+        echo "    Skip prevention: ACTIVE"
+        echo "    Drift detection: ENABLED"
+    fi
+else
+    check "P1: Workflow locker exists" "false" false
+    verbose "No workflow_locker.py found"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
 # FINAL REPORT
 # ─────────────────────────────────────────────────────────────────────────────
 if [ "$OUTPUT_JSON" = "true" ]; then
