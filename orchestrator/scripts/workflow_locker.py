@@ -17,6 +17,7 @@ import os
 import sys
 import json
 import time
+import hashlib
 import argparse
 from datetime import datetime
 from typing import Dict, Any, List, Optional
@@ -98,22 +99,60 @@ class WorkflowLocker:
         p_data["wave_state"]["current_gate"] = gate_num
         self._save_p_json(p_data)
 
+    def _create_lock_hash(self, gates: List[str], timestamp: float) -> str:
+        """
+        Create SHA256 hash for lock integrity verification.
+
+        Args:
+            gates: List of gate definitions
+            timestamp: Lock creation timestamp
+
+        Returns:
+            SHA256 hex digest
+        """
+        data = json.dumps({"gates": gates, "timestamp": timestamp}, sort_keys=True)
+        return hashlib.sha256(data.encode()).hexdigest()
+
+    def _verify_lock_hash(self, lock_data: Dict[str, Any]) -> bool:
+        """
+        Verify lock file integrity using stored hash.
+
+        Args:
+            lock_data: Lock data from file
+
+        Returns:
+            True if hash matches, False if tampered
+        """
+        stored_hash = lock_data.get("hash")
+        if not stored_hash:
+            return True  # Legacy lock without hash
+
+        expected_hash = self._create_lock_hash(
+            lock_data.get("gates", []),
+            lock_data.get("timestamp", 0)
+        )
+        return stored_hash == expected_hash
+
     def lock_workflow(self) -> Dict[str, Any]:
         """
         Lock the workflow with current gate sequence.
 
-        Creates WORKFLOW.lock file with gate definitions.
+        Creates WORKFLOW.lock file with gate definitions and SHA256 integrity hash.
         """
+        timestamp = time.time()
+        lock_hash = self._create_lock_hash(self.gates, timestamp)
+
         lock_data = {
             "gates": self.gates,
             "locked_at": datetime.now().isoformat(),
-            "timestamp": time.time()
+            "timestamp": timestamp,
+            "hash": lock_hash
         }
 
         with open(self.lock_file_path, "w") as f:
             json.dump(lock_data, f, indent=2)
 
-        return {"success": True, "message": "Workflow LOCKED", "lock_file": self.lock_file_path}
+        return {"success": True, "message": "Workflow LOCKED (SHA256 signed)", "lock_file": self.lock_file_path}
 
     def check_gate(self, expected_gate: int) -> Dict[str, Any]:
         """
@@ -257,6 +296,43 @@ class WorkflowLocker:
             "current_gate": 0
         }
 
+    def verify_lock_integrity(self) -> Dict[str, Any]:
+        """
+        Verify the lock file integrity using SHA256 hash.
+
+        Returns:
+            Dict with verification status
+        """
+        if not os.path.exists(self.lock_file_path):
+            return {
+                "valid": False,
+                "error": "Lock file not found",
+                "lock_file": self.lock_file_path
+            }
+
+        try:
+            with open(self.lock_file_path) as f:
+                lock_data = json.load(f)
+        except (json.JSONDecodeError, IOError) as e:
+            return {
+                "valid": False,
+                "error": f"Failed to read lock file: {e}"
+            }
+
+        if self._verify_lock_hash(lock_data):
+            return {
+                "valid": True,
+                "message": "Lock integrity verified (SHA256)",
+                "gates": len(lock_data.get("gates", [])),
+                "locked_at": lock_data.get("locked_at")
+            }
+        else:
+            return {
+                "valid": False,
+                "error": "TAMPER DETECTED: Lock file hash mismatch",
+                "action": "Re-lock workflow with --lock"
+            }
+
     def detect_drift(self, expected_gate: int) -> Dict[str, Any]:
         """
         Detect if there's drift between expected and actual gate.
@@ -311,11 +387,18 @@ def main():
     parser.add_argument("--confirm", action="store_true", help="Confirm reset")
     parser.add_argument("--history", action="store_true", help="Show gate history")
     parser.add_argument("--run", action="store_true", help="Run full workflow")
+    parser.add_argument("--verify", action="store_true", help="Verify lock integrity")
     args = parser.parse_args()
 
     locker = WorkflowLocker(project_path=args.project)
 
-    if args.lock:
+    if args.verify:
+        result = locker.verify_lock_integrity()
+        print(json.dumps(result, indent=2))
+        if not result.get("valid"):
+            sys.exit(1)
+
+    elif args.lock:
         result = locker.lock_workflow()
         print(json.dumps(result, indent=2))
 

@@ -327,6 +327,10 @@ class IssueAlerter:
     - CRITICAL only: Only alert on critical issues
     - WARNING+: Alert on warning and critical (default)
     - ALL: Alert on everything including info
+
+    Dynamic threshold (Grok refinement):
+    - Production: CRITICAL only (reduce noise)
+    - Development: WARNING+ (more visibility)
     """
 
     SEVERITY_EMOJI = {
@@ -335,23 +339,56 @@ class IssueAlerter:
         IssueSeverity.INFO: ":information_source:",
     }
 
+    @staticmethod
+    def get_dynamic_threshold(environment: Optional[str] = None) -> IssueSeverity:
+        """
+        Get alert threshold based on environment.
+
+        Args:
+            environment: Environment name (prod/dev/staging). Auto-detects if None.
+
+        Returns:
+            IssueSeverity threshold for alerting
+        """
+        if environment is None:
+            # Auto-detect from environment variables
+            environment = os.environ.get("WAVE_ENVIRONMENT", "dev").lower()
+
+        if environment in ("prod", "production"):
+            return IssueSeverity.CRITICAL  # Reduce noise in production
+        elif environment in ("staging", "stage"):
+            return IssueSeverity.WARNING
+        else:
+            return IssueSeverity.WARNING  # Dev: more visibility
+
     def __init__(
         self,
         detector: Optional[IssueDetector] = None,
-        default_threshold: IssueSeverity = IssueSeverity.WARNING,
-        critical_only: bool = False
+        default_threshold: Optional[IssueSeverity] = None,
+        critical_only: bool = False,
+        auto_threshold: bool = True
     ):
         """
         Initialize issue alerter.
 
         Args:
             detector: IssueDetector instance (creates new one if None)
-            default_threshold: Default minimum severity for alerts
+            default_threshold: Default minimum severity for alerts (overrides auto)
             critical_only: If True, only alert on CRITICAL issues (overrides threshold)
+            auto_threshold: If True and no default_threshold, auto-detect from environment
         """
         self.detector = detector or IssueDetector()
         self._notifier = None
-        self.default_threshold = IssueSeverity.CRITICAL if critical_only else default_threshold
+
+        # Determine threshold: critical_only > explicit > auto > WARNING
+        if critical_only:
+            self.default_threshold = IssueSeverity.CRITICAL
+        elif default_threshold is not None:
+            self.default_threshold = default_threshold
+        elif auto_threshold:
+            self.default_threshold = self.get_dynamic_threshold()
+        else:
+            self.default_threshold = IssueSeverity.WARNING
 
     def _get_notifier(self):
         """Lazy-load Slack notifier."""

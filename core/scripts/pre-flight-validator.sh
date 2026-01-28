@@ -888,6 +888,77 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
+# SECTION Q: GROK ENHANCEMENT MODULES (Grok Refinement)
+# ─────────────────────────────────────────────────────────────────────────────
+section "SECTION Q: GROK ENHANCEMENT MODULES"
+
+# Check for issue_detector.py
+if [ -f "orchestrator/src/monitoring/issue_detector.py" ]; then
+    check "Q1: Issue Detector module exists" "true"
+else
+    check "Q1: Issue Detector module exists" "false" false
+    verbose "orchestrator/src/monitoring/issue_detector.py not found"
+fi
+
+# Check for container_validator.py
+if [ -f "orchestrator/src/monitoring/container_validator.py" ]; then
+    check "Q2: Container Validator module exists" "true"
+else
+    check "Q2: Container Validator module exists" "false" false
+    verbose "orchestrator/src/monitoring/container_validator.py not found"
+fi
+
+# Check for unified.py (unified safety checker)
+if [ -f "orchestrator/src/safety/unified.py" ]; then
+    check "Q3: Unified Safety Checker exists" "true"
+else
+    check "Q3: Unified Safety Checker exists" "false" false
+    verbose "orchestrator/src/safety/unified.py not found"
+fi
+
+# Check for violations.py (safety violations with attribution)
+if [ -f "orchestrator/src/safety/violations.py" ]; then
+    check "Q4: Safety Violations module exists" "true"
+else
+    check "Q4: Safety Violations module exists" "false" false
+    verbose "orchestrator/src/safety/violations.py not found"
+fi
+
+# Check for rlm_auditor.py
+if [ -f "orchestrator/scripts/rlm_auditor.py" ]; then
+    check "Q5: RLM Auditor exists" "true"
+else
+    check "Q5: RLM Auditor exists" "false" false
+    verbose "orchestrator/scripts/rlm_auditor.py not found"
+fi
+
+# Check for workflow locker SHA256 signing (new feature)
+if [ -f "orchestrator/scripts/workflow_locker.py" ]; then
+    if grep -q "hashlib" "orchestrator/scripts/workflow_locker.py" 2>/dev/null; then
+        check "Q6: Workflow locker has SHA256 signing" "true"
+    else
+        check "Q6: Workflow locker has SHA256 signing" "false" false
+        verbose "Crypto signing not implemented in workflow_locker.py"
+    fi
+fi
+
+# Check for multi_llm.py (Claude + Grok routing)
+if [ -f "orchestrator/src/multi_llm.py" ]; then
+    check "Q7: Multi-LLM routing exists" "true"
+else
+    check "Q7: Multi-LLM routing exists" "false" false
+    verbose "orchestrator/src/multi_llm.py not found"
+fi
+
+if [ "$OUTPUT_JSON" != "true" ]; then
+    echo ""
+    echo "  Grok Enhancement Status:"
+    echo "    Issue Detection: $([ -f "orchestrator/src/monitoring/issue_detector.py" ] && echo "ACTIVE" || echo "MISSING")"
+    echo "    Safety Violations: $([ -f "orchestrator/src/safety/violations.py" ] && echo "ACTIVE" || echo "MISSING")"
+    echo "    RLM Auditor: $([ -f "orchestrator/scripts/rlm_auditor.py" ] && echo "ACTIVE" || echo "MISSING")"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
 # FINAL REPORT
 # ─────────────────────────────────────────────────────────────────────────────
 if [ "$OUTPUT_JSON" = "true" ]; then

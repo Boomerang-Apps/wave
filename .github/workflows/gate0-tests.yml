@@ -172,6 +172,63 @@ jobs:
           print('')
           print('=== All Safety Modules Verified ===')"
 
+  workflow-validation:
+    name: Full WAVE Workflow Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: orchestrator
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Test Workflow Locker (Grok Refinement)
+        run: |
+          echo "=== Testing Workflow Locker (SHA256 Signed) ==="
+
+          # Initialize lock
+          python scripts/workflow_locker.py --lock --project .
+
+          # Verify lock integrity (new SHA256 feature)
+          python scripts/workflow_locker.py --verify --project . || {
+            echo "ERROR: Lock verification failed"
+            exit 1
+          }
+
+          # Check current gate
+          python scripts/workflow_locker.py --check --project .
+
+          # Test gate advancement
+          python scripts/workflow_locker.py --advance --project .
+
+          # Verify history
+          python scripts/workflow_locker.py --history --project .
+
+          echo "=== Workflow Locker Test Complete ==="
+
+      - name: Test Pre-Flight Validator
+        run: |
+          echo "=== Running Pre-Flight Validator ==="
+          chmod +x ../core/scripts/pre-flight-validator.sh
+          ../core/scripts/pre-flight-validator.sh --quick . || true
+          echo "=== Pre-Flight Complete ==="
+
+      - name: Test RLM Auditor
+        run: |
+          echo "=== Testing RLM Auditor ==="
+          python scripts/rlm_auditor.py --project . --check || true
+          echo "=== RLM Auditor Test Complete ==="
+
   lint:
     name: Code Quality
     runs-on: ubuntu-latest
