@@ -1,8 +1,11 @@
 """
-Phase 6: 10-Gate System TDD Tests
-Tests for the full 10-gate launch sequence with dependencies.
+Phase 6: 12-Gate TDD System Tests
+Tests for the full 12-gate TDD launch sequence with dependencies.
+
+TDD Flow: Design → Story → Plan → TESTS (RED) → Dev → Complete → REFACTOR → QA → Safety → Review → Merge → Deploy
 
 Based on Grok's Gate System from LANGGRAPH-ENHANCEMENT-PLAN.md
+Updated: 2026-01-30 - Added TDD gates (TESTS_WRITTEN=25, REFACTOR_COMPLETE=45)
 
 Test Categories:
 1. Gate Enum (8 tests)
@@ -31,10 +34,10 @@ class TestGateEnum:
         from src.gates.gate_system import Gate
         assert Gate is not None
 
-    def test_gate_enum_has_10_gates(self):
-        """Gate enum should have 10 gates (0-9)"""
+    def test_gate_enum_has_12_gates(self):
+        """Gate enum should have 12 gates (including TDD gates 25, 45)"""
         from src.gates.gate_system import Gate
-        assert len(Gate) == 10
+        assert len(Gate) == 12  # Original 10 + TESTS_WRITTEN(25) + REFACTOR_COMPLETE(45)
 
     def test_gate_design_validated_is_0(self):
         """DESIGN_VALIDATED should be gate 0"""
@@ -294,20 +297,21 @@ class TestGateIntegration:
     """Integration tests for gate system"""
 
     def test_full_gate_progression(self):
-        """Should be able to progress through all 10 gates"""
+        """Should be able to progress through all 12 TDD gates in order"""
         from src.gates.gate_system import Gate
         from src.gates.gate_tracker import create_gate_progress, mark_gate_passed
-        from src.gates.gate_validator import can_pass_gate
+        from src.gates.gate_validator import can_pass_gate, GATE_ORDER
 
         progress = create_gate_progress()
 
-        # Progress through all gates
-        for gate in Gate:
-            assert can_pass_gate(gate, progress["passed_gates"]) is True
+        # Progress through gates in TDD order (not enum value order!)
+        for gate in GATE_ORDER:
+            assert can_pass_gate(gate, progress["passed_gates"]) is True, \
+                f"Should be able to pass {gate.name} after {[g.name for g in progress['passed_gates']]}"
             progress = mark_gate_passed(progress, gate)
 
-        # Should have all 10 gates passed
-        assert len(progress["passed_gates"]) == 10
+        # Should have all 12 gates passed
+        assert len(progress["passed_gates"]) == 12
 
     def test_gate_dependency_enforcement(self):
         """Dependencies should be enforced"""
@@ -344,24 +348,49 @@ class TestGateIntegration:
 
     def test_gate_6_safety_integration(self):
         """Gate 6 should integrate with safety scoring"""
+        from src.gates.gate_system import Gate
         from nodes.gate_nodes import gate_6_safety_node
 
         # High safety score - should pass
+        # Must include ALL TDD prerequisites: 0, 1, 2, 25, 3, 4, 45, 5
         state = {
             "safety": {"constitutional_score": 0.95, "violations": []},
-            "gate_progress": {"passed_gates": [0, 1, 2, 3, 4, 5]},
+            "gate_progress": {
+                "passed_gates": [
+                    Gate.DESIGN_VALIDATED,
+                    Gate.STORY_ASSIGNED,
+                    Gate.PLAN_APPROVED,
+                    Gate.TESTS_WRITTEN,     # TDD RED
+                    Gate.DEV_STARTED,
+                    Gate.DEV_COMPLETE,
+                    Gate.REFACTOR_COMPLETE,  # TDD REFACTOR
+                    Gate.QA_PASSED,
+                ]
+            },
         }
         result = gate_6_safety_node(state)
         assert result.get("gate_passed", False) is True
 
     def test_gate_failure_handling(self):
         """Gate failure should be handled gracefully"""
+        from src.gates.gate_system import Gate
         from nodes.gate_nodes import gate_6_safety_node
 
-        # Low safety score - should fail
+        # Low safety score - should fail (even with all prerequisites)
         state = {
             "safety": {"constitutional_score": 0.3, "violations": ["test"]},
-            "gate_progress": {"passed_gates": [0, 1, 2, 3, 4, 5]},
+            "gate_progress": {
+                "passed_gates": [
+                    Gate.DESIGN_VALIDATED,
+                    Gate.STORY_ASSIGNED,
+                    Gate.PLAN_APPROVED,
+                    Gate.TESTS_WRITTEN,
+                    Gate.DEV_STARTED,
+                    Gate.DEV_COMPLETE,
+                    Gate.REFACTOR_COMPLETE,
+                    Gate.QA_PASSED,
+                ]
+            },
         }
         result = gate_6_safety_node(state)
         assert result.get("gate_passed", True) is False

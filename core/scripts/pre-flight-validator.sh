@@ -545,6 +545,39 @@ check "K1: Gate protocol documented" "$([ -f .claudecode/workflows/gate-protocol
 check "K2: Retry loop documented" "$([ -f .claudecode/workflows/retry-loop.md ] && echo true || echo false)" false
 check "K3: Signal schemas documented" "$([ -f .claudecode/signals/SCHEMAS.md ] && echo true || echo false)" false
 
+# K-EXT: Slack Channel Validation (Added per Gate 0 research)
+P_JSON_FILE=".claude/P.json"
+if [ -f "$P_JSON_FILE" ] && command -v jq &> /dev/null; then
+    if jq -e '.slack_channel' "$P_JSON_FILE" > /dev/null 2>&1; then
+        SLACK_CHANNEL=$(jq -r '.slack_channel' "$P_JSON_FILE")
+        check "K4: slack_channel in P.json ($SLACK_CHANNEL)" "true"
+    else
+        check "K4: slack_channel in P.json" "false"
+        verbose "P.json missing slack_channel field - add to lock Slack destination"
+    fi
+else
+    check "K4: slack_channel in P.json" "false" false
+    verbose "P.json not found or jq not available"
+fi
+
+# K5: SLACK channel destination validation
+if [ -n "$SLACK_WEBHOOK_URL" ] && [ "$SLACK_WEBHOOK_URL" != "https://hooks.slack.com/services/YOUR/WEBHOOK/URL" ]; then
+    # Verify webhook SLACK channel matches expected (dry-run test)
+    SLACK_CHANNEL_TEST=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+        -X POST "$SLACK_WEBHOOK_URL" \
+        -H "Content-Type: application/json" \
+        -d '{"text":"[PRE-FLIGHT] SLACK channel validation test"}' 2>&1)
+    if [ "$SLACK_CHANNEL_TEST" = "200" ]; then
+        check "K5: SLACK channel destination reachable" "true"
+    else
+        check "K5: SLACK channel destination reachable" "false"
+        verbose "SLACK channel webhook returned HTTP $SLACK_CHANNEL_TEST"
+    fi
+else
+    check "K5: SLACK channel destination reachable" "false" false
+    verbose "SLACK_WEBHOOK_URL not configured for channel"
+fi
+
 # ─────────────────────────────────────────────────────────────────────────────
 # SECTION L: CREDENTIALS SUMMARY
 # ─────────────────────────────────────────────────────────────────────────────
@@ -584,10 +617,78 @@ if [ "$OUTPUT_JSON" != "true" ]; then
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-# SECTION M: POST-DEPLOYMENT (Conditional)
+# SECTION L-EXT: LANGSMITH PROPAGATION (Added per Gate 0 research)
+# ─────────────────────────────────────────────────────────────────────────────
+section "SECTION L-EXT: LANGSMITH PROPAGATION"
+
+# L5: LANGSMITH docker-compose coverage (>=9 services expected)
+if [ -n "$COMPOSE_FILE" ]; then
+    LANGSMITH_COUNT=$(grep -c "LANGSMITH" "$COMPOSE_FILE" 2>/dev/null || echo "0")
+    # Expected: 3 vars * 9 services = 27 refs minimum in docker-compose
+    if [ "$LANGSMITH_COUNT" -ge 27 ]; then
+        check "L5: LANGSMITH docker-compose coverage (>=27 refs, found $LANGSMITH_COUNT)" "true"
+    else
+        check "L5: LANGSMITH docker-compose coverage (>=27 refs, found $LANGSMITH_COUNT)" "false"
+        verbose "Add LANGSMITH_TRACING, LANGSMITH_API_KEY, LANGSMITH_PROJECT to docker-compose services"
+    fi
+else
+    check "L5: LANGSMITH docker-compose coverage" "false" false
+    verbose "No docker-compose file found"
+fi
+
+# L6: LANGSMITH propagation to agent containers
+if [ -n "$COMPOSE_FILE" ]; then
+    AGENTS_WITH_LANGSMITH=0
+    EXPECTED_AGENTS=9  # orchestrator, pm, cto, fe-dev-1, fe-dev-2, be-dev-1, be-dev-2, qa, dev-fix
+
+    for agent in orchestrator pm cto fe-dev-1 fe-dev-2 be-dev-1 be-dev-2 qa dev-fix; do
+        # Check if agent service has LANGSMITH propagated
+        if grep -A30 "container_name: wave-${agent}" "$COMPOSE_FILE" 2>/dev/null | grep -q "LANGSMITH"; then
+            ((AGENTS_WITH_LANGSMITH++)) || true
+        fi
+    done
+
+    if [ "$AGENTS_WITH_LANGSMITH" -ge "$EXPECTED_AGENTS" ]; then
+        check "L6: LANGSMITH propagation to agent containers ($AGENTS_WITH_LANGSMITH/$EXPECTED_AGENTS)" "true"
+    else
+        check "L6: LANGSMITH propagation to agent containers ($AGENTS_WITH_LANGSMITH/$EXPECTED_AGENTS)" "false"
+        verbose "Not all agent containers have LANGSMITH propagated"
+    fi
+else
+    check "L6: LANGSMITH propagation to agent containers" "false" false
+    verbose "No docker-compose file found"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SECTION M: CONTAINER MANAGEMENT (Added per Gate 0 research)
+# ─────────────────────────────────────────────────────────────────────────────
+section "SECTION M: CONTAINER MANAGEMENT"
+
+# M1: Stale/exited container cleanup check
+STALE_CONTAINERS=$(docker ps -aq --filter "name=wave-" --filter "status=exited" 2>/dev/null | wc -l | tr -d ' ')
+if [ "$STALE_CONTAINERS" -eq 0 ]; then
+    check "M1: No stale exited containers (count: $STALE_CONTAINERS)" "true"
+else
+    check "M1: No stale exited containers (count: $STALE_CONTAINERS)" "false" false
+    verbose "Container cleanup needed: docker rm \$(docker ps -aq --filter 'name=wave-' --filter 'status=exited')"
+fi
+
+# M2: Expected container count validation
+RUNNING_WAVE_CONTAINERS=$(docker ps -q --filter "name=wave-" 2>/dev/null | wc -l | tr -d ' ')
+EXPECTED_MAX_CONTAINERS=12  # 9 agents + dozzle + merge-watcher + orchestrator (max)
+
+if [ "$RUNNING_WAVE_CONTAINERS" -le "$EXPECTED_MAX_CONTAINERS" ]; then
+    check "M2: Expected container count valid ($RUNNING_WAVE_CONTAINERS <= $EXPECTED_MAX_CONTAINERS)" "true"
+else
+    check "M2: Expected container count valid ($RUNNING_WAVE_CONTAINERS <= $EXPECTED_MAX_CONTAINERS)" "false"
+    verbose "Too many wave containers running - possible duplicates"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SECTION M-POST: POST-DEPLOYMENT (Conditional)
 # ─────────────────────────────────────────────────────────────────────────────
 if [ "$POST_DEPLOY_MODE" = "true" ]; then
-    section "SECTION M: POST-DEPLOYMENT VERIFICATION"
+    section "SECTION M-POST: POST-DEPLOYMENT VERIFICATION"
 
     if [ -z "$DEPLOY_URL" ]; then
         [ -f ".claude/deploy-url.txt" ] && DEPLOY_URL=$(cat .claude/deploy-url.txt)
@@ -610,7 +711,7 @@ if [ "$POST_DEPLOY_MODE" = "true" ]; then
         verbose "No DEPLOY_URL provided. Use --deploy-url=https://..."
     fi
 else
-    section "SECTION M: POST-DEPLOYMENT (SKIPPED)"
+    section "SECTION M-POST: POST-DEPLOYMENT (SKIPPED)"
     if [ "$OUTPUT_JSON" != "true" ]; then
         echo "  ⏭️  Use --post-deploy to run post-deployment checks"
     fi
@@ -780,13 +881,20 @@ else
     verbose "No vitest or jest configuration found"
 fi
 
-# Check for TDD in agent prompts
-if [ -d "orchestrator/src/agents" ]; then
+# Check for TDD in agent prompts (fixed path: .claudecode/agents/*.md)
+TDD_PROMPTS_FOUND=0
+if [ -d ".claudecode/agents" ]; then
+    TDD_IN_PROMPTS=$(grep -l "TDD\|Test-Driven\|tests FIRST\|write.*test.*first\|Gate 2.5\|RED.*GREEN" .claudecode/agents/*.md 2>/dev/null | wc -l | tr -d ' ')
+    TDD_PROMPTS_FOUND=$TDD_IN_PROMPTS
+    check "O7: TDD in agent prompts ($TDD_IN_PROMPTS agents)" "$([ $TDD_IN_PROMPTS -gt 0 ] && echo true || echo false)"
+elif [ -d "orchestrator/src/agents" ]; then
+    # Fallback to old path for backwards compatibility
     TDD_IN_PROMPTS=$(grep -l "TDD\|Test-Driven\|tests FIRST\|write.*test.*first" orchestrator/src/agents/*.py 2>/dev/null | wc -l | tr -d ' ')
+    TDD_PROMPTS_FOUND=$TDD_IN_PROMPTS
     check "O7: TDD in agent prompts ($TDD_IN_PROMPTS agents)" "$([ $TDD_IN_PROMPTS -gt 0 ] && echo true || echo false)"
 else
     check "O7: TDD in agent prompts" "false" false
-    verbose "No agent prompts found in orchestrator/src/agents/"
+    verbose "No agent prompts found in .claudecode/agents/ or orchestrator/src/agents/"
 fi
 
 # Export framework info for use by agents
@@ -796,6 +904,44 @@ if [ "$OUTPUT_JSON" != "true" ]; then
     echo "    FRAMEWORK=$FRAMEWORK"
     [ -n "$FRAMEWORK_VERSION" ] && echo "    VERSION=$FRAMEWORK_VERSION"
     echo "    TDD_RATIO=$TDD_RATIO%"
+fi
+
+# Check TDD Gate System (Gate 2.5 and 4.5 exist)
+if [ "$OUTPUT_JSON" != "true" ]; then
+    echo ""
+    echo "  TDD Gate System Validation:"
+fi
+
+TDD_GATES_DEFINED=false
+TDD_VALIDATOR_FIXED=false
+
+# Check for TDD gate definitions in gate_system.py
+if [ -f "orchestrator/src/gates/gate_system.py" ]; then
+    if grep -q "TESTS_WRITTEN.*=.*25" orchestrator/src/gates/gate_system.py 2>/dev/null && \
+       grep -q "REFACTOR_COMPLETE.*=.*45" orchestrator/src/gates/gate_system.py 2>/dev/null; then
+        TDD_GATES_DEFINED=true
+        check "O8: TDD gates defined (2.5=25, 4.5=45)" "true"
+    else
+        check "O8: TDD gates defined (2.5=25, 4.5=45)" "false"
+        verbose "Add TESTS_WRITTEN=25 and REFACTOR_COMPLETE=45 to gate_system.py"
+    fi
+else
+    check "O8: TDD gates defined" "false" false
+    verbose "orchestrator/src/gates/gate_system.py not found"
+fi
+
+# Check for GATE_ORDER in gate_validator.py (proves value+1 bug is fixed)
+if [ -f "orchestrator/src/gates/gate_validator.py" ]; then
+    if grep -q "GATE_ORDER" orchestrator/src/gates/gate_validator.py 2>/dev/null; then
+        TDD_VALIDATOR_FIXED=true
+        check "O9: Gate validator uses GATE_ORDER (not value+1)" "true"
+    else
+        check "O9: Gate validator uses GATE_ORDER (not value+1)" "false"
+        verbose "Fix: gate_validator.py should use GATE_ORDER for TDD sequence"
+    fi
+else
+    check "O9: Gate validator uses GATE_ORDER" "false" false
+    verbose "orchestrator/src/gates/gate_validator.py not found"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -956,6 +1102,186 @@ if [ "$OUTPUT_JSON" != "true" ]; then
     echo "    Issue Detection: $([ -f "orchestrator/src/monitoring/issue_detector.py" ] && echo "ACTIVE" || echo "MISSING")"
     echo "    Safety Violations: $([ -f "orchestrator/src/safety/violations.py" ] && echo "ACTIVE" || echo "MISSING")"
     echo "    RLM Auditor: $([ -f "orchestrator/scripts/rlm_auditor.py" ] && echo "ACTIVE" || echo "MISSING")"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SECTION R: SLACK NOTIFICATION STRUCTURE
+# ─────────────────────────────────────────────────────────────────────────────
+section "SECTION R: SLACK NOTIFICATION STRUCTURE"
+
+WAVE_ROOT="${WAVE_ROOT:-/Volumes/SSD-01/Projects/WAVE}"
+SLACK_NOTIFY_LIB="$WAVE_ROOT/core/scripts/lib/slack-notify.sh"
+
+# R1: Slack notification library exists
+if [ -f "$SLACK_NOTIFY_LIB" ]; then
+    check "R1: Slack notify lib exists" "true"
+else
+    check "R1: Slack notify lib exists" "false" false
+    verbose "Missing: $SLACK_NOTIFY_LIB"
+fi
+
+# R2: All required notification functions defined
+if grep -qE 'slack_wave_start|slack_story_start|slack_story_complete|slack_wave_complete' "$SLACK_NOTIFY_LIB" 2>/dev/null; then
+    check "R2: Core notification functions defined" "true"
+else
+    check "R2: Core notification functions defined" "false" false
+fi
+
+# R3: Token/cost fields in notification payloads
+if grep -qiE 'token|cost' "$SLACK_NOTIFY_LIB" 2>/dev/null; then
+    check "R3: Token/cost fields in notifications" "true"
+else
+    check "R3: Token/cost fields in notifications" "false" false
+    verbose "Add token cost tracking to Slack payloads"
+fi
+
+# R4: IST timezone configured
+if grep -q 'Asia/Jerusalem' "$SLACK_NOTIFY_LIB" 2>/dev/null; then
+    check "R4: IST timezone in notifications" "true"
+else
+    check "R4: IST timezone in notifications" "false" false
+    verbose "Use TZ=Asia/Jerusalem for IST timestamps"
+fi
+
+# R5: Notification structure doc exists
+if [ -f "$WAVE_ROOT/docs/slack-notification-structure.md" ]; then
+    check "R5: Notification structure doc exists" "true"
+else
+    check "R5: Notification structure doc exists" "false" false
+fi
+
+# R6: Agent → LLM model references in notifications
+if grep -qE 'Opus|Sonnet|Haiku|model' "$SLACK_NOTIFY_LIB" 2>/dev/null; then
+    check "R6: LLM model names in notifications" "true"
+else
+    check "R6: LLM model names in notifications" "false" false
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SECTION S: WORK DISPATCH VALIDATION (P0 Gap Fix)
+# ─────────────────────────────────────────────────────────────────────────────
+section "SECTION S: WORK DISPATCH VALIDATION"
+
+DISPATCHER_SCRIPT="$WAVE_ROOT/core/scripts/work-dispatcher.sh"
+
+# S1: Work dispatcher script exists
+if [ -f "$DISPATCHER_SCRIPT" ]; then
+    check "S1: Work dispatcher script exists" "true"
+else
+    check "S1: Work dispatcher script exists" "false"
+    verbose "Missing: $DISPATCHER_SCRIPT - Cannot dispatch work to agents"
+fi
+
+# S2: Work dispatcher is executable
+if [ -x "$DISPATCHER_SCRIPT" ]; then
+    check "S2: Work dispatcher is executable" "true"
+else
+    check "S2: Work dispatcher is executable" "false" false
+    verbose "Run: chmod +x $DISPATCHER_SCRIPT"
+fi
+
+# S3: Orchestrator has dispatch logic
+if grep -qE 'work-dispatcher|DISPATCH.*PENDING' "$WAVE_ROOT/core/scripts/wave-orchestrator.sh" 2>/dev/null; then
+    check "S3: Orchestrator has dispatch logic" "true"
+else
+    check "S3: Orchestrator has dispatch logic" "false"
+    verbose "wave-orchestrator.sh needs dispatch logic for PENDING waves"
+fi
+
+# S4: Agent entrypoint has execution logic (not just TODO)
+ENTRYPOINT_SCRIPT="$WAVE_ROOT/core/docker/entrypoint.sh"
+if [ -f "$ENTRYPOINT_SCRIPT" ]; then
+    if grep -q "TODO.*Actual agent work" "$ENTRYPOINT_SCRIPT" 2>/dev/null; then
+        check "S4: Agent entrypoint has execution logic" "false"
+        verbose "entrypoint.sh still has TODO - no actual work execution"
+    else
+        check "S4: Agent entrypoint has execution logic" "true"
+    fi
+else
+    check "S4: Agent entrypoint has execution logic" "false" false
+fi
+
+# S5: Stories directory accessible
+if [ -d "$PROJECT_ROOT/stories" ] || [ -d "$PROJECT_ROOT/stories/wave1" ]; then
+    STORY_COUNT=$(find "$PROJECT_ROOT/stories" -name "WAVE*.json" 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$STORY_COUNT" -gt 0 ]; then
+        check "S5: Stories directory has stories ($STORY_COUNT found)" "true"
+    else
+        check "S5: Stories directory has stories (0 found)" "false" false
+    fi
+else
+    check "S5: Stories directory accessible" "false" false
+    verbose "No stories directory found at $PROJECT_ROOT/stories"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SECTION T: OPERATIONAL SMOKE TEST (E2E Validation)
+# ─────────────────────────────────────────────────────────────────────────────
+if [ "$QUICK_MODE" != "true" ]; then
+    section "SECTION T: OPERATIONAL SMOKE TEST"
+
+    # T1: Claude API reachable (without making actual call)
+    API_KEY="${ANTHROPIC_API_KEY:-}"
+    if [ -n "$API_KEY" ]; then
+        # Just verify we have a key that looks valid
+        if [[ "$API_KEY" == sk-ant-* ]]; then
+            check "T1: Anthropic API key format valid" "true"
+        else
+            check "T1: Anthropic API key format valid" "false" false
+        fi
+    else
+        check "T1: Anthropic API key configured" "false"
+        verbose "ANTHROPIC_API_KEY not set"
+    fi
+
+    # T2: LangSmith configuration
+    LANGSMITH_KEY="${LANGSMITH_API_KEY:-}"
+    LANGSMITH_PROJECT="${LANGSMITH_PROJECT:-}"
+    if [ -n "$LANGSMITH_KEY" ]; then
+        check "T2: LangSmith API key configured" "true"
+    else
+        check "T2: LangSmith API key configured" "false" false
+        verbose "LANGSMITH_API_KEY not set - tracing disabled"
+    fi
+
+    # T3: P.json has valid project_name (not generic "project")
+    if [ -f "$PROJECT_ROOT/.claude/P.json" ]; then
+        PROJECT_NAME=$(jq -r '.meta.project_name // "project"' "$PROJECT_ROOT/.claude/P.json" 2>/dev/null)
+        if [ "$PROJECT_NAME" != "project" ] && [ -n "$PROJECT_NAME" ]; then
+            check "T3: P.json project_name is set ($PROJECT_NAME)" "true"
+        else
+            check "T3: P.json project_name is generic" "false" false
+            verbose "P.json project_name should not be 'project'"
+        fi
+    else
+        check "T3: P.json exists" "false"
+    fi
+
+    # T4: Wave start signal can be created
+    TEST_SIGNAL="$PROJECT_ROOT/.claude/test-preflight-signal.json"
+    if echo '{"test": true}' > "$TEST_SIGNAL" 2>/dev/null; then
+        rm -f "$TEST_SIGNAL"
+        check "T4: Signal directory writable" "true"
+    else
+        check "T4: Signal directory writable" "false"
+    fi
+
+    # T5: Redis connectivity (if available)
+    if command -v redis-cli &> /dev/null || docker ps --format '{{.Names}}' 2>/dev/null | grep -q "redis"; then
+        if docker exec wave-redis redis-cli PING 2>/dev/null | grep -q "PONG"; then
+            check "T5: Redis connectivity" "true"
+        else
+            check "T5: Redis connectivity" "false" false
+        fi
+    else
+        check "T5: Redis connectivity" "false" false
+        verbose "Redis not available for task queueing"
+    fi
+else
+    section "SECTION T: OPERATIONAL SMOKE TEST (SKIPPED - Quick Mode)"
+    if [ "$OUTPUT_JSON" != "true" ]; then
+        echo "  ⏭️  Use full mode (without --quick) for smoke tests"
+    fi
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────

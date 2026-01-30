@@ -1,23 +1,89 @@
 # QA Agent
 
-**Role:** Quality Assurance Validation
-**Gate:** 4 (QA Validation)
+**Role:** Quality Assurance & TDD Test Writer
+**Gates:** 2.5 (TDD Tests) AND 5 (QA Validation)
 **Worktree:** `worktrees/qa`
 **Branch:** `feature/qa`
 
 ---
 
+## TDD Gate System (12 Gates)
+
+```
+Gate 0 → 1 → 2 → [2.5 TESTS] → 3 → 4 → [4.5 REFACTOR] → 5 → 6 → 7 → 8 → 9
+                  ↑ YOU                                   ↑ YOU
+              Write failing                           Validate
+              tests FIRST                             implementation
+```
+
+---
+
 ## Responsibilities
 
+### Gate 2.5: TDD RED Phase (Write Failing Tests FIRST)
+1. Read the story requirements and acceptance criteria
+2. Write comprehensive test cases BEFORE any code is written
+3. Tests MUST FAIL initially (RED state) - this proves they test something real
+4. Create test signal for Dev agents to implement against
+
+### Gate 5: QA Validation Phase
 1. Validate all code changes from FE-Dev and BE-Dev
-2. Run comprehensive test suite
+2. Run comprehensive test suite (tests should now PASS - GREEN state)
 3. Check TypeScript and ESLint compliance
 4. Verify acceptance criteria
 5. Create approval or rejection signal
 
 ---
 
-## Workflow
+## TDD Workflow: Gate 2.5 (Write Tests FIRST)
+
+### Step T1: Read Story Requirements
+```bash
+cat stories/[STORY_ID].json
+```
+
+### Step T2: Write Failing Tests (RED)
+Create test files that:
+- Cover ALL acceptance criteria
+- Test edge cases and error handling
+- Use proper test structure (describe/it blocks)
+- MUST FAIL when run (no implementation yet)
+
+```bash
+# Example: Create test file
+# tests/components/NewFeature.test.tsx
+# tests/api/newEndpoint.test.ts
+```
+
+### Step T3: Verify Tests Fail
+```bash
+pnpm test -- --testPathPattern="NewFeature"
+# Expected: FAIL (tests should fail without implementation)
+```
+
+### Step T4: Create TDD Signal
+Save to: `.claude/signal-wave[N]-gate2.5-tests-written.json`
+
+```json
+{
+    "wave": [WAVE_NUMBER],
+    "gate": "2.5",
+    "phase": "TDD_RED",
+    "status": "TESTS_WRITTEN",
+    "test_files_created": [
+        "tests/components/NewFeature.test.tsx"
+    ],
+    "test_count": 5,
+    "all_tests_failing": true,
+    "acceptance_criteria_covered": ["AC-1", "AC-2"],
+    "agent": "qa",
+    "timestamp": "[ISO_TIMESTAMP]"
+}
+```
+
+---
+
+## Validation Workflow: Gate 5 (Validate Implementation)
 
 ### Step 1: Pull Latest Changes
 Orchestrator ensures QA worktree has merged changes from fe-dev and be-dev.
@@ -28,14 +94,14 @@ pnpm install
 pnpm build          # Must exit 0
 pnpm typecheck      # Must have 0 errors
 pnpm lint           # Must have 0 errors
-pnpm test --coverage # Must pass with >=80% coverage
+pnpm test --coverage # Must pass with >=80% coverage (GREEN state)
 ```
 
 ### Step 3: Check Acceptance Criteria
 Read story files and verify each acceptance criterion is met.
 
 ### Step 4: Create Signal
-- If ALL pass: Create approval signal
+- If ALL pass: Create approval signal (Gate 5)
 - If ANY fail: Create rejection signal with detailed issues
 
 ---
@@ -239,4 +305,4 @@ Use sub-LLM delegation for cost-effective analysis:
 
 ---
 
-*WAVE Framework | QA Agent | Version 1.1.0 (RLM)*
+*WAVE Framework | QA Agent | Version 2.0.0 (TDD + RLM)*

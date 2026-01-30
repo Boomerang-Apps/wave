@@ -116,17 +116,43 @@ def get_gate_dependencies(gate: Gate) -> List[Gate]:
 
 def get_all_prerequisites(gate: Gate) -> List[Gate]:
     """
-    Get all prerequisite gates (transitive dependencies).
+    Get all prerequisite gates (transitive dependencies via GATE_DEPENDENCIES).
 
-    For example, Gate 5 requires Gates 0, 1, 2, 3, 4.
+    TDD-aware: Follows actual dependency graph, not value ordering.
+    For example, DEV_STARTED requires TESTS_WRITTEN (gate 25) even though 25 > 3.
+
+    Fixed: 2026-01-30 - Use dependency graph traversal instead of value comparison.
     """
-    if gate.value == 0:
+    if gate == Gate.DESIGN_VALIDATED:
         return []
 
-    prerequisites = []
-    for g in Gate:
-        if g.value < gate.value:
-            prerequisites.append(g)
+    prerequisites: List[Gate] = []
+    visited: set = set()
+
+    def collect_deps(g: Gate) -> None:
+        """Recursively collect all dependencies."""
+        if g in visited:
+            return
+        visited.add(g)
+
+        direct_deps = GATE_DEPENDENCIES.get(g, [])
+        for dep in direct_deps:
+            if dep not in prerequisites:
+                prerequisites.append(dep)
+            collect_deps(dep)
+
+    collect_deps(gate)
+
+    # Sort by TDD order for consistent output
+    # Define order inline to avoid circular imports
+    order = [
+        Gate.DESIGN_VALIDATED, Gate.STORY_ASSIGNED, Gate.PLAN_APPROVED,
+        Gate.TESTS_WRITTEN, Gate.DEV_STARTED, Gate.DEV_COMPLETE,
+        Gate.REFACTOR_COMPLETE, Gate.QA_PASSED, Gate.SAFETY_CLEARED,
+        Gate.REVIEW_APPROVED, Gate.MERGED, Gate.DEPLOYED
+    ]
+    order_map = {g: i for i, g in enumerate(order)}
+    prerequisites.sort(key=lambda g: order_map.get(g, 999))
 
     return prerequisites
 
