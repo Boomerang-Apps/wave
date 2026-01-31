@@ -370,4 +370,111 @@ describe('RunTracker', () => {
       expect(fs.existsSync(path.join(tempDir, 'a', 'b', 'runs'))).toBe(true);
     });
   });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // GAP-009: Bounded Signal Storage (Memory Safety)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe('GAP-009: Bounded Signal Storage', () => {
+    it('should support configurable max signals', () => {
+      const boundedTracker = new RunTracker({
+        runsDir: path.join(tempDir, 'bounded-runs'),
+        maxSignals: 100
+      });
+
+      expect(boundedTracker.maxSignals).toBe(100);
+    });
+
+    it('should have default max signals', () => {
+      expect(tracker.maxSignals).toBeGreaterThan(0);
+    });
+
+    it('should evict oldest signals when at capacity', async () => {
+      const smallTracker = new RunTracker({
+        runsDir: path.join(tempDir, 'small-runs'),
+        maxSignals: 5
+      });
+
+      await smallTracker.startRun({ wave: 1 });
+
+      // Record 5 signals
+      for (let i = 1; i <= 5; i++) {
+        smallTracker.recordSignal({ type: 'TEST', seq: i });
+      }
+
+      // Verify all 5 are tracked
+      let signals = smallTracker.getSignalsForRun(smallTracker.currentRunId);
+      expect(signals.length).toBe(5);
+      expect(signals[0].seq).toBe(1);
+
+      // Add one more - should evict oldest
+      smallTracker.recordSignal({ type: 'TEST', seq: 6 });
+
+      signals = smallTracker.getSignalsForRun(smallTracker.currentRunId);
+      expect(signals.length).toBe(5);
+      // Oldest (seq: 1) should be evicted
+      expect(signals.find(s => s.seq === 1)).toBeUndefined();
+      // Newest should be present
+      expect(signals.find(s => s.seq === 6)).toBeDefined();
+    });
+
+    it('should not exceed max signals', async () => {
+      const smallTracker = new RunTracker({
+        runsDir: path.join(tempDir, 'max-test-runs'),
+        maxSignals: 10
+      });
+
+      await smallTracker.startRun({ wave: 1 });
+
+      // Record 20 signals
+      for (let i = 0; i < 20; i++) {
+        smallTracker.recordSignal({ type: 'TEST', index: i });
+      }
+
+      const signals = smallTracker.getSignalsForRun(smallTracker.currentRunId);
+      expect(signals.length).toBeLessThanOrEqual(10);
+    });
+
+    it('should track accurate signal count in manifest', async () => {
+      const smallTracker = new RunTracker({
+        runsDir: path.join(tempDir, 'manifest-count-runs'),
+        maxSignals: 5
+      });
+
+      const run = await smallTracker.startRun({ wave: 1 });
+
+      // Record 10 signals (exceeds max)
+      for (let i = 0; i < 10; i++) {
+        smallTracker.recordSignal({ type: 'TEST', index: i });
+      }
+
+      await smallTracker.endRun({ status: 'completed' });
+
+      const manifestPath = path.join(tempDir, 'manifest-count-runs', run.runId, 'manifest.json');
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+
+      // Should reflect bounded count, not unbounded
+      expect(manifest.signalCount).toBeLessThanOrEqual(5);
+    });
+
+    it('should preserve most recent signals', async () => {
+      const smallTracker = new RunTracker({
+        runsDir: path.join(tempDir, 'recent-runs'),
+        maxSignals: 3
+      });
+
+      await smallTracker.startRun({ wave: 1 });
+
+      // Record signals 1-5
+      for (let i = 1; i <= 5; i++) {
+        smallTracker.recordSignal({ type: 'TEST', seq: i });
+      }
+
+      const signals = smallTracker.getSignalsForRun(smallTracker.currentRunId);
+
+      // Should have only the 3 most recent (3, 4, 5)
+      expect(signals.length).toBe(3);
+      expect(signals.map(s => s.seq).sort()).toEqual([3, 4, 5]);
+    });
+  });
 });

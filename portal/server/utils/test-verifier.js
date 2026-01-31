@@ -27,6 +27,36 @@ export const FORBIDDEN_FLAGS = [
   '--testNamePattern'  // Blocks all testNamePattern as it can be used to skip tests
 ];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GAP-012: Promise.race with Cleanup
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Race promises with proper cleanup using AbortController
+ * Aborts all remaining promises when one wins the race
+ *
+ * @param {Array<Promise|Function>} promises - Promises or functions that accept AbortSignal
+ * @param {AbortSignal} [externalSignal] - Optional external abort signal
+ * @returns {Promise<*>} Result of winning promise
+ */
+export async function raceWithCleanup(promises, externalSignal) {
+  const controller = new AbortController();
+
+  // Link external signal if provided
+  if (externalSignal) {
+    externalSignal.addEventListener('abort', () => controller.abort());
+  }
+
+  try {
+    return await Promise.race(
+      promises.map(p => typeof p === 'function' ? p(controller.signal) : p)
+    );
+  } finally {
+    // Abort all remaining promises
+    controller.abort();
+  }
+}
+
 export const VERIFICATION_STATUS = {
   PASSED: 'passed',
   FAILED: 'failed',
@@ -127,6 +157,7 @@ export class TestVerifier {
 
   /**
    * Run test command and capture output
+   * GAP-012: Uses proper Promise.race cleanup with AbortController
    * @param {Object} options - Run options
    * @returns {Object} Test run result
    */
@@ -145,19 +176,30 @@ export class TestVerifier {
       timedOut: false
     };
 
+    // GAP-012: Use AbortController for proper cleanup
+    const controller = new AbortController();
+    let timeoutId = null;
+
     try {
-      // Create timeout promise
+      // Create timeout promise that cleans up properly
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => {
+        timeoutId = setTimeout(() => {
           result.timedOut = true;
+          controller.abort(); // Abort the running command
           reject(new Error('Test execution timed out'));
         }, this.timeout);
       });
 
-      // Run tests
-      const runPromise = this._runTestCommand(this.testCommand, cwd);
+      // Run tests with abort signal
+      const runPromise = this._runTestCommand(this.testCommand, cwd, controller.signal);
 
       const cmdResult = await Promise.race([runPromise, timeoutPromise]);
+
+      // GAP-012: Clear timeout on successful completion
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
 
       result.executed = true;
       result.stdout = cmdResult.stdout;
@@ -179,6 +221,10 @@ export class TestVerifier {
       }
 
     } catch (error) {
+      // GAP-012: Always clear timeout on error
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       if (!result.timedOut) {
         result.error = error.message;
       }
@@ -189,24 +235,43 @@ export class TestVerifier {
 
   /**
    * Run test command (internal, mockable)
+   * GAP-012: Accepts abort signal for proper cleanup
+   * @param {string} command - Command to run
+   * @param {string} cwd - Working directory
+   * @param {AbortSignal} [signal] - Optional abort signal
    */
-  async _runTestCommand(command, cwd) {
+  async _runTestCommand(command, cwd, signal) {
     return new Promise((resolve) => {
       const [cmd, ...args] = command.split(' ');
       const proc = spawn(cmd, args, { cwd, shell: true });
 
       let stdout = '';
       let stderr = '';
+      let aborted = false;
+
+      // GAP-012: Handle abort signal
+      if (signal) {
+        const abortHandler = () => {
+          aborted = true;
+          proc.kill('SIGTERM');
+        };
+        signal.addEventListener('abort', abortHandler);
+
+        // Cleanup listener when process ends
+        proc.on('close', () => {
+          signal.removeEventListener('abort', abortHandler);
+        });
+      }
 
       proc.stdout?.on('data', (data) => { stdout += data; });
       proc.stderr?.on('data', (data) => { stderr += data; });
 
       proc.on('close', (code) => {
-        resolve({ stdout, stderr, exitCode: code });
+        resolve({ stdout, stderr, exitCode: aborted ? null : code, aborted });
       });
 
       proc.on('error', () => {
-        resolve({ stdout, stderr, exitCode: 1 });
+        resolve({ stdout, stderr, exitCode: 1, aborted });
       });
     });
   }

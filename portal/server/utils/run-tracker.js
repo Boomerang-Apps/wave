@@ -56,6 +56,9 @@ export function createSignalWithRunId(signal, runId) {
 // RunTracker Class
 // ─────────────────────────────────────────────────────────────────────────────
 
+// GAP-009: Default max signals to prevent unbounded memory growth
+const DEFAULT_MAX_SIGNALS = 10000;
+
 export class RunTracker {
   constructor(options = {}) {
     this.runsDir = options.runsDir || '.claude/runs';
@@ -64,6 +67,8 @@ export class RunTracker {
     this.sequences = {};
     this.signals = [];
     this.warnCallback = null;
+    // GAP-009: Bounded signal storage
+    this.maxSignals = options.maxSignals || DEFAULT_MAX_SIGNALS;
   }
 
   /**
@@ -243,10 +248,16 @@ export class RunTracker {
 
   /**
    * Record a signal for the current run
+   * GAP-009: Uses bounded storage to prevent unbounded memory growth
    * @param {Object} signal - Signal to record
    */
   recordSignal(signal) {
     this.signals.push(signal);
+
+    // GAP-009: Enforce bounded storage - evict oldest when at capacity
+    while (this.signals.length > this.maxSignals) {
+      this.signals.shift();
+    }
   }
 
   /**

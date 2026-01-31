@@ -34,6 +34,20 @@ const MIN_PASSPHRASE_LENGTH = 12;
 const VERSION = '1.0';
 
 // ─────────────────────────────────────────────────────────────────────────────
+// GAP-011: SECURE KEY MATERIAL ZEROING
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Securely zero a buffer to prevent key material from lingering in memory
+ * @param {Buffer|null} buffer - Buffer to zero out
+ */
+export function secureZeroBuffer(buffer) {
+  if (buffer && Buffer.isBuffer(buffer)) {
+    buffer.fill(0);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // KEY DERIVATION
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -140,6 +154,9 @@ export class PromptEncryptor {
    * @param {Buffer} [options.salt] - Salt for passphrase derivation (auto-generated if not provided)
    */
   constructor(options = {}) {
+    // GAP-011: Track destroyed state
+    this.isDestroyed = false;
+
     if (options.key) {
       // Direct key provided
       if (options.key.length !== KEY_LENGTH) {
@@ -165,11 +182,42 @@ export class PromptEncryptor {
   }
 
   /**
+   * GAP-011: Securely destroy the encryptor by zeroing key material
+   * Call this when done with the encryptor to prevent key material from lingering
+   */
+  destroy() {
+    if (this.isDestroyed) {
+      return; // Already destroyed, safe to call multiple times
+    }
+
+    // Zero out the key
+    secureZeroBuffer(this.key);
+
+    // Zero out the salt if present
+    if (this.salt) {
+      secureZeroBuffer(this.salt);
+    }
+
+    this.isDestroyed = true;
+  }
+
+  /**
+   * GAP-011: Check if encryptor is destroyed before operations
+   * @private
+   */
+  _checkDestroyed() {
+    if (this.isDestroyed) {
+      throw new Error('Encryptor has been destroyed and cannot be used');
+    }
+  }
+
+  /**
    * Encrypt content using AES-256-GCM
    * @param {string} content - Content to encrypt
    * @returns {{ iv: string, authTag: string, ciphertext: string, algorithm: string }}
    */
   encrypt(content) {
+    this._checkDestroyed();
     return encryptString(content, this.key);
   }
 
@@ -179,6 +227,7 @@ export class PromptEncryptor {
    * @returns {string}
    */
   decrypt(encrypted) {
+    this._checkDestroyed();
     return decryptString(encrypted, this.key);
   }
 

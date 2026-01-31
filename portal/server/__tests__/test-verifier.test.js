@@ -566,4 +566,126 @@ describe('TestVerifier', () => {
       expect(result.timedOut).toBe(true);
     });
   });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // GAP-012: Promise.race Cleanup
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe('GAP-012: Promise.race Cleanup', () => {
+    it('should export raceWithCleanup function', async () => {
+      const { raceWithCleanup } = await import('../utils/test-verifier.js');
+      expect(typeof raceWithCleanup).toBe('function');
+    });
+
+    it('raceWithCleanup should return the winning promise result', async () => {
+      const { raceWithCleanup } = await import('../utils/test-verifier.js');
+
+      const fast = Promise.resolve('fast');
+      const slow = new Promise(resolve => setTimeout(() => resolve('slow'), 100));
+
+      const result = await raceWithCleanup([fast, slow]);
+      expect(result).toBe('fast');
+    });
+
+    it('raceWithCleanup should abort remaining promises via signal', async () => {
+      const { raceWithCleanup } = await import('../utils/test-verifier.js');
+
+      let signalAborted = false;
+
+      const fast = Promise.resolve('fast');
+      const slowWithSignal = (signal) => new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => resolve('slow'), 100);
+        signal.addEventListener('abort', () => {
+          clearTimeout(timeout);
+          signalAborted = true;
+          reject(new Error('aborted'));
+        });
+      });
+
+      await raceWithCleanup([fast, slowWithSignal]);
+
+      // Wait a tick for abort to propagate
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(signalAborted).toBe(true);
+    });
+
+    it('raceWithCleanup should handle all promises rejecting', async () => {
+      const { raceWithCleanup } = await import('../utils/test-verifier.js');
+
+      const failing = Promise.reject(new Error('fail'));
+
+      await expect(raceWithCleanup([failing])).rejects.toThrow('fail');
+    });
+
+    it('raceWithCleanup should accept external abort signal', async () => {
+      const { raceWithCleanup } = await import('../utils/test-verifier.js');
+
+      const controller = new AbortController();
+      let taskStarted = false;
+
+      const slowTask = (signal) => new Promise((resolve, reject) => {
+        taskStarted = true;
+        signal.addEventListener('abort', () => reject(new Error('external abort')));
+      });
+
+      // Start the race
+      const racePromise = raceWithCleanup([slowTask], controller.signal);
+
+      // Abort externally
+      controller.abort();
+
+      await expect(racePromise).rejects.toThrow();
+      expect(taskStarted).toBe(true);
+    });
+
+    it('TestVerifier should clear timeout timer on successful completion', async () => {
+      const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
+
+      const fastVerifier = new TestVerifier({
+        artifactsDir: tempDir,
+        timeout: 5000
+      });
+
+      vi.spyOn(fastVerifier, '_runTestCommand').mockResolvedValue({
+        stdout: '{"numPassedTests": 1, "numFailedTests": 0, "numTotalTests": 1}',
+        stderr: '',
+        exitCode: 0
+      });
+
+      await fastVerifier.runTests({ cwd: tempDir });
+
+      // Timeout should have been cleared
+      expect(clearTimeoutSpy).toHaveBeenCalled();
+
+      clearTimeoutSpy.mockRestore();
+    });
+
+    it('TestVerifier should abort child process on timeout', async () => {
+      const timeoutVerifier = new TestVerifier({
+        artifactsDir: tempDir,
+        timeout: 50
+      });
+
+      let abortSignalReceived = false;
+
+      vi.spyOn(timeoutVerifier, '_runTestCommand').mockImplementation(
+        (cmd, cwd, signal) => new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => resolve({ stdout: '', stderr: '', exitCode: 0 }), 200);
+          if (signal) {
+            signal.addEventListener('abort', () => {
+              clearTimeout(timeout);
+              abortSignalReceived = true;
+              reject(new Error('aborted'));
+            });
+          }
+        })
+      );
+
+      const result = await timeoutVerifier.runTests({ cwd: tempDir });
+
+      expect(result.timedOut).toBe(true);
+      expect(abortSignalReceived).toBe(true);
+    });
+  });
 });

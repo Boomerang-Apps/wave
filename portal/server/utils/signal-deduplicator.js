@@ -15,6 +15,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { BoundedCache } from './bounded-cache.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -22,7 +23,8 @@ import crypto from 'crypto';
 
 export const DEDUP_DEFAULTS = {
   ttlMs: 24 * 60 * 60 * 1000, // 24 hours
-  storePath: '.claude/processed-signals.json'
+  storePath: '.claude/processed-signals.json',
+  maxEntries: 10000 // GAP-008: Prevent unbounded memory growth
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -60,9 +62,13 @@ export class SignalDeduplicator {
   constructor(options = {}) {
     this.storePath = options.storePath ?? DEDUP_DEFAULTS.storePath;
     this.ttlMs = options.ttlMs ?? DEDUP_DEFAULTS.ttlMs;
+    this.maxEntries = options.maxEntries ?? DEDUP_DEFAULTS.maxEntries;
 
-    // In-memory store with persistence
-    this.processedIds = {};
+    // GAP-008: Use bounded cache to prevent unbounded memory growth
+    this._processedCache = new BoundedCache({
+      max: this.maxEntries,
+      ttl: this.ttlMs
+    });
     this.sequences = {}; // source -> highest sequence
 
     // Lock for concurrent operations
@@ -80,12 +86,19 @@ export class SignalDeduplicator {
       if (fs.existsSync(this.storePath)) {
         const content = fs.readFileSync(this.storePath, 'utf8');
         const data = JSON.parse(content);
-        this.processedIds = data.processedIds || {};
+
+        // GAP-008: Load into bounded cache
+        this._processedCache.clear();
+        const processedIds = data.processedIds || {};
+        for (const [eventId, entry] of Object.entries(processedIds)) {
+          this._processedCache.set(eventId, entry);
+        }
+
         this.sequences = data.sequences || {};
       }
     } catch {
       // Start fresh on any error (corrupted file, etc.)
-      this.processedIds = {};
+      this._processedCache.clear();
       this.sequences = {};
     }
   }
@@ -100,8 +113,14 @@ export class SignalDeduplicator {
         fs.mkdirSync(dir, { recursive: true });
       }
 
+      // GAP-008: Export from bounded cache
+      const processedIds = {};
+      for (const [key, value] of this._processedCache.entries()) {
+        processedIds[key] = value;
+      }
+
       const content = JSON.stringify({
-        processedIds: this.processedIds,
+        processedIds,
         sequences: this.sequences
       }, null, 2);
 
@@ -121,7 +140,8 @@ export class SignalDeduplicator {
       throw new Error('Event ID is required');
     }
 
-    const existing = this.processedIds[eventId];
+    // GAP-008: Use bounded cache (also updates LRU order)
+    const existing = this._processedCache.get(eventId);
 
     if (existing) {
       return {
@@ -148,8 +168,8 @@ export class SignalDeduplicator {
       throw new Error('Event ID is required');
     }
 
-    // Check for duplicate
-    const existing = this.processedIds[eventId];
+    // GAP-008: Check using bounded cache
+    const existing = this._processedCache.get(eventId);
     if (existing) {
       return {
         isDuplicate: true,
@@ -166,11 +186,12 @@ export class SignalDeduplicator {
 
     try {
       // Double-check after acquiring lock
-      if (this.processedIds[eventId]) {
+      const doubleCheck = this._processedCache.get(eventId);
+      if (doubleCheck) {
         return {
           isDuplicate: true,
           eventId,
-          firstSeenAt: this.processedIds[eventId].processedAt
+          firstSeenAt: doubleCheck.processedAt
         };
       }
 
@@ -195,12 +216,12 @@ export class SignalDeduplicator {
         }
       }
 
-      // Mark as processed
-      this.processedIds[eventId] = {
+      // GAP-008: Mark as processed using bounded cache
+      this._processedCache.set(eventId, {
         processedAt: now,
         sequence: options.sequence,
         source: options.source
-      };
+      });
 
       // Persist
       await this._saveState();
@@ -226,18 +247,13 @@ export class SignalDeduplicator {
    * @returns {Object} Cleanup stats { removed, remaining }
    */
   async cleanup() {
-    const now = Date.now();
-    const cutoff = now - this.ttlMs;
-    let removed = 0;
+    // GAP-008: Use bounded cache's prune method
+    const sizeBefore = this._processedCache.size;
+    this._processedCache.prune();
+    const sizeAfter = this._processedCache.size;
 
-    for (const [eventId, data] of Object.entries(this.processedIds)) {
-      if (data.processedAt < cutoff) {
-        delete this.processedIds[eventId];
-        removed++;
-      }
-    }
-
-    const remaining = Object.keys(this.processedIds).length;
+    const removed = sizeBefore - sizeAfter;
+    const remaining = sizeAfter;
 
     await this._saveState();
 
@@ -250,9 +266,10 @@ export class SignalDeduplicator {
    */
   getStats() {
     return {
-      totalProcessed: Object.keys(this.processedIds).length,
+      totalProcessed: this._processedCache.size,
       storePath: this.storePath,
       ttlMs: this.ttlMs,
+      maxEntries: this.maxEntries,
       sources: Object.keys(this.sequences).length
     };
   }
@@ -261,7 +278,7 @@ export class SignalDeduplicator {
    * Clear all processed IDs
    */
   async clear() {
-    this.processedIds = {};
+    this._processedCache.clear();
     this.sequences = {};
     await this._saveState();
   }

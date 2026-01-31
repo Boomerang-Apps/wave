@@ -458,4 +458,106 @@ This file is approximately 1KB which is typical.
       expect(decrypted).toBe(TEST_CONTENT);
     });
   });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // GAP-011: Key Material Zeroing (Secure Cleanup)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe('GAP-011: Key Material Zeroing', () => {
+    it('should have a destroy method', () => {
+      const enc = new PromptEncryptor({ passphrase: TEST_PASSPHRASE });
+      expect(typeof enc.destroy).toBe('function');
+    });
+
+    it('destroy should zero the key buffer', () => {
+      const enc = new PromptEncryptor({ passphrase: TEST_PASSPHRASE });
+
+      // Verify key is not all zeros before destroy
+      const keyBefore = Buffer.from(enc.key);
+      expect(keyBefore.some(b => b !== 0)).toBe(true);
+
+      // Destroy the encryptor
+      enc.destroy();
+
+      // Key should now be all zeros
+      expect(enc.key.every(b => b === 0)).toBe(true);
+    });
+
+    it('destroy should zero the salt buffer if present', () => {
+      const enc = new PromptEncryptor({ passphrase: TEST_PASSPHRASE });
+
+      // Salt should exist for passphrase-derived keys
+      expect(enc.salt).not.toBeNull();
+
+      const saltBefore = Buffer.from(enc.salt);
+      expect(saltBefore.some(b => b !== 0)).toBe(true);
+
+      enc.destroy();
+
+      // Salt should now be all zeros
+      expect(enc.salt.every(b => b === 0)).toBe(true);
+    });
+
+    it('should mark encryptor as destroyed', () => {
+      const enc = new PromptEncryptor({ passphrase: TEST_PASSPHRASE });
+
+      expect(enc.isDestroyed).toBe(false);
+
+      enc.destroy();
+
+      expect(enc.isDestroyed).toBe(true);
+    });
+
+    it('should throw error when using destroyed encryptor for encrypt', () => {
+      const enc = new PromptEncryptor({ passphrase: TEST_PASSPHRASE });
+      enc.destroy();
+
+      expect(() => enc.encrypt('test')).toThrow(/destroyed/i);
+    });
+
+    it('should throw error when using destroyed encryptor for decrypt', () => {
+      const enc = new PromptEncryptor({ passphrase: TEST_PASSPHRASE });
+      const encrypted = enc.encrypt('test');
+      enc.destroy();
+
+      expect(() => enc.decrypt(encrypted)).toThrow(/destroyed/i);
+    });
+
+    it('secureZeroBuffer should fill buffer with zeros', async () => {
+      const { secureZeroBuffer } = await import('../utils/prompt-encryptor.js');
+      const buf = Buffer.from([0x41, 0x42, 0x43, 0x44]);
+
+      secureZeroBuffer(buf);
+
+      expect(buf.every(b => b === 0)).toBe(true);
+    });
+
+    it('secureZeroBuffer should handle null gracefully', async () => {
+      const { secureZeroBuffer } = await import('../utils/prompt-encryptor.js');
+
+      // Should not throw
+      expect(() => secureZeroBuffer(null)).not.toThrow();
+      expect(() => secureZeroBuffer(undefined)).not.toThrow();
+    });
+
+    it('should allow multiple destroy calls safely', () => {
+      const enc = new PromptEncryptor({ passphrase: TEST_PASSPHRASE });
+
+      enc.destroy();
+      expect(() => enc.destroy()).not.toThrow();
+    });
+
+    it('destroy should work with direct key constructor', () => {
+      const key = generateKey();
+      const enc = new PromptEncryptor({ key });
+
+      // Salt should be null for direct key
+      expect(enc.salt).toBeNull();
+
+      enc.destroy();
+
+      expect(enc.key.every(b => b === 0)).toBe(true);
+      expect(enc.isDestroyed).toBe(true);
+    });
+  });
 });

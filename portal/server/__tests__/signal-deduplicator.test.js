@@ -420,4 +420,129 @@ describe('SignalDeduplicator', () => {
       expect(result.isDuplicate).toBe(false);
     });
   });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // GAP-008: Bounded Storage (Memory Safety)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  describe('GAP-008: Bounded Storage', () => {
+    it('should support configurable max entries', () => {
+      const boundedDedup = new SignalDeduplicator({
+        storePath: path.join(tempDir, 'bounded.json'),
+        maxEntries: 100
+      });
+
+      expect(boundedDedup.maxEntries).toBe(100);
+    });
+
+    it('should have default max entries', () => {
+      expect(deduplicator.maxEntries).toBeGreaterThan(0);
+    });
+
+    it('should evict oldest entries when at capacity', async () => {
+      const smallDedup = new SignalDeduplicator({
+        storePath: path.join(tempDir, 'small-cache.json'),
+        maxEntries: 5
+      });
+
+      // Add 5 entries
+      const eventIds = [];
+      for (let i = 0; i < 5; i++) {
+        const id = generateEventId();
+        eventIds.push(id);
+        await smallDedup.checkAndMark(id);
+      }
+
+      // Verify all 5 are tracked
+      for (const id of eventIds) {
+        const result = await smallDedup.check(id);
+        expect(result.isDuplicate).toBe(true);
+      }
+
+      // Add one more - should evict the oldest
+      const newId = generateEventId();
+      await smallDedup.checkAndMark(newId);
+
+      // New one should be tracked
+      const newResult = await smallDedup.check(newId);
+      expect(newResult.isDuplicate).toBe(true);
+
+      // Oldest should be evicted (LRU)
+      const oldestResult = await smallDedup.check(eventIds[0]);
+      expect(oldestResult.isDuplicate).toBe(false);
+    });
+
+    it('should not exceed max entries', async () => {
+      const smallDedup = new SignalDeduplicator({
+        storePath: path.join(tempDir, 'max-test.json'),
+        maxEntries: 10
+      });
+
+      // Add 20 entries
+      for (let i = 0; i < 20; i++) {
+        await smallDedup.checkAndMark(generateEventId());
+      }
+
+      const stats = smallDedup.getStats();
+      expect(stats.totalProcessed).toBeLessThanOrEqual(10);
+    });
+
+    it('should update LRU order on access', async () => {
+      const smallDedup = new SignalDeduplicator({
+        storePath: path.join(tempDir, 'lru-test.json'),
+        maxEntries: 3
+      });
+
+      // Add 3 entries
+      const id1 = generateEventId();
+      const id2 = generateEventId();
+      const id3 = generateEventId();
+
+      await smallDedup.checkAndMark(id1);
+      await smallDedup.checkAndMark(id2);
+      await smallDedup.checkAndMark(id3);
+
+      // Access id1 to make it most recently used
+      await smallDedup.check(id1);
+
+      // Add a new entry - should evict id2 (now oldest)
+      const id4 = generateEventId();
+      await smallDedup.checkAndMark(id4);
+
+      // id1 should still be tracked (was accessed)
+      const r1 = await smallDedup.check(id1);
+      expect(r1.isDuplicate).toBe(true);
+
+      // id2 should be evicted (was oldest after id1 was accessed)
+      const r2 = await smallDedup.check(id2);
+      expect(r2.isDuplicate).toBe(false);
+    });
+
+    it('should persist bounded state correctly', async () => {
+      const smallDedup = new SignalDeduplicator({
+        storePath: path.join(tempDir, 'persist-bounded.json'),
+        maxEntries: 3
+      });
+
+      // Add entries
+      const ids = [];
+      for (let i = 0; i < 3; i++) {
+        const id = generateEventId();
+        ids.push(id);
+        await smallDedup.checkAndMark(id);
+      }
+
+      // Create new instance
+      const newDedup = new SignalDeduplicator({
+        storePath: path.join(tempDir, 'persist-bounded.json'),
+        maxEntries: 3
+      });
+
+      // All should still be tracked
+      for (const id of ids) {
+        const result = await newDedup.check(id);
+        expect(result.isDuplicate).toBe(true);
+      }
+    });
+  });
 });
