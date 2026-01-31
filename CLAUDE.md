@@ -1,129 +1,222 @@
-# WAVE V2 - Claude Code Instructions
+# CLAUDE.md - AirView Marketplace
 
-## MANDATORY: Pre-Flight Validation
+## 🛡️ WORKFLOW V4.3 + WAVE V2 ACTIVE
 
-**BEFORE ANY WORK**, you MUST run:
+### ✅ DO WITHOUT ASKING
+- Create/edit files in your owned paths
+- Run pnpm install, test, lint, build
+- Git add, commit, push to feature branches
+- Create TypeScript contracts
+- Run story linter
 
+### ⛔ ASK FIRST
+- Modify files outside ownership paths
+- Merge to main or develop
+- Delete migrations or seed data
+- Unclear requirements
+
+### 🚫 NEVER DO
+- Push directly to main
+- Skip workflow gates
+- Self-approve for QA/PM review
+- Commit .env files or secrets
+- Modify other agents' domains
+
+## 📂 DOMAIN OWNERSHIP
+
+| Domain | Agent | Paths |
+|--------|-------|-------|
+| Auth | BE-Dev | src/features/auth/**, supabase/functions/auth-** |
+| Profiles | BE-Dev | src/features/profiles/**, supabase/functions/profile-** |
+| Projects | BE-Dev | src/features/projects/**, supabase/functions/project-** |
+| Proposals | BE-Dev | src/features/proposals/**, supabase/functions/proposal-** |
+| Payments | BE-Dev | src/features/payments/**, supabase/functions/payment-** |
+| Messaging | BE-Dev | src/features/messaging/**, supabase/functions/message-** |
+| UI Shell | FE-Dev | src/components/**, src/app/** |
+| Contracts | CTO | contracts/** |
+| Stories | PM | stories/** |
+
+## 🔄 SIGNAL FILES
+Location: `.claude/`
+Pattern: `signal-{wave}-{gate}-{status}.json`
+
+## 📦 TECH STACK
+
+| Layer | Technology | Notes |
+|-------|------------|-------|
+| Frontend | Next.js 14 App Router | TypeScript strict mode |
+| Styling | Tailwind CSS | Mobile-first, RTL support |
+| Backend | Supabase | PostgreSQL + PostGIS + Edge Functions |
+| Auth | Supabase GoTrue | Email/password + OTP |
+| Payments | PayPlus | Israeli payment processor |
+| Hosting | Vercel | Auto-deploy from main |
+| Language | Hebrew (RTL) | Primary, English secondary |
+
+## 📐 CODE STYLE
+
+### TypeScript
+- Strict mode enabled
+- Explicit return types on exported functions
+- Use interfaces over types where possible
+- Prefer const assertions
+
+### React/Next.js
+- Server Components by default
+- Client Components only when needed (interactivity, hooks)
+- Use App Router conventions
+- Colocate components with features
+
+### Naming Conventions
+- Components: PascalCase (LoginForm.tsx)
+- Hooks: camelCase with 'use' prefix (useAuth.ts)
+- Utils: camelCase (formatCurrency.ts)
+- Types: PascalCase with 'I' prefix for interfaces (IUser)
+- Constants: SCREAMING_SNAKE_CASE
+
+### File Organization
+```
+src/
+├── app/                    # Next.js App Router
+├── components/             # Shared UI components
+│   ├── ui/                # Base UI primitives
+│   └── layout/            # Layout components
+├── features/              # Feature modules
+│   └── {feature}/
+│       ├── components/    # Feature-specific components
+│       ├── hooks/         # Feature-specific hooks
+│       ├── lib/           # Feature utilities
+│       └── types/         # Feature types
+├── lib/                   # Shared utilities
+└── types/                 # Global types
+```
+
+## 🌍 INTERNATIONALIZATION
+
+- Primary language: Hebrew (RTL)
+- Secondary: English
+- All UI strings in translation files
+- Use dir="rtl" on root HTML element
+- Tailwind RTL utilities (start/end vs left/right)
+
+## 🔒 SECURITY REQUIREMENTS
+
+### Authentication
+- Email/password with strong password policy
+- Email verification required
+- Rate limiting on auth endpoints
+- Session expiry: 7 days (configurable)
+
+### Authorization
+- Row Level Security (RLS) on all Supabase tables
+- Role-based access control (client/pilot/admin)
+- Never trust client-side role claims
+
+### Data Protection
+- No PII in logs
+- Encrypt sensitive data at rest
+- HTTPS only
+- CSRF protection on forms
+
+## 🧪 TESTING REQUIREMENTS
+
+- Unit tests for utilities and hooks
+- Integration tests for API endpoints
+- E2E tests for critical flows (auth, payment)
+- Minimum coverage: 70%
+
+## 📋 ACCEPTANCE CRITERIA FORMAT
+
+All stories use EARS (Easy Approach to Requirements Syntax):
+
+```
+WHEN {trigger} THEN {behavior} [threshold: {metric}]
+```
+
+Examples:
+- WHEN user submits valid login form THEN redirect to dashboard [latency: <500ms]
+- WHEN pilot uploads license THEN status changes to 'pending' [storage: <10MB]
+
+## 🚦 WORKFLOW GATES
+
+| Gate | Owner | Description |
+|------|-------|-------------|
+| Gate 0 | CTO | Pre-wave approval |
+| Gate 1 | Agent | Self-review |
+| Gate 2 | Agent | Build passes |
+| Gate 3 | Agent | Tests pass |
+| Gate 4 | QA | Acceptance testing |
+| Gate 5 | PM | Requirements met |
+| Gate 6 | CTO | Architecture review |
+| Gate 7 | CTO | Merge approval |
+
+## 🚀 WAVE V2 SDK INFRASTRUCTURE
+
+### Installed SDKs
+| SDK | Purpose |
+|-----|---------|
+| `@anthropic-ai/claude-agent-sdk` | Multi-agent orchestration |
+| `zod` v4 | Runtime schema validation |
+| `@opentelemetry/*` | Observability & tracing |
+| `@playwright/test` | E2E testing |
+| `@orpc/server` | Agent-to-agent RPC |
+
+### Slash Commands Available
+Run `/commands` to see full list. Key commands:
+- `/gate-0` through `/gate-7` - Execute specific gates
+- `/execute-story <id>` - Full story execution
+- `/wave-status` - Wave progress dashboard
+- `/protocol-verify` - Compliance audit
+- `/tdd` - TDD cycle guidance
+- `/research` - Research validation
+- `/branch` - Create feature branch
+
+### Hooks (Auto-triggered)
+Location: `.claude/hooks/`
+- `check-gates.sh` - Blocks push without Gate 7
+- `validate-branch-name.sh` - Enforces `feature/EPIC-TYPE-NNN`
+- `check-tdd.sh` - Warns if tests missing
+- `validate-story.sh` - Schema validation on save
+- `update-signals.sh` - Creates signal files
+
+### Agent SDK Usage
 ```bash
-cd /Volumes/SSD-01/Projects/WAVE/orchestrator
-python3 scripts/preflight_lock.py --audit
-python3 scripts/preflight_lock.py --check
+# Execute story through gates
+pnpm wave:execute AUTH-STORY-001
+pnpm wave:execute AUTH-STORY-001 --start-gate gate2
 ```
 
-If the lock check fails, run:
+### E2E Testing
 ```bash
-python3 scripts/preflight_lock.py --validate --lock
+pnpm playwright:install  # First time
+pnpm test:e2e            # Run tests
+pnpm test:e2e:ui         # Interactive mode
 ```
 
-**DO NOT PROCEED** if validation fails. Fix errors first.
+### MCP Integrations
+| MCP | Status | Use For |
+|-----|--------|---------|
+| GitHub | ✅ | PR, issues, repo ops |
+| Notion | ✅ | Workspace docs |
+| Slack | ✅ | Notifications |
+| Memory | ✅ | Knowledge graph |
 
----
-
-## Architecture Compliance
-
-All work MUST follow `/orchestrator/docs/WAVE-V2-IMPLEMENTATION-GUIDE.md`
-
-### Critical Rules
-
-1. **NEVER skip pre-flight validation**
-2. **NEVER implement features without first auditing existing code**
-3. **ALWAYS map checklist terms to codebase before assuming "missing"**
-4. **ALWAYS use ChatAnthropic API (not CLI flags)**
-5. **ALWAYS check WAVE_PRINCIPLES for safety (not "DO-178C" literal search)**
-
-### Term Mapping (Memorize This)
-
-| Checklist Term | Codebase Implementation |
-|---------------|-------------------------|
-| DO-178C probes | `WAVE_PRINCIPLES` in `constitutional.py` |
-| Autonomous flag | NOT NEEDED (API is autonomous) |
-| E-Stop | `EmergencyStop` in `emergency_stop.py` |
-| Domain isolation | `SUPPORTED_DOMAINS` in `domain_router.py` |
-| Budget enforcement | `BudgetTracker` in `budget.py` |
-| Constitutional AI | `ConstitutionalChecker` in `constitutional.py` |
-
----
-
-## 10-Step Launch Sequence
-
-Steps 0-9 are SEQUENTIAL. NO SKIPPING.
-
-| Step | ID | Purpose |
-|------|-----|---------|
-| 0 | mockup-design | HTML prototypes |
-| 1 | project-overview | PRD & Stories |
-| 2 | execution-plan | Wave assignment |
-| 3 | system-config | API keys |
-| 4 | infrastructure | Services check |
-| 5 | compliance-safety | Safety guardrails |
-| 6 | rlm-protocol | Learning system |
-| 7 | notifications | Slack alerts |
-| 8 | build-qa | Docker + tests |
-| 9 | agent-dispatch | LAUNCH |
-
----
-
-## Safety Systems
-
-### Emergency Stop
-- File: `.claude/EMERGENCY-STOP`
-- Redis: `wave:emergency` channel
-- Check with: `EmergencyStop().check()`
-
-### WAVE_PRINCIPLES (DO-178C Equivalent)
-- P001: No Destructive Commands
-- P002: No Secret Exposure
-- P003: Stay In Scope
-- P004: Validate Inputs
-- P005: Respect Budgets
-- P006: Escalate Uncertainty
-
----
-
-## Before ANY Implementation Task
-
+### Key Directories
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  MANDATORY PRE-IMPLEMENTATION CHECKLIST                     │
-├─────────────────────────────────────────────────────────────┤
-│  [ ] 1. Run preflight_lock.py --audit                       │
-│  [ ] 2. Run preflight_lock.py --check                       │
-│  [ ] 3. Grep for related functionality (multiple patterns)  │
-│  [ ] 4. Search for alternative naming conventions           │
-│  [ ] 5. Map checklist terms to codebase terms               │
-│  [ ] 6. Confirm "missing" status with file reads            │
-│  [ ] 7. Document what EXISTS before planning what's MISSING │
-└─────────────────────────────────────────────────────────────┘
+.claude/
+├── agents/      # Claude Agent SDK config
+├── telemetry/   # OpenTelemetry setup
+├── rpc/         # oRPC procedures
+├── hooks/       # Git/tool hooks
+├── commands/    # Slash commands
+├── signals/     # Runtime signals
+└── settings.json
 ```
 
-**NEVER create duplicate implementations. ALWAYS audit first.**
-
----
-
-## Key File Locations
-
-```
-/orchestrator/
-├── scripts/preflight_lock.py     # RUN THIS FIRST
-├── src/safety/                   # Safety systems
-├── src/agents/                   # Domain agents
-├── src/domains/                  # Domain isolation
-└── docs/WAVE-V2-IMPLEMENTATION-GUIDE.md  # Full reference
-```
-
----
-
-## Validation Commands
-
+### Environment Required
 ```bash
-# Audit checklist terms
-python3 scripts/preflight_lock.py --audit
-
-# Check if locked
-python3 scripts/preflight_lock.py --check
-
-# Full validation + lock
-python3 scripts/preflight_lock.py --validate --lock
+export ANTHROPIC_API_KEY=your-key  # For agent execution
 ```
 
-**If ANY check fails, STOP and fix before proceeding.**
+### Documentation
+- `.claude/SDK-README.md` - Full SDK documentation
+- `.claude/SESSION-HANDOFF-2026-01-31.md` - Latest session context
