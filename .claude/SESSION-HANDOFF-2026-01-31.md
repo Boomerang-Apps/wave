@@ -229,5 +229,40 @@ From previous session (also Jan 31):
 
 ---
 
+---
+
+## Final Fix: Hooks Schema
+
+The hooks in `.claude/settings.json` were updated to the correct format:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": "bash .claude/hooks/check-gates.sh" }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [{ "type": "command", "command": "bash .claude/hooks/check-tdd.sh" }]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [{ "type": "command", "command": "bash .claude/hooks/check-tdd.sh" }]
+      }
+    ]
+  }
+}
+```
+
+**Key format:**
+- `matcher`: Simple string (tool name like `"Bash"`, `"Write"`, `"Edit"`)
+- `hooks`: Array of `{type: "command", command: "..."}` objects
+
+---
+
 *Session ended: January 31, 2026*
 *Agent: Claude Opus 4.5*

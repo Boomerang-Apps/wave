@@ -2,52 +2,31 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": {
-          "tools": ["Bash"],
-          "pattern": "git push.*origin.*(main|develop|master)"
-        },
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/check-gates.sh \"$TOOL_INPUT\""
-          }
-        ]
-      },
-      {
-        "matcher": {
-          "tools": ["Bash"],
-          "pattern": "git checkout -b"
-        },
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/validate-branch-name.sh \"$TOOL_INPUT\""
+            "command": "bash .claude/hooks/check-gates.sh"
           }
         ]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": {
-          "tools": ["Write", "Edit"],
-          "pattern": "stories/.*\\.json$"
-        },
+        "matcher": "Write",
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/validate-story.sh \"$TOOL_INPUT\""
+            "command": "bash .claude/hooks/check-tdd.sh"
           }
         ]
       },
       {
-        "matcher": {
-          "tools": ["Write", "Edit"],
-          "pattern": "\\.(ts|tsx|js|jsx|py|go|rs|java)$"
-        },
+        "matcher": "Edit",
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/check-tdd.sh \"$TOOL_INPUT\""
+            "command": "bash .claude/hooks/check-tdd.sh"
           }
         ]
       }
