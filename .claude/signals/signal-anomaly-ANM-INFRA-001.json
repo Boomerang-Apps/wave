@@ -1,0 +1,61 @@
+{
+  "id": "ANM-INFRA-001",
+  "class": "Critical",
+  "storyId": "INFRASTRUCTURE",
+  "summary": "Test infrastructure failure: 11 tests failing across 4 test files",
+  "description": "Critical test infrastructure issue detected during Gate 0 pre-flight validation. Multiple test files are failing due to TypeError in ConnectionCards component and assertion failures in UI components. The root cause appears to be undefined response handling in ConnectionCards.tsx:267 causing cascade failures in dependent tests.",
+  "detectedAt": "2026-01-31T13:24:00Z",
+  "detectedBy": "cto",
+  "detectedDuring": "Gate 0",
+  "stepsToReproduce": [
+    "Run: cd portal && npm run test:run",
+    "Observe 4 test files failing with 11 total test failures",
+    "Note TypeError: Cannot read properties of undefined (reading 'json') at ConnectionCards.tsx:267"
+  ],
+  "expected": "All tests pass (100% green)",
+  "actual": "4 test files failed, 11 tests failed out of 3770 total (99.7% pass rate but blocking)",
+  "evidence": {
+    "testOutput": "Test Files: 4 failed | 108 passed (112)\nTests: 11 failed | 3758 passed | 1 skipped (3770)",
+    "errorLocation": "src/components/ConnectionCards.tsx:267:35",
+    "errorType": "TypeError: Cannot read properties of undefined (reading 'json')",
+    "failedFiles": [
+      "server/__tests__/mockup-endpoint.test.js (3 failed)",
+      "src/__tests__/LaunchSequenceProgress.test.tsx (2 failed)",
+      "src/__tests__/MockupDesignTab.test.tsx (6 failed)"
+    ]
+  },
+  "affectedAC": ["N/A - Infrastructure"],
+  "environment": {
+    "os": "Darwin 25.1.0",
+    "runtime": "Node.js (vitest 4.0.18)",
+    "browser": "jsdom 27.4.0"
+  },
+  "status": "resolved",
+  "assignedTo": "cto",
+  "rootCause": "Multiple issues: (1) ConnectionCards.tsx:267 missing null check on fetch response, (2) LaunchSequenceProgress missing READY badge and 'all systems green' message, (3) mockup-endpoint.js missing saveValidation call for database persistence, (4) MockupDesignTab tests using wrong text selectors for current UI, (5) OrchestratorRoutes empty test suite",
+  "resolution": "Fixed 6 files: (1) Added response validation in ConnectionCards.tsx, (2) Added READY badge and completion message to LaunchSequenceProgress.tsx, (3) Added saveValidation import and call to mockup-endpoint.js, (4) Updated MockupDesignTab.test.tsx assertions to match current component text, (5) Added describe.skip to empty OrchestratorRoutes suite",
+  "resolvedAt": "2026-01-31T13:34:00Z",
+  "preventionAction": "Add fetch mock coverage verification to test setup. Consider adding mandatory response null checks in ESLint rules for fetch calls.",
+  "blocking": false,
+  "rollbackRequired": false,
+  "notifications": {
+    "slack": false,
+    "email": false
+  },
+  "metadata": {
+    "createdAt": "2026-01-31T13:24:00Z",
+    "updatedAt": "2026-01-31T13:34:00Z",
+    "version": "1.0.1"
+  },
+  "fixedFiles": [
+    "portal/src/components/ConnectionCards.tsx",
+    "portal/src/components/LaunchSequenceProgress.tsx",
+    "portal/server/utils/mockup-endpoint.js",
+    "portal/src/__tests__/MockupDesignTab.test.tsx",
+    "portal/server/__tests__/orchestrator-bridge.test.js"
+  ],
+  "postFixStatus": {
+    "testFiles": "112 passed (112)",
+    "tests": "3769 passed | 1 skipped | 1 todo (3771)"
+  }
+}

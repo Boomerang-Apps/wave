@@ -1,0 +1,113 @@
+{
+  "$schema": "../schemas/story-schema-v4.1.json",
+  "name": "Wave V2 Pre-Flight Checklist",
+  "version": "1.0",
+  "description": "Gate 0 pre-flight validation checklist for story execution",
+  "items": [
+    {
+      "id": "PF-01",
+      "category": "Story Definition",
+      "check": "Story ID follows pattern EPIC-TYPE-NNN",
+      "required": true,
+      "automated": true
+    },
+    {
+      "id": "PF-02",
+      "category": "Story Definition",
+      "check": "All required schema fields are populated",
+      "required": true,
+      "automated": true
+    },
+    {
+      "id": "PF-03",
+      "category": "Story Definition",
+      "check": "User story follows 'As a/I want/So that' format",
+      "required": true,
+      "automated": true
+    },
+    {
+      "id": "PF-04",
+      "category": "Acceptance Criteria",
+      "check": "At least one acceptance criterion defined",
+      "required": true,
+      "automated": true
+    },
+    {
+      "id": "PF-05",
+      "category": "Acceptance Criteria",
+      "check": "All criteria use EARS syntax (WHEN/GIVEN/IF...THEN)",
+      "required": true,
+      "automated": true
+    },
+    {
+      "id": "PF-06",
+      "category": "Hazards",
+      "check": "Hazard analysis completed",
+      "required": true,
+      "automated": false
+    },
+    {
+      "id": "PF-07",
+      "category": "Hazards",
+      "check": "All hazards have mitigation strategies",
+      "required": true,
+      "automated": true
+    },
+    {
+      "id": "PF-08",
+      "category": "Rollback",
+      "check": "Rollback plan defined with trigger conditions",
+      "required": true,
+      "automated": true
+    },
+    {
+      "id": "PF-09",
+      "category": "Rollback",
+      "check": "Rollback verification procedure specified",
+      "required": true,
+      "automated": true
+    },
+    {
+      "id": "PF-10",
+      "category": "Traceability",
+      "check": "Requirements linked to story",
+      "required": true,
+      "automated": true
+    },
+    {
+      "id": "PF-11",
+      "category": "Traceability",
+      "check": "Test file paths specified",
+      "required": true,
+      "automated": true
+    },
+    {
+      "id": "PF-12",
+      "category": "Dependencies",
+      "check": "No circular dependencies detected",
+      "required": true,
+      "automated": true
+    },
+    {
+      "id": "PF-13",
+      "category": "Dependencies",
+      "check": "All blocking stories completed",
+      "required": true,
+      "automated": true
+    },
+    {
+      "id": "PF-14",
+      "category": "Domain",
+      "check": "Domain ownership verified",
+      "required": true,
+      "automated": true
+    },
+    {
+      "id": "PF-15",
+      "category": "Environment",
+      "check": "Required environment variables documented",
+      "required": false,
+      "automated": true
+    }
+  ]
+}

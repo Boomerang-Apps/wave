@@ -146,30 +146,32 @@ describe('MockupDesignTab Component', () => {
       });
     });
 
-    it('should display Step 0: Design Foundation info', async () => {
+    it('should display project tagline when connected', async () => {
       render(<MockupDesignTab {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText(/step 0.*design foundation/i)).toBeInTheDocument();
+        // Mock data has tagline: 'Test project'
+        expect(screen.getByText('Test project')).toBeInTheDocument();
       });
     });
 
-    it('should show Analyze Foundation button when connected', async () => {
+    it('should show analysis controls when connected', async () => {
       render(<MockupDesignTab {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /analyze foundation/i })).toBeInTheDocument();
+        // InlineAnalysis component shows analysis controls
+        expect(screen.getByText('my-app')).toBeInTheDocument();
       });
     });
 
-    it('should display KPI cards with document and mockup counts', async () => {
+    it('should display expandable cards for documentation and mockups', async () => {
       render(<MockupDesignTab {...defaultProps} />);
 
       await waitFor(() => {
-        // Check for document count
-        expect(screen.getByText('Documents')).toBeInTheDocument();
-        // Check for mockup count
-        expect(screen.getByText('Mockups')).toBeInTheDocument();
+        // Check for documentation section
+        expect(screen.getByText('Documentation')).toBeInTheDocument();
+        // Check for design mockups section
+        expect(screen.getByText('Design Mockups')).toBeInTheDocument();
       });
     });
 
@@ -182,11 +184,11 @@ describe('MockupDesignTab Component', () => {
       });
     });
 
-    it('should show Connected status badge', async () => {
+    it('should show project connections section', async () => {
       render(<MockupDesignTab {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Connected')).toBeInTheDocument();
+        expect(screen.getByText('Project Connections')).toBeInTheDocument();
       });
     });
   });
@@ -358,9 +360,9 @@ describe('MockupDesignTab Component', () => {
       render(<MockupDesignTab {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Documents')).toBeInTheDocument();
-        // Value should be 0
-        expect(screen.getByText('0')).toBeInTheDocument();
+        expect(screen.getByText('Documentation')).toBeInTheDocument();
+        // Should show "0 files discovered" subtitle
+        expect(screen.getByText('0 files discovered')).toBeInTheDocument();
       });
     });
 
@@ -386,7 +388,9 @@ describe('MockupDesignTab Component', () => {
       render(<MockupDesignTab {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Mockups')).toBeInTheDocument();
+        expect(screen.getByText('Design Mockups')).toBeInTheDocument();
+        // Should show "0 HTML screens discovered" subtitle
+        expect(screen.getByText('0 HTML screens discovered')).toBeInTheDocument();
       });
     });
   });

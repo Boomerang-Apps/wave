@@ -1,0 +1,220 @@
+{
+  "id": "AUTH-STORY-001",
+  "title": "Implement User Email/Password Authentication",
+  "epic": "AUTH",
+  "type": "STORY",
+  "priority": "P1-High",
+  "domain": "auth",
+  "owner": "be-dev",
+  "status": "draft",
+  "wave": 1,
+  "description": {
+    "summary": "Implement secure email/password authentication using Supabase GoTrue",
+    "context": "Users need to authenticate to access the marketplace. This is a foundational feature required by all other user-facing features.",
+    "userStory": "As a user, I want to sign up and log in with my email and password, so that I can access my personalized marketplace experience"
+  },
+  "acceptanceCriteria": [
+    {
+      "id": "AC-01",
+      "criterion": "WHEN user submits valid registration form THEN account is created and verification email is sent",
+      "testable": true,
+      "threshold": "latency: <2000ms"
+    },
+    {
+      "id": "AC-02",
+      "criterion": "WHEN user submits valid login credentials THEN user is authenticated and redirected to dashboard",
+      "testable": true,
+      "threshold": "latency: <500ms"
+    },
+    {
+      "id": "AC-03",
+      "criterion": "WHEN user submits invalid credentials THEN error message is displayed without revealing which field is wrong",
+      "testable": true
+    },
+    {
+      "id": "AC-04",
+      "criterion": "GIVEN user is authenticated WHEN session expires THEN user is redirected to login",
+      "testable": true
+    }
+  ],
+  "technicalRequirements": {
+    "files": [
+      {
+        "path": "src/features/auth/components/LoginForm.tsx",
+        "action": "create",
+        "description": "Login form component with email/password fields"
+      },
+      {
+        "path": "src/features/auth/components/RegisterForm.tsx",
+        "action": "create",
+        "description": "Registration form component"
+      },
+      {
+        "path": "src/features/auth/hooks/useAuth.ts",
+        "action": "create",
+        "description": "Authentication hook for session management"
+      },
+      {
+        "path": "src/features/auth/lib/supabase-auth.ts",
+        "action": "create",
+        "description": "Supabase auth client wrapper"
+      }
+    ],
+    "dependencies": [
+      "@supabase/supabase-js"
+    ],
+    "migrations": [],
+    "environment": [
+      "SUPABASE_URL",
+      "SUPABASE_ANON_KEY"
+    ]
+  },
+  "hazards": [
+    {
+      "id": "HAZ-01",
+      "description": "Credential stuffing attacks through brute force",
+      "severity": "high",
+      "mitigation": "Implement rate limiting on auth endpoints"
+    },
+    {
+      "id": "HAZ-02",
+      "description": "Session hijacking through XSS",
+      "severity": "critical",
+      "mitigation": "Use httpOnly cookies and implement CSP headers"
+    }
+  ],
+  "rollbackPlan": {
+    "trigger": "Auth failure rate exceeds 5% OR security vulnerability discovered",
+    "steps": [
+      "Disable new registrations via feature flag",
+      "Revert to previous auth implementation if exists",
+      "Notify affected users via email",
+      "Invalidate all active sessions if security breach"
+    ],
+    "verification": "Verify login flow works with test accounts after rollback"
+  },
+  "traceability": {
+    "requirements": [
+      "REQ-AUTH-001",
+      "REQ-AUTH-002"
+    ],
+    "tests": [
+      "src/features/auth/__tests__/LoginForm.test.tsx",
+      "src/features/auth/__tests__/useAuth.test.ts"
+    ],
+    "dependencies": [],
+    "blockedBy": []
+  },
+  "gates": {
+    "gate0": { "status": "pending" },
+    "gate1": { "status": "pending" },
+    "gate2": { "status": "pending" },
+    "gate3": { "status": "pending" },
+    "gate4": { "status": "pending" },
+    "gate5": { "status": "pending" },
+    "gate6": { "status": "pending" },
+    "gate7": { "status": "pending" }
+  },
+  "researchValidation": {
+    "status": "validated",
+    "completedAt": "2026-01-31T12:15:00Z",
+    "validatedBy": "cto",
+    "sources": [
+      {
+        "topic": "Email/Password Authentication Best Practices",
+        "url": "https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html",
+        "type": "industry-standard",
+        "credibility": "high",
+        "accessedAt": "2026-01-31",
+        "keyInsights": [
+          "Minimum password length 10 characters (NIST SP800-132)",
+          "Allow all characters including unicode and whitespace",
+          "No arbitrary periodic password rotation required",
+          "Implement login throttling and account lockout",
+          "Use password strength meter and block breached passwords"
+        ],
+        "appliedToAC": ["AC-01", "AC-02", "AC-03"]
+      },
+      {
+        "topic": "Supabase GoTrue Email/Password Authentication",
+        "url": "https://supabase.com/docs/guides/auth/passwords",
+        "type": "official-documentation",
+        "credibility": "high",
+        "accessedAt": "2026-01-31",
+        "keyInsights": [
+          "Email authentication enabled by default",
+          "Email verification configurable (default true on hosted)",
+          "Supports password, magic link, OTP, social login, SSO",
+          "Refresh token rotation with malicious reuse detection",
+          "SMTP configuration required for production email flows"
+        ],
+        "appliedToAC": ["AC-01", "AC-02", "AC-04"]
+      },
+      {
+        "topic": "Session Management and Cookie Security",
+        "url": "https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html",
+        "type": "industry-standard",
+        "credibility": "high",
+        "accessedAt": "2026-01-31",
+        "keyInsights": [
+          "HttpOnly cookie attribute mandatory for XSS protection",
+          "Set Secure flag for HTTPS-only transmission",
+          "Use SameSite=Strict or Lax for CSRF protection",
+          "Regenerate session IDs after login",
+          "Implement session expiration and timeout"
+        ],
+        "appliedToAC": ["AC-04"]
+      },
+      {
+        "topic": "Error Message Best Practices",
+        "url": "https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html",
+        "type": "industry-standard",
+        "credibility": "high",
+        "accessedAt": "2026-01-31",
+        "keyInsights": [
+          "Use generic error messages to prevent user enumeration",
+          "Never reveal which field (email or password) was incorrect",
+          "Log failed attempts for security monitoring"
+        ],
+        "appliedToAC": ["AC-03"]
+      }
+    ],
+    "industryStandards": [
+      {
+        "standard": "OWASP Authentication Cheat Sheet",
+        "version": "2025",
+        "url": "https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html",
+        "compliance": "full",
+        "relevantSections": ["Password Guidelines", "Brute Force Protection", "Error Messages"]
+      },
+      {
+        "standard": "OWASP Session Management Cheat Sheet",
+        "version": "2025",
+        "url": "https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html",
+        "compliance": "full",
+        "relevantSections": ["Cookie Attributes", "Session Expiration"]
+      },
+      {
+        "standard": "NIST SP800-132",
+        "version": "2010",
+        "url": "https://csrc.nist.gov/publications/detail/sp/800-132/final",
+        "compliance": "full",
+        "relevantSections": ["Password Length Requirements"]
+      }
+    ],
+    "localRegulations": [
+      {
+        "regulation": "Israeli Privacy Protection Law",
+        "jurisdiction": "Israel",
+        "url": "https://www.gov.il/en/departments/legalInfo/legislation_privacy_protection",
+        "compliance": "full"
+      }
+    ]
+  },
+  "metadata": {
+    "createdAt": "2026-01-31T12:00:00Z",
+    "updatedAt": "2026-01-31T12:15:00Z",
+    "createdBy": "wave-init",
+    "version": "1.0.1"
+  }
+}

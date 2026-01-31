@@ -10,6 +10,7 @@
 import { detectMockups } from './mockup-detection.js';
 import { analyzeMockup } from './mockup-analysis.js';
 import { createMockupCheck } from './mockup-types.js';
+import { saveValidation } from './validation-persistence.js';
 
 // ============================================
 // Request Validation
@@ -142,9 +143,17 @@ export async function validateMockups(projectPath, projectId) {
       timestamp: new Date().toISOString()
     };
 
+    // Persist results to database
+    let persistError = null;
+    try {
+      await saveValidation(projectId, '_mockup', validationData);
+    } catch (err) {
+      persistError = err.message;
+    }
+
     return {
       status: 200,
-      data: validationData
+      data: persistError ? { ...validationData, persistError } : validationData
     };
 
   } catch (err) {

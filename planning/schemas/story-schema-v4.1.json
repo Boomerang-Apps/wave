@@ -1,0 +1,287 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "wave-story-schema-v4.1",
+  "title": "WAVE V2 AI Story Schema",
+  "description": "Schema for AI-executable story definitions following aerospace safety protocols",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "epic",
+    "type",
+    "priority",
+    "domain",
+    "owner",
+    "status",
+    "description",
+    "acceptanceCriteria",
+    "technicalRequirements",
+    "hazards",
+    "rollbackPlan",
+    "traceability"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Z]+-[A-Z]+-[0-9]{3}$",
+      "description": "Story ID format: EPIC-TYPE-NNN (e.g., AUTH-STORY-001)"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 100,
+      "description": "Concise story title"
+    },
+    "epic": {
+      "type": "string",
+      "enum": ["AUTH", "PROFILES", "PROJECTS", "PROPOSALS", "PAYMENTS", "MESSAGING", "UI", "INFRA"],
+      "description": "Parent epic identifier"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["STORY", "BUG", "SPIKE", "TECH-DEBT"],
+      "description": "Story type classification"
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["P0-Critical", "P1-High", "P2-Medium", "P3-Low"],
+      "description": "Priority level"
+    },
+    "domain": {
+      "type": "string",
+      "description": "Technical domain (auth, profiles, ui, etc.)"
+    },
+    "owner": {
+      "type": "string",
+      "enum": ["be-dev", "fe-dev", "qa", "pm", "cto"],
+      "description": "Agent responsible for implementation"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "ready", "in-progress", "blocked", "review", "done", "archived"],
+      "description": "Current story status"
+    },
+    "wave": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Wave number for execution grouping"
+    },
+    "description": {
+      "type": "object",
+      "required": ["summary", "context", "userStory"],
+      "properties": {
+        "summary": {
+          "type": "string",
+          "description": "Brief summary of the story"
+        },
+        "context": {
+          "type": "string",
+          "description": "Background context and motivation"
+        },
+        "userStory": {
+          "type": "string",
+          "pattern": "^As a .+, I want .+, so that .+$",
+          "description": "User story in standard format"
+        }
+      }
+    },
+    "acceptanceCriteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "criterion", "testable"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^AC-[0-9]{2}$",
+            "description": "Acceptance criteria ID (AC-01, AC-02, etc.)"
+          },
+          "criterion": {
+            "type": "string",
+            "pattern": "^(WHEN|GIVEN|IF) .+ THEN .+$",
+            "description": "EARS syntax criterion"
+          },
+          "testable": {
+            "type": "boolean",
+            "description": "Whether this criterion can be automatically tested"
+          },
+          "threshold": {
+            "type": "string",
+            "description": "Optional performance threshold"
+          }
+        }
+      }
+    },
+    "technicalRequirements": {
+      "type": "object",
+      "required": ["files", "dependencies"],
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "action"],
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "File path relative to project root"
+              },
+              "action": {
+                "type": "string",
+                "enum": ["create", "modify", "delete"],
+                "description": "Required action on the file"
+              },
+              "description": {
+                "type": "string",
+                "description": "What changes are needed"
+              }
+            }
+          }
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "NPM packages or other dependencies"
+        },
+        "migrations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Database migrations required"
+        },
+        "environment": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Environment variables needed"
+        }
+      }
+    },
+    "hazards": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "description", "severity", "mitigation"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^HAZ-[0-9]{2}$",
+            "description": "Hazard ID"
+          },
+          "description": {
+            "type": "string",
+            "description": "Hazard description"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["critical", "high", "medium", "low"],
+            "description": "Severity level"
+          },
+          "mitigation": {
+            "type": "string",
+            "description": "How to mitigate this hazard"
+          }
+        }
+      }
+    },
+    "rollbackPlan": {
+      "type": "object",
+      "required": ["trigger", "steps", "verification"],
+      "properties": {
+        "trigger": {
+          "type": "string",
+          "description": "Conditions that trigger rollback"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ordered rollback steps"
+        },
+        "verification": {
+          "type": "string",
+          "description": "How to verify successful rollback"
+        }
+      }
+    },
+    "traceability": {
+      "type": "object",
+      "required": ["requirements", "tests"],
+      "properties": {
+        "requirements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Linked requirement IDs"
+        },
+        "tests": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Linked test file paths"
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Story IDs this depends on"
+        },
+        "blockedBy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Story IDs blocking this"
+        }
+      }
+    },
+    "gates": {
+      "type": "object",
+      "properties": {
+        "gate0": {
+          "type": "object",
+          "properties": {
+            "status": { "type": "string", "enum": ["pending", "passed", "failed"] },
+            "timestamp": { "type": "string", "format": "date-time" },
+            "approver": { "type": "string" }
+          }
+        },
+        "gate1": { "$ref": "#/properties/gates/properties/gate0" },
+        "gate2": { "$ref": "#/properties/gates/properties/gate0" },
+        "gate3": { "$ref": "#/properties/gates/properties/gate0" },
+        "gate4": { "$ref": "#/properties/gates/properties/gate0" },
+        "gate5": { "$ref": "#/properties/gates/properties/gate0" },
+        "gate6": { "$ref": "#/properties/gates/properties/gate0" },
+        "gate7": { "$ref": "#/properties/gates/properties/gate0" }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

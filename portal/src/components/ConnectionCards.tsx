@@ -264,8 +264,14 @@ export function ConnectionCards({
         body: JSON.stringify({ projectPath })
       });
 
+      // Handle undefined response or failed fetch
+      if (!response || !response.ok) {
+        console.error('Failed to detect connections: Invalid response');
+        return;
+      }
+
       const data = await response.json();
-      if (data.success) {
+      if (data?.success) {
         setConnections(data.connections);
         setLastRefresh(new Date().toISOString());
         onConnectionsLoaded?.(data.connections);

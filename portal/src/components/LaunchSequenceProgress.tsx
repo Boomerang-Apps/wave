@@ -32,6 +32,7 @@ export function LaunchSequenceProgress({
   currentStep
 }: LaunchSequenceProgressProps) {
   const completedCount = steps.filter(s => s.status === 'ready').length;
+  const isAllComplete = completedCount === steps.length;
 
   return (
     <div className="bg-card border border-border rounded-xl p-5 mb-6">
@@ -40,11 +41,23 @@ export function LaunchSequenceProgress({
         <div className="flex items-center gap-2">
           <Rocket className="h-4 w-4 text-muted-foreground" />
           <span className="font-medium text-sm">Launch Sequence</span>
+          {isAllComplete && (
+            <span className="px-2 py-0.5 text-xs font-semibold bg-green-500 text-white rounded">
+              READY
+            </span>
+          )}
         </div>
         <span className="text-sm text-muted-foreground">
           {completedCount}/{steps.length} Complete
         </span>
       </div>
+
+      {/* All systems green message */}
+      {isAllComplete && (
+        <div className="mb-4 text-center text-sm text-green-500 font-medium">
+          All systems green - ready for launch
+        </div>
+      )}
 
       {/* Stepper */}
       <div className="flex items-center">

@@ -97,6 +97,10 @@ all           # Full project analysis
 ║                                Args: "story {ID}" | "wave {N}" |             ║
 ║                                      "epic {NAME}" | "all"                   ║
 ║                                                                              ║
+║  /rearchitect                  Analyze & reorganize folder structure         ║
+║                                Args: "analyze" | "plan" | "execute" |        ║
+║                                      "validate"                              ║
+║                                                                              ║
 ║  /rlm-verify                   Requirements lifecycle traceability           ║
 ║                                Args: "story {ID}" | "wave {N}" | "all"       ║
 ║                                                                              ║
@@ -154,6 +158,8 @@ all           # Full project analysis
 /gap-analysis all                    # Project-wide gaps
 /rlm-verify all                      # Full traceability
 /trace all                           # Complete matrix
+/rearchitect analyze                 # Analyze folder structure
+/rearchitect plan                    # Generate reorganization plan
 ```
 
 ## Usage Examples
@@ -181,4 +187,10 @@ all           # Full project analysis
 # Project health check
 /protocol-verify all
 /gap-analysis all
+
+# Folder structure analysis & reorganization
+/rearchitect analyze                 # Scan and report
+/rearchitect plan                    # Generate move plan
+/rearchitect execute                 # Apply changes (with backup)
+/rearchitect validate                # Verify after changes
 ```

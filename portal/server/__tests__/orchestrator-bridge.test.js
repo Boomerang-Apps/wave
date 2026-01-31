@@ -396,7 +396,8 @@ describe('OrchestratorBridge', () => {
 // ROUTE TESTS
 // =============================================================================
 
-describe('OrchestratorRoutes', () => {
+describe.skip('OrchestratorRoutes', () => {
   // Route tests would go here - requires setting up express test environment
   // For now, the bridge tests cover the core functionality
+  it.todo('should register routes on express app');
 });

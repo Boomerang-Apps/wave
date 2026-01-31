@@ -1,0 +1,99 @@
+{
+  "framework": "wave-v2",
+  "version": "1.0",
+  "project": {
+    "type": "nextjs-monorepo",
+    "name": "WAVE - AirView Marketplace",
+    "description": "Multi-agent aerospace workflow automation platform"
+  },
+  "commands": {
+    "install": "cd portal && npm install",
+    "build": "cd portal && npm run build",
+    "test": "cd portal && npm run test:run",
+    "testCoverage": "cd portal && npm run test:coverage",
+    "lint": "cd portal && npm run lint",
+    "typeCheck": "cd portal && tsc --noEmit",
+    "securityAudit": "cd portal && npm audit",
+    "dev": "cd portal && npm run dev:all",
+    "e2e": "npx playwright test"
+  },
+  "paths": {
+    "stories": "stories/",
+    "contracts": "contracts/",
+    "planning": "planning/",
+    "signals": ".claude/signals/",
+    "portal": "portal/",
+    "core": "core/",
+    "orchestrator": "orchestrator/"
+  },
+  "gates": {
+    "coverageThreshold": 70,
+    "branchCoverageThreshold": 60,
+    "maxBundleSize": "500KB",
+    "retryLimit": 3,
+    "gateOwners": {
+      "gate0": "CTO",
+      "gate1": "Agent",
+      "gate2": "Agent",
+      "gate3": "Agent",
+      "gate4": "QA",
+      "gate5": "PM",
+      "gate6": "CTO",
+      "gate7": "CTO"
+    }
+  },
+  "agents": ["be-dev", "fe-dev", "qa", "pm", "cto"],
+  "domains": {
+    "auth": {
+      "agent": "be-dev",
+      "paths": ["src/features/auth/**", "supabase/functions/auth-**"]
+    },
+    "profiles": {
+      "agent": "be-dev",
+      "paths": ["src/features/profiles/**", "supabase/functions/profile-**"]
+    },
+    "projects": {
+      "agent": "be-dev",
+      "paths": ["src/features/projects/**", "supabase/functions/project-**"]
+    },
+    "proposals": {
+      "agent": "be-dev",
+      "paths": ["src/features/proposals/**", "supabase/functions/proposal-**"]
+    },
+    "payments": {
+      "agent": "be-dev",
+      "paths": ["src/features/payments/**", "supabase/functions/payment-**"]
+    },
+    "messaging": {
+      "agent": "be-dev",
+      "paths": ["src/features/messaging/**", "supabase/functions/message-**"]
+    },
+    "ui": {
+      "agent": "fe-dev",
+      "paths": ["src/components/**", "src/app/**"]
+    },
+    "contracts": {
+      "agent": "cto",
+      "paths": ["contracts/**"]
+    },
+    "stories": {
+      "agent": "pm",
+      "paths": ["stories/**"]
+    }
+  },
+  "techStack": {
+    "frontend": "Next.js 14 App Router",
+    "styling": "Tailwind CSS",
+    "backend": "Supabase",
+    "auth": "Supabase GoTrue",
+    "payments": "PayPlus",
+    "hosting": "Vercel",
+    "language": "Hebrew (RTL)"
+  },
+  "mcp": {
+    "github": true,
+    "notion": true,
+    "slack": true,
+    "memory": true
+  }
+}
