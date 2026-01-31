@@ -78,6 +78,11 @@ all           # Full project analysis
 ║                                                                              ║
 ║  DEVELOPMENT WORKFLOW                                                        ║
 ║  ────────────────────                                                        ║
+║  /fix                          Research-driven fix protocol                  ║
+║                                Args: "build" | "lint" | "test" |             ║
+║                                      "security" | "{file}" | "all"           ║
+║                                Aliases: /f, /repair                          ║
+║                                                                              ║
 ║  /branch                       Git branching operations                      ║
 ║                                Args: "create {ID}" | "switch {ID}" |         ║
 ║                                      "status" | "cleanup"                    ║
@@ -139,6 +144,16 @@ all           # Full project analysis
 
 ## Quick Reference
 
+### Fix & Repair Commands
+```bash
+/fix build                           # Fix build/TypeScript errors
+/fix lint                            # Fix lint issues
+/fix test                            # Fix failing tests
+/fix security                        # Fix security vulnerabilities
+/fix all                             # Fix all issues
+/f build                             # Alias for /fix build
+```
+
 ### Story-Level Commands
 ```bash
 /execute-story story AUTH-BE-001     # Full execution
@@ -175,6 +190,11 @@ all           # Full project analysis
 ## Usage Examples
 
 ```bash
+# Fix issues before starting work
+/preflight                           # Check for blockers
+/fix build                           # Fix any build errors
+/preflight                           # Re-check for GO status
+
 # Initialize new project
 /wave-init
 
