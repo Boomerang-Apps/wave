@@ -1,108 +1,365 @@
-# /preflight - Gate 0 Pre-Flight Validation
+# /preflight - Wave V2 Pre-Flight Authorization
 
-**Priority:** P0 (CRITICAL)
-**Recommended Model:** Haiku
-**Aliases:** /pf
+**Priority:** P0 (CRITICAL - Must run before ANY execution)
+**Aliases:** /pf, /takeoff-check
 
 ## Purpose
 
-Verify all WAVE pre-flight requirements before allowing any code changes. This is Gate 0 enforcement - work MUST NOT proceed if validation fails.
+Complete pre-flight authorization check with execution mode selection and GO/NO-GO decision gate. This command validates all systems, lets the user choose their execution mode, and provides clear visual confirmation of flight readiness.
 
 ## When to Run
 
-- Start of every session
-- Before any code changes
-- After pulling new changes
-- Before agent dispatch
+- **ALWAYS** at the start of every development session
+- Before launching any wave execution
+- Before any story implementation
+- After pulling new changes from remote
+- When switching between projects
 
-## Validation Steps
+---
 
-Execute the following checks in order:
+## PHASE 1: System Validation Checks
 
-### 1. Docker Status
+Run all checks and collect results. Use icons:
+- `[✓]` = PASS (green)
+- `[✗]` = FAIL (red/blocking)
+- `[○]` = OPTIONAL (yellow/warning)
+- `[!]` = WARNING (non-blocking)
+
+### 1.1 Configuration Files
 ```bash
-docker ps --filter "name=wave-redis" --format "{{.Names}}: {{.Status}}"
+# Check .claude/config.json exists and is valid
+cat .claude/config.json | head -5
 ```
-- **PASS:** wave-redis container running
-- **FAIL:** Container not running → Run `docker start wave-redis`
+- **PASS:** Config file exists and contains valid JSON
+- **FAIL:** Missing or invalid config → Run `/wave-init`
 
-### 2. Pre-flight Lock Check
+### 1.2 Docker Status (Optional for Single-Thread Mode)
 ```bash
-python scripts/preflight_lock.py --check
+docker ps --filter "name=wave" --format "{{.Names}}: {{.Status}}" 2>/dev/null || echo "Docker not available"
 ```
-- **PASS:** Lock is valid
-- **FAIL:** Lock invalid → Run `python scripts/preflight_lock.py --validate --lock`
+- **PASS:** Wave containers running (required for Autonomous mode)
+- **OPTIONAL:** Not running (acceptable for Single-Thread mode)
+- Note: wave-redis, wave-orchestrator containers
 
-### 3. Safety Files Exist
-Check these files exist:
-- `src/safety/__init__.py`
-- `src/safety/constitutional.py`
-- `src/safety/emergency_stop.py`
-- `src/safety/budget.py`
+### 1.3 Safety Files
+Check existence of safety infrastructure:
+- `.claude/settings.json` or `.claude/config.json`
+- `planning/schemas/story-schema-v4.1.json`
+- `planning/checklists/preflight-checklist.json`
 
-### 4. Build Status
+### 1.4 Build Verification
 ```bash
-cd footprint && npm run type-check
+# Run build check based on project config
+npm run build 2>&1 || npm run type-check 2>&1
 ```
-- **PASS:** No type errors
-- **FAIL:** Fix type errors before proceeding
+- **PASS:** Build/type-check succeeds
+- **FAIL:** Build errors → Must fix before proceeding
 
-### 5. Git Status
+### 1.5 Test Status
 ```bash
-git status --porcelain
+npm run test 2>&1 | tail -20
 ```
-- **INFO:** Report uncommitted changes
-- **WARNING:** If on main/staging branch, suggest creating feature branch
+- **PASS:** Tests passing
+- **WARNING:** Some tests failing (non-blocking but noted)
 
-## Output Format
+### 1.6 Git Repository Status
+```bash
+git status --porcelain | head -20
+git branch --show-current
+git log origin/main..HEAD --oneline 2>/dev/null | wc -l
+```
+- **INFO:** Report branch, uncommitted files, unpushed commits
+- **WARNING:** On main branch (suggest feature branch for new work)
+
+### 1.7 Stories Available
+```bash
+find stories/ -name "*.json" -type f 2>/dev/null | wc -l
+ls stories/wave*/  2>/dev/null | head -10
+```
+- **INFO:** Count available stories
+- **WARNING:** No stories found
+
+---
+
+## PHASE 2: Execution Mode Selection
+
+After system checks pass, prompt user to select execution mode:
+
+### Ask User: Execution Mode
+
+**Question:** "How do you want to execute work in this session?"
+
+**Options:**
+
+| Mode | Description | Requirements |
+|------|-------------|--------------|
+| **Autonomous Pipeline** | Multi-agent Wave V2 with Docker containers, parallel execution, separate worktrees, full E2E automation | Docker required, wave containers running |
+| **Single-Thread Mode** | Sequential execution in current conversation, one story at a time, interactive guidance | No Docker required, works in any environment |
+
+### Mode Details
+
+#### Autonomous Pipeline Mode
+- Launches separate Claude instances per agent role (BE-Dev, FE-Dev, QA, etc.)
+- Uses Docker containers for isolation
+- Parallel story execution within wave
+- Automated gate progression (Gate 0 → Gate 7)
+- Requires: Docker running, wave-redis, orchestrator
+- Best for: Full wave execution, CI/CD pipelines
+
+#### Single-Thread Mode
+- Everything runs in current conversation
+- You guide the agent through each step
+- Sequential story execution
+- Manual gate verification with your approval
+- No Docker required
+- Best for: Learning, debugging, single stories, quick fixes
+
+---
+
+## PHASE 3: Development Type Selection
+
+### Ask User: What do you want to do?
+
+**Options:**
+
+| Type | Description | Typical Flow |
+|------|-------------|--------------|
+| **Execute Story** | Implement a specific story through all gates | Gate 0 → Code → Gate 7 |
+| **Launch Wave** | Execute all stories in a wave | Parallel/sequential based on mode |
+| **Bug Fix / Hotfix** | Quick fix for production issue | Minimal gates, fast track |
+| **Spike / Research** | Investigate technical approach | No gates, exploration only |
+| **Custom Task** | Freeform development work | User-defined scope |
+
+---
+
+## PHASE 4: GO / NO-GO Decision
+
+Based on all checks, determine flight status:
+
+### GO Criteria (ALL must be true)
+- [x] Configuration files present and valid
+- [x] Build passes (no errors)
+- [x] Git repository accessible
+- [x] If Autonomous Mode: Docker containers running
+- [x] At least one story available (for story/wave execution)
+
+### NO-GO Criteria (ANY triggers NO-GO)
+- [ ] Missing .claude/config.json
+- [ ] Build failures
+- [ ] Autonomous mode selected but Docker not running
+- [ ] Critical safety files missing
+- [ ] Git repository in detached HEAD state with uncommitted changes
+
+---
+
+## PHASE 5: Visual Output
+
+### On GO - Display Green Light Banner
 
 ```
-WAVE Pre-Flight Check
-=====================
-[✓] Docker: wave-redis running
-[✓] Pre-flight Lock: Valid (hash: abc123...)
-[✓] Safety Files: 4/4 present
-[✓] Build: Type-check passed
-[✓] Git: Clean working tree
-
-STATUS: READY FOR WORK
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                                                                                ║
+║    ██████╗  ██████╗                                                            ║
+║   ██╔════╝ ██╔═══██╗                                                           ║
+║   ██║  ███╗██║   ██║                                                           ║
+║   ██║   ██║██║   ██║                                                           ║
+║   ╚██████╔╝╚██████╔╝                                                           ║
+║    ╚═════╝  ╚═════╝                                                            ║
+║                                                                                ║
+║   ═══════════════════════════════════════════════════════════════════════════  ║
+║                                                                                ║
+║   STATUS: ALL SYSTEMS GREEN - CLEARED FOR EXECUTION                            ║
+║                                                                                ║
+║   Mode:     {AUTONOMOUS PIPELINE | SINGLE-THREAD}                              ║
+║   Task:     {STORY | WAVE | HOTFIX | SPIKE | CUSTOM}                           ║
+║   Project:  {project-name}                                                     ║
+║   Branch:   {current-branch}                                                   ║
+║                                                                                ║
+║   Ready to proceed. Run your next command:                                     ║
+║   • /execute-story story {ID}     - Execute specific story                     ║
+║   • /launch-wave wave {N}         - Launch wave execution                      ║
+║   • /tdd story {ID}               - Start TDD cycle                            ║
+║   • /story-create {args}          - Create new story                           ║
+║                                                                                ║
+╚════════════════════════════════════════════════════════════════════════════════╝
 ```
 
-Or on failure:
+### On NO-GO - Display Red Block Banner
 
 ```
-WAVE Pre-Flight Check
-=====================
-[✓] Docker: wave-redis running
-[✗] Pre-flight Lock: INVALID - files changed
-[✓] Safety Files: 4/4 present
-[✓] Build: Type-check passed
-[!] Git: 3 uncommitted changes
-
-STATUS: BLOCKED
-
-FIX REQUIRED:
-  python scripts/preflight_lock.py --validate --lock
-
-DO NOT proceed with any code changes until pre-flight passes.
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                                                                                ║
+║   ███╗   ██╗ ██████╗        ██████╗  ██████╗                                   ║
+║   ████╗  ██║██╔═══██╗      ██╔════╝ ██╔═══██╗                                  ║
+║   ██╔██╗ ██║██║   ██║█████╗██║  ███╗██║   ██║                                  ║
+║   ██║╚██╗██║██║   ██║╚════╝██║   ██║██║   ██║                                  ║
+║   ██║ ╚████║╚██████╔╝      ╚██████╔╝╚██████╔╝                                  ║
+║   ╚═╝  ╚═══╝ ╚═════╝        ╚═════╝  ╚═════╝                                   ║
+║                                                                                ║
+║   ═══════════════════════════════════════════════════════════════════════════  ║
+║                                                                                ║
+║   STATUS: BLOCKED - CANNOT PROCEED                                             ║
+║                                                                                ║
+║   BLOCKING ISSUES:                                                             ║
+║   ✗ {issue 1 description}                                                      ║
+║   ✗ {issue 2 description}                                                      ║
+║                                                                                ║
+║   REQUIRED ACTIONS:                                                            ║
+║   1. {fix command or instruction}                                              ║
+║   2. {fix command or instruction}                                              ║
+║                                                                                ║
+║   After fixing, run /preflight again.                                          ║
+║                                                                                ║
+║   ⚠️  DO NOT proceed with any code changes until pre-flight passes.            ║
+║                                                                                ║
+╚════════════════════════════════════════════════════════════════════════════════╝
 ```
 
-## Failure Behavior
+---
 
-If ANY check fails:
-1. Print specific failure reason
-2. Provide exact fix command
-3. **DO NOT proceed with any work**
-4. **DO NOT write any code**
-5. Wait for user to fix and re-run /preflight
+## Complete Check Report Format
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  WAVE PRE-FLIGHT CHECK                                                       │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  SYSTEM VALIDATION                                                           │
+│  ─────────────────                                                           │
+│  [✓] Configuration: .claude/config.json valid                                │
+│  [○] Docker: wave-redis not running (optional for CLI mode)                  │
+│  [✓] Safety Files: All present                                               │
+│  [✓] Build: Passing                                                          │
+│  [✓] Tests: 1864 unit + 20 E2E passing                                       │
+│  [!] Git: 12 uncommitted files (non-critical)                                │
+│  [✓] Branch: main (synced with origin)                                       │
+│  [✓] Stories: 15 stories available in wave1-wave3                            │
+│                                                                              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  EXECUTION MODE                                                              │
+│  ──────────────                                                              │
+│  Selected: SINGLE-THREAD MODE                                                │
+│  • Sequential execution in current conversation                              │
+│  • Manual gate verification                                                  │
+│  • No Docker required                                                        │
+│                                                                              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  DEVELOPMENT TYPE                                                            │
+│  ────────────────                                                            │
+│  Selected: EXECUTE STORY                                                     │
+│  • Will implement story through Gate 0 → Gate 7                              │
+│  • TDD approach with test-first development                                  │
+│                                                                              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  DECISION: GO ✓                                                              │
+│                                                                              │
+│  All critical systems operational.                                           │
+│  Cleared for {selected development type}.                                    │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Signal File Output
+
+On successful GO, create/update `.claude/signals/preflight-clearance.json`:
+
+```json
+{
+  "status": "GO",
+  "timestamp": "2026-01-31T16:00:00Z",
+  "mode": "single-thread",
+  "developmentType": "execute-story",
+  "project": "footprint",
+  "branch": "main",
+  "checks": {
+    "config": "pass",
+    "docker": "optional",
+    "safety": "pass",
+    "build": "pass",
+    "tests": "pass",
+    "git": "warning"
+  },
+  "warnings": [
+    "12 uncommitted files (non-critical)"
+  ],
+  "clearanceValidUntil": "2026-01-31T20:00:00Z"
+}
+```
+
+---
+
+## Interactive Flow Summary
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    /PREFLIGHT FLOW                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  1. RUN SYSTEM CHECKS                                           │
+│     ↓                                                           │
+│  2. DISPLAY CHECK RESULTS                                       │
+│     ↓                                                           │
+│  3. PROMPT: SELECT EXECUTION MODE                               │
+│     • Autonomous Pipeline (Docker, multi-agent)                 │
+│     • Single-Thread (current conversation)                      │
+│     ↓                                                           │
+│  4. PROMPT: SELECT DEVELOPMENT TYPE                             │
+│     • Execute Story                                             │
+│     • Launch Wave                                               │
+│     • Bug Fix / Hotfix                                          │
+│     • Spike / Research                                          │
+│     • Custom Task                                               │
+│     ↓                                                           │
+│  5. EVALUATE GO / NO-GO                                         │
+│     ↓                                                           │
+│  6. DISPLAY RESULT BANNER                                       │
+│     • GO: Green banner + next steps                             │
+│     • NO-GO: Red banner + required fixes                        │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Usage Examples
+
+```bash
+# Standard pre-flight check
+/preflight
+
+# Quick alias
+/pf
+
+# After pre-flight GO, proceed with:
+/execute-story story AUTH-BE-001
+/launch-wave wave 1
+/tdd story UI-FE-002
+```
+
+---
+
+## Failure Recovery
+
+If NO-GO is received:
+
+1. **Missing config:** Run `/wave-init` to initialize Wave V2 framework
+2. **Build failures:** Fix compilation/type errors, then re-run `/preflight`
+3. **Docker not running (for Autonomous mode):**
+   - Start Docker: `docker-compose up -d`
+   - Or switch to Single-Thread mode
+4. **Missing stories:** Run `/story-create` or check `stories/` directory
+5. **Git issues:** Commit or stash changes, ensure clean state
+
+---
 
 ## Integration
 
-- Uses: `scripts/preflight_lock.py`
-- Updates: `.claude/preflight-report.json`
-- Reads: `.claude/PREFLIGHT.lock`
-
-## Evidence Sources
-
-- Script: `/Volumes/SSD-01/Projects/Footprint/footprint/scripts/preflight_lock.py`
-- Spec: `/Volumes/SSD-01/Projects/Footprint/footprint/.claude/SKILLS-RECOMMENDATION.md` (Section 3.1)
+- **Creates:** `.claude/signals/preflight-clearance.json`
+- **Reads:** `.claude/config.json`, `planning/schemas/`, `stories/`
+- **Validates:** Build system, test suite, git status
+- **Blocks:** All execution commands if NO-GO status
