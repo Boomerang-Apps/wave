@@ -5,7 +5,7 @@
  * Shows launch sequence steps with status indicators
  */
 
-import { CheckCircle2, AlertCircle, Circle, Loader2 } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type StepStatus = 'pass' | 'fail' | 'warn' | 'pending';
@@ -59,7 +59,7 @@ export function SecondarySidebar({
 
       {/* Step Navigation */}
       <nav className="flex-1 overflow-y-auto py-2">
-        {steps.map((step, index) => {
+        {steps.map((step) => {
           const isActive = step.id === activeStep;
 
           return (

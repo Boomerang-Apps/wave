@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { FolderPlus, RefreshCw, CheckCircle2, XCircle, Folder, FileText } from 'lucide-react';
+import { RefreshCw, CheckCircle2, XCircle, Folder, FolderPlus } from 'lucide-react';
 import { ContentPage } from '../ContentPage';
 import type { TableColumn, TableRow, ActionButton } from '../ContentPage';
 

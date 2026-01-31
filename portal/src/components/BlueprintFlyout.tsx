@@ -18,11 +18,8 @@ import {
   Clock,
   History,
   FolderTree,
-  Code2,
-  Layers,
   Shield,
   Zap,
-  Download,
   Play,
   Trash2
 } from 'lucide-react';
@@ -38,7 +35,6 @@ interface BlueprintFlyoutProps {
   onSelectHistoryItem: (report: FoundationReport) => void;
   onClearHistory: () => void;
   isAnalyzing: boolean;
-  projectPath: string;
 }
 
 export function BlueprintFlyout({
@@ -49,8 +45,7 @@ export function BlueprintFlyout({
   onRunAnalysis,
   onSelectHistoryItem,
   onClearHistory,
-  isAnalyzing,
-  projectPath
+  isAnalyzing
 }: BlueprintFlyoutProps) {
   const [activeTab, setActiveTab] = useState<'results' | 'history'>('results');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['summary']));

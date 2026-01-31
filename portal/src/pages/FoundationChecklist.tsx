@@ -22,18 +22,16 @@ import {
   Play,
   RefreshCw,
   Sparkles,
-  Plus,
-  Download,
-  Settings,
   Rocket,
   AlertCircle,
   ExternalLink,
   Loader2,
+  FolderOpen,
   Search,
   Filter,
-  FolderOpen,
-  MoreHorizontal,
-  ArrowUpRight
+  Plus,
+  ArrowUpRight,
+  MoreHorizontal
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Layout } from '../components/Layout';
@@ -96,9 +94,9 @@ function transformReportToTasks(report: FoundationReport | null, projectPath: st
 
   // 1. STRUCTURE TASKS
   const structureTasks: ChecklistTask[] = [];
-  const structureAnalysis = report.analysis?.structure || report.analysis?.projectStructure;
+  const structureAnalysis = report.analysis?.structure;
 
-  if (structureAnalysis?.isValid === false) {
+  if (structureAnalysis?.status === 'fail') {
     structureTasks.push({
       id: 'structure-reorganize',
       category: 'structure',
@@ -129,7 +127,7 @@ function transformReportToTasks(report: FoundationReport | null, projectPath: st
   // 2. DOCUMENTATION TASKS
   const docsTasks: ChecklistTask[] = [];
   const docsFound = report.analysis?.documentation?.docsFound || [];
-  const hasPRD = docsFound.some(d => d.name?.toLowerCase().includes('prd') || d.type === 'prd');
+  const hasPRD = docsFound.some(d => d.name?.toLowerCase().includes('prd'));
 
   if (!hasPRD) {
     docsTasks.push({
@@ -215,8 +213,8 @@ function transformReportToTasks(report: FoundationReport | null, projectPath: st
 
   // 4. TECH STACK TASKS
   const techTasks: ChecklistTask[] = [];
-  const techAnalysis = report.analysis?.techStack || report.analysis?.techstack;
-  const detectedTech = techAnalysis?.techStack || techAnalysis?.detected || [];
+  const techAnalysis = report.analysis?.techstack;
+  const detectedTech = techAnalysis?.techStack || [];
 
   if (detectedTech.length > 0) {
     techTasks.push({
@@ -529,7 +527,7 @@ function PreFlightChecks({
 // Project Structure Table - Muted styling
 // ============================================================================
 
-function ProjectStructureTable({ projectPath }: { projectPath: string }) {
+function ProjectStructureTable() {
   const folders: FolderItem[] = [
     { name: 'docs/', status: 'found', type: 'Documentation', purpose: 'PRD, CLAUDE.md, architecture' },
     { name: 'design_mockups/', status: 'found', type: 'Design', purpose: 'HTML prototypes, visual designs' },
@@ -900,7 +898,7 @@ export function FoundationChecklist() {
 
         {/* Project Structure Table */}
         <div className="mt-8">
-          <ProjectStructureTable projectPath={projectPath} />
+          <ProjectStructureTable />
         </div>
 
         {/* Footer */}

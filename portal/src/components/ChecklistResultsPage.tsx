@@ -70,9 +70,9 @@ function transformReportToTasks(report: FoundationReport, projectPath: string): 
 
   // 1. STRUCTURE
   const structureTasks: ChecklistTask[] = [];
-  const structureAnalysis = report.analysis?.structure || report.analysis?.projectStructure;
+  const structureAnalysis = report.analysis?.structure;
 
-  if (structureAnalysis?.isValid === false) {
+  if (structureAnalysis?.status === 'fail') {
     structureTasks.push({
       id: 'structure-reorganize',
       category: 'structure',
@@ -103,7 +103,7 @@ function transformReportToTasks(report: FoundationReport, projectPath: string): 
   // 2. DOCUMENTATION
   const docsTasks: ChecklistTask[] = [];
   const docsFound = report.analysis?.documentation?.docsFound || [];
-  const hasPRD = docsFound.some(d => d.name?.toLowerCase().includes('prd') || d.type === 'prd');
+  const hasPRD = docsFound.some(d => d.name?.toLowerCase().includes('prd'));
 
   if (!hasPRD) {
     docsTasks.push({
@@ -189,8 +189,8 @@ function transformReportToTasks(report: FoundationReport, projectPath: string): 
 
   // 4. TECH STACK
   const techTasks: ChecklistTask[] = [];
-  const techAnalysis = report.analysis?.techStack || report.analysis?.techstack;
-  const detectedTech = techAnalysis?.techStack || techAnalysis?.detected || [];
+  const techAnalysis = report.analysis?.techstack;
+  const detectedTech = techAnalysis?.techStack || [];
 
   if (detectedTech.length > 0) {
     techTasks.push({

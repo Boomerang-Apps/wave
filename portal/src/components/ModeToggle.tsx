@@ -13,7 +13,7 @@ interface ModeToggleProps {
   size?: 'sm' | 'md';
 }
 
-export function ModeToggle({ showLabel = false, size = 'sm' }: ModeToggleProps) {
+export function ModeToggle({ }: ModeToggleProps) {
   const { toggleMode, isSimple } = useMode();
 
   return (

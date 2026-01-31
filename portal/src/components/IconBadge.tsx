@@ -5,7 +5,7 @@
  * Minimal, monochromatic design for consistent icon styling.
  */
 
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { cn } from '../lib/utils';
 
 export type IconBadgeVariant = 'gray';
@@ -26,7 +26,6 @@ const sizeStyles = {
 
 export function IconBadge({
   icon,
-  variant = 'gray',
   size = 'md',
   className
 }: IconBadgeProps) {

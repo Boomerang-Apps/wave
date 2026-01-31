@@ -6,7 +6,6 @@
 
 import { useState, useEffect } from 'react';
 import { X, Download, FileText, Loader2, ExternalLink } from 'lucide-react';
-import { cn } from '../lib/utils';
 
 interface MarkdownPreviewModalProps {
   filePath: string;

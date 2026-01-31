@@ -10,7 +10,6 @@ import {
   Zap,
   ChevronDown,
   ChevronLeft,
-  Info,
   X,
   Shield,
   GitBranch,
@@ -18,22 +17,17 @@ import {
   Layers,
   Target,
   Radio,
-  ArrowRight,
   Eye,
   EyeOff,
   Settings,
   Key,
   RefreshCw,
-  ScrollText,
   Rocket,
-  Download,
   Wifi,
   WifiOff,
-  HelpCircle,
   ExternalLink,
   Play,
   Loader2,
-  Bell,
   Terminal,
   FileText,
   Brain,
@@ -41,52 +35,49 @@ import {
   TrendingUp,
   MinusCircle,
   Send,
-  Flag,
   DollarSign,
   BarChart3,
-  XOctagon,
   GitFork,
-  Container,
-  Workflow,
   Package,
-  Waves,
   ShieldCheck,
   Cpu,
   TestTube,
   Lock,
   Camera,
   Gauge,
-  Circle,
-  AlertCircle,
-  Compass,
-  Folder,
   FolderTree,
-  Image,
   Sparkles,
-  Server,
-  Hammer,
-  Box,
-  Globe,
   Activity,
-  Plus,
-  FilePlus,
+  Compass,
+  ScrollText,
+  Waves,
+  Server,
+  Bell,
+  Hammer,
+  Container,
+  Image as ImageIcon,
+  ArrowRight,
+  Download,
+  Workflow,
+  Flag,
+  Info,
+  HelpCircle,
+  XOctagon,
+  Globe,
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import { cn } from '../lib/utils'
 import { Layout } from '../components/Layout'
 import { HierarchicalSidebar } from '../components/HierarchicalSidebar'
 import type { NavSection } from '../components/HierarchicalSidebar'
-import { MockupDesignTab } from '../components/MockupDesignTab'
 import { PRDStoriesTab } from '../components/PRDStoriesTab'
 import { ExecutionPlanTab } from '../components/ExecutionPlanTab'
 import { InfoBox, KPICards, ActionBar, ResultSummary, ExpandableCard, TabContainer } from '../components/TabLayout'
-import { FileOrganizationPage } from '../components/pages/FileOrganizationPage'
 import { DesignMockupsPage } from '../components/pages/DesignMockupsPage'
 import { DocumentationPage } from '../components/pages/DocumentationPage'
 import { ContentPage } from '../components/ContentPage'
 import { FoundationAnalysisProgress } from '../components/FoundationAnalysisProgress'
 import type { FoundationReport } from '../components/FoundationAnalysisProgress'
-import { BlueprintSummaryBar } from '../components/BlueprintSummaryBar'
 import { BlueprintFlyout } from '../components/BlueprintFlyout'
 import { FoundationAnalysisWizard } from '../components/FoundationAnalysisWizard'
 import { ChecklistResultsPage } from '../components/ChecklistResultsPage'
@@ -122,8 +113,8 @@ type FoundationCheck = {
   timestamp?: string
 }
 
-// Status dot component
-function StatusDot({ status }: { status: CheckStatusType }) {
+// Status dot component (for future use)
+void function _StatusDot({ status }: { status: CheckStatusType }) {
   const colors: Record<CheckStatusType, string> = {
     pass: 'bg-green-500',
     fail: 'bg-red-500',
@@ -627,7 +618,7 @@ export function ProjectChecklist() {
   const [blueprintAnalyzing, setBlueprintAnalyzing] = useState(false)
   const [showBlueprintFlyout, setShowBlueprintFlyout] = useState(false)
   const [showFoundationWizard, setShowFoundationWizard] = useState(false)
-  const [showChecklistResults, setShowChecklistResults] = useState(false)
+  const [, setShowChecklistResults] = useState(false)
   const [showGate0Wizard, setShowGate0Wizard] = useState(false)
   const [blueprintHistory, setBlueprintHistory] = useState<FoundationReport[]>(() => {
     // Load history from localStorage
@@ -1400,7 +1391,7 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
 
   // WAVE 10-Step Launch Sequence (Steps 0-9)
   // Based on aerospace pre-flight checklist - sequential gates, no skipping
-  const tabs = [
+  void [
     { id: 'mockup-design', label: 'Blueprint', shortLabel: '0', status: (mockupStatus === 'ready' ? 'pass' : mockupStatus === 'blocked' ? 'fail' : 'pending') as CheckStatusType },
     { id: 'project-overview', label: 'PRD', shortLabel: '1', status: (analysisReport ? 'pass' : 'warn') as CheckStatusType },
     { id: 'execution-plan', label: 'Execution', shortLabel: '2', status: 'pass' as CheckStatusType },
@@ -1425,7 +1416,7 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
         { id: 'start', label: 'Start here', icon: <Sparkles className="h-3.5 w-3.5" />, status: blueprintReport ? 'complete' : 'pending' },
         { id: 'checklist', label: 'Checklist', icon: <CheckCircle2 className="h-3.5 w-3.5" />, status: blueprintReport ? 'complete' : 'pending' },
         { id: 'structure', label: 'Project Structure', icon: <FolderTree className="h-3.5 w-3.5" />, status: 'complete' },
-        { id: 'mockups', label: 'Design Mockups', icon: <Image className="h-3.5 w-3.5" />, status: mockupStatus === 'ready' ? 'complete' : 'pending' },
+        { id: 'mockups', label: 'Design Mockups', icon: <ImageIcon className="h-3.5 w-3.5" />, status: mockupStatus === 'ready' ? 'complete' : 'pending' },
         { id: 'docs', label: 'Documentation', icon: <FileText className="h-3.5 w-3.5" />, status: 'complete' },
       ],
     },
@@ -1541,7 +1532,7 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
           label: 'Design Mockups',
           simpleLabel: 'Visual Designs',
           description: 'How your app will look',
-          icon: <Image className="h-3.5 w-3.5" />,
+          icon: <ImageIcon className="h-3.5 w-3.5" />,
           status: mockupStatus === 'ready' ? 'complete' : 'pending'
         },
         {
@@ -11006,7 +10997,6 @@ ${auditLogSummary ? `
           localStorage.removeItem('wave_blueprint_history');
         }}
         isAnalyzing={blueprintAnalyzing}
-        projectPath={project?.root_path || ''}
       />
 
       {/* Foundation Analysis Wizard */}

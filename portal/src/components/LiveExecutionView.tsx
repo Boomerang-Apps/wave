@@ -13,7 +13,6 @@ import {
   Play,
   Pause,
   Square,
-  RefreshCw,
   CheckCircle2,
   AlertCircle,
   Loader2,
@@ -21,11 +20,11 @@ import {
   ChevronDown,
   ChevronRight,
   Clock,
-  Zap,
-  AlertTriangle,
   MessageSquare,
   X,
-  Check
+  Check,
+  Zap,
+  AlertTriangle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -108,7 +107,7 @@ function StepIndicator({ step, isActive }: { step: ExecutionStep; isActive: bool
         <Icon className={cn(
           "h-4 w-4",
           config.color,
-          config.animate && "animate-spin"
+          'animate' in config && config.animate && "animate-spin"
         )} />
       </div>
       <div className="flex-1 min-w-0">
@@ -306,7 +305,7 @@ export function LiveExecutionView({
 }: LiveExecutionViewProps) {
   const [session, setSession] = useState<ExecutionSession | null>(null);
   const [connected, setConnected] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [showSteps, setShowSteps] = useState(true);
   const eventSourceRef = useRef<EventSource | null>(null);
 

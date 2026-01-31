@@ -7,18 +7,20 @@
  * Colors: Fill #1e1e1e, Border #2e2e2e, Hover #252525
  */
 
-import { ReactNode, useState } from 'react';
+import { useState } from 'react';
+import type { ReactNode } from 'react';
 import {
   RefreshCw,
   Download,
   AlertTriangle,
   CheckCircle2,
-  Clock,
   Loader2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { GridTable, GridItem, GridSubItem, ItemStatus } from './GridTable';
-import { Flyout, FlyoutTab, FlyoutAction, FlyoutField } from './Flyout';
+import { GridTable } from './GridTable';
+import type { GridItem, GridSubItem, ItemStatus } from './GridTable';
+import { Flyout } from './Flyout';
+import type { FlyoutTab, FlyoutAction, FlyoutField } from './Flyout';
 
 // ============================================================================
 // Types
@@ -445,24 +447,24 @@ export function GridPage({
         icon={selectedItem?.icon}
         width="md"
       >
-        {selectedItem?.metadata?.command && (
+        {selectedItem?.metadata?.command ? (
           <div className="space-y-4">
             <div>
               <label className="text-xs font-medium text-[#666] uppercase tracking-wider">Command</label>
               <div className="mt-2 p-3 bg-[#1a1a1a] border border-[#2e2e2e] rounded-lg font-mono text-sm text-[#a3a3a3]">
-                {String(selectedItem.metadata.command)}
+                {`${selectedItem.metadata.command}`}
               </div>
             </div>
-            {selectedItem.metadata.value && (
+            {selectedItem.metadata.value ? (
               <div>
                 <label className="text-xs font-medium text-[#666] uppercase tracking-wider">Value</label>
                 <div className="mt-2 p-3 bg-[#1a1a1a] border border-[#2e2e2e] rounded-lg font-mono text-sm text-[#a3a3a3]">
-                  {String(selectedItem.metadata.value)}
+                  {`${selectedItem.metadata.value}`}
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
-        )}
+        ) : null}
       </Flyout>
     </div>
   );

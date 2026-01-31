@@ -7,7 +7,8 @@
  * Colors: Fill #1e1e1e, Border #2e2e2e, Hover #252525
  */
 
-import { useState, useCallback, ReactNode } from 'react';
+import { useState, useCallback } from 'react';
+import type { ReactNode } from 'react';
 import {
   Search,
   Filter,
@@ -118,7 +119,7 @@ export function StatusBadge({ status }: { status: ItemStatus }) {
 // Status Icon Component
 // ============================================================================
 
-function StatusIcon({ status }: { status: ItemStatus }) {
+export function StatusIcon({ status }: { status: ItemStatus }) {
   switch (status) {
     case 'found':
     case 'valid':

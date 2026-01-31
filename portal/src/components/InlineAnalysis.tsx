@@ -15,6 +15,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { FoundationReport } from './FoundationAnalysisProgress';
 
 // Types
 export interface AnalysisStep {
@@ -24,19 +25,8 @@ export interface AnalysisStep {
   proof: string | null;
 }
 
-export interface FoundationReport {
-  timestamp: string;
-  mode: 'new' | 'existing' | 'monorepo';
-  projectPath: string;
-  readinessScore: number;
-  validationStatus: 'ready' | 'blocked';
-  blockingReasons: string[];
-  findings: string[];
-  issues: string[];
-  recommendations: string[];
-  analysis: Record<string, unknown>;
-  aiReview?: unknown;
-}
+// Re-export for backwards compatibility
+export type { FoundationReport };
 
 interface InlineAnalysisProps {
   projectPath: string;
@@ -278,7 +268,7 @@ export function InlineAnalysis({
       </div>
 
       {/* Blocking reasons if any */}
-      {status === 'blocked' && analysisReport?.blockingReasons.length > 0 && (
+      {status === 'blocked' && analysisReport?.blockingReasons && analysisReport.blockingReasons.length > 0 && (
         <div className="mt-3 pt-3 border-t border-[#2e2e2e]">
           <p className="text-xs text-[#a3a3a3] mb-2">Needs attention:</p>
           {analysisReport.blockingReasons.map((reason, i) => (

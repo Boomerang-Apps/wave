@@ -5,12 +5,11 @@
  * Shows project structure checks, documentation, mockups validation.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import {
   FolderTree,
   FileText,
   Image,
-  Code2,
   Shield,
   Search,
   Filter,
@@ -21,7 +20,6 @@ import {
   Clock,
   Maximize2,
   MoreVertical,
-  ChevronRight,
   X,
   Sparkles,
   GitBranch,
@@ -53,12 +51,9 @@ interface BlueprintPageProps {
 }
 
 export function BlueprintPage({
-  projectPath,
-  projectName,
   report,
   isAnalyzing,
   onRunAnalysis,
-  onViewDetails
 }: BlueprintPageProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedChecks, setSelectedChecks] = useState<Set<string>>(new Set());
@@ -203,7 +198,7 @@ export function BlueprintPage({
               <th className="w-10 px-4 py-3">
                 <Checkbox
                   checked={selectedChecks.size === filteredChecks.length && filteredChecks.length > 0}
-                  onCheckedChange={(checked) => {
+                  onChange={(checked: boolean) => {
                     if (checked) {
                       setSelectedChecks(new Set(filteredChecks.map(c => c.id)));
                     } else {
@@ -227,7 +222,7 @@ export function BlueprintPage({
                 <td className="px-4 py-3">
                   <Checkbox
                     checked={selectedChecks.has(check.id)}
-                    onCheckedChange={() => toggleCheck(check.id)}
+                    onChange={() => toggleCheck(check.id)}
                   />
                 </td>
                 <td className="px-4 py-3">

@@ -245,7 +245,6 @@ function ConnectionCard({
 export function ConnectionCards({
   projectPath,
   layout = 'horizontal',
-  showIssues = true,
   onConnectionsLoaded
 }: ConnectionCardsProps) {
   const [connections, setConnections] = useState<Connections | null>(null);

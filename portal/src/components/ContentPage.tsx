@@ -11,7 +11,8 @@
  * Colors: Fill #1e1e1e, Border #2e2e2e, Hover #252525
  */
 
-import { useState, useEffect, ReactNode } from 'react';
+import { useState } from 'react';
+import type { ReactNode } from 'react';
 import {
   Search,
   ChevronDown,
@@ -26,7 +27,6 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
-  Clock,
   Filter,
   Plus,
   RefreshCw,
@@ -38,9 +38,7 @@ import {
   Edit3,
   Eye,
   EyeOff,
-  Download,
   Loader2,
-  Settings,
   Check
 } from 'lucide-react';
 import { cn } from '../lib/utils';

@@ -275,10 +275,10 @@ export function BlueprintSummaryBar({
           {analysisCategories.map((cat) => {
             // Determine status based on analysis results
             const getCategoryStatus = () => {
-              if (cat.id === 'structure') return report!.analysis.projectStructure?.isValid !== false;
+              if (cat.id === 'structure') return report!.analysis.structure?.status === 'pass' || report!.analysis.structure?.status === 'found';
               if (cat.id === 'documentation') return (report!.analysis.documentation?.docsFound?.length || 0) > 0;
               if (cat.id === 'mockups') return (report!.analysis.mockups?.count || 0) > 0;
-              if (cat.id === 'tech-stack') return report!.analysis.techStack?.detected !== false;
+              if (cat.id === 'tech-stack') return (report!.analysis.techstack?.techStack?.length || 0) > 0;
               if (cat.id === 'compliance') return !report!.blockingReasons?.length;
               return true;
             };

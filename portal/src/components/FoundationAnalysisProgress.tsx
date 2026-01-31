@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   XCircle,
   RefreshCw,
-  Code2,
   AlertTriangle,
   Sparkles,
   FolderTree,
@@ -20,14 +19,14 @@ import {
   Shield,
   Layers,
   Zap,
-  DollarSign,
   ChevronDown,
   ChevronRight,
   MessageSquare,
   Play,
   FileDown,
   Wand2,
-  Rocket
+  Rocket,
+  Code2
 } from 'lucide-react';
 import { ConnectionCards } from './ConnectionCards';
 import { cn } from '@/lib/utils';
@@ -488,7 +487,7 @@ export function FoundationAnalysisProgress({
   const [enableAiReview, setEnableAiReview] = useState(false);
   const [aiReviewDepth, setAiReviewDepth] = useState<'quick' | 'deep'>('quick');
   const [costEstimate, setCostEstimate] = useState<CostEstimate | null>(null);
-  const [estimatingCost, setEstimatingCost] = useState(false);
+  const [, setEstimatingCost] = useState(false);
 
   // Report download
   const [downloadingReport, setDownloadingReport] = useState(false);

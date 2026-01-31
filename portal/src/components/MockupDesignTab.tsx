@@ -11,14 +11,14 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import {
-  FolderOpen, FileText, Layout, CheckCircle2, AlertTriangle,
-  ExternalLink, RefreshCw, Loader2, Sparkles, X, Target, FileDown, Lightbulb,
-  ArrowRight, AlertCircle, Settings
+  FolderOpen, CheckCircle2, AlertTriangle,
+  ExternalLink, RefreshCw, Loader2, Sparkles, X, Target,
+  Settings, Lightbulb, FileText, Layout
 } from 'lucide-react';
-import { KPICards, ExpandableCard, TabContainer } from './TabLayout';
+import { ExpandableCard, TabContainer } from './TabLayout';
 import { BestPracticesSection } from './BestPracticesSection';
 import { FileListView } from './FileListView';
-import { FoundationAnalysisProgress, type FoundationReport } from './FoundationAnalysisProgress';
+import type { FoundationReport } from './FoundationAnalysisProgress';
 import { ConnectionCards } from './ConnectionCards';
 import { InlineAnalysis } from './InlineAnalysis';
 import { CorePillars } from './CorePillars';
@@ -118,7 +118,7 @@ function FoundationAnalysisProgressModal({
   onClose: () => void;
 }) {
   const [analysisRunning, setAnalysisRunning] = useState(false);
-  const [analysisMode, setAnalysisMode] = useState<'new' | 'existing' | 'monorepo' | null>(
+  const [, setAnalysisMode] = useState<'new' | 'existing' | 'monorepo' | null>(
     existingReport?.mode || null
   );
   const [analysisSteps, setAnalysisSteps] = useState<Array<{
@@ -638,8 +638,6 @@ function ConnectedState({
   onValidationComplete: (status: 'ready' | 'blocked') => void;
 }) {
   const [previewMockup, setPreviewMockup] = useState<MockupFile | null>(null);
-  const [reportGenerating, setReportGenerating] = useState(false);
-  const [reportSaved, setReportSaved] = useState<string | null>(null);
   const [bestPracticesExpanded, setBestPracticesExpanded] = useState(false);
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const bestPracticesRef = useRef<HTMLDivElement>(null);
@@ -652,46 +650,9 @@ function ConnectedState({
     }, 100);
   };
 
-  // Generate improvement report
-  const handleGenerateReport = async () => {
-    if (!analysisReport) return;
-
-    setReportGenerating(true);
-    setReportSaved(null);
-    try {
-      const response = await fetch('/api/foundation/improvement-report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          projectPath,
-          report: analysisReport,
-          save: true,
-        }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        setReportSaved(data.savedPath);
-      } else {
-        console.error('Report generation failed:', data.error);
-      }
-    } catch (error) {
-      console.error('Report generation error:', error);
-    } finally {
-      setReportGenerating(false);
-    }
-  };
-
   const handleOpenDoc = (doc: DocumentFile) => {
     window.open(`vscode://file${doc.path}`, '_blank');
   };
-
-  // Determine status based on docs and mockups presence
-  const hasAllRequired = project.documentation.length > 0 && project.mockups.length > 0;
-
-  // Use analysis results if available
-  const readinessScore = analysisReport?.readinessScore ?? 0;
-  const isAnalyzed = !!analysisReport;
 
   return (
     <>

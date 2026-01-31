@@ -274,7 +274,6 @@ export function HierarchicalSidebar({
   simpleSections,
   activeItem,
   onItemClick,
-  projectName
 }: HierarchicalSidebarProps) {
   const { isSimple } = useMode();
 

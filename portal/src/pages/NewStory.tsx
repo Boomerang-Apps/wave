@@ -20,7 +20,6 @@ import {
   Sparkles,
   FileText,
   Figma,
-  FileQuestion,
   Image,
   Upload,
   GitBranch,
@@ -29,11 +28,10 @@ import {
   Eye,
   Check,
   XCircle,
-  Download,
   Copy,
-  FileDown,
   Lock,
-  Unlock
+  FileQuestion,
+  FileDown
 } from 'lucide-react';
 
 interface ProjectContext {
@@ -110,7 +108,7 @@ export default function NewStory() {
   });
   const [sourceType, setSourceType] = useState<SourceType>('none');
   const [sourcePath, setSourcePath] = useState('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   // Gate 1: Pre-flight
@@ -120,7 +118,7 @@ export default function NewStory() {
   // Gate 2: Research
   const [projectPath, setProjectPath] = useState('/Volumes/SSD-01/Projects/Footprint/footprint');
   const [projectContext, setProjectContext] = useState<ProjectContext | null>(null);
-  const [mockupAnalysis, setMockupAnalysis] = useState<any>(null);
+  const [mockupAnalysis] = useState<unknown>(null);
 
   // Gate 3: Branch
   const [storyId, setStoryId] = useState('');
@@ -221,9 +219,9 @@ export default function NewStory() {
     }
   };
 
-  // Check if can proceed to next gate
-  const canProceed = (gateNum: number): boolean => {
-    if (!gateStatus) return gateNum === 0; // Allow first gate without status
+  // Check if can proceed to next gate (for future use)
+  void function _canProceed(gateNum: number): boolean {
+    if (!gateStatus) return gateNum === 0;
     const gate = gateStatus.gates.find(g => g.num === gateNum);
     return gate?.can_advance || false;
   };
@@ -702,7 +700,8 @@ ${projectContext?.tech_stack?.map(t => `- ${t}`).join('\n') || '- Not analyzed y
     }
   };
 
-  const StatusIcon = ({ status }: { status: string }) => {
+  // Status icon helper (for future use)
+  void function _StatusIcon({ status }: { status: string }) {
     if (status === 'pass') return <Check className="w-4 h-4 text-green-500" />;
     if (status === 'fail') return <XCircle className="w-4 h-4 text-red-500" />;
     return <AlertTriangle className="w-4 h-4 text-yellow-500" />;

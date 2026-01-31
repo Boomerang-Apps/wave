@@ -7,7 +7,8 @@
  * Colors: Fill #1e1e1e, Border #2e2e2e, Hover #252525
  */
 
-import { useState, ReactNode, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import {
   X,
   ChevronLeft,
@@ -23,7 +24,8 @@ import {
   Loader2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { StatusBadge, ItemStatus } from './GridTable';
+import { StatusBadge } from './GridTable';
+import type { ItemStatus } from './GridTable';
 
 // ============================================================================
 // Types
