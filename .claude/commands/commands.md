@@ -124,6 +124,16 @@ all           # Full project analysis
 ║                                Args: "init" | "validate" | "sync" |          ║
 ║                                      "storybook"                             ║
 ║                                                                              ║
+║  SESSION MANAGEMENT                                                          ║
+║  ──────────────────                                                          ║
+║  /preflight                    GO/NO-GO pre-flight authorization             ║
+║                                Args: none (interactive prompts)              ║
+║                                Aliases: /pf, /takeoff-check                  ║
+║                                                                              ║
+║  /handoff                      Generate session handoff document             ║
+║                                Args: "{focus}" (optional description)        ║
+║                                Aliases: /ho, /session-end, /eod              ║
+║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
 
@@ -193,4 +203,9 @@ all           # Full project analysis
 /rearchitect plan                    # Generate move plan
 /rearchitect execute                 # Apply changes (with backup)
 /rearchitect validate                # Verify after changes
+
+# Session management
+/preflight                           # GO/NO-GO check before work
+/handoff                             # End of session handoff
+/handoff auth-feature                # Handoff with focus label
 ```
