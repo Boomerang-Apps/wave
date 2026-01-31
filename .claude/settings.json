@@ -1,27 +1,62 @@
 {
-  "project": "WAVE V2 Orchestrator",
-  "version": "2.0.0",
-  "preflight": {
-    "required": true,
-    "script": "orchestrator/scripts/preflight_lock.py",
-    "commands": [
-      "python3 scripts/preflight_lock.py --audit",
-      "python3 scripts/preflight_lock.py --check"
+  "hooks": {
+    "PreToolUse": [
+      {
+        "name": "gate-enforcement",
+        "description": "Block pushes to main/develop without Gate 7 approval",
+        "matcher": "Bash",
+        "pattern": "git push.*origin.*(main|develop|master)",
+        "command": "bash .claude/hooks/check-gates.sh \"$ARGUMENTS\""
+      },
+      {
+        "name": "branch-naming",
+        "description": "Enforce feature/EPIC-TYPE-NNN branch naming",
+        "matcher": "Bash",
+        "pattern": "git checkout -b",
+        "command": "bash .claude/hooks/validate-branch-name.sh \"$ARGUMENTS\""
+      },
+      {
+        "name": "research-check",
+        "description": "Verify research validation before Gate 0",
+        "matcher": "Bash",
+        "pattern": "gate-0",
+        "command": "bash .claude/hooks/check-research.sh \"$STORY_ID\""
+      }
+    ],
+    "PostToolUse": [
+      {
+        "name": "story-validation",
+        "description": "Validate story schema on save",
+        "matcher": "Write|Edit",
+        "pattern": "stories/.*\\.json$",
+        "command": "bash .claude/hooks/validate-story.sh \"$FILE\""
+      },
+      {
+        "name": "tdd-check",
+        "description": "Warn if source files lack tests (auto-detects project type)",
+        "matcher": "Write|Edit",
+        "pattern": "\\.(ts|tsx|js|jsx|py|go|rs|java)$",
+        "command": "bash .claude/hooks/check-tdd.sh \"$FILE\""
+      },
+      {
+        "name": "signal-gate-passed",
+        "description": "Create signal file when gate passes",
+        "matcher": "Bash",
+        "pattern": "Gate.*PASSED|gate-[0-7].*passed",
+        "command": "bash .claude/hooks/update-signals.sh gate-passed \"$STORY_ID\" \"$GATE\""
+      },
+      {
+        "name": "slack-notify-complete",
+        "description": "Notify Slack when story completes",
+        "matcher": "Bash",
+        "pattern": "gate-7.*passed|Gate 7.*PASSED",
+        "command": "bash .claude/hooks/notify-slack.sh story-complete \"$STORY_ID\""
+      }
     ]
   },
-  "architecture": {
-    "guide": "orchestrator/docs/WAVE-V2-IMPLEMENTATION-GUIDE.md",
-    "lock_file": "orchestrator/.claude/PREFLIGHT.lock"
+  "env": {
+    "SIGNALS_DIR": ".claude/signals",
+    "STORIES_DIR": "stories"
   },
-  "safety": {
-    "principles": "orchestrator/src/safety/constitutional.py",
-    "emergency_stop": "orchestrator/src/safety/emergency_stop.py",
-    "domains": ["auth", "payments", "profile", "api", "ui", "data"]
-  },
-  "rules": [
-    "ALWAYS run preflight validation before any implementation",
-    "NEVER assume components are missing without grep verification",
-    "ALWAYS map checklist terms to codebase naming conventions",
-    "NEVER create duplicate implementations"
-  ]
+  "_comment": "Wave V2 Hooks - Project Agnostic. Auto-detects: Node.js, Python, Go, Rust, Java"
 }

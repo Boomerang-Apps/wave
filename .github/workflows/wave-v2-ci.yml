@@ -1,0 +1,298 @@
+name: Wave V2 CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop, "feature/**"]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      story_id:
+        description: "Story ID to validate (e.g., AUTH-STORY-001)"
+        required: false
+        type: string
+      run_e2e:
+        description: "Run E2E tests"
+        required: false
+        type: boolean
+        default: false
+
+env:
+  NODE_VERSION: "20.x"
+  PNPM_VERSION: "10"
+
+jobs:
+  # ==========================================================================
+  # Gate 2: Build Verification
+  # ==========================================================================
+  gate-2-build:
+    name: "Gate 2: Build Verification"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run linter
+        run: pnpm lint
+
+      - name: Run type check
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
+
+      - name: Create Gate 2 Signal
+        if: success()
+        run: |
+          mkdir -p .claude/signals
+          cat > .claude/signals/signal-ci-gate2-passed.json << EOF
+          {
+            "event": "gate2-passed",
+            "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "commit": "${{ github.sha }}",
+            "branch": "${{ github.ref_name }}",
+            "workflow": "${{ github.workflow }}"
+          }
+          EOF
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            .next/
+            .claude/signals/
+
+  # ==========================================================================
+  # Gate 3: Test Verification
+  # ==========================================================================
+  gate-3-test:
+    name: "Gate 3: Test Verification"
+    runs-on: ubuntu-latest
+    needs: gate-2-build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run unit tests with coverage
+        run: pnpm test:coverage
+
+      - name: Check coverage thresholds
+        run: |
+          # Extract coverage percentage from vitest output
+          COVERAGE=$(cat coverage/coverage-summary.json 2>/dev/null | jq -r '.total.lines.pct // 0')
+          echo "Coverage: $COVERAGE%"
+
+          # DAL-based thresholds (default to DAL-D: 80%)
+          THRESHOLD=${COVERAGE_THRESHOLD:-80}
+
+          if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
+            echo "::error::Coverage ($COVERAGE%) is below threshold ($THRESHOLD%)"
+            exit 1
+          fi
+
+      - name: Create Gate 3 Signal
+        if: success()
+        run: |
+          mkdir -p .claude/signals
+          cat > .claude/signals/signal-ci-gate3-passed.json << EOF
+          {
+            "event": "gate3-passed",
+            "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "commit": "${{ github.sha }}",
+            "coverage": "$(cat coverage/coverage-summary.json 2>/dev/null | jq -r '.total.lines.pct // 0')%"
+          }
+          EOF
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+
+  # ==========================================================================
+  # E2E Tests (Playwright)
+  # ==========================================================================
+  e2e-tests:
+    name: "E2E Tests (Playwright)"
+    runs-on: ubuntu-latest
+    needs: gate-2-build
+    if: ${{ github.event.inputs.run_e2e == 'true' || github.event_name == 'pull_request' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps
+
+      - name: Run Playwright tests
+        run: pnpm exec playwright test
+        env:
+          CI: true
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+  # ==========================================================================
+  # Story Validation (Optional)
+  # ==========================================================================
+  validate-story:
+    name: "Validate Story Schema"
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.story_id != '' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate story
+        run: |
+          STORY_ID="${{ github.event.inputs.story_id }}"
+          echo "Validating story: $STORY_ID"
+
+          # Find and validate story file
+          STORY_FILE=$(find stories -name "${STORY_ID}.json" 2>/dev/null | head -1)
+
+          if [ -z "$STORY_FILE" ]; then
+            echo "::error::Story file not found: ${STORY_ID}.json"
+            exit 1
+          fi
+
+          echo "Found story file: $STORY_FILE"
+
+          # Validate with schema (using ts-node)
+          pnpm exec ts-node -e "
+            const fs = require('fs');
+            const { StorySchemaV4_1 } = require('./.claude/agents/wave-v2-config');
+            const story = JSON.parse(fs.readFileSync('$STORY_FILE', 'utf-8'));
+            const result = StorySchemaV4_1.safeParse(story);
+            if (!result.success) {
+              console.error('Validation failed:', JSON.stringify(result.error.issues, null, 2));
+              process.exit(1);
+            }
+            console.log('Story validation passed!');
+          "
+
+  # ==========================================================================
+  # Security Scan
+  # ==========================================================================
+  security-scan:
+    name: "Security Scan"
+    runs-on: ubuntu-latest
+    needs: gate-2-build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run pnpm audit
+        run: pnpm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Check for secrets
+        run: |
+          # Basic secret pattern check
+          if grep -rE "(api[_-]?key|secret[_-]?key|password|token).*=.*['\"][^'\"]{8,}['\"]" --include="*.ts" --include="*.js" --include="*.json" . 2>/dev/null | grep -v node_modules | grep -v ".env.example"; then
+            echo "::warning::Potential secrets detected in code"
+          fi
+
+  # ==========================================================================
+  # Summary
+  # ==========================================================================
+  ci-summary:
+    name: "CI Summary"
+    runs-on: ubuntu-latest
+    needs: [gate-2-build, gate-3-test, security-scan]
+    if: always()
+
+    steps:
+      - name: Check job results
+        run: |
+          echo "## Wave V2 CI/CD Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Gate | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Gate 2 (Build) | ${{ needs.gate-2-build.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Gate 3 (Test) | ${{ needs.gate-3-test.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Scan | ${{ needs.security-scan.result == 'success' && '✅ Passed' || '⚠️ Warning' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY

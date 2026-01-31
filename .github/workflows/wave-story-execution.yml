@@ -1,0 +1,185 @@
+name: Wave V2 Story Execution
+
+on:
+  workflow_dispatch:
+    inputs:
+      story_id:
+        description: "Story ID (e.g., AUTH-STORY-001)"
+        required: true
+        type: string
+      start_gate:
+        description: "Starting gate (gate0-gate7)"
+        required: false
+        type: choice
+        default: "gate0"
+        options:
+          - gate0
+          - gate1
+          - gate2
+          - gate3
+          - gate4
+          - gate5
+          - gate6
+          - gate7
+      stop_gate:
+        description: "Stopping gate (gate0-gate7)"
+        required: false
+        type: choice
+        default: "gate7"
+        options:
+          - gate0
+          - gate1
+          - gate2
+          - gate3
+          - gate4
+          - gate5
+          - gate6
+          - gate7
+      agent_type:
+        description: "Primary agent type"
+        required: false
+        type: choice
+        default: "be-dev"
+        options:
+          - be-dev
+          - fe-dev
+          - qa-agent
+          - devops-agent
+          - research-agent
+
+env:
+  NODE_VERSION: "20.x"
+  PNPM_VERSION: "10"
+
+jobs:
+  validate-story:
+    name: "Validate Story"
+    runs-on: ubuntu-latest
+    outputs:
+      story_valid: ${{ steps.validate.outputs.valid }}
+      story_wave: ${{ steps.validate.outputs.wave }}
+      story_dal: ${{ steps.validate.outputs.dal }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate story
+        id: validate
+        run: |
+          STORY_ID="${{ inputs.story_id }}"
+          STORY_FILE=$(find stories -name "${STORY_ID}.json" 2>/dev/null | head -1)
+
+          if [ -z "$STORY_FILE" ]; then
+            echo "::error::Story not found: $STORY_ID"
+            echo "valid=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          WAVE=$(jq -r '.wave' "$STORY_FILE")
+          DAL=$(jq -r '.dalLevel' "$STORY_FILE")
+
+          echo "valid=true" >> $GITHUB_OUTPUT
+          echo "wave=$WAVE" >> $GITHUB_OUTPUT
+          echo "dal=$DAL" >> $GITHUB_OUTPUT
+
+          echo "## Story Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Story ID:** $STORY_ID" >> $GITHUB_STEP_SUMMARY
+          echo "- **Wave:** $WAVE" >> $GITHUB_STEP_SUMMARY
+          echo "- **DAL Level:** $DAL" >> $GITHUB_STEP_SUMMARY
+
+  execute-gates:
+    name: "Execute Gates"
+    runs-on: ubuntu-latest
+    needs: validate-story
+    if: needs.validate-story.outputs.story_valid == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Execute Story Gates
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          STORY_ID: ${{ inputs.story_id }}
+          START_GATE: ${{ inputs.start_gate }}
+          STOP_GATE: ${{ inputs.stop_gate }}
+          AGENT_TYPE: ${{ inputs.agent_type }}
+        run: |
+          echo "Executing story: $STORY_ID"
+          echo "Gates: $START_GATE to $STOP_GATE"
+          echo "Agent: $AGENT_TYPE"
+
+          # Run story executor
+          pnpm wave:execute "$STORY_ID" \
+            --start-gate "$START_GATE" \
+            --stop-gate "$STOP_GATE"
+
+      - name: Upload signals
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-signals
+          path: .claude/signals/
+
+      - name: Create execution summary
+        if: always()
+        run: |
+          echo "## Gate Execution Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          for signal in .claude/signals/signal-${{ inputs.story_id }}-*.json; do
+            if [ -f "$signal" ]; then
+              GATE=$(jq -r '.gate // "unknown"' "$signal")
+              EVENT=$(jq -r '.event' "$signal")
+              TIMESTAMP=$(jq -r '.timestamp' "$signal")
+              ICON=$([[ "$EVENT" == "passed" ]] && echo "✅" || echo "❌")
+              echo "| $GATE | $ICON $EVENT | $TIMESTAMP |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+  notify:
+    name: "Notify Completion"
+    runs-on: ubuntu-latest
+    needs: execute-gates
+    if: always()
+
+    steps:
+      - name: Send notification
+        run: |
+          STATUS=${{ needs.execute-gates.result }}
+          STORY_ID="${{ inputs.story_id }}"
+
+          echo "Story $STORY_ID execution: $STATUS"
+
+          # Add Slack notification here if SLACK_WEBHOOK is configured
+          # curl -X POST -H 'Content-type: application/json' \
+          #   --data "{\"text\":\"Story $STORY_ID execution: $STATUS\"}" \
+          #   ${{ secrets.SLACK_WEBHOOK }}
