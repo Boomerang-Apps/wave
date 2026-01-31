@@ -14,6 +14,9 @@ import { WebClient } from '@slack/web-api';
 import { SLACK_EVENT_TYPES, createSlackEvent, formatSlackBlocks } from './slack-events.js';
 import { RetryManager } from './utils/retry-manager.js';
 import { secretRedactor } from './utils/secret-redactor.js';
+import { createLogger } from './utils/logger.js';
+
+const logger = createLogger({ prefix: '[SlackNotifier]' });
 
 /**
  * SlackNotifier - Generic Slack notification service
@@ -74,11 +77,11 @@ class SlackNotifier {
     });
 
     if (!this.enabled) {
-      console.log('[SlackNotifier] Disabled - no bot token or webhook URL configured');
+      logger.info(' Disabled - no bot token or webhook URL configured');
     } else if (this.webClient) {
-      console.log('[SlackNotifier] Enabled with Web API (threading + retry supported)');
+      logger.info(' Enabled with Web API (threading + retry supported)');
     } else {
-      console.log('[SlackNotifier] Enabled with webhook fallback (retry supported, no threading)');
+      logger.info(' Enabled with webhook fallback (retry supported, no threading)');
     }
   }
 
@@ -127,7 +130,7 @@ class SlackNotifier {
   async _sendViaWebApi(payload, channel = 'default', options = {}) {
     const channelId = this.channels[channel] || this.channels.default;
     if (!channelId) {
-      console.warn(`[SlackNotifier] No channel ID configured for '${channel}', using webhook fallback`);
+      logger.warn(` No channel ID configured for '${channel}', using webhook fallback`);
       return this._sendViaWebhook(payload, channel);
     }
 
@@ -189,7 +192,7 @@ class SlackNotifier {
     }
 
     // All retries exhausted
-    console.error(`[SlackNotifier] Web API failed after ${result.attempts} attempts: ${result.error}`);
+    logger.error(` Web API failed after ${result.attempts} attempts: ${result.error}`);
     return {
       success: false,
       reason: result.error,
@@ -234,7 +237,7 @@ class SlackNotifier {
     }
 
     // All retries exhausted
-    console.error(`[SlackNotifier] Webhook failed after ${result.attempts} attempts: ${result.error}`);
+    logger.error(` Webhook failed after ${result.attempts} attempts: ${result.error}`);
     return {
       success: false,
       reason: result.error,

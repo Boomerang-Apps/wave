@@ -234,32 +234,50 @@ export function validatePath(inputPath, allowedBasePaths, options = {}) {
     // Invalid URL encoding - could be an attack
   }
 
-  // Resolve the path
+  // GAP-015: TOCTOU-safe path resolution
+  // Try realpathSync directly without existsSync check to avoid race condition
   let resolvedPath;
-  try {
-    if (resolveSymlinks && fs.existsSync(inputPath)) {
-      // Use realpath to follow symlinks
+  if (resolveSymlinks) {
+    try {
+      // Atomically resolve symlinks - no TOCTOU vulnerability
       resolvedPath = fs.realpathSync(inputPath);
-    } else if (mustExist) {
-      // Path must exist but doesn't
-      return {
-        valid: false,
-        error: PATH_VALIDATOR_ERRORS.PATH_NOT_FOUND,
-        message: 'Path does not exist'
-      };
+    } catch (e) {
+      // File doesn't exist
+      if (mustExist) {
+        return {
+          valid: false,
+          error: PATH_VALIDATOR_ERRORS.PATH_NOT_FOUND,
+          message: 'Path does not exist'
+        };
+      }
+      // For non-existent paths, resolve parent to get canonical base path
+      // This handles macOS /var -> /private/var symlink properly
+      const parentDir = path.dirname(inputPath);
+      const basename = path.basename(inputPath);
+      try {
+        const resolvedParent = fs.realpathSync(parentDir);
+        resolvedPath = path.join(resolvedParent, basename);
+      } catch (parentErr) {
+        // Parent also doesn't exist, use path.resolve
+        resolvedPath = path.resolve(inputPath);
+      }
+    }
+  } else {
+    // No symlink resolution requested
+    if (mustExist) {
+      try {
+        fs.accessSync(inputPath, fs.constants.F_OK);
+        resolvedPath = path.resolve(inputPath);
+      } catch (e) {
+        return {
+          valid: false,
+          error: PATH_VALIDATOR_ERRORS.PATH_NOT_FOUND,
+          message: 'Path does not exist'
+        };
+      }
     } else {
-      // Resolve without symlink following
       resolvedPath = path.resolve(inputPath);
     }
-  } catch (e) {
-    if (mustExist) {
-      return {
-        valid: false,
-        error: PATH_VALIDATOR_ERRORS.PATH_NOT_FOUND,
-        message: 'Path does not exist'
-      };
-    }
-    resolvedPath = path.resolve(inputPath);
   }
 
   // Normalize the resolved path
@@ -277,14 +295,16 @@ export function validatePath(inputPath, allowedBasePaths, options = {}) {
   }
 
   // Validate against allowed base paths
+  // GAP-015: TOCTOU-safe base path resolution
   // Also resolve base paths to handle symlinks (e.g., /var -> /private/var on macOS)
   let isWithinAllowed = false;
   for (const basePath of allowedBasePaths) {
     let resolvedBase;
     try {
-      // Try to resolve symlinks in the base path too
-      resolvedBase = fs.existsSync(basePath) ? fs.realpathSync(basePath) : path.resolve(basePath);
+      // GAP-015: Try realpathSync directly without existsSync check
+      resolvedBase = fs.realpathSync(basePath);
     } catch (e) {
+      // Base path doesn't exist, use path.resolve
       resolvedBase = path.resolve(basePath);
     }
 

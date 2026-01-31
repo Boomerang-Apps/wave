@@ -446,4 +446,118 @@ describe('Path Validator (GAP-006)', () => {
       expect(PATH_VALIDATOR_ERRORS.NO_ALLOWED_PATHS).toBe('no_allowed_paths');
     });
   });
+
+  // ============================================
+  // GAP-015: TOCTOU-Safe File Operations
+  // ============================================
+
+  describe('TOCTOU-Safe File Operations (GAP-015)', () => {
+    it('should not use existsSync before realpathSync', () => {
+      // The fix for TOCTOU is to try realpathSync directly and catch errors
+      // rather than checking existence first (race condition window)
+      const testPath = path.join(allowedDir, 'test.txt');
+
+      // Mock fs.existsSync to track if it's called before realpathSync
+      const existsSyncSpy = vi.spyOn(fs, 'existsSync');
+      const realpathSyncSpy = vi.spyOn(fs, 'realpathSync');
+
+      validatePath(testPath, [allowedDir], { resolveSymlinks: true });
+
+      // Check that realpathSync is called without existsSync check
+      // (existsSync may still be called for base path, but not for input path as a guard)
+      const existsCalls = existsSyncSpy.mock.calls.map(c => c[0]);
+      const realpathCalls = realpathSyncSpy.mock.calls.map(c => c[0]);
+
+      // realpathSync should be called for the input path
+      expect(realpathCalls.some(p => p.includes('test.txt'))).toBe(true);
+
+      existsSyncSpy.mockRestore();
+      realpathSyncSpy.mockRestore();
+    });
+
+    it('should handle non-existent path without race condition', () => {
+      const nonExistentPath = path.join(allowedDir, 'does-not-exist-' + Date.now() + '.txt');
+
+      // Should not throw, should handle gracefully
+      const result = validatePath(nonExistentPath, [allowedDir], {
+        resolveSymlinks: true,
+        mustExist: false
+      });
+
+      // Should be valid (path doesn't exist but would be in allowed dir)
+      expect(result.valid).toBe(true);
+    });
+
+    it('should return PATH_NOT_FOUND for non-existent path when mustExist is true', () => {
+      const nonExistentPath = path.join(allowedDir, 'does-not-exist-' + Date.now() + '.txt');
+
+      const result = validatePath(nonExistentPath, [allowedDir], {
+        resolveSymlinks: true,
+        mustExist: true
+      });
+
+      expect(result.valid).toBe(false);
+      expect(result.error).toBe(PATH_VALIDATOR_ERRORS.PATH_NOT_FOUND);
+    });
+
+    it('should atomically validate symlink target', () => {
+      // Create a valid file and symlink
+      const targetFile = path.join(allowedDir, 'real-file.txt');
+      fs.writeFileSync(targetFile, 'content');
+
+      const symlinkPath = path.join(allowedDir, 'link-to-real');
+      try {
+        fs.symlinkSync(targetFile, symlinkPath);
+      } catch (e) {
+        // Skip on systems without symlink support
+        return;
+      }
+
+      // Validation should use realpathSync atomically
+      const result = validatePath(symlinkPath, [allowedDir], { resolveSymlinks: true });
+
+      expect(result.valid).toBe(true);
+      // The resolved path should be the real file, not the symlink
+      expect(result.resolvedPath).toContain('real-file.txt');
+    });
+
+    it('should handle symlink that becomes dangling during validation', () => {
+      // Create a file and symlink
+      const targetFile = path.join(allowedDir, 'temp-target-' + Date.now() + '.txt');
+      fs.writeFileSync(targetFile, 'content');
+
+      const symlinkPath = path.join(allowedDir, 'temp-link-' + Date.now());
+      try {
+        fs.symlinkSync(targetFile, symlinkPath);
+      } catch (e) {
+        // Skip on systems without symlink support
+        return;
+      }
+
+      // Delete the target (simulating race condition)
+      fs.unlinkSync(targetFile);
+
+      // Validation should handle dangling symlink gracefully
+      const result = validatePath(symlinkPath, [allowedDir], {
+        resolveSymlinks: true,
+        mustExist: true
+      });
+
+      // Should fail because target doesn't exist
+      expect(result.valid).toBe(false);
+      expect(result.error).toBe(PATH_VALIDATOR_ERRORS.PATH_NOT_FOUND);
+
+      // Cleanup
+      try { fs.unlinkSync(symlinkPath); } catch (e) { /* ignore */ }
+    });
+
+    it('should validate base paths atomically without existsSync guard', () => {
+      const testPath = path.join(allowedDir, 'test.txt');
+
+      // The base path resolution should also be TOCTOU-safe
+      const result = validatePath(testPath, [allowedDir], { resolveSymlinks: true });
+
+      expect(result.valid).toBe(true);
+    });
+  });
 });

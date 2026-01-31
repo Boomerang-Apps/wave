@@ -913,6 +913,109 @@ describe('Input Validation Middleware (GAP-003)', () => {
         expect(result.errors[0].code).toBe(VALIDATION_ERRORS.INJECTION_DETECTED);
       });
     });
+
+    // GAP-014: SQL injection bypass patterns that must be detected
+    it('should detect SQL comment-based bypass patterns', () => {
+      const bypassPatterns = [
+        "UNION/**/SELECT password FROM users",
+        "1/**/OR/**/1=1",
+        "admin'/**/--",
+        "SELECT/**/*/**/FROM/**/users"
+      ];
+
+      bypassPatterns.forEach(pattern => {
+        const result = validateSchema({ query: pattern }, schema, { detectInjection: true });
+        expect(result.valid).toBe(false);
+        expect(result.errors[0].code).toBe(VALIDATION_ERRORS.INJECTION_DETECTED);
+      });
+    });
+
+    it('should detect case variation bypass patterns', () => {
+      const bypassPatterns = [
+        "UnIoN SeLeCt password",
+        "sElEcT * fRoM users",
+        "DrOp TaBlE users"
+      ];
+
+      bypassPatterns.forEach(pattern => {
+        const result = validateSchema({ query: pattern }, schema, { detectInjection: true });
+        expect(result.valid).toBe(false);
+        expect(result.errors[0].code).toBe(VALIDATION_ERRORS.INJECTION_DETECTED);
+      });
+    });
+
+    it('should detect hex/char encoding bypass patterns', () => {
+      const bypassPatterns = [
+        "1 OR 0x31=0x31",
+        "CHAR(83)+CHAR(69)+CHAR(76)",
+        "0x53454C454354" // SELECT in hex
+      ];
+
+      bypassPatterns.forEach(pattern => {
+        const result = validateSchema({ query: pattern }, schema, { detectInjection: true });
+        expect(result.valid).toBe(false);
+        expect(result.errors[0].code).toBe(VALIDATION_ERRORS.INJECTION_DETECTED);
+      });
+    });
+
+    it('should detect stacked query bypass patterns', () => {
+      const bypassPatterns = [
+        "1;EXEC xp_cmdshell",
+        "1; WAITFOR DELAY",
+        "1;DECLARE @x"
+      ];
+
+      bypassPatterns.forEach(pattern => {
+        const result = validateSchema({ query: pattern }, schema, { detectInjection: true });
+        expect(result.valid).toBe(false);
+        expect(result.errors[0].code).toBe(VALIDATION_ERRORS.INJECTION_DETECTED);
+      });
+    });
+
+    it('should detect boolean-based blind injection patterns', () => {
+      const bypassPatterns = [
+        "1 AND 1=1",
+        "1 AND 'a'='a'",
+        "1 OR 'x'='x'",
+        "1' AND '1'='1"
+      ];
+
+      bypassPatterns.forEach(pattern => {
+        const result = validateSchema({ query: pattern }, schema, { detectInjection: true });
+        expect(result.valid).toBe(false);
+        expect(result.errors[0].code).toBe(VALIDATION_ERRORS.INJECTION_DETECTED);
+      });
+    });
+
+    it('should detect time-based blind injection patterns', () => {
+      const bypassPatterns = [
+        "1; WAITFOR DELAY '0:0:5'",
+        "BENCHMARK(10000000,SHA1('x'))",
+        "SLEEP(5)",
+        "pg_sleep(5)"
+      ];
+
+      bypassPatterns.forEach(pattern => {
+        const result = validateSchema({ query: pattern }, schema, { detectInjection: true });
+        expect(result.valid).toBe(false);
+        expect(result.errors[0].code).toBe(VALIDATION_ERRORS.INJECTION_DETECTED);
+      });
+    });
+
+    it('should allow safe strings that contain SQL-like words', () => {
+      const safeStrings = [
+        "John selected the best option",
+        "Please drop by the office",
+        "Union of workers united",
+        "Insert your name here",
+        "I want to delete my account (contact support)"
+      ];
+
+      safeStrings.forEach(pattern => {
+        const result = validateSchema({ query: pattern }, schema, { detectInjection: true });
+        expect(result.valid).toBe(true);
+      });
+    });
   });
 
   describe('Security - XSS Prevention', () => {

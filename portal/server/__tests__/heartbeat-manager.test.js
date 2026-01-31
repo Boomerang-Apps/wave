@@ -488,6 +488,98 @@ describe('HeartbeatManager (GAP-013)', () => {
   });
 
   // ============================================
+  // GAP-013: Async Error Handling Tests
+  // ============================================
+
+  describe('Async Error Handling (GAP-013)', () => {
+    test('should catch and log errors from restart callback', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const restartCallback = vi.fn().mockRejectedValue(new Error('Restart failed'));
+
+      manager.enableAutoRestart('agent-1', restartCallback);
+      manager.recordHeartbeat('agent-1');
+      manager.startMonitoring();
+
+      // Advance past timeout to trigger restart and flush all async
+      await vi.advanceTimersByTimeAsync(DEFAULT_TIMEOUT + DEFAULT_CHECK_INTERVAL + 1000);
+
+      // Should have logged the error instead of throwing
+      // Logger outputs: header (contains prefix), message, ...args (error message)
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[HeartbeatManager]'),
+        expect.any(String),  // message about auto-restart
+        'Restart failed'     // error message
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('should continue monitoring after restart callback error', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const restartCallback = vi.fn().mockRejectedValue(new Error('Restart failed'));
+      const staleCallback = vi.fn();
+
+      manager.onStaleAgent(staleCallback);
+      manager.enableAutoRestart('agent-1', restartCallback);
+      manager.recordHeartbeat('agent-1');
+      manager.recordHeartbeat('agent-2');
+      manager.startMonitoring();
+
+      // Advance past timeout for both agents and flush async
+      await vi.advanceTimersByTimeAsync(DEFAULT_TIMEOUT + DEFAULT_CHECK_INTERVAL + 1000);
+
+      // Monitoring should still be active
+      expect(manager.isMonitoring()).toBe(true);
+
+      // Agent-2 should still be tracked and callbacks should work
+      expect(staleCallback).toHaveBeenCalledWith(
+        expect.objectContaining({ agentId: 'agent-2', status: 'stale' })
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('should include agent ID in error message', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const restartCallback = vi.fn().mockRejectedValue(new Error('Connection timeout'));
+
+      manager.enableAutoRestart('special-agent-007', restartCallback);
+      manager.recordHeartbeat('special-agent-007');
+      manager.startMonitoring();
+
+      // Advance past timeout and flush async
+      await vi.advanceTimersByTimeAsync(DEFAULT_TIMEOUT + DEFAULT_CHECK_INTERVAL + 1000);
+
+      // Logger outputs: header, message, ...args
+      // The agent ID is in the message (second argument)
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.any(String),  // timestamp header
+        expect.stringContaining('special-agent-007'),  // message with agent ID
+        expect.any(String)   // error message
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('should not throw unhandled rejection from async restart', async () => {
+      const restartCallback = vi.fn().mockRejectedValue(new Error('Critical error'));
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      manager.enableAutoRestart('agent-1', restartCallback);
+      manager.recordHeartbeat('agent-1');
+      manager.startMonitoring();
+
+      // This should not throw - advance and flush async
+      await vi.advanceTimersByTimeAsync(DEFAULT_TIMEOUT + DEFAULT_CHECK_INTERVAL + 1000);
+
+      // If we get here, no unhandled rejection occurred
+      expect(restartCallback).toHaveBeenCalled();
+
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  // ============================================
   // Monitoring Tests
   // ============================================
 

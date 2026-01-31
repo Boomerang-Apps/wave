@@ -3,10 +3,17 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 // Enforces rate limits on a per-agent basis to prevent runaway workloads
 // Based on: https://www.truefoundry.com/blog/llm-cost-tracking-solution
+//
+// GAP-016: Configurable rate limits via environment variables and config file
+// Environment variables: AGENT_RATE_LIMIT_{AGENT_TYPE}_{LIMIT_NAME}
+// Config file: .claude/rate-limits-config.json
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import fs from 'fs';
 import path from 'path';
+import { createLogger } from './logger.js';
+
+const logger = createLogger({ prefix: '[RateLimiter]' });
 
 /**
  * Default rate limits per agent type
@@ -56,13 +63,89 @@ const DEFAULT_AGENT_LIMITS = {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GAP-016: Environment Variable Parsing
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Parse an integer from environment variable with fallback
+ * @param {string} envKey - Environment variable name
+ * @param {number} defaultValue - Default value if not set or invalid
+ * @returns {number}
+ */
+function parseEnvInt(envKey, defaultValue) {
+  const value = process.env[envKey];
+  if (value === undefined || value === '') {
+    return defaultValue;
+  }
+  const parsed = parseInt(value, 10);
+  return Number.isNaN(parsed) ? defaultValue : parsed;
+}
+
+/**
+ * Parse a float from environment variable with fallback
+ * @param {string} envKey - Environment variable name
+ * @param {number} defaultValue - Default value if not set or invalid
+ * @returns {number}
+ */
+function parseEnvFloat(envKey, defaultValue) {
+  const value = process.env[envKey];
+  if (value === undefined || value === '') {
+    return defaultValue;
+  }
+  const parsed = parseFloat(value);
+  return Number.isNaN(parsed) ? defaultValue : parsed;
+}
+
+/**
+ * Get limits for an agent type with environment variable overrides
+ * @param {string} agentType - Agent type (e.g., 'fe-dev', 'be-dev')
+ * @param {Object} defaults - Default limits for this agent type
+ * @returns {Object} Limits with env overrides applied
+ */
+function getEnvOverrides(agentType, defaults) {
+  // Convert agent type to uppercase for env var (fe-dev -> FE_DEV)
+  const envPrefix = `AGENT_RATE_LIMIT_${agentType.toUpperCase().replace(/-/g, '_')}`;
+
+  return {
+    requests_per_minute: parseEnvInt(`${envPrefix}_REQUESTS_PER_MINUTE`, defaults.requests_per_minute),
+    tokens_per_minute: parseEnvInt(`${envPrefix}_TOKENS_PER_MINUTE`, defaults.tokens_per_minute),
+    max_tokens_per_request: parseEnvInt(`${envPrefix}_MAX_TOKENS_PER_REQUEST`, defaults.max_tokens_per_request),
+    budget_usd: parseEnvFloat(`${envPrefix}_BUDGET_USD`, defaults.budget_usd)
+  };
+}
+
+/**
+ * Load limits from config file
+ * @param {string} projectPath - Project path
+ * @returns {Object|null} Config file contents or null
+ */
+function loadConfigFile(projectPath) {
+  if (!projectPath) return null;
+
+  const configPath = path.join(projectPath, '.claude', 'rate-limits-config.json');
+  try {
+    if (fs.existsSync(configPath)) {
+      return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    }
+  } catch (err) {
+    // Ignore config file errors, use defaults
+  }
+  return null;
+}
+
 /**
  * Per-Agent Rate Limiter
  * Tracks and enforces rate limits using a sliding window approach
+ *
+ * GAP-016: Supports configurable limits via:
+ * 1. Constructor options (highest priority)
+ * 2. Environment variables (AGENT_RATE_LIMIT_{AGENT_TYPE}_{LIMIT_NAME})
+ * 3. Config file (.claude/rate-limits-config.json)
+ * 4. Default values (lowest priority)
  */
 class AgentRateLimiter {
   constructor(options = {}) {
-    this.limits = { ...DEFAULT_AGENT_LIMITS, ...options.limits };
     this.windowSize = options.windowSize || 60000; // 1 minute default
     this.agentWindows = new Map(); // agent -> { requests: [], tokens: [] }
     this.projectPath = options.projectPath;
@@ -70,8 +153,44 @@ class AgentRateLimiter {
       ? path.join(options.projectPath, '.claude', 'rate-limits.json')
       : null;
 
+    // GAP-016: Load config file first
+    this.configFileLimits = loadConfigFile(options.projectPath);
+
+    // Build limits with priority: options.limits > env vars > config file > defaults
+    this.limits = this._buildLimits(options.limits);
+
     // Load persisted state if available
     this.loadState();
+  }
+
+  /**
+   * GAP-016: Build limits with proper priority
+   * @private
+   */
+  _buildLimits(overrides = {}) {
+    const result = {};
+
+    for (const agentType of Object.keys(DEFAULT_AGENT_LIMITS)) {
+      // Start with defaults
+      let limits = { ...DEFAULT_AGENT_LIMITS[agentType] };
+
+      // Apply config file overrides
+      if (this.configFileLimits && this.configFileLimits[agentType]) {
+        limits = { ...limits, ...this.configFileLimits[agentType] };
+      }
+
+      // Apply environment variable overrides
+      limits = getEnvOverrides(agentType, limits);
+
+      // Apply constructor overrides (highest priority)
+      if (overrides[agentType]) {
+        limits = { ...limits, ...overrides[agentType] };
+      }
+
+      result[agentType] = limits;
+    }
+
+    return result;
   }
 
   /**
@@ -101,7 +220,7 @@ class AgentRateLimiter {
         }
       }
     } catch (err) {
-      console.warn('[RateLimiter] Failed to load state:', err.message);
+      logger.warn('Failed to load state:', err.message);
     }
   }
 
@@ -125,7 +244,7 @@ class AgentRateLimiter {
 
       fs.writeFileSync(this.persistFile, JSON.stringify(data, null, 2));
     } catch (err) {
-      console.warn('[RateLimiter] Failed to save state:', err.message);
+      logger.warn('Failed to save state:', err.message);
     }
   }
 

@@ -251,4 +251,143 @@ describe('AgentRateLimiter', () => {
       }
     });
   });
+
+  // ============================================
+  // GAP-016: Configurable Rate Limits
+  // ============================================
+
+  describe('Environment Variable Configuration (GAP-016)', () => {
+    const originalEnv = { ...process.env };
+
+    afterEach(() => {
+      // Restore original environment
+      for (const key of Object.keys(process.env)) {
+        if (key.startsWith('AGENT_RATE_LIMIT_')) {
+          delete process.env[key];
+        }
+      }
+      Object.assign(process.env, originalEnv);
+    });
+
+    it('should override requests_per_minute from environment variable', () => {
+      process.env.AGENT_RATE_LIMIT_FE_DEV_REQUESTS_PER_MINUTE = '100';
+
+      const configuredLimiter = new AgentRateLimiter({ projectPath: tempDir });
+      const limits = configuredLimiter.getLimits('fe-dev-1');
+
+      expect(limits.requests_per_minute).toBe(100);
+    });
+
+    it('should override tokens_per_minute from environment variable', () => {
+      process.env.AGENT_RATE_LIMIT_BE_DEV_TOKENS_PER_MINUTE = '100000';
+
+      const configuredLimiter = new AgentRateLimiter({ projectPath: tempDir });
+      const limits = configuredLimiter.getLimits('be-dev-1');
+
+      expect(limits.tokens_per_minute).toBe(100000);
+    });
+
+    it('should override max_tokens_per_request from environment variable', () => {
+      process.env.AGENT_RATE_LIMIT_QA_MAX_TOKENS_PER_REQUEST = '16000';
+
+      const configuredLimiter = new AgentRateLimiter({ projectPath: tempDir });
+      const limits = configuredLimiter.getLimits('qa');
+
+      expect(limits.max_tokens_per_request).toBe(16000);
+    });
+
+    it('should override budget_usd from environment variable', () => {
+      process.env.AGENT_RATE_LIMIT_DEV_FIX_BUDGET_USD = '2.50';
+
+      const configuredLimiter = new AgentRateLimiter({ projectPath: tempDir });
+      const limits = configuredLimiter.getLimits('dev-fix');
+
+      expect(limits.budget_usd).toBe(2.50);
+    });
+
+    it('should override default agent type limits', () => {
+      process.env.AGENT_RATE_LIMIT_DEFAULT_REQUESTS_PER_MINUTE = '50';
+      process.env.AGENT_RATE_LIMIT_DEFAULT_TOKENS_PER_MINUTE = '80000';
+
+      const configuredLimiter = new AgentRateLimiter({ projectPath: tempDir });
+      const limits = configuredLimiter.getLimits('unknown-agent-type');
+
+      expect(limits.requests_per_minute).toBe(50);
+      expect(limits.tokens_per_minute).toBe(80000);
+    });
+
+    it('should ignore invalid environment variable values', () => {
+      process.env.AGENT_RATE_LIMIT_FE_DEV_REQUESTS_PER_MINUTE = 'invalid';
+
+      const configuredLimiter = new AgentRateLimiter({ projectPath: tempDir });
+      const limits = configuredLimiter.getLimits('fe-dev-1');
+
+      // Should use default value
+      expect(limits.requests_per_minute).toBe(DEFAULT_AGENT_LIMITS['fe-dev'].requests_per_minute);
+    });
+
+    it('should support multiple overrides for same agent type', () => {
+      process.env.AGENT_RATE_LIMIT_FE_DEV_REQUESTS_PER_MINUTE = '60';
+      process.env.AGENT_RATE_LIMIT_FE_DEV_TOKENS_PER_MINUTE = '80000';
+      process.env.AGENT_RATE_LIMIT_FE_DEV_MAX_TOKENS_PER_REQUEST = '12000';
+      process.env.AGENT_RATE_LIMIT_FE_DEV_BUDGET_USD = '1.00';
+
+      const configuredLimiter = new AgentRateLimiter({ projectPath: tempDir });
+      const limits = configuredLimiter.getLimits('fe-dev-1');
+
+      expect(limits.requests_per_minute).toBe(60);
+      expect(limits.tokens_per_minute).toBe(80000);
+      expect(limits.max_tokens_per_request).toBe(12000);
+      expect(limits.budget_usd).toBe(1.00);
+    });
+  });
+
+  describe('Config File Loading (GAP-016)', () => {
+    it('should load limits from config file if present', () => {
+      // Create config file
+      const configDir = path.join(tempDir, '.claude');
+      fs.mkdirSync(configDir, { recursive: true });
+
+      const configFile = path.join(configDir, 'rate-limits-config.json');
+      const customConfig = {
+        'fe-dev': {
+          requests_per_minute: 75,
+          tokens_per_minute: 90000
+        }
+      };
+      fs.writeFileSync(configFile, JSON.stringify(customConfig, null, 2));
+
+      const configuredLimiter = new AgentRateLimiter({ projectPath: tempDir });
+      const limits = configuredLimiter.getLimits('fe-dev-1');
+
+      expect(limits.requests_per_minute).toBe(75);
+      expect(limits.tokens_per_minute).toBe(90000);
+      // Other values should use defaults
+      expect(limits.max_tokens_per_request).toBe(DEFAULT_AGENT_LIMITS['fe-dev'].max_tokens_per_request);
+    });
+
+    it('should prefer environment variables over config file', () => {
+      // Create config file
+      const configDir = path.join(tempDir, '.claude');
+      fs.mkdirSync(configDir, { recursive: true });
+
+      const configFile = path.join(configDir, 'rate-limits-config.json');
+      const customConfig = {
+        'fe-dev': {
+          requests_per_minute: 75
+        }
+      };
+      fs.writeFileSync(configFile, JSON.stringify(customConfig, null, 2));
+
+      // Set environment variable (should take precedence)
+      process.env.AGENT_RATE_LIMIT_FE_DEV_REQUESTS_PER_MINUTE = '100';
+
+      const configuredLimiter = new AgentRateLimiter({ projectPath: tempDir });
+      const limits = configuredLimiter.getLimits('fe-dev-1');
+
+      expect(limits.requests_per_minute).toBe(100);
+
+      delete process.env.AGENT_RATE_LIMIT_FE_DEV_REQUESTS_PER_MINUTE;
+    });
+  });
 });

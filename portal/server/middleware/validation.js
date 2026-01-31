@@ -36,12 +36,44 @@ export const VALIDATION_ERRORS = {
   MAX_DEPTH_EXCEEDED: 'max_depth_exceeded'
 };
 
-// SQL injection patterns
+// GAP-014: Enhanced SQL injection patterns to prevent bypass attacks
+// Sources:
+// - https://owasp.org/www-community/attacks/SQL_Injection_Bypassing_WAF
+// - https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
 const SQL_INJECTION_PATTERNS = [
-  /(\s|^)(union|select|insert|update|delete|drop|truncate|exec|execute)(\s|$)/i,
-  /(\s|^)(or|and)\s+[\d'"]+=[\d'"]/i,
+  // SQL statement patterns (keyword followed by SQL syntax)
+  /\bunion\s+(all\s+)?select\b/i,
+  /\bselect\s+[\w*,\s]+\s+from\b/i,
+  /\binsert\s+into\b/i,
+  /\bupdate\s+\w+\s+set\b/i,
+  /\bdelete\s+from\b/i,
+  /\bdrop\s+(table|database|index)\b/i,
+  /\btruncate\s+table\b/i,
+  // SQL comment bypass patterns (/**/ used to evade detection)
+  /union\s*\/\*[^*]*\*\/\s*select/i,
+  /select\s*\/\*[^*]*\*\/.*\/\*[^*]*\*\/\s*from/i,
+  /\/\*[^*]*\*\/\s*(or|and)\s*\/\*[^*]*\*\//i,
+  /\/\*[^*]*\*\/\s*(union|select|from|where)/i,
+  // Quote followed by comment (admin'/**/--)
+  /['"]\s*\/\*[^*]*\*\/\s*--/i,
+  // Boolean-based injection (OR/AND with equality comparisons)
+  /['"]?\s*(or|and)\s+['"]?[\w]+['"]?\s*=\s*['"]?[\w]+['"]?/i,
+  /\b(or|and)\s+\d+\s*=\s*\d+/i,
+  // Quote-based termination and comments
   /['"]\s*(;|--)/i,
-  /\b(waitfor|benchmark|sleep)\s*\(/i
+  /['"]\s*\/\*/i,
+  // Time-based blind injection
+  /\b(waitfor|benchmark|sleep|pg_sleep)\s*\(/i,
+  /waitfor\s+delay/i,
+  // Stacked queries (semicolon followed by SQL statement)
+  /;\s*(exec|execute|declare|select|insert|update|delete|drop)\b/i,
+  // Hex encoding bypass (0x prefixed hex strings)
+  /\b0x[0-9a-f]{4,}/i,
+  // CHAR() function for encoding bypass
+  /char\s*\(\s*\d+\s*\)\s*\+/i,
+  // xp_cmdshell and other dangerous procedures
+  /\bxp_cmdshell\b/i,
+  /\bexec\s+xp_/i
 ];
 
 // XSS patterns

@@ -12,6 +12,10 @@
  * @see https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
  */
 
+import { createLogger } from './logger.js';
+
+const logger = createLogger({ prefix: '[HeartbeatManager]' });
+
 // Default configuration (reduced from 120s to 60s per GAP requirements)
 export const DEFAULT_TIMEOUT = 60000; // 60 seconds
 export const DEFAULT_WARNING = 45000; // 45 seconds (75% of timeout)
@@ -466,7 +470,7 @@ export class HeartbeatManager {
 
         // Trigger auto-restart if enabled (CQ-003: handle async errors)
         this.#handleAutoRestart(agentId).catch(err => {
-          console.error(`[HeartbeatManager] Auto-restart error for ${agentId}:`, err.message);
+          logger.error(`Auto-restart error for ${agentId}:`, err.message);
         });
       }
     }
@@ -501,11 +505,8 @@ export class HeartbeatManager {
     agent.restartCount++;
     this.#lastRestartTime.set(agentId, now);
 
-    try {
-      await restartCallback(agentId);
-    } catch (e) {
-      // Restart failed, status remains restarting
-    }
+    // GAP-013: Let errors propagate to outer .catch() for proper logging
+    await restartCallback(agentId);
   }
 }
 

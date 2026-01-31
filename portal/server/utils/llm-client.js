@@ -15,6 +15,9 @@
  */
 
 import crypto from 'crypto';
+import { createLogger } from './logger.js';
+
+const logger = createLogger({ prefix: '[LLMClient]' });
 
 // =============================================================================
 // DATABASE API KEY RETRIEVAL
@@ -88,7 +91,7 @@ async function getApiKeyFromDatabase(keyName, projectId = null) {
 
     return null;
   } catch (error) {
-    console.error(`[LLM Client] Failed to fetch API key from database: ${error.message}`);
+    logger.error(`Failed to fetch API key from database: ${error.message}`);
     return null;
   }
 }

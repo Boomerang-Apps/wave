@@ -23,6 +23,9 @@
 
 import { createClient } from 'redis';
 import { EventEmitter } from 'events';
+import { createLogger } from './logger.js';
+
+const logger = createLogger({ prefix: '[OrchestratorBridge]' });
 
 // =============================================================================
 // CONFIGURATION
@@ -86,7 +89,7 @@ class OrchestratorBridge extends EventEmitter {
       reconnections: 0,
     };
 
-    console.log('[OrchestratorBridge] Initialized');
+    logger.info(' Initialized');
   }
 
   // ===========================================================================
@@ -99,7 +102,7 @@ class OrchestratorBridge extends EventEmitter {
    */
   async connect() {
     if (this.isConnected) {
-      console.log('[OrchestratorBridge] Already connected');
+      logger.info(' Already connected');
       return true;
     }
 
@@ -112,12 +115,12 @@ class OrchestratorBridge extends EventEmitter {
 
       // Setup error handlers
       this.subscriber.on('error', (err) => {
-        console.error('[OrchestratorBridge] Subscriber error:', err.message);
+        logger.error(' Subscriber error:', err.message);
         this.emit('error', { type: 'subscriber', error: err });
       });
 
       this.publisher.on('error', (err) => {
-        console.error('[OrchestratorBridge] Publisher error:', err.message);
+        logger.error(' Publisher error:', err.message);
         this.emit('error', { type: 'publisher', error: err });
       });
 
@@ -130,12 +133,12 @@ class OrchestratorBridge extends EventEmitter {
       this.isConnected = true;
       this.reconnectAttempts = 0;
 
-      console.log('[OrchestratorBridge] Connected to Redis');
+      logger.info(' Connected to Redis');
       this.emit('connected');
 
       return true;
     } catch (error) {
-      console.error('[OrchestratorBridge] Connection failed:', error.message);
+      logger.error(' Connection failed:', error.message);
       this.emit('error', { type: 'connection', error });
 
       // Attempt reconnection
@@ -150,7 +153,7 @@ class OrchestratorBridge extends EventEmitter {
    */
   async attemptReconnect() {
     if (this.reconnectAttempts >= this.config.redis.maxRetries) {
-      console.error('[OrchestratorBridge] Max reconnection attempts reached');
+      logger.error(' Max reconnection attempts reached');
       this.emit('maxRetriesReached');
       return;
     }
@@ -187,10 +190,10 @@ class OrchestratorBridge extends EventEmitter {
       this.isConnected = false;
       this.activeRuns.clear();
 
-      console.log('[OrchestratorBridge] Disconnected from Redis');
+      logger.info(' Disconnected from Redis');
       this.emit('disconnected');
     } catch (error) {
-      console.error('[OrchestratorBridge] Disconnect error:', error.message);
+      logger.error(' Disconnect error:', error.message);
     }
   }
 
@@ -294,7 +297,7 @@ class OrchestratorBridge extends EventEmitter {
 
       this.stats.eventsForwarded++;
     } catch (error) {
-      console.error('[OrchestratorBridge] Event parse error:', error.message);
+      logger.error(' Event parse error:', error.message);
     }
   }
 
@@ -322,7 +325,7 @@ class OrchestratorBridge extends EventEmitter {
 
       this.stats.eventsForwarded++;
     } catch (error) {
-      console.error('[OrchestratorBridge] Status event parse error:', error.message);
+      logger.error(' Status event parse error:', error.message);
     }
   }
 
