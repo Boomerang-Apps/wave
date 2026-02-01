@@ -129,6 +129,10 @@ all           # Full project analysis
 ║                                Args: "init" | "validate" | "sync" |          ║
 ║                                      "storybook"                             ║
 ║                                                                              ║
+║  /design-verify                Visual design-to-code validation              ║
+║                                Args: "{design-source} {react-target}"        ║
+║                                Uses: Playwright MCP for comparison           ║
+║                                                                              ║
 ║  SESSION MANAGEMENT                                                          ║
 ║  ──────────────────                                                          ║
 ║  /preflight                    GO/NO-GO pre-flight authorization             ║
@@ -185,6 +189,13 @@ all           # Full project analysis
 /trace all                           # Complete matrix
 /rearchitect analyze                 # Analyze folder structure
 /rearchitect plan                    # Generate reorganization plan
+```
+
+### Design Verification Commands
+```bash
+/design-verify ./design.html http://localhost:3000           # Compare HTML to React
+/design-verify ./mockups/button.html localhost:3000/button   # Component level
+/design-verify figma:123456 http://localhost:5173            # Figma source
 ```
 
 ## Usage Examples
