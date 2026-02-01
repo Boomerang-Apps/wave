@@ -150,6 +150,16 @@ all           # Full project analysis
 ║                                      "security" | "{file}" | "all"           ║
 ║                                Aliases: /f, /repair                          ║
 ║                                                                              ║
+║  /test                         Test execution & coverage                     ║
+║                                Args: "unit" | "integration" | "e2e" |        ║
+║                                      "coverage" | "watch" | "--ci"           ║
+║                                Aliases: /tests, /coverage, /vitest           ║
+║                                                                              ║
+║  /ci                           CI/CD pipeline validation                     ║
+║                                Args: "check" | "status" | "validate" |       ║
+║                                      "run [workflow]" | "local" | "badge"    ║
+║                                Aliases: /cicd, /pipeline, /actions           ║
+║                                                                              ║
 ║  /branch                       Git branching operations                      ║
 ║                                Args: "create {ID}" | "switch {ID}" |         ║
 ║                                      "status" | "cleanup"                    ║
@@ -329,6 +339,26 @@ all           # Full project analysis
 /docker status                       # Container status only
 /docker build                        # Build agent image
 /docker start                        # Start all containers
+```
+
+### Test & Coverage Commands
+```bash
+# Test execution
+/test                                # Run all tests with coverage
+/test unit                           # Unit tests only
+/test integration                    # Integration tests only
+/test e2e                            # E2E tests (Playwright)
+/test coverage                       # Coverage report only
+/test watch                          # Watch mode for TDD
+/test --ci                           # CI mode (strict thresholds)
+
+# CI/CD pipeline
+/ci                                  # Full CI pipeline simulation
+/ci check                            # Verify CI config exists
+/ci status                           # Show GitHub Actions status
+/ci validate                         # Validate workflow YAML files
+/ci local                            # Run CI checks locally
+/ci run [workflow]                   # Trigger workflow manually
 ```
 
 ### Production Hardening Commands
