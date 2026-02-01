@@ -206,6 +206,11 @@ all           # Full project analysis
 ║                                Args: "{design-source} {react-target}"        ║
 ║                                Uses: Playwright MCP for comparison           ║
 ║                                                                              ║
+║  /ui-trace                     Story ↔ Component traceability                ║
+║                                Args: "stories" | "components" | "wave {N}"   ║
+║                                Checks: missing components, missing stories   ║
+║                                Aliases: /component-trace, /storybook-trace   ║
+║                                                                              ║
 ║  SESSION MANAGEMENT                                                          ║
 ║  ──────────────────                                                          ║
 ║  /preflight                    GO/NO-GO pre-flight authorization             ║
@@ -264,9 +269,11 @@ all           # Full project analysis
 /rearchitect plan                    # Generate reorganization plan
 ```
 
-### Design Verification Commands
+### Design & Component Commands
 ```bash
 /design-verify ./design.html http://localhost:3000           # Compare HTML to React
+/ui-trace                                                    # Story ↔ Component trace
+/ui-trace --fix                                              # Generate fix plan
 /design-verify ./mockups/button.html localhost:3000/button   # Component level
 /design-verify figma:123456 http://localhost:5173            # Figma source
 ```
