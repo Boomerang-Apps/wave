@@ -1,0 +1,240 @@
+{
+  "$schema": "./story-schema-v4.2.json",
+  "schema_version": "4.2",
+
+  "story_id": "WAVE5-FE-001",
+  "title": "Example Feature Title",
+  "type": "feature",
+  "domain": "frontend",
+  "agent": "fe-dev",
+  "wave_number": 5,
+  "priority": "high",
+  "story_points": 5,
+  "status": "pending",
+  "description": "Detailed description of what this story implements and why it's needed.",
+
+  "objective": {
+    "as_a": "Footprint user",
+    "i_want": "to perform a specific action",
+    "so_that": "I can achieve a business outcome"
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "description": "First acceptance criterion in plain language",
+      "ears_format": "WHEN user performs action THEN system responds with expected behavior",
+      "threshold": "latency: <500ms",
+      "test_approach": "Unit test with mocked dependencies",
+      "status": "pending"
+    },
+    {
+      "id": "AC-02",
+      "description": "Second acceptance criterion",
+      "ears_format": "WHEN invalid input provided THEN display error message",
+      "test_approach": "Test with invalid data, verify error state",
+      "status": "pending"
+    },
+    {
+      "id": "AC-03",
+      "description": "Third acceptance criterion",
+      "test_approach": "Integration test with API mock",
+      "status": "pending"
+    }
+  ],
+
+  "files": {
+    "create": [
+      "app/(app)/feature/page.tsx",
+      "app/(app)/feature/page.test.tsx",
+      "components/feature/FeatureComponent.tsx",
+      "components/feature/FeatureComponent.test.tsx",
+      "hooks/useFeature.ts",
+      "hooks/useFeature.test.ts"
+    ],
+    "modify": [],
+    "forbidden": [
+      "lib/auth/*",
+      "app/api/*"
+    ]
+  },
+
+  "technical_requirements": {
+    "reuse_components": [
+      "components/ui/Button.tsx",
+      "components/ui/Card.tsx",
+      "components/ui/Input.tsx"
+    ],
+    "reuse_patterns": {
+      "page_layout": "app/(app)/account/profile/page.tsx",
+      "loading_state": "Loader2 with animate-spin",
+      "error_state": "AlertCircle with retry button"
+    },
+    "hooks": [
+      "useFeature - fetch feature data",
+      "useFeatureMutation - mutation to update"
+    ],
+    "api_endpoints": [
+      {
+        "method": "GET",
+        "path": "/api/feature",
+        "description": "Fetch feature data"
+      },
+      {
+        "method": "POST",
+        "path": "/api/feature",
+        "description": "Create or update feature"
+      }
+    ],
+    "database_tables": [
+      "features"
+    ],
+    "validation": "lib/validation/feature.ts",
+    "icons_from_lucide": [
+      "Check",
+      "X",
+      "Loader2",
+      "AlertCircle"
+    ],
+    "state_management": "React Query"
+  },
+
+  "design_specs": {
+    "layout": {
+      "max_width": "600px",
+      "padding": "px-4 py-6",
+      "direction": "RTL"
+    },
+    "colors": {
+      "background": "bg-zinc-50",
+      "cards": "bg-white border-zinc-200",
+      "primary": "violet-600",
+      "success": "emerald-500",
+      "error": "red-500"
+    },
+    "typography": {
+      "page_title": "text-xl font-bold",
+      "section_title": "text-sm font-semibold",
+      "body": "text-sm"
+    }
+  },
+
+  "tdd": {
+    "test_framework": "vitest",
+    "test_files": [
+      "app/(app)/feature/page.test.tsx",
+      "components/feature/FeatureComponent.test.tsx",
+      "hooks/useFeature.test.ts"
+    ],
+    "coverage_target": 90,
+    "test_categories": [
+      {
+        "name": "Loading State",
+        "count": 2,
+        "examples": [
+          "should show loading spinner while fetching",
+          "should hide loading after fetch completes"
+        ]
+      },
+      {
+        "name": "Error State",
+        "count": 2,
+        "examples": [
+          "should show error message on fetch failure",
+          "should call refetch when retry clicked"
+        ]
+      },
+      {
+        "name": "Success State",
+        "count": 4,
+        "examples": [
+          "should display feature data",
+          "should handle user interactions",
+          "should show success toast on save",
+          "should navigate on completion"
+        ]
+      },
+      {
+        "name": "Validation",
+        "count": 3,
+        "examples": [
+          "should validate required fields",
+          "should show validation errors",
+          "should clear errors on valid input"
+        ]
+      },
+      {
+        "name": "RTL & Accessibility",
+        "count": 3,
+        "examples": [
+          "should have dir=rtl on container",
+          "should use Hebrew labels",
+          "should have proper ARIA attributes"
+        ]
+      }
+    ],
+    "mocking_strategy": {
+      "hooks": "vi.mock('@/hooks/useFeature')",
+      "navigation": "vi.mock('next/navigation')",
+      "api": "vi.mock fetch or MSW"
+    }
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Any modification to authentication flow",
+      "Changes to payment processing",
+      "Database schema changes without approval"
+    ],
+    "escalation_triggers": [
+      "Security concerns identified",
+      "Performance regression detected",
+      "Unclear requirements"
+    ],
+    "rollback_plan": "Delete new files, revert any modified files"
+  },
+
+  "hazard_analysis": {
+    "identified_hazards": [
+      {
+        "id": "HAZ-001",
+        "description": "Data loss if save fails silently",
+        "severity": "major",
+        "likelihood": "remote",
+        "mitigation": "Implement optimistic updates with rollback"
+      },
+      {
+        "id": "HAZ-002",
+        "description": "Unauthorized access to feature",
+        "severity": "critical",
+        "likelihood": "improbable",
+        "mitigation": "Verify auth state before rendering"
+      }
+    ],
+    "risk_level": "low"
+  },
+
+  "dependencies": {
+    "required_before": [],
+    "blocks": []
+  },
+
+  "traceability": {
+    "requirements": ["PRD-FEATURE-001"],
+    "epic": "User Experience",
+    "related_stories": ["WAVE4-FE-001"]
+  },
+
+  "gates_completed": [],
+
+  "estimated_tests": 14,
+  "estimated_tokens": 20000,
+
+  "metadata": {
+    "created_at": "2026-02-01T00:00:00Z",
+    "created_by": "pm",
+    "agent_assignment": "fe-dev-1"
+  },
+
+  "notes": "Additional context or implementation notes go here."
+}
