@@ -5,7 +5,72 @@ List and describe all available Wave V2 commands.
 ## Arguments
 - `$ARGUMENTS` - Optional: command name for detailed help
 
-## Available Commands
+---
+
+## TIER 1: CORE COMMANDS (Memorize These)
+
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  DAILY DRIVERS - 5 Commands That Do Everything                              ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                              ║
+║  /go                      Start session                                      ║
+║                           → preflight + status + wave-status                 ║
+║                           Aliases: /start, /begin                            ║
+║                                                                              ║
+║  /story <id>              Work on story                                      ║
+║                           → branch + gate-0 + context                        ║
+║                           Aliases: /s                                        ║
+║                                                                              ║
+║  /done                    Complete current work                              ║
+║                           → story-audit + commit + gate-check                ║
+║                           Aliases: /d, /complete, /finish                    ║
+║                                                                              ║
+║  /check [target]          Quick health check                                 ║
+║                           → build + test + status                            ║
+║                           Aliases: /c, /status                               ║
+║                                                                              ║
+║  /end [focus]             End session                                        ║
+║                           → handoff + push                                   ║
+║                           Aliases: /bye, /eod, /close                        ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
+
+### Typical Day Flow
+
+```bash
+/go                          # Start session, get GO status
+/story AUTH-BE-001           # Load and work on story
+# ... do work ...
+/done                        # Validate and commit
+/story AUTH-BE-002           # Next story
+# ... do work ...
+/done                        # Validate and commit
+/end "auth features"         # End session with handoff
+```
+
+---
+
+## TIER 2: WORKFLOW COMMANDS (Know These Exist)
+
+### Quick Reference
+```bash
+/fix [target]      # Fix issues: build, test, lint, security, all
+/gate <N> [scope]  # Run gate 0-7
+/wave [N] [action] # Wave operations
+/audit [scope]     # Audit completed work
+/validate [scope]  # Validate schemas
+/test [scope]      # Run tests
+/build             # Run build
+/commit [msg]      # Commit changes
+/pr [title]        # Create pull request
+/branch [op]       # Branch operations
+```
+
+---
+
+## TIER 3: ALL COMMANDS (Full Reference)
 
 ### Scope Argument Convention
 

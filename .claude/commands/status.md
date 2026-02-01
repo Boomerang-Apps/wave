@@ -1,8 +1,9 @@
 # /status - System Health Check
 
+**Tier:** 1 (Core Command)
 **Priority:** P2 (MEDIUM)
 **Recommended Model:** Haiku
-**Aliases:** /st, /health
+**Aliases:** /check, /c, /st, /health
 
 ## Purpose
 

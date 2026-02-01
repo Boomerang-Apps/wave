@@ -1,5 +1,6 @@
 # /story - Story Execution Workflow
 
+**Tier:** 1 (Core Command)
 **Priority:** P1 (HIGH)
 **Recommended Model:** Sonnet (implementation), Opus (complex logic)
 **Aliases:** /s
