@@ -160,9 +160,19 @@ all           # Full project analysis
 ║                                      "run [workflow]" | "local" | "badge"    ║
 ║                                Aliases: /cicd, /pipeline, /actions           ║
 ║                                                                              ║
+║  /git                          Git operations suite                          ║
+║                                Args: "status" | "sync" | "cleanup" |         ║
+║                                      "stash" | "undo" | "log" | "diff"       ║
+║                                Aliases: /g, /repo                            ║
+║                                                                              ║
 ║  /branch                       Git branching operations                      ║
 ║                                Args: "create {ID}" | "switch {ID}" |         ║
 ║                                      "status" | "cleanup"                    ║
+║                                                                              ║
+║  /branch-health                Branch health analysis                        ║
+║                                Args: "stale" | "prs" | "drift" | "metrics"   ║
+║                                      "--cleanup" | "--fix"                   ║
+║                                Aliases: /bh, /branch-audit, /repo-health     ║
 ║                                                                              ║
 ║  /tdd                          TDD cycle (RED-GREEN-REFACTOR)                ║
 ║                                Args: "story {ID}" | "story {ID}/AC{N}"       ║
@@ -339,6 +349,26 @@ all           # Full project analysis
 /docker status                       # Container status only
 /docker build                        # Build agent image
 /docker start                        # Start all containers
+```
+
+### Git & Branch Management
+```bash
+# Git operations
+/git                                 # Show status overview
+/git status                          # Detailed status with recommendations
+/git sync                            # Sync with remote (fetch + rebase)
+/git cleanup                         # Clean up local repository
+/git stash                           # Stash management
+/git undo commit                     # Undo last commit safely
+/git log                             # Enhanced log views
+
+# Branch health analysis
+/branch-health                       # Full branch health analysis
+/branch-health stale                 # Find stale branches (>30 days)
+/branch-health prs                   # PR status analysis
+/branch-health drift                 # Branch drift from main
+/branch-health metrics               # Team metrics (PR throughput)
+/branch-health --fix                 # Auto-cleanup stale branches
 ```
 
 ### Test & Coverage Commands
