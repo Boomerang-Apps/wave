@@ -92,8 +92,13 @@ all           # Full project analysis
 ║                                                                              ║
 ║  VALIDATION & ANALYSIS                                                       ║
 ║  ─────────────────────                                                       ║
-║  /schema-validate              Validate against Schema V4.1                  ║
+║  /schema-validate              Validate story JSON against Schema V4.1       ║
 ║                                Args: "story {ID}" | "wave {N}" | "all"       ║
+║                                Use: Before implementation                    ║
+║                                                                              ║
+║  /story-audit                  Post-completion Schema V4.1 compliance        ║
+║                                Args: "story {ID}" | "wave {N}"               ║
+║                                Use: After implementation, before Gate 5/7    ║
 ║                                                                              ║
 ║  /protocol-verify              Verify Wave V2 protocol compliance            ║
 ║                                Args: "story {ID}" | "wave {N}" | "all"       ║
@@ -196,6 +201,14 @@ all           # Full project analysis
 /design-verify ./design.html http://localhost:3000           # Compare HTML to React
 /design-verify ./mockups/button.html localhost:3000/button   # Component level
 /design-verify figma:123456 http://localhost:5173            # Figma source
+```
+
+### Schema Validation Commands
+```bash
+/schema-validate story AUTH-BE-001   # Validate story JSON before work
+/schema-validate wave 1              # Validate all stories in wave
+/story-audit AUTH-BE-001             # Audit completed story implementation
+/story-audit wave 1                  # Audit all completed stories in wave
 ```
 
 ## Usage Examples
