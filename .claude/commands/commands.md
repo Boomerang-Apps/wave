@@ -61,6 +61,8 @@ List and describe all available Wave V2 commands.
 /wave [N] [action] # Wave operations
 /audit [scope]     # Audit completed work
 /validate [scope]  # Validate schemas
+/keys [service]    # Validate API keys/credentials           ✅ NEW
+/docker ready      # Docker readiness with dependencies      ✅ NEW
 /test [scope]      # Run tests
 /build             # Run build
 /commit [msg]      # Commit changes
@@ -283,6 +285,22 @@ all           # Full project analysis
 /story-audit AUTH-BE-001 UI-FE-002   # Multiple stories
 /story-audit recent                  # Last 7 days
 /story-audit today                   # Today only
+```
+
+### Infrastructure Commands (NEW)
+```bash
+# Credential validation
+/keys                                # Check all API keys/credentials
+/keys anthropic                      # Check only Anthropic API key
+/keys github                         # Check only GitHub credentials
+/keys --quick                        # Just show set/unset status
+
+# Docker readiness
+/docker ready                        # Full readiness check with dependencies
+/docker ready --quick                # Skip dependency version checks
+/docker status                       # Container status only
+/docker build                        # Build agent image
+/docker start                        # Start all containers
 ```
 
 ## Usage Examples
