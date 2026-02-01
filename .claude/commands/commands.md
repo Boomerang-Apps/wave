@@ -97,7 +97,8 @@ all           # Full project analysis
 ║                                Use: Before implementation                    ║
 ║                                                                              ║
 ║  /story-audit                  Post-completion Schema V4.1 compliance        ║
-║                                Args: "story {ID}" | "wave {N}"               ║
+║                                Args: (none) | "wave {N}" | "wave all" |      ║
+║                                      "{ID}" | "recent" | "today"             ║
 ║                                Use: After implementation, before Gate 5/7    ║
 ║                                                                              ║
 ║  /protocol-verify              Verify Wave V2 protocol compliance            ║
@@ -205,10 +206,18 @@ all           # Full project analysis
 
 ### Schema Validation Commands
 ```bash
-/schema-validate story AUTH-BE-001   # Validate story JSON before work
-/schema-validate wave 1              # Validate all stories in wave
-/story-audit AUTH-BE-001             # Audit completed story implementation
-/story-audit wave 1                  # Audit all completed stories in wave
+# Before implementation (validate story JSON)
+/schema-validate story AUTH-BE-001   # Single story
+/schema-validate wave 1              # All stories in wave
+
+# After implementation (audit completed work)
+/story-audit                         # Current wave (default)
+/story-audit wave 1                  # Specific wave
+/story-audit wave all                # All waves
+/story-audit AUTH-BE-001             # Single story
+/story-audit AUTH-BE-001 UI-FE-002   # Multiple stories
+/story-audit recent                  # Last 7 days
+/story-audit today                   # Today only
 ```
 
 ## Usage Examples

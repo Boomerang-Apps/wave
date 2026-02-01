@@ -1,15 +1,38 @@
 # Story Audit: Post-Completion Schema V4.1 Compliance
 
 ## Command
-`/story-audit <story-id>` or `/story-audit wave <N>`
+`/story-audit [scope]`
+
+## Arguments
+- `$ARGUMENTS` - Scope (optional, defaults to current wave):
+  - `wave <N>` - All completed stories in wave N
+  - `wave all` - All completed stories across all waves
+  - `<STORY-ID>` - Specific story (e.g., AUTH-BE-001)
+  - `<ID1> <ID2> ...` - Multiple specific stories
+  - `recent` - Stories completed in last 7 days
+  - `today` - Stories completed today
+  - (no argument) - Current wave's completed stories
+
+## Examples
+```bash
+/story-audit                      # Current wave completed stories
+/story-audit wave 1               # All completed in Wave 1
+/story-audit wave 2               # All completed in Wave 2
+/story-audit wave all             # All completed across all waves
+/story-audit AUTH-BE-001          # Single story
+/story-audit AUTH-BE-001 UI-FE-003 PAY-BE-002   # Multiple stories
+/story-audit recent               # Last 7 days
+/story-audit today                # Today only
+```
 
 ## Purpose
-Verify that a **completed story's implementation** matches its Schema V4.1 definition. This is a post-implementation audit to ensure the work delivered matches what was specified.
+Verify that **completed story implementations** match their Schema V4.1 definitions. Post-implementation audit ensuring work delivered matches specifications.
 
 ## When to Use
-- After marking a story as "complete"
+- After marking stories as "complete"
 - Before Gate 5 (PM Validation)
 - Before Gate 7 (Merge Authorization)
+- End of wave review
 - During retrospectives
 - When QA reports discrepancies
 
@@ -109,6 +132,68 @@ checks:
 ---
 
 ## Output Format
+
+### Wave-Level Summary (when auditing multiple stories)
+
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  STORY AUDIT: Wave {N} Summary                                               ║
+║  Post-Completion Schema V4.1 Compliance                                      ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                              ║
+║  AUDIT SCOPE                                                                 ║
+║  ───────────                                                                 ║
+║  Wave: {N}                                                                   ║
+║  Stories Found: {total}                                                      ║
+║  Completed: {completed}                                                      ║
+║  In Progress: {in_progress} (skipped)                                        ║
+║                                                                              ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  WAVE AUDIT RESULTS                                                          ║
+║  ─────────────────                                                           ║
+║                                                                              ║
+║  │ Story ID      │ Title                    │ Score │ Status  │             ║
+║  │───────────────│──────────────────────────│───────│─────────│             ║
+║  │ AUTH-BE-001   │ User Login Flow          │  97%  │ ✓ PASS  │             ║
+║  │ AUTH-BE-002   │ Password Reset           │ 100%  │ ✓ PASS  │             ║
+║  │ AUTH-BE-003   │ Session Management       │  95%  │ ✓ PASS  │             ║
+║  │ UI-FE-001     │ Login Page Component     │  92%  │ ⚠ WARN  │             ║
+║  │ UI-FE-002     │ Dashboard Layout         │  88%  │ ⚠ WARN  │             ║
+║  │ PAY-BE-001    │ Payment Processing       │  45%  │ ✗ FAIL  │             ║
+║                                                                              ║
+║  SUMMARY                                                                     ║
+║  ───────                                                                     ║
+║  ✓ Passed:  3 stories (50%)                                                  ║
+║  ⚠ Warning: 2 stories (33%)                                                  ║
+║  ✗ Failed:  1 story  (17%)                                                   ║
+║                                                                              ║
+║  Wave Compliance Score: 86%                                                  ║
+║                                                                              ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  ISSUES REQUIRING ATTENTION                                                  ║
+║  ─────────────────────────                                                   ║
+║                                                                              ║
+║  PAY-BE-001 (FAILED - 45%):                                                  ║
+║  • AC3: Not implemented                                                      ║
+║  • AC5: Test failing                                                         ║
+║  • Research: No sources documented                                           ║
+║                                                                              ║
+║  UI-FE-001 (WARNING - 92%):                                                  ║
+║  • Research: Source 2 application unclear                                    ║
+║                                                                              ║
+║  UI-FE-002 (WARNING - 88%):                                                  ║
+║  • Modified file outside ownedPaths (needs CTO approval)                     ║
+║                                                                              ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  GATE READINESS                                                              ║
+║  ──────────────                                                              ║
+║  Gate 5 (PM):    ⚠ 5/6 ready (PAY-BE-001 blocking)                          ║
+║  Gate 7 (Merge): ⚠ 3/6 ready (3 stories need attention)                     ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
+
+### Single Story Detail (when auditing specific story)
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
@@ -325,20 +410,28 @@ gate7_requires:
 ## Quick Reference
 
 ```bash
+# Audit current wave (default)
+/story-audit
+
+# Audit specific wave
+/story-audit wave 1
+/story-audit wave 2
+/story-audit wave all
+
 # Audit single story
 /story-audit AUTH-BE-001
 
-# Audit all stories in wave
-/story-audit wave 1
+# Audit multiple stories
+/story-audit AUTH-BE-001 AUTH-BE-002 UI-FE-003
 
-# Audit specific stories
-/story-audit AUTH-BE-001 AUTH-BE-002 AUTH-BE-003
+# Audit by time
+/story-audit recent                  # Last 7 days
+/story-audit today                   # Today only
 
-# Audit with verbose output
-/story-audit AUTH-BE-001 --verbose
-
-# Audit and generate report file
-/story-audit wave 1 --report
+# With options
+/story-audit wave 1 --verbose        # Detailed output
+/story-audit wave 1 --report         # Generate report file
+/story-audit wave 1 --fail-fast      # Stop on first failure
 ```
 
 ---
