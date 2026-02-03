@@ -56,13 +56,14 @@ List and describe all available Wave V2 commands.
 
 ### Quick Reference
 ```bash
+/cto [mode]        # CTO Advisor: strategic analysis & recommendations  ✅ NEW
 /fix [target]      # Fix issues: build, test, lint, security, all
 /gate <N> [scope]  # Run gate 0-7
 /wave [N] [action] # Wave operations
 /audit [scope]     # Audit completed work
 /validate [scope]  # Validate schemas
-/keys [service]    # Validate API keys/credentials           ✅ NEW
-/docker ready      # Docker readiness with dependencies      ✅ NEW
+/keys [service]    # Validate API keys/credentials
+/docker ready      # Docker readiness with dependencies
 /test [scope]      # Run tests
 /build             # Run build
 /commit [msg]      # Commit changes
@@ -261,6 +262,14 @@ all           # Full project analysis
 ║  /handoff                      Generate session handoff document             ║
 ║                                Args: "{focus}" (optional description)        ║
 ║                                Aliases: /ho, /session-end, /eod              ║
+║                                                                              ║
+║  STRATEGIC & ADVISORY                                                        ║
+║  ────────────────────                                                        ║
+║  /cto                          CTO Advisor: strategic analysis &             ║
+║                                recommendations                               ║
+║                                Args: "full" | "quick" | "health" |           ║
+║                                      "debt" | "risks" | "roadmap" | "next"   ║
+║                                Aliases: /advisor, /strategy, /recommend      ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
@@ -462,4 +471,15 @@ all           # Full project analysis
 /preflight                           # GO/NO-GO check before work
 /handoff                             # End of session handoff
 /handoff auth-feature                # Handoff with focus label
+
+# CTO Advisor & Strategic Analysis
+/cto                                 # Full strategic analysis
+/cto quick                           # Quick executive summary
+/cto next                            # What should I do next?
+/cto health                          # Project health metrics only
+/cto debt                            # Technical debt analysis
+/cto risks                           # Risk assessment
+/cto roadmap                         # Strategic recommendations
+/advisor                             # Alias for /cto
+/strategy                            # Alias for /cto
 ```

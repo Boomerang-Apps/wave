@@ -1,6 +1,6 @@
 # Wave V2 Commands Reference
 
-> **Total Commands: 60** | **Last Updated: 2026-02-01**
+> **Total Commands: 61** | **Last Updated: 2026-02-03**
 
 ---
 
@@ -31,6 +31,7 @@
 
 | Command | Purpose | Aliases |
 |---------|---------|---------|
+| `/cto [mode]` | CTO Advisor: strategic analysis & recommendations | `/advisor`, `/strategy`, `/recommend` |
 | `/fix [target]` | Fix issues: build, test, lint, security, all | `/f`, `/repair` |
 | `/test [scope]` | Run tests with coverage | `/tests`, `/coverage`, `/vitest` |
 | `/ci [action]` | CI/CD pipeline validation | `/cicd`, `/pipeline`, `/actions` |
@@ -167,6 +168,12 @@
 |---------|---------|------|
 | `/agent` | Multi-agent orchestration | - |
 
+### Strategic & Advisory
+
+| Command | Purpose | Aliases |
+|---------|---------|---------|
+| `/cto` | CTO Advisor: strategic analysis & recommendations | `/advisor`, `/strategy`, `/recommend` |
+
 ---
 
 ## Command Arguments Reference
@@ -276,6 +283,18 @@
 | `setup` | Interactive guide for missing keys |
 | `--quick` | Just show set/unset status |
 
+### CTO Arguments (`/cto`)
+
+| Arg | Description |
+|-----|-------------|
+| `full` | Complete analysis (all sections) - DEFAULT |
+| `quick` | Fast executive summary (~2 min) |
+| `health` | Project health metrics only |
+| `debt` | Technical debt analysis only |
+| `risks` | Risk assessment only |
+| `roadmap` | Strategic roadmap recommendations |
+| `next` | Just "what should I do next?" |
+
 ---
 
 ## Typical Workflows
@@ -333,7 +352,8 @@
 | Design System | 3 |
 | Session | 5 |
 | Multi-Agent | 1 |
-| **TOTAL** | **60** |
+| Strategic & Advisory | 1 |
+| **TOTAL** | **61** |
 
 ---
 
@@ -341,6 +361,7 @@
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-02-03 | v2.6 | Added `/cto` CTO Advisor for strategic analysis |
 | 2026-02-01 | v2.5 | Added `/git`, `/branch-health`, `/test`, `/ci` |
 | 2026-02-01 | v2.4 | Added `/harden`, `/security`, `/perf`, `/a11y` |
 | 2026-01-31 | v2.3 | Added `/keys`, `/docker`, `/ui-trace` |
