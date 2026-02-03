@@ -56,7 +56,7 @@ List and describe all available Wave V2 commands.
 
 ### Quick Reference
 ```bash
-/cto [mode]        # CTO Advisor: strategic analysis & recommendations  ✅ NEW
+/cto [mode]        # CTO Advisor: full|quick|next|health|debt|risks|roadmap|plan
 /fix [target]      # Fix issues: build, test, lint, security, all
 /gate <N> [scope]  # Run gate 0-7
 /wave [N] [action] # Wave operations
@@ -267,8 +267,20 @@ all           # Full project analysis
 ║  ────────────────────                                                        ║
 ║  /cto                          CTO Advisor: strategic analysis &             ║
 ║                                recommendations                               ║
-║                                Args: "full" | "quick" | "health" |           ║
-║                                      "debt" | "risks" | "roadmap" | "next"   ║
+║                                                                              ║
+║                                OPTIONS:                                      ║
+║                                ┌─────────────┬──────────────────────────┐    ║
+║                                │ full        │ Complete analysis (def)  │    ║
+║                                │ quick       │ Executive summary (~2m)  │    ║
+║                                │ next        │ What should I do next?   │    ║
+║                                │ health      │ Project health metrics   │    ║
+║                                │ debt        │ Technical debt analysis  │    ║
+║                                │ risks       │ Risk assessment          │    ║
+║                                │ roadmap     │ Strategic recommendations│    ║
+║                                │ plan        │ Execution plan compliance│    ║
+║                                │ plan --strict│ Strict: fail on deviate │    ║
+║                                └─────────────┴──────────────────────────┘    ║
+║                                                                              ║
 ║                                Aliases: /advisor, /strategy, /recommend      ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝

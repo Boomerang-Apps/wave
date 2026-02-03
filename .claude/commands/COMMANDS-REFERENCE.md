@@ -31,7 +31,7 @@
 
 | Command | Purpose | Aliases |
 |---------|---------|---------|
-| `/cto [mode]` | CTO Advisor: strategic analysis & recommendations | `/advisor`, `/strategy`, `/recommend` |
+| `/cto [mode]` | CTO Advisor: `full`, `quick`, `next`, `health`, `debt`, `risks`, `roadmap`, `plan` | `/advisor`, `/strategy`, `/recommend` |
 | `/fix [target]` | Fix issues: build, test, lint, security, all | `/f`, `/repair` |
 | `/test [scope]` | Run tests with coverage | `/tests`, `/coverage`, `/vitest` |
 | `/ci [action]` | CI/CD pipeline validation | `/cicd`, `/pipeline`, `/actions` |
@@ -173,6 +173,19 @@
 | Command | Purpose | Aliases |
 |---------|---------|---------|
 | `/cto` | CTO Advisor: strategic analysis & recommendations | `/advisor`, `/strategy`, `/recommend` |
+
+**`/cto` Options:**
+| Mode | Description |
+|------|-------------|
+| `full` | Complete analysis (all sections) - DEFAULT |
+| `quick` | Fast executive summary (~2 min) |
+| `next` | Just "what should I do next?" |
+| `health` | Project health metrics only |
+| `debt` | Technical debt analysis only |
+| `risks` | Risk assessment only |
+| `roadmap` | Strategic roadmap recommendations |
+| `plan` | Execution plan compliance check |
+| `plan --strict` | Strict mode: fail on any deviation |
 
 ---
 
