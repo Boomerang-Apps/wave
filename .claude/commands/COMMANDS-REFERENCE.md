@@ -29,25 +29,25 @@
 
 ## TIER 2: WORKFLOW COMMANDS
 
-| Command | Purpose | Aliases |
+| Command | Options | Aliases |
 |---------|---------|---------|
-| `/cto [mode]` | CTO Advisor: `full`, `quick`, `next`, `health`, `debt`, `risks`, `roadmap`, `plan` | `/advisor`, `/strategy`, `/recommend` |
-| `/prd [mode]` | PRD Analysis: `full`, `quick`, `gaps`, `stories`, `missing`, `coverage`, `drift`, `report` | `/prd-check`, `/requirements`, `/compliance` |
-| `/fix [target]` | Fix issues: build, test, lint, security, all | `/f`, `/repair` |
-| `/test [scope]` | Run tests with coverage | `/tests`, `/coverage`, `/vitest` |
-| `/ci [action]` | CI/CD pipeline validation | `/cicd`, `/pipeline`, `/actions` |
-| `/git [action]` | Git operations suite | `/g`, `/repo` |
-| `/branch [op]` | Branch operations | - |
-| `/branch-health` | Branch health analysis | `/bh`, `/branch-audit`, `/repo-health` |
-| `/harden [scope]` | Production hardening | `/quality`, `/production-check` |
-| `/security [scope]` | Security scan | `/sec`, `/audit-security`, `/vuln` |
-| `/perf [scope]` | Performance analysis | `/performance`, `/lighthouse` |
-| `/a11y [scope]` | Accessibility audit | `/accessibility`, `/wcag` |
-| `/keys [service]` | Validate API keys/credentials | - |
-| `/docker [action]` | Docker management | - |
-| `/build` | Run build | - |
-| `/commit [msg]` | Commit changes | - |
-| `/pr [title]` | Create pull request | - |
+| `/cto [mode]` | `full`, `quick`, `next`, `health`, `debt`, `risks`, `roadmap`, `plan`, `plan --strict` | `/advisor`, `/strategy` |
+| `/prd [mode]` | `full`, `quick`, `gaps`, `stories`, `missing`, `coverage`, `drift`, `report` | `/requirements`, `/compliance` |
+| `/fix [target]` | `build`, `test`, `lint`, `security`, `all`, `{file}` | `/f`, `/repair` |
+| `/test [scope]` | `unit`, `integration`, `e2e`, `coverage`, `watch`, `--ci` | `/tests`, `/coverage` |
+| `/ci [action]` | `check`, `status`, `validate`, `local`, `run [workflow]`, `badge` | `/cicd`, `/pipeline` |
+| `/git [action]` | `status`, `sync`, `cleanup`, `stash`, `undo`, `log`, `diff` | `/g`, `/repo` |
+| `/branch [op]` | `create {ID}`, `switch {ID}`, `status`, `cleanup` | - |
+| `/branch-health` | `stale`, `prs`, `drift`, `metrics`, `--fix`, `--cleanup` | `/bh`, `/branch-audit` |
+| `/harden [scope]` | `quick`, `security`, `performance`, `quality`, `a11y`, `production`, `--fix`, `--ci` | `/quality` |
+| `/security [scope]` | `deps`, `secrets`, `owasp`, `headers`, `--fix` | `/sec`, `/vuln` |
+| `/perf [scope]` | `bundle`, `lighthouse`, `vitals`, `images`, `--fix` | `/performance` |
+| `/a11y [scope]` | `contrast`, `keyboard`, `aria`, `forms`, `--fix` | `/accessibility`, `/wcag` |
+| `/keys [action]` | `audit`, `validate`, `setup`, `--quick` | - |
+| `/docker [action]` | `ready`, `status`, `build`, `start`, `--quick` | - |
+| `/build` | - | - |
+| `/commit [msg]` | `"{message}"` | - |
+| `/pr [title]` | `"{title}"` | - |
 
 ---
 
@@ -96,87 +96,87 @@
 
 ### Development Workflow
 
-| Command | Purpose | Aliases |
+| Command | Options | Aliases |
 |---------|---------|---------|
-| `/fix` | Research-driven fix protocol | `/f`, `/repair` |
-| `/build` | Run and validate build | - |
-| `/commit` | Commit with conventional format | - |
-| `/pr` | Create pull request | - |
-| `/tdd` | TDD cycle (RED-GREEN-REFACTOR) | - |
+| `/fix` | `build`, `test`, `lint`, `security`, `all`, `{file}` | `/f`, `/repair` |
+| `/build` | - | - |
+| `/commit` | `"{message}"` | - |
+| `/pr` | `"{title}"` | - |
+| `/tdd` | `story {ID}`, `story {ID}/AC{N}` | - |
 
 ### Git & Branch Management
 
-| Command | Purpose | Aliases |
+| Command | Options | Aliases |
 |---------|---------|---------|
-| `/git` | Git operations (status, sync, cleanup, stash, undo) | `/g`, `/repo` |
-| `/branch` | Branch operations (create, switch, cleanup) | - |
-| `/branch-health` | Branch health (stale, PRs, drift, metrics) | `/bh`, `/branch-audit` |
+| `/git` | `status`, `sync`, `cleanup`, `stash`, `undo`, `log`, `diff` | `/g`, `/repo` |
+| `/branch` | `create {ID}`, `switch {ID}`, `status`, `cleanup` | - |
+| `/branch-health` | `stale`, `prs`, `drift`, `metrics`, `--fix`, `--cleanup` | `/bh`, `/branch-audit` |
 
 ### Test & CI/CD
 
-| Command | Purpose | Aliases |
+| Command | Options | Aliases |
 |---------|---------|---------|
-| `/test` | Test execution with coverage | `/tests`, `/coverage`, `/vitest` |
-| `/ci` | CI/CD pipeline validation | `/cicd`, `/pipeline`, `/actions` |
+| `/test` | `unit`, `integration`, `e2e`, `coverage`, `watch`, `--ci` | `/tests`, `/coverage` |
+| `/ci` | `check`, `status`, `validate`, `local`, `run [workflow]`, `badge` | `/cicd`, `/pipeline` |
 
 ### Validation & Analysis
 
-| Command | Purpose | Args |
-|---------|---------|------|
-| `/schema-validate` | Validate story JSON (Schema V4.1) | `story {ID}`, `wave {N}`, `all` |
-| `/protocol-verify` | Wave V2 protocol compliance | `story {ID}`, `wave {N}`, `all` |
-| `/gap-analysis` | Identify missing requirements | `story {ID}`, `wave {N}`, `epic {NAME}` |
-| `/rlm-verify` | Requirements lifecycle traceability | `story {ID}`, `wave {N}`, `all` |
-| `/rlm` | Token budget & learning monitor | - |
-| `/trace` | Build traceability matrix (L0→L5) | `story {ID}`, `wave {N}`, `all` |
-| `/rearchitect` | Analyze & reorganize folders | `analyze`, `plan`, `execute`, `validate` |
+| Command | Options | Aliases |
+|---------|---------|---------|
+| `/schema-validate` | `story {ID}`, `wave {N}`, `all` | - |
+| `/protocol-verify` | `story {ID}`, `wave {N}`, `all` | - |
+| `/gap-analysis` | `story {ID}`, `wave {N}`, `epic {NAME}`, `all` | - |
+| `/rlm-verify` | `story {ID}`, `wave {N}`, `all` | - |
+| `/rlm` | - | - |
+| `/trace` | `story {ID}`, `wave {N}`, `all` | - |
+| `/rearchitect` | `analyze`, `plan`, `execute`, `validate` | - |
 
 ### Quality & Safety
 
-| Command | Purpose | Aliases |
+| Command | Options | Aliases |
 |---------|---------|---------|
-| `/harden` | Production hardening & quality gate | `/quality`, `/production-check` |
-| `/security` | Security scan (OWASP, vulns, secrets) | `/sec`, `/audit-security`, `/vuln` |
-| `/perf` | Performance (Core Web Vitals, Lighthouse) | `/performance`, `/lighthouse` |
-| `/a11y` | Accessibility (WCAG 2.1 AA) | `/accessibility`, `/wcag` |
-| `/qa` | QA validation checklist | - |
-| `/safety` | Constitutional AI check | - |
-| `/hazard` | Hazard analysis (DO-178C) | - |
-| `/anomaly` | Report defect or issue | - |
-| `/rollback` | Execute rollback procedure | - |
+| `/harden` | `quick`, `security`, `performance`, `quality`, `a11y`, `production`, `--fix`, `--ci` | `/quality` |
+| `/security` | `deps`, `secrets`, `owasp`, `headers`, `--fix` | `/sec`, `/vuln` |
+| `/perf` | `bundle`, `lighthouse`, `vitals`, `images`, `--fix` | `/performance` |
+| `/a11y` | `contrast`, `keyboard`, `aria`, `forms`, `--fix` | `/accessibility`, `/wcag` |
+| `/qa` | `story {ID}`, `wave {N}` | - |
+| `/safety` | `story {ID}`, `wave {N}` | - |
+| `/hazard` | `story {ID}`, `wave {N}`, `all` | - |
+| `/anomaly` | `story {ID}`, `wave {N}` | - |
+| `/rollback` | `story {ID}`, `wave {N}` | - |
 
 ### Design System
 
-| Command | Purpose | Args |
-|---------|---------|------|
-| `/design-system` | Design system management | `init`, `validate`, `sync`, `detect`, `audit`, `storybook` |
-| `/design-verify` | Visual design-to-code validation | `{design-source} {react-target}` |
-| `/ui-trace` | Story ↔ Component traceability | `stories`, `components`, `wave {N}` |
+| Command | Options | Aliases |
+|---------|---------|---------|
+| `/design-system` | `init`, `validate`, `sync`, `detect`, `audit`, `storybook` | - |
+| `/design-verify` | `{design-source} {react-target}` | - |
+| `/ui-trace` | `stories`, `components`, `wave {N}`, `--fix` | `/component-trace` |
 
 ### Session Management
 
-| Command | Purpose | Aliases |
+| Command | Options | Aliases |
 |---------|---------|---------|
-| `/preflight` | GO/NO-GO pre-flight authorization | `/pf`, `/takeoff-check` |
-| `/handoff` | Generate session handoff document | `/ho`, `/session-end`, `/eod` |
-| `/status` | System health check | - |
-| `/report` | Progress report generation | - |
-| `/escalate` | Auto-escalation to human | - |
+| `/preflight` | - (interactive) | `/pf`, `/takeoff-check` |
+| `/handoff` | `"{focus}"` (optional description) | `/ho`, `/session-end`, `/eod` |
+| `/status` | - | - |
+| `/report` | `story {ID}`, `wave {N}`, `all` | - |
+| `/escalate` | `"{reason}"` | - |
 
 ### Multi-Agent
 
-| Command | Purpose | Args |
-|---------|---------|------|
-| `/agent` | Multi-agent orchestration | - |
+| Command | Options | Aliases |
+|---------|---------|---------|
+| `/agent` | - | - |
 
 ### Strategic & Advisory
 
-| Command | Purpose | Aliases |
+| Command | Options | Aliases |
 |---------|---------|---------|
-| `/cto` | CTO Advisor: strategic analysis & recommendations | `/advisor`, `/strategy`, `/recommend` |
-| `/prd` | PRD Analysis: codebase vs PRD vs stories compliance | `/prd-check`, `/requirements`, `/compliance` |
+| `/cto` | `full`, `quick`, `next`, `health`, `debt`, `risks`, `roadmap`, `plan`, `plan --strict` | `/advisor`, `/strategy` |
+| `/prd` | `full`, `quick`, `gaps`, `stories`, `missing`, `coverage`, `drift`, `report` | `/requirements`, `/compliance` |
 
-**`/cto` Options:**
+**`/cto` Options (Detailed):**
 | Mode | Description |
 |------|-------------|
 | `full` | Complete analysis (all sections) - DEFAULT |
@@ -189,7 +189,7 @@
 | `plan` | Execution plan compliance check |
 | `plan --strict` | Strict mode: fail on any deviation |
 
-**`/prd` Options:**
+**`/prd` Options (Detailed):**
 | Mode | Description |
 |------|-------------|
 | `full` | Complete PRD analysis (all sections) - DEFAULT |
