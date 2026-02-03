@@ -29,6 +29,8 @@ Comprehensive CTO-level analysis of project health, technical debt, risks, and s
 | `risks` | Risk assessment only |
 | `roadmap` | Strategic roadmap recommendations |
 | `next` | Just "what should I do next?" |
+| `plan` | Execution plan compliance check |
+| `plan --strict` | Strict mode: fail on any deviation |
 
 ---
 
@@ -89,6 +91,67 @@ Calculate scores for each dimension (0-100):
 | Documentation | 10% | README, API docs, inline comments |
 
 **Overall Health Score** = Weighted average
+
+### Phase 4: Execution Plan Compliance (`/cto plan`)
+
+Check if the project is following the defined execution plan:
+
+```bash
+# 1. Load execution plan
+# Check for planning/execution-plan.json or stories/wave-plan.json
+
+# 2. Compare planned vs actual
+# - Wave sequence (are we on the right wave?)
+# - Story order within wave (are stories done in priority order?)
+# - Gate compliance (are all gates passing before proceeding?)
+# - Timeline adherence (are we on track?)
+
+# 3. Identify deviations
+# - Skipped stories
+# - Out-of-order execution
+# - Gate bypasses
+# - Blocked items
+```
+
+#### Execution Plan Checks
+
+| Check | Description | Severity |
+|-------|-------------|----------|
+| Wave Sequence | Current wave matches planned wave | HIGH |
+| Story Priority | High-priority stories completed first | MEDIUM |
+| Gate Compliance | All gates passed before merge | CRITICAL |
+| Dependency Order | Dependencies completed before dependents | HIGH |
+| Blocked Items | No stories blocked for >48 hours | MEDIUM |
+| Scope Creep | No unplanned stories in progress | LOW |
+| Branch Hygiene | Feature branches follow naming convention | LOW |
+
+#### Plan Deviation Types
+
+```
+CRITICAL DEVIATIONS (Block Progress):
+├── Gate bypass detected
+├── Security gate (Gate 6) skipped
+├── Merge without Gate 7 approval
+└── Production deployment without QA (Gate 4)
+
+HIGH DEVIATIONS (Require Justification):
+├── Story executed out of priority order
+├── Wave started before previous wave complete
+├── Dependency not met before story started
+└── Critical story skipped
+
+MEDIUM DEVIATIONS (Flag for Review):
+├── Story blocked >48 hours
+├── Multiple stories in progress simultaneously
+├── Low-priority story started before high-priority
+└── Unplanned story added mid-wave
+
+LOW DEVIATIONS (Informational):
+├── Minor timeline slip (<1 day)
+├── Story scope adjusted (documented)
+├── Non-critical gate warning ignored
+└── Branch naming convention deviation
+```
 
 ---
 
@@ -285,7 +348,110 @@ Calculate scores for each dimension (0-100):
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
 
-#### 5. CTO RECOMMENDATIONS
+#### 5. EXECUTION PLAN COMPLIANCE (`/cto plan`)
+
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  EXECUTION PLAN COMPLIANCE                                                   ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                              ║
+║  PLAN STATUS: {ON TRACK | MINOR DEVIATION | MAJOR DEVIATION | OFF TRACK}     ║
+║  ═══════════════════════════════════════════════════════════════════════     ║
+║                                                                              ║
+║  COMPLIANCE SCORE: {XX}/100  {EMOJI}                                         ║
+║  ████████████████████░░░░░░░░░░  {XX}%                                       ║
+║                                                                              ║
+║  WAVE SEQUENCE CHECK                                                         ║
+║  ───────────────────                                                         ║
+║  Planned Wave:        Wave {N}                                               ║
+║  Current Wave:        Wave {N}  {✓ ON TRACK | ⚠ AHEAD | ⛔ BEHIND}            ║
+║  Wave Progress:       {XX}% complete                                         ║
+║                                                                              ║
+║  STORY EXECUTION ORDER                                                       ║
+║  ─────────────────────                                                       ║
+║  ✓ {STORY-001}: Completed (Priority: P1) - IN ORDER                          ║
+║  ✓ {STORY-002}: Completed (Priority: P1) - IN ORDER                          ║
+║  ⚠ {STORY-004}: In Progress (Priority: P2) - SKIPPED P1 STORY                ║
+║  ⛔ {STORY-003}: Pending (Priority: P1) - SHOULD BE IN PROGRESS              ║
+║  ○ {STORY-005}: Pending (Priority: P3)                                       ║
+║                                                                              ║
+║  GATE COMPLIANCE                                                             ║
+║  ───────────────                                                             ║
+║  ✓ All completed stories passed Gate 7                                       ║
+║  ✓ No gate bypasses detected                                                 ║
+║  ⚠ 1 story pending Gate 4 for >24 hours                                      ║
+║                                                                              ║
+║  DEPENDENCY CHECK                                                            ║
+║  ────────────────                                                            ║
+║  ✓ {STORY-002} → {STORY-004}: Dependency satisfied                           ║
+║  ⛔ {STORY-003} → {STORY-006}: Dependency NOT met (003 incomplete)            ║
+║                                                                              ║
+║  DEVIATIONS DETECTED                                                         ║
+║  ───────────────────                                                         ║
+║  CRITICAL: 0                                                                 ║
+║  HIGH:     1  - Story STORY-003 skipped (P1 before P2)                       ║
+║  MEDIUM:   2  - STORY-004 blocked >48hrs, Unplanned STORY-099 added          ║
+║  LOW:      1  - Minor timeline slip on STORY-002                             ║
+║                                                                              ║
+║  BLOCKED ITEMS                                                               ║
+║  ─────────────                                                               ║
+║  ⛔ {STORY-004}: Blocked for 52 hours                                        ║
+║     Reason: Waiting for API endpoint from external team                      ║
+║     Action: Escalate to PM or work on non-dependent story                    ║
+║                                                                              ║
+║  SCOPE TRACKING                                                              ║
+║  ──────────────                                                              ║
+║  Planned Stories:     {XX}                                                   ║
+║  Current Stories:     {XX}  {✓ | ⚠ +N added | ⚠ -N removed}                  ║
+║  Scope Change:        {None | +X% | -X%}                                     ║
+║                                                                              ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  RECOMMENDATION                                                              ║
+║  ──────────────                                                              ║
+║  {Based on deviations, provide specific corrective actions}                  ║
+║                                                                              ║
+║  1. Complete STORY-003 before continuing STORY-004 (restore priority order)  ║
+║  2. Escalate STORY-004 blocker to PM (/escalate)                             ║
+║  3. Review unplanned STORY-099 - defer to next wave if not critical          ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
+
+#### Plan Compliance Scoring
+
+| Score | Status | Meaning |
+|-------|--------|---------|
+| 90-100 | ON TRACK | Excellent adherence to plan |
+| 75-89 | MINOR DEVIATION | Small adjustments, acceptable |
+| 50-74 | MAJOR DEVIATION | Significant issues, needs attention |
+| 0-49 | OFF TRACK | Critical intervention required |
+
+#### Strict Mode (`/cto plan --strict`)
+
+In strict mode, the following will cause a FAIL status:
+- Any gate bypass
+- Any P1 story skipped
+- Any dependency violation
+- Any blocked item >48 hours
+- Any scope increase >10%
+
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  EXECUTION PLAN COMPLIANCE - STRICT MODE                                     ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                              ║
+║  STATUS: ⛔ FAIL                                                             ║
+║                                                                              ║
+║  VIOLATIONS:                                                                 ║
+║  1. P1 story STORY-003 skipped                                               ║
+║  2. Story STORY-004 blocked >48 hours                                        ║
+║                                                                              ║
+║  Action Required: Resolve violations before proceeding                       ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
+
+#### 6. CTO RECOMMENDATIONS
 
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
@@ -455,6 +621,10 @@ Calculate scores for each dimension (0-100):
 /cto debt        # Technical debt analysis
 /cto risks       # Risk assessment only
 /cto roadmap     # Strategic recommendations
+
+# Execution plan compliance
+/cto plan            # Check if following execution plan
+/cto plan --strict   # Strict mode - fail on any deviation
 
 # Aliases
 /advisor

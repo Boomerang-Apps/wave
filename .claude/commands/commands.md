@@ -480,6 +480,8 @@ all           # Full project analysis
 /cto debt                            # Technical debt analysis
 /cto risks                           # Risk assessment
 /cto roadmap                         # Strategic recommendations
+/cto plan                            # Execution plan compliance check
+/cto plan --strict                   # Strict mode - fail on deviations
 /advisor                             # Alias for /cto
 /strategy                            # Alias for /cto
 ```

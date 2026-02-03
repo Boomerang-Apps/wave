@@ -294,6 +294,8 @@
 | `risks` | Risk assessment only |
 | `roadmap` | Strategic roadmap recommendations |
 | `next` | Just "what should I do next?" |
+| `plan` | Execution plan compliance check |
+| `plan --strict` | Strict mode: fail on any deviation |
 
 ---
 
