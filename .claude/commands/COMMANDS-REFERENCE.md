@@ -1,6 +1,6 @@
 # Wave V2 Commands Reference
 
-> **Total Commands: 61** | **Last Updated: 2026-02-03**
+> **Total Commands: 62** | **Last Updated: 2026-02-03**
 
 ---
 
@@ -32,6 +32,7 @@
 | Command | Purpose | Aliases |
 |---------|---------|---------|
 | `/cto [mode]` | CTO Advisor: `full`, `quick`, `next`, `health`, `debt`, `risks`, `roadmap`, `plan` | `/advisor`, `/strategy`, `/recommend` |
+| `/prd [mode]` | PRD Analysis: `full`, `quick`, `gaps`, `stories`, `missing`, `coverage`, `drift`, `report` | `/prd-check`, `/requirements`, `/compliance` |
 | `/fix [target]` | Fix issues: build, test, lint, security, all | `/f`, `/repair` |
 | `/test [scope]` | Run tests with coverage | `/tests`, `/coverage`, `/vitest` |
 | `/ci [action]` | CI/CD pipeline validation | `/cicd`, `/pipeline`, `/actions` |
@@ -173,6 +174,7 @@
 | Command | Purpose | Aliases |
 |---------|---------|---------|
 | `/cto` | CTO Advisor: strategic analysis & recommendations | `/advisor`, `/strategy`, `/recommend` |
+| `/prd` | PRD Analysis: codebase vs PRD vs stories compliance | `/prd-check`, `/requirements`, `/compliance` |
 
 **`/cto` Options:**
 | Mode | Description |
@@ -186,6 +188,18 @@
 | `roadmap` | Strategic roadmap recommendations |
 | `plan` | Execution plan compliance check |
 | `plan --strict` | Strict mode: fail on any deviation |
+
+**`/prd` Options:**
+| Mode | Description |
+|------|-------------|
+| `full` | Complete PRD analysis (all sections) - DEFAULT |
+| `quick` | Fast compliance summary (~3 min) |
+| `gaps` | Gap analysis only (PRD vs Implementation) |
+| `stories` | Story coverage analysis only |
+| `missing` | Identify missing stories only |
+| `coverage` | Code-to-requirements traceability |
+| `drift` | Detect requirement drift from PRD |
+| `report` | Generate formal compliance report |
 
 ---
 
@@ -367,8 +381,8 @@
 | Design System | 3 |
 | Session | 5 |
 | Multi-Agent | 1 |
-| Strategic & Advisory | 1 |
-| **TOTAL** | **61** |
+| Strategic & Advisory | 2 |
+| **TOTAL** | **62** |
 
 ---
 
@@ -376,6 +390,7 @@
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-02-03 | v2.7 | Added `/prd` PRD Analysis & Compliance command |
 | 2026-02-03 | v2.6 | Added `/cto` CTO Advisor for strategic analysis |
 | 2026-02-01 | v2.5 | Added `/git`, `/branch-health`, `/test`, `/ci` |
 | 2026-02-01 | v2.4 | Added `/harden`, `/security`, `/perf`, `/a11y` |

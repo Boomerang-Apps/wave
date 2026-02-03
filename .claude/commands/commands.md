@@ -57,6 +57,7 @@ List and describe all available Wave V2 commands.
 ### Quick Reference
 ```bash
 /cto [mode]        # CTO Advisor: full|quick|next|health|debt|risks|roadmap|plan
+/prd [mode]        # PRD Analysis: full|quick|gaps|stories|missing|coverage|drift|report
 /fix [target]      # Fix issues: build, test, lint, security, all
 /gate <N> [scope]  # Run gate 0-7
 /wave [N] [action] # Wave operations
@@ -283,6 +284,24 @@ all           # Full project analysis
 ║                                                                              ║
 ║                                Aliases: /advisor, /strategy, /recommend      ║
 ║                                                                              ║
+║  /prd                          PRD Analysis & Compliance                     ║
+║                                Codebase vs PRD vs Stories analysis           ║
+║                                                                              ║
+║                                OPTIONS:                                      ║
+║                                ┌─────────────┬──────────────────────────┐    ║
+║                                │ full        │ Complete analysis (def)  │    ║
+║                                │ quick       │ Compliance summary (~3m) │    ║
+║                                │ gaps        │ PRD vs Implementation    │    ║
+║                                │ stories     │ Story coverage analysis  │    ║
+║                                │ missing     │ Find missing stories     │    ║
+║                                │ coverage    │ Code-to-requirements     │    ║
+║                                │ drift       │ Implementation drift     │    ║
+║                                │ report      │ Formal compliance report │    ║
+║                                └─────────────┴──────────────────────────┘    ║
+║                                                                              ║
+║                                Aliases: /prd-check, /requirements,           ║
+║                                         /compliance                          ║
+║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
 
@@ -496,4 +515,16 @@ all           # Full project analysis
 /cto plan --strict                   # Strict mode - fail on deviations
 /advisor                             # Alias for /cto
 /strategy                            # Alias for /cto
+
+# PRD Analysis & Compliance
+/prd                                 # Full PRD compliance analysis
+/prd quick                           # Quick compliance summary
+/prd gaps                            # PRD vs Implementation gaps
+/prd stories                         # Story coverage analysis
+/prd missing                         # Find missing stories
+/prd coverage                        # Code-to-requirements trace
+/prd drift                           # Detect implementation drift
+/prd report                          # Formal compliance report
+/requirements                        # Alias for /prd
+/compliance                          # Alias for /prd
 ```
