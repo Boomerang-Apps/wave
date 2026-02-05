@@ -1,142 +1,114 @@
-# CLAUDE.md - AirView Marketplace
+# CLAUDE.md
 
-## 🛡️ WORKFLOW V4.3 + WAVE V2 ACTIVE
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-### ✅ DO WITHOUT ASKING
-- Create/edit files in your owned paths
-- Run pnpm install, test, lint, build
-- Git add, commit, push to feature branches
-- Create TypeScript contracts
-- Run story linter
+## Project Overview
 
-### ⛔ ASK FIRST
-- Modify files outside ownership paths
-- Merge to main or develop
-- Delete migrations or seed data
-- Unclear requirements
+WAVE (Workflow Automation for Verified Execution) is a project-agnostic autonomous multi-agent orchestration framework. It controls projects using Docker containers, Git worktree isolation, and signal-based coordination.
 
-### 🚫 NEVER DO
-- Push directly to main
-- Skip workflow gates
-- Self-approve for QA/PM review
-- Commit .env files or secrets
-- Modify other agents' domains
-
-## 📂 DOMAIN OWNERSHIP
-
-| Domain | Agent | Paths |
-|--------|-------|-------|
-| Auth | BE-Dev | src/features/auth/**, supabase/functions/auth-** |
-| Profiles | BE-Dev | src/features/profiles/**, supabase/functions/profile-** |
-| Projects | BE-Dev | src/features/projects/**, supabase/functions/project-** |
-| Proposals | BE-Dev | src/features/proposals/**, supabase/functions/proposal-** |
-| Payments | BE-Dev | src/features/payments/**, supabase/functions/payment-** |
-| Messaging | BE-Dev | src/features/messaging/**, supabase/functions/message-** |
-| UI Shell | FE-Dev | src/components/**, src/app/** |
-| Contracts | CTO | contracts/** |
-| Stories | PM | stories/** |
-
-## 🔄 SIGNAL FILES
-Location: `.claude/`
-Pattern: `signal-{wave}-{gate}-{status}.json`
-
-## 📦 TECH STACK
-
-| Layer | Technology | Notes |
-|-------|------------|-------|
-| Frontend | Next.js 14 App Router | TypeScript strict mode |
-| Styling | Tailwind CSS | Mobile-first, RTL support |
-| Backend | Supabase | PostgreSQL + PostGIS + Edge Functions |
-| Auth | Supabase GoTrue | Email/password + OTP |
-| Payments | PayPlus | Israeli payment processor |
-| Hosting | Vercel | Auto-deploy from main |
-| Language | Hebrew (RTL) | Primary, English secondary |
-
-## 📐 CODE STYLE
-
-### TypeScript
-- Strict mode enabled
-- Explicit return types on exported functions
-- Use interfaces over types where possible
-- Prefer const assertions
-
-### React/Next.js
-- Server Components by default
-- Client Components only when needed (interactivity, hooks)
-- Use App Router conventions
-- Colocate components with features
-
-### Naming Conventions
-- Components: PascalCase (LoginForm.tsx)
-- Hooks: camelCase with 'use' prefix (useAuth.ts)
-- Utils: camelCase (formatCurrency.ts)
-- Types: PascalCase with 'I' prefix for interfaces (IUser)
-- Constants: SCREAMING_SNAKE_CASE
-
-### File Organization
-```
-src/
-├── app/                    # Next.js App Router
-├── components/             # Shared UI components
-│   ├── ui/                # Base UI primitives
-│   └── layout/            # Layout components
-├── features/              # Feature modules
-│   └── {feature}/
-│       ├── components/    # Feature-specific components
-│       ├── hooks/         # Feature-specific hooks
-│       ├── lib/           # Feature utilities
-│       └── types/         # Feature types
-├── lib/                   # Shared utilities
-└── types/                 # Global types
-```
-
-## 🌍 INTERNATIONALIZATION
-
-- Primary language: Hebrew (RTL)
-- Secondary: English
-- All UI strings in translation files
-- Use dir="rtl" on root HTML element
-- Tailwind RTL utilities (start/end vs left/right)
-
-## 🔒 SECURITY REQUIREMENTS
-
-### Authentication
-- Email/password with strong password policy
-- Email verification required
-- Rate limiting on auth endpoints
-- Session expiry: 7 days (configurable)
-
-### Authorization
-- Row Level Security (RLS) on all Supabase tables
-- Role-based access control (client/pilot/admin)
-- Never trust client-side role claims
-
-### Data Protection
-- No PII in logs
-- Encrypt sensitive data at rest
-- HTTPS only
-- CSRF protection on forms
-
-## 🧪 TESTING REQUIREMENTS
-
-- Unit tests for utilities and hooks
-- Integration tests for API endpoints
-- E2E tests for critical flows (auth, payment)
-- Minimum coverage: 70%
-
-## 📋 ACCEPTANCE CRITERIA FORMAT
-
-All stories use EARS (Easy Approach to Requirements Syntax):
+## Monorepo Structure
 
 ```
-WHEN {trigger} THEN {behavior} [threshold: {metric}]
+WAVE/
+├── portal/              # React 19 + Vite frontend + Express backend
+├── orchestrator/        # Python LangGraph-based orchestrator
+├── core/
+│   └── scripts/         # Shell-based orchestration scripts
+├── .claude/
+│   └── commands/        # Slash command definitions
+├── stories/             # AI story definitions (JSON)
+└── docker-compose.yml   # Multi-agent container setup
 ```
 
-Examples:
-- WHEN user submits valid login form THEN redirect to dashboard [latency: <500ms]
-- WHEN pilot uploads license THEN status changes to 'pending' [storage: <10MB]
+## Build & Development Commands
 
-## 🚦 WORKFLOW GATES
+### Portal (React + Express)
+
+```bash
+cd portal
+
+# Install dependencies
+npm install
+
+# Development (frontend + backend together)
+npm run dev:all
+
+# Development (frontend only)
+npm run dev
+
+# Development (backend only)
+npm run server:watch
+
+# Build
+npm run build
+
+# Lint
+npm run lint
+
+# Tests
+npm run test              # Watch mode
+npm run test:run          # Single run
+npm run test:coverage     # With coverage
+npm run test:ui           # Interactive UI
+
+# Single test file
+npx vitest run src/__tests__/MyComponent.test.tsx
+npx vitest run server/__tests__/my-api.test.js
+
+# Single test by name
+npx vitest run -t "should handle auth"
+```
+
+### Orchestrator (Python)
+
+```bash
+cd orchestrator
+
+# Setup
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Run
+python main.py
+
+# Tests
+pytest
+pytest tests/test_specific.py -v
+pytest -k "test_name"
+```
+
+### Docker (Full Wave Execution)
+
+```bash
+# Start all services
+./wave-start.sh --project /path/to/project --wave 1
+
+# FE-only wave
+./wave-start.sh --project /path/to/project --wave 1 --fe-only
+
+# Stop
+./wave-start.sh --stop
+
+# Manual docker compose
+docker compose up -d dozzle merge-watcher
+docker compose --profile agents up -d
+```
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| Portal Frontend | React 19 + Vite + TypeScript |
+| Portal Backend | Express.js + Node.js |
+| UI Components | Radix UI + Tailwind CSS |
+| Testing | Vitest + Testing Library |
+| Orchestrator | Python + LangGraph + FastAPI |
+| Tracing | LangSmith |
+| Container Orchestration | Docker Compose |
+| Database | Supabase (PostgreSQL) |
+
+## Workflow Gates
 
 | Gate | Owner | Description |
 |------|-------|-------------|
@@ -149,74 +121,92 @@ Examples:
 | Gate 6 | CTO | Architecture review |
 | Gate 7 | CTO | Merge approval |
 
-## 🚀 WAVE V2 SDK INFRASTRUCTURE
+## Slash Commands
 
-### Installed SDKs
-| SDK | Purpose |
-|-----|---------|
-| `@anthropic-ai/claude-agent-sdk` | Multi-agent orchestration |
-| `zod` v4 | Runtime schema validation |
-| `@opentelemetry/*` | Observability & tracing |
-| `@playwright/test` | E2E testing |
-| `@orpc/server` | Agent-to-agent RPC |
-
-### Slash Commands Available
 Run `/commands` to see full list. Key commands:
 - `/gate-0` through `/gate-7` - Execute specific gates
 - `/execute-story <id>` - Full story execution
 - `/wave-status` - Wave progress dashboard
-- `/protocol-verify` - Compliance audit
-- `/tdd` - TDD cycle guidance
-- `/research` - Research validation
+- `/commit` - Standardized git commit
 - `/branch` - Create feature branch
+- `/fix` - Research-driven fix protocol
+- `/tdd` - TDD cycle guidance
+- `/cto` - CTO advisor analysis
 
-### Hooks (Auto-triggered)
-Location: `.claude/hooks/`
-- `check-gates.sh` - Blocks push without Gate 7
-- `validate-branch-name.sh` - Enforces `feature/EPIC-TYPE-NNN`
-- `check-tdd.sh` - Warns if tests missing
-- `validate-story.sh` - Schema validation on save
-- `update-signals.sh` - Creates signal files
+## Domain Ownership (Multi-Agent)
 
-### Agent SDK Usage
+| Domain | Agent | Paths |
+|--------|-------|-------|
+| Auth | BE-Dev | src/features/auth/**, supabase/functions/auth-** |
+| Profiles | BE-Dev | src/features/profiles/** |
+| UI Shell | FE-Dev | portal/src/components/**, portal/src/pages/** |
+| Contracts | CTO | contracts/** |
+| Stories | PM | stories/** |
+
+## Permissions
+
+### Do Without Asking
+- Create/edit files in owned paths
+- Run npm install, test, lint, build
+- Git add, commit, push to feature branches
+- Run story linter
+
+### Ask First
+- Modify files outside ownership paths
+- Merge to main or develop
+- Delete migrations or seed data
+- Unclear requirements
+
+### Never Do
+- Push directly to main
+- Skip workflow gates
+- Self-approve for QA/PM review
+- Commit .env files or secrets
+
+## Code Style
+
+### TypeScript (Portal)
+- Strict mode enabled
+- Explicit return types on exported functions
+- Use interfaces over types where possible
+- Path alias: `@/` maps to `src/`
+
+### Naming
+- Components: PascalCase (LoginForm.tsx)
+- Hooks: camelCase with 'use' prefix (useAuth.ts)
+- Utils: camelCase (formatCurrency.ts)
+- Types: PascalCase with 'I' prefix (IUser)
+
+## Testing
+
+- Minimum coverage: 70%
+- Test files: `*.test.{ts,tsx,js}` or `*.spec.{ts,tsx,js}`
+- Portal tests in `portal/src/__tests__/` and `portal/server/__tests__/`
+- Orchestrator tests in `orchestrator/tests/`
+
+## Key Configuration Files
+
+- `portal/vitest.config.ts` - Test configuration
+- `portal/vite.config.ts` - Vite build config
+- `portal/tailwind.config.js` - Tailwind CSS
+- `orchestrator/config.py` - Python orchestrator config
+- `docker-compose.yml` - Container definitions
+
+## Signal Files
+
+Location: `.claude/`
+Pattern: `signal-{wave}-{gate}-{status}.json`
+
+## Emergency Stop
+
 ```bash
-# Execute story through gates
-pnpm wave:execute AUTH-STORY-001
-pnpm wave:execute AUTH-STORY-001 --start-gate gate2
+echo "STOP" > .claude/EMERGENCY-STOP
 ```
 
-### E2E Testing
-```bash
-pnpm playwright:install  # First time
-pnpm test:e2e            # Run tests
-pnpm test:e2e:ui         # Interactive mode
-```
+## Environment Variables
 
-### MCP Integrations
-| MCP | Status | Use For |
-|-----|--------|---------|
-| GitHub | ✅ | PR, issues, repo ops |
-| Notion | ✅ | Workspace docs |
-| Slack | ✅ | Notifications |
-| Memory | ✅ | Knowledge graph |
-
-### Key Directories
-```
-.claude/
-├── agents/      # Claude Agent SDK config
-├── telemetry/   # OpenTelemetry setup
-├── rpc/         # oRPC procedures
-├── hooks/       # Git/tool hooks
-├── commands/    # Slash commands
-├── signals/     # Runtime signals
-└── settings.json
-```
-
-### Environment Required
-```bash
-export ANTHROPIC_API_KEY=your-key  # For agent execution
-```
-
-### Documentation
-- `.claude/SDK-README.md` - Full SDK documentation
-- `.claude/SESSION-HANDOFF-2026-01-31.md` - Latest session context
+Required in `.env`:
+- `ANTHROPIC_API_KEY` - For agent execution
+- `VITE_SUPABASE_URL` - Supabase connection
+- `VITE_SUPABASE_ANON_KEY` - Supabase auth
+- `SLACK_WEBHOOK_URL` - Notifications (optional)
