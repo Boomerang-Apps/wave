@@ -1,0 +1,23 @@
+{
+  "name": "wave-tools",
+  "version": "1.0.0",
+  "description": "WAVE Development Tools",
+  "type": "module",
+  "scripts": {
+    "validate": "ts-node validate-story.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "ajv": "^8.12.0",
+    "ajv-formats": "^3.0.1",
+    "glob": "^10.3.10"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0"
+  }
+}
