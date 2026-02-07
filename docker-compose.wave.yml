@@ -1,0 +1,139 @@
+# WAVE Development Environment
+# Story: WAVE-P0-001
+# Purpose: PostgreSQL + Redis services for WAVE state persistence and event-driven communication
+#
+# Usage:
+#   docker-compose -f docker-compose.wave.yml up -d     # Start services
+#   docker-compose -f docker-compose.wave.yml down      # Stop services
+#   docker-compose -f docker-compose.wave.yml logs -f   # View logs
+
+version: '3.8'
+
+services:
+  # ═══════════════════════════════════════════════════════════════
+  # PostgreSQL - State Persistence Database
+  # ═══════════════════════════════════════════════════════════════
+  postgres:
+    image: postgres:16-alpine
+    container_name: wave-postgres
+    hostname: postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-wave}
+      POSTGRES_USER: ${POSTGRES_USER:-wave}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wave}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - wave-postgres-data:/var/lib/postgresql/data
+      - ./orchestrator/migrations:/docker-entrypoint-initdb.d:ro
+    networks:
+      - wave-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wave} -d ${POSTGRES_DB:-wave}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    labels:
+      - "wave.component=database"
+      - "wave.service=postgresql"
+
+  # ═══════════════════════════════════════════════════════════════
+  # Redis - Pub/Sub & Caching
+  # ═══════════════════════════════════════════════════════════════
+  redis:
+    image: redis:7-alpine
+    container_name: wave-redis
+    hostname: redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - wave-redis-data:/data
+    networks:
+      - wave-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+    labels:
+      - "wave.component=cache"
+      - "wave.service=redis"
+
+  # ═══════════════════════════════════════════════════════════════
+  # pgAdmin (Optional) - PostgreSQL Web Admin
+  # ═══════════════════════════════════════════════════════════════
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: wave-pgadmin
+    hostname: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@wave.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-wave}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - wave-pgadmin-data:/var/lib/pgadmin
+    networks:
+      - wave-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles:
+      - tools
+    labels:
+      - "wave.component=tools"
+      - "wave.service=pgadmin"
+
+  # ═══════════════════════════════════════════════════════════════
+  # Redis Commander (Optional) - Redis Web Admin
+  # ═══════════════════════════════════════════════════════════════
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: wave-redis-commander
+    hostname: redis-commander
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "${REDIS_COMMANDER_PORT:-8081}:8081"
+    networks:
+      - wave-network
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles:
+      - tools
+    labels:
+      - "wave.component=tools"
+      - "wave.service=redis-commander"
+
+# ═══════════════════════════════════════════════════════════════
+# NETWORKS
+# ═══════════════════════════════════════════════════════════════
+networks:
+  wave-network:
+    name: wave-network
+    driver: bridge
+
+# ═══════════════════════════════════════════════════════════════
+# VOLUMES
+# ═══════════════════════════════════════════════════════════════
+volumes:
+  wave-postgres-data:
+    name: wave-postgres-data
+    driver: local
+  wave-redis-data:
+    name: wave-redis-data
+    driver: local
+  wave-pgadmin-data:
+    name: wave-pgadmin-data
+    driver: local
