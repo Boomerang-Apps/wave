@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "validate": "ts-node validate-story.ts",
+    "migrate": "ts-node migrate-stories-v42-to-v43.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"

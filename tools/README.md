@@ -1,17 +1,79 @@
 # WAVE Development Tools
 
-Story: SCHEMA-004
+Stories: SCHEMA-003, SCHEMA-004
 
-## Schema Validator
-
-Validates AI Stories against V4.1, V4.2, or V4.3 schemas.
-
-### Installation
+## Installation
 
 ```bash
 cd tools
 npm install
 ```
+
+---
+
+## Migration Tool (V4.2 → V4.3)
+
+Story: SCHEMA-003
+
+Migrates AI Stories from V4.2 to V4.3 format.
+
+### Usage
+
+**Migrate a single story:**
+```bash
+npm run migrate -- ../stories/AUTH-001.json
+# Creates: ../stories/AUTH-001.v43.json
+```
+
+**Dry-run (preview changes):**
+```bash
+npm run migrate -- --dry-run ../stories/AUTH-001.json
+```
+
+**Migrate all stories in a directory:**
+```bash
+npm run migrate -- ../stories/**/*.json
+```
+
+**Migrate in-place (overwrite original):**
+```bash
+npm run migrate -- --in-place ../stories/AUTH-001.json
+```
+
+**Disable backups:**
+```bash
+npm run migrate -- --no-backup ../stories/AUTH-001.json
+```
+
+### Features
+
+- ✅ Preserves all V4.2 fields exactly
+- ✅ Adds new V4.3 fields with sensible defaults (context, execution, subtasks, enterprise)
+- ✅ Validates output against V4.3 schema
+- ✅ Dry-run mode to preview changes
+- ✅ Creates `.backup` files by default
+- ✅ Batch migration support
+- ✅ Idempotent (running twice produces same result)
+
+### What Gets Added
+
+- `schema_version`: Updated to "4.3"
+- `$schema`: Updated to reference v4.3 schema
+- `context`: Empty arrays for read_files, code_examples, similar_implementations
+- `execution`: Defaults (max_retries: 3, timeout: 60min, model: sonnet)
+- `subtasks`: Empty array
+- `enterprise`: Empty compliance/approvals, modification_history entry
+- `output`: Empty structure
+- `validation`: Empty object
+- `design_source`: Enhanced with components, interactions, accessibility (if present)
+
+---
+
+## Schema Validator
+
+Story: SCHEMA-004
+
+Validates AI Stories against V4.1, V4.2, or V4.3 schemas.
 
 ### Usage
 
@@ -61,10 +123,12 @@ ts-node validate-story.ts ../stories/AUTH-001.json
    💡 Suggestion: Use a whole number (e.g., 5), not a decimal or string.
 ```
 
-### Testing
+---
+
+## Testing
 
 ```bash
-# Run tests
+# Run all tests
 npm test
 
 # Watch mode
@@ -74,7 +138,11 @@ npm run test:watch
 npm run test:coverage
 ```
 
-### CI/CD Integration
+---
+
+## CI/CD Integration
+
+### Validate Stories
 
 Add to your `.github/workflows/ci.yml`:
 
@@ -98,3 +166,40 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 ```
+
+---
+
+## Workflow: Migrating Your Stories
+
+1. **Backup everything** (just in case):
+   ```bash
+   cp -r stories stories-backup
+   ```
+
+2. **Dry-run first**:
+   ```bash
+   cd tools
+   npm run migrate -- --dry-run ../stories/**/*.json
+   ```
+
+3. **Run migration**:
+   ```bash
+   npm run migrate -- ../stories/**/*.json
+   ```
+
+4. **Review .v43 files**:
+   ```bash
+   diff stories/AUTH-001.json stories/AUTH-001.v43.json
+   ```
+
+5. **Validate migrated stories**:
+   ```bash
+   npm run validate -- ../stories/**/*.v43.json
+   ```
+
+6. **If all good, replace originals** (optional):
+   ```bash
+   # Rename .v43 files to replace originals
+   cd ../stories
+   for f in *.v43.json; do mv "$f" "${f/.v43/}"; done
+   ```
