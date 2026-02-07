@@ -3,7 +3,7 @@
 # Story: WAVE-P0-001
 # Purpose: Verify all required services are running and accessible
 
-set -euo pipefail
+set -uo pipefail  # Removed -e to allow continuing after failed checks
 
 # Color codes for output
 RED='\033[0;31m'
@@ -87,8 +87,27 @@ echo ""
 echo "1. Checking required commands..."
 check_command "docker"
 check_command "docker-compose"
-check_command "psql"
-check_command "redis-cli"
+
+# psql and redis-cli are optional - we can use docker exec if they're not available
+USE_HOST_PSQL=false
+USE_HOST_REDIS_CLI=false
+
+if command -v psql &> /dev/null; then
+    log_info "✓ psql is installed (host)"
+    USE_HOST_PSQL=true
+    ((PASSED++))
+else
+    log_warning "⚠ psql not installed on host, will use docker exec"
+fi
+
+if command -v redis-cli &> /dev/null; then
+    log_info "✓ redis-cli is installed (host)"
+    USE_HOST_REDIS_CLI=true
+    ((PASSED++))
+else
+    log_warning "⚠ redis-cli not installed on host, will use docker exec"
+fi
+
 check_command "nc" || check_command "netcat"
 echo ""
 
@@ -115,26 +134,38 @@ echo ""
 echo "4. Checking PostgreSQL..."
 if wait_for_service "PostgreSQL" "$POSTGRES_HOST" "$POSTGRES_PORT" "$MAX_WAIT_TIME"; then
     # Test connection
-    if PGPASSWORD="${POSTGRES_PASSWORD:-wave}" psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT version();" &> /dev/null; then
-        log_info "✓ PostgreSQL connection successful"
-        ((PASSED++))
-
-        # Get PostgreSQL version
-        POSTGRES_VERSION=$(PGPASSWORD="${POSTGRES_PASSWORD:-wave}" psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT version();" 2>/dev/null | head -n1)
-        log_info "  Version: ${POSTGRES_VERSION// /}"
+    if [ "$USE_HOST_PSQL" = true ]; then
+        if PGPASSWORD="${POSTGRES_PASSWORD:-wave}" psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT version();" &> /dev/null; then
+            log_info "✓ PostgreSQL connection successful (host psql)"
+            ((PASSED++))
+            POSTGRES_VERSION=$(PGPASSWORD="${POSTGRES_PASSWORD:-wave}" psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT version();" 2>/dev/null | head -n1)
+            log_info "  Version: ${POSTGRES_VERSION// /}"
+        else
+            log_error "✗ PostgreSQL connection failed"
+            ((FAILED++))
+        fi
     else
-        log_error "✗ PostgreSQL connection failed"
-        log_error "  Host: $POSTGRES_HOST:$POSTGRES_PORT"
-        log_error "  Database: $POSTGRES_DB"
-        log_error "  User: $POSTGRES_USER"
-        ((FAILED++))
+        if docker exec wave-postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT version();" &> /dev/null; then
+            log_info "✓ PostgreSQL connection successful (docker exec)"
+            ((PASSED++))
+            POSTGRES_VERSION=$(docker exec wave-postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT version();" 2>/dev/null | head -n1)
+            log_info "  Version: ${POSTGRES_VERSION// /}"
+        else
+            log_error "✗ PostgreSQL connection failed"
+            log_error "  Container: wave-postgres"
+            ((FAILED++))
+        fi
     fi
 fi
 echo ""
 
 # 5. Verify database tables exist
 echo "5. Checking database tables..."
-TABLES=$(PGPASSWORD="${POSTGRES_PASSWORD:-wave}" psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT tablename FROM pg_tables WHERE schemaname = 'public';" 2>/dev/null || echo "")
+if [ "$USE_HOST_PSQL" = true ]; then
+    TABLES=$(PGPASSWORD="${POSTGRES_PASSWORD:-wave}" psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT tablename FROM pg_tables WHERE schemaname = 'public';" 2>/dev/null || echo "")
+else
+    TABLES=$(docker exec wave-postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT tablename FROM pg_tables WHERE schemaname = 'public';" 2>/dev/null || echo "")
+fi
 
 if echo "$TABLES" | grep -q "wave_sessions"; then
     log_info "✓ wave_sessions table exists"
@@ -166,17 +197,27 @@ echo ""
 echo "6. Checking Redis..."
 if wait_for_service "Redis" "$REDIS_HOST" "$REDIS_PORT" "$MAX_WAIT_TIME"; then
     # Test Redis connection
-    if redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" PING &> /dev/null; then
-        log_info "✓ Redis PING successful"
-        ((PASSED++))
-
-        # Get Redis version
-        REDIS_VERSION=$(redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" INFO server | grep "redis_version" | cut -d: -f2 | tr -d '\r')
-        log_info "  Version: $REDIS_VERSION"
+    if [ "$USE_HOST_REDIS_CLI" = true ]; then
+        if redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" PING &> /dev/null; then
+            log_info "✓ Redis PING successful (host redis-cli)"
+            ((PASSED++))
+            REDIS_VERSION=$(redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" INFO server | grep "redis_version" | cut -d: -f2 | tr -d '\r')
+            log_info "  Version: $REDIS_VERSION"
+        else
+            log_error "✗ Redis PING failed"
+            ((FAILED++))
+        fi
     else
-        log_error "✗ Redis PING failed"
-        log_error "  Host: $REDIS_HOST:$REDIS_PORT"
-        ((FAILED++))
+        if docker exec wave-redis redis-cli PING &> /dev/null; then
+            log_info "✓ Redis PING successful (docker exec)"
+            ((PASSED++))
+            REDIS_VERSION=$(docker exec wave-redis redis-cli INFO server | grep "redis_version" | cut -d: -f2 | tr -d '\r')
+            log_info "  Version: $REDIS_VERSION"
+        else
+            log_error "✗ Redis PING failed"
+            log_error "  Container: wave-redis"
+            ((FAILED++))
+        fi
     fi
 fi
 echo ""
