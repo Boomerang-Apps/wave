@@ -23,8 +23,8 @@
     },
     "schema_version": {
       "type": "string",
-      "const": "4.3",
-      "description": "Schema version identifier"
+      "enum": ["4.2", "4.3"],
+      "description": "Schema version identifier (accepts 4.2 for backward compatibility)"
     },
     "story_id": {
       "type": "string",
