@@ -1,0 +1,788 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wave.dev/schemas/story-schema-v4.3.json",
+  "title": "WAVE AI Story Schema V4.3",
+  "description": "Project-agnostic AI Story Schema with configurable domains, context loading, execution control, enhanced design source, subtasks, and enterprise compliance. Backward compatible with V4.2.",
+  "type": "object",
+  "required": [
+    "story_id",
+    "title",
+    "domain",
+    "wave_number",
+    "priority",
+    "status",
+    "objective",
+    "acceptance_criteria",
+    "files",
+    "safety"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Reference to this schema file"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "4.3",
+      "description": "Schema version identifier"
+    },
+    "story_id": {
+      "type": "string",
+      "pattern": "^[A-Z]+-[A-Z0-9]+-?[0-9]*$",
+      "description": "Story identifier. Supports: WAVE1-FE-001, BE-03, UI-04A, WAVE-P1-001",
+      "examples": ["WAVE1-FE-001", "BE-03", "UI-04A", "WAVE-P1-001", "SCHEMA-001"]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 100,
+      "description": "Concise, descriptive story title"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["feature", "enhancement", "bugfix", "refactor", "test", "documentation", "security", "infrastructure", "tooling"],
+      "default": "feature",
+      "description": "Story type classification"
+    },
+    "domain": {
+      "type": "string",
+      "description": "Technical domain ownership - should match project's wave-config.json domains (e.g., 'frontend', 'backend', 'auth', 'shared', 'infrastructure')"
+    },
+    "agent": {
+      "type": "string",
+      "description": "Assigned implementation agent - should match project's wave-config.json agents (e.g., 'fe-dev', 'be-dev', 'qa', 'pm', 'cto')"
+    },
+    "wave_number": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Wave number assignment (0 for foundation work, 1+ for feature waves)"
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["P0", "P1", "P2", "P3", "critical", "high", "medium", "low"],
+      "description": "Implementation priority (P0/critical=highest, P3/low=lowest)"
+    },
+    "story_points": {
+      "type": "integer",
+      "enum": [1, 2, 3, 5, 8, 13, 21],
+      "description": "Fibonacci story point estimation"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "pending", "ready", "in_progress", "blocked", "review", "complete", "completed", "cancelled", "failed"],
+      "description": "Current story status"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 20,
+      "description": "Detailed story description explaining the work to be done"
+    },
+    "objective": {
+      "type": "object",
+      "description": "User story format: As a X, I want Y, so that Z",
+      "required": ["as_a", "i_want", "so_that"],
+      "properties": {
+        "as_a": {
+          "type": "string",
+          "minLength": 3,
+          "description": "User role or persona"
+        },
+        "i_want": {
+          "type": "string",
+          "minLength": 10,
+          "description": "Desired action or capability"
+        },
+        "so_that": {
+          "type": "string",
+          "minLength": 10,
+          "description": "Business value or outcome"
+        }
+      }
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "minItems": 1,
+      "description": "List of acceptance criteria with EARS format",
+      "items": {
+        "type": "object",
+        "required": ["id", "description"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^AC-[0-9]{2,3}$",
+            "description": "AC identifier: AC-01, AC-001, etc."
+          },
+          "description": {
+            "type": "string",
+            "minLength": 10,
+            "description": "Human-readable acceptance criterion"
+          },
+          "ears_format": {
+            "type": "string",
+            "pattern": "^(WHEN|WHILE|WHERE|IF) .+ THEN .+",
+            "description": "EARS syntax: WHEN/WHILE/WHERE/IF {trigger} THEN {behavior}"
+          },
+          "threshold": {
+            "type": "string",
+            "description": "Optional performance threshold (e.g., 'latency: <500ms')"
+          },
+          "test_approach": {
+            "type": "string",
+            "description": "How to test this criterion"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "in_progress", "complete", "passed", "failed", "blocked"],
+            "default": "pending"
+          }
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "description": "Context to load before execution (reduces exploration cost and improves accuracy)",
+      "properties": {
+        "read_files": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Files agent MUST read before starting implementation"
+        },
+        "code_examples": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": { "type": "string" },
+              "code": { "type": "string" },
+              "file_reference": { "type": "string" }
+            }
+          },
+          "description": "Code patterns and examples to follow"
+        },
+        "similar_implementations": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Paths to similar features for reference"
+        },
+        "domain_knowledge": {
+          "type": "string",
+          "description": "Path to domain documentation or knowledge base"
+        }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "description": "Execution control settings for agent behavior",
+      "properties": {
+        "max_retries": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 3,
+          "description": "Maximum retry attempts before escalation"
+        },
+        "timeout_minutes": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 480,
+          "description": "Maximum execution time in minutes"
+        },
+        "model_tier": {
+          "type": "string",
+          "enum": ["opus", "sonnet", "haiku"],
+          "default": "sonnet",
+          "description": "Claude model tier to use (opus=most capable, haiku=fastest)"
+        },
+        "checkpoint_frequency": {
+          "type": "string",
+          "enum": ["per_subtask", "per_gate", "per_criterion", "on_complete"],
+          "default": "per_gate",
+          "description": "How often to create state checkpoints"
+        },
+        "parallel_with": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Story IDs that can execute in parallel with this story"
+        }
+      }
+    },
+    "subtasks": {
+      "type": "array",
+      "description": "Breakdown of complex stories into manageable subtasks",
+      "items": {
+        "type": "object",
+        "required": ["id", "title"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^ST-[0-9]{2}$",
+            "description": "Subtask identifier (ST-01, ST-02, etc.)"
+          },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "estimated_tokens": { "type": "integer" },
+          "checkpoint_after": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether to create a checkpoint after this subtask"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "in_progress", "complete"],
+            "default": "pending"
+          }
+        }
+      }
+    },
+    "files": {
+      "type": "object",
+      "description": "File ownership and boundaries",
+      "properties": {
+        "create": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Files to be created"
+        },
+        "modify": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Existing files to be modified"
+        },
+        "forbidden": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Files that MUST NOT be modified (ownership boundary)"
+        },
+        "existing": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Files that already exist and are referenced"
+        }
+      }
+    },
+    "design_source": {
+      "type": "object",
+      "description": "Source of truth for UI implementation (enhanced in V4.3)",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["html_mockup", "storybook", "figma", "screenshot", "wireframe", "none"],
+          "description": "Primary design source type"
+        },
+        "path": {
+          "type": "string",
+          "description": "Path to HTML mockup file, Storybook story, or design file"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to design source (Storybook URL, Figma URL, etc.)"
+        },
+        "figma_frame_id": {
+          "type": "string",
+          "description": "Figma frame ID for precise reference"
+        },
+        "storybook_story_id": {
+          "type": "string",
+          "description": "Storybook story ID"
+        },
+        "components": {
+          "type": "array",
+          "description": "Component breakdown with props, state, and events",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "type": {
+                "type": "string",
+                "enum": ["page", "layout", "component", "atom"]
+              },
+              "props": {
+                "type": "object",
+                "additionalProperties": true,
+                "description": "Expected component props"
+              },
+              "state": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "State variables managed by component"
+              },
+              "events": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Events emitted by component"
+              }
+            }
+          }
+        },
+        "interactions": {
+          "type": "array",
+          "description": "User interaction specifications",
+          "items": {
+            "type": "object",
+            "properties": {
+              "trigger": { "type": "string", "description": "User action (click, hover, etc.)" },
+              "action": { "type": "string", "description": "System response" },
+              "target": { "type": "string", "description": "Target element or component" }
+            }
+          }
+        },
+        "responsive": {
+          "type": "object",
+          "properties": {
+            "mobile": { "type": "string", "description": "Mobile viewport specifications" },
+            "tablet": { "type": "string", "description": "Tablet viewport specifications" },
+            "desktop": { "type": "string", "description": "Desktop viewport specifications" }
+          }
+        },
+        "accessibility": {
+          "type": "object",
+          "properties": {
+            "wcag_level": {
+              "type": "string",
+              "enum": ["A", "AA", "AAA"],
+              "description": "WCAG compliance level target"
+            },
+            "aria_requirements": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Specific ARIA attributes required"
+            },
+            "keyboard_navigation": { "type": "boolean" },
+            "screen_reader_tested": { "type": "boolean" }
+          }
+        },
+        "verified": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether design verification has passed"
+        },
+        "verified_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When design verification passed"
+        },
+        "visual_diff_threshold": {
+          "type": "number",
+          "description": "Acceptable pixel difference percentage for visual regression"
+        }
+      },
+      "required": ["type"]
+    },
+    "design_specs": {
+      "type": "object",
+      "description": "UI/UX design specifications (for frontend stories)",
+      "properties": {
+        "layout": {
+          "type": "object",
+          "properties": {
+            "max_width": { "type": "string" },
+            "padding": { "type": "string" },
+            "direction": { "type": "string", "enum": ["RTL", "LTR"] }
+          }
+        },
+        "colors": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "typography": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "filter_tabs": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "status_badge_variants": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "empty_state": {
+          "type": "object",
+          "properties": {
+            "icon": { "type": "string" },
+            "message": { "type": "string" },
+            "cta": { "type": "string" }
+          }
+        }
+      }
+    },
+    "technical_requirements": {
+      "type": "object",
+      "description": "Technical implementation details",
+      "properties": {
+        "database_tables": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Database tables involved"
+        },
+        "database_changes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Required database schema changes"
+        },
+        "api_endpoints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "method": { "type": "string", "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] },
+              "path": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          },
+          "description": "API endpoints involved"
+        },
+        "reuse_components": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Existing components to reuse"
+        },
+        "reuse_patterns": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Design patterns to follow from existing code"
+        },
+        "reuse_functions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Existing functions to reuse"
+        },
+        "hooks": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "React hooks to create or use"
+        },
+        "response_format": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Expected API response format"
+        },
+        "validation": {
+          "type": "string",
+          "description": "Validation schema location (e.g., Zod schema path)"
+        },
+        "icons_from_lucide": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Lucide icons to use (if applicable)"
+        },
+        "state_management": {
+          "type": "string",
+          "description": "State management approach (React Query, Zustand, etc.)"
+        },
+        "configuration": {
+          "type": "string",
+          "description": "Configuration requirements"
+        }
+      }
+    },
+    "tdd": {
+      "type": "object",
+      "description": "Test-Driven Development configuration",
+      "properties": {
+        "test_framework": {
+          "type": "string",
+          "enum": ["vitest", "jest", "playwright", "pytest", "other"],
+          "default": "vitest",
+          "description": "Test framework to use"
+        },
+        "test_files": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Test files to create"
+        },
+        "coverage_target": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 80,
+          "description": "Minimum coverage percentage required"
+        },
+        "test_categories": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "count"],
+            "properties": {
+              "name": { "type": "string" },
+              "count": { "type": "integer" },
+              "examples": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          },
+          "description": "Categorized test cases with examples"
+        },
+        "mocking_strategy": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "How to mock dependencies"
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "description": "Safety guardrails and rollback procedures",
+      "required": ["stop_conditions"],
+      "properties": {
+        "stop_conditions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Conditions that should immediately stop work"
+        },
+        "escalation_triggers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Conditions that require human escalation"
+        },
+        "rollback_plan": {
+          "type": "string",
+          "description": "How to rollback if things go wrong"
+        }
+      }
+    },
+    "hazard_analysis": {
+      "type": "object",
+      "description": "DO-178C aligned hazard identification",
+      "properties": {
+        "identified_hazards": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "description", "severity", "mitigation"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^HAZ-[0-9]{3}$"
+              },
+              "description": { "type": "string" },
+              "severity": {
+                "type": "string",
+                "enum": ["catastrophic", "critical", "major", "minor", "negligible"]
+              },
+              "likelihood": {
+                "type": "string",
+                "enum": ["frequent", "probable", "occasional", "remote", "improbable"]
+              },
+              "mitigation": { "type": "string" }
+            }
+          }
+        },
+        "risk_level": {
+          "type": "string",
+          "enum": ["high", "medium", "low"],
+          "description": "Overall risk assessment"
+        }
+      }
+    },
+    "enterprise": {
+      "type": "object",
+      "description": "Enterprise compliance and approval tracking",
+      "properties": {
+        "compliance": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["GDPR", "SOC2", "HIPAA", "PCI-DSS", "ISO27001", "none"]
+          },
+          "description": "Compliance requirements (GDPR, SOC2, etc.)"
+        },
+        "sla": {
+          "type": "object",
+          "properties": {
+            "response_time": { "type": "string", "description": "Maximum response time" },
+            "availability": { "type": "string", "description": "Uptime SLA (e.g., 99.9%)" },
+            "throughput": { "type": "string", "description": "Throughput requirements" }
+          }
+        },
+        "approvals_required": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": { "type": "string" },
+              "approved": { "type": "boolean" },
+              "approved_at": { "type": "string", "format": "date-time" },
+              "approved_by": { "type": "string" }
+            }
+          },
+          "description": "Approval workflow tracking"
+        },
+        "modification_history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "timestamp": { "type": "string", "format": "date-time" },
+              "author": { "type": "string" },
+              "change_description": { "type": "string" }
+            }
+          },
+          "description": "Audit trail of modifications"
+        }
+      }
+    },
+    "dependencies": {
+      "type": "object",
+      "description": "Story dependencies and blocking relationships",
+      "properties": {
+        "required_before": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Stories that must be complete before this one starts"
+        },
+        "blocks": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Stories that are blocked by this one"
+        }
+      }
+    },
+    "traceability": {
+      "type": "object",
+      "description": "Requirements traceability",
+      "properties": {
+        "requirements": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "PRD or requirement IDs this story implements"
+        },
+        "epic": {
+          "type": "string",
+          "description": "Parent epic identifier"
+        },
+        "related_stories": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Related story IDs"
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "description": "Expected output schema for validation",
+      "properties": {
+        "files_created": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of files that should be created"
+        },
+        "files_modified": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of files that should be modified"
+        },
+        "tests_passing": {
+          "type": "boolean",
+          "description": "Whether all tests should pass"
+        },
+        "coverage_achieved": {
+          "type": "number",
+          "description": "Actual coverage percentage achieved"
+        },
+        "pr_description": {
+          "type": "string",
+          "description": "Generated PR description"
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "description": "Automated validation commands",
+      "properties": {
+        "lint_command": { "type": "string" },
+        "test_command": { "type": "string" },
+        "build_command": { "type": "string" },
+        "type_check_command": { "type": "string" },
+        "visual_diff_command": { "type": "string" }
+      }
+    },
+    "gates_completed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["gate", "completed_at"],
+        "properties": {
+          "gate": {
+            "type": "string",
+            "enum": ["gate-0", "gate-1", "gate-2", "gate-3", "gate-4", "gate-5", "gate-6", "gate-7"]
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "approved_by": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "string",
+            "description": "Link to evidence (commit, PR, report)"
+          }
+        }
+      },
+      "description": "Gate completion tracking"
+    },
+    "estimated_tests": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Estimated number of test cases"
+    },
+    "estimated_tokens": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Estimated token budget for implementation"
+    },
+    "actual_tokens": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Actual tokens used (filled after completion)"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Story metadata and timestamps",
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "created_by": {
+          "type": "string"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "agent_assignment": {
+          "type": "string",
+          "description": "Specific agent instance (e.g., fe-dev-1)"
+        }
+      }
+    },
+    "gate0_research": {
+      "type": "string",
+      "description": "Path to Gate 0 research document"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes or context"
+    }
+  },
+  "$defs": {
+    "ears_pattern": {
+      "type": "string",
+      "pattern": "^(WHEN|WHILE|WHERE|IF) .+ THEN .+",
+      "description": "EARS (Easy Approach to Requirements Syntax) format"
+    },
+    "story_id_pattern": {
+      "type": "string",
+      "pattern": "^[A-Z]+-[A-Z0-9]+-?[0-9]*$"
+    }
+  }
+}
