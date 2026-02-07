@@ -1,0 +1,414 @@
+{
+  "$schema": "../planning/schemas/story-schema-v4.3.json",
+  "schema_version": "4.3",
+
+  "story_id": "YOURPROJECT-DOMAIN-001",
+  "title": "Implement User Authentication Login Flow",
+  "type": "feature",
+  "domain": "backend",
+  "agent": "be-dev",
+  "wave_number": 1,
+  "priority": "P1",
+  "story_points": 5,
+  "status": "pending",
+
+  "description": "Implement a secure user authentication login flow with email/password credentials. The system should validate credentials against the database, generate JWT tokens for authenticated sessions, and handle error cases gracefully. This feature is critical for user access control and will be used across all protected routes in the application.",
+
+  "objective": {
+    "as_a": "End User",
+    "i_want": "to log into my account securely using my email and password",
+    "so_that": "I can access my personalized dashboard and protected features"
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "description": "User can submit login form with email and password",
+      "ears_format": "WHEN user enters valid credentials and clicks submit THEN system authenticates and redirects to dashboard",
+      "threshold": "response_time: <500ms",
+      "test_approach": "Manual testing with valid credentials, verify redirect and session creation",
+      "status": "pending"
+    },
+    {
+      "id": "AC-02",
+      "description": "Invalid credentials show appropriate error message",
+      "ears_format": "WHEN user enters invalid credentials THEN system displays 'Invalid email or password' error",
+      "test_approach": "Test with incorrect password, verify error message appears",
+      "status": "pending"
+    },
+    {
+      "id": "AC-03",
+      "description": "Form validates email format before submission",
+      "ears_format": "WHEN user enters malformed email THEN validation error appears before API call",
+      "test_approach": "Enter 'notanemail' in email field, verify client-side validation",
+      "status": "pending"
+    }
+  ],
+
+  "context": {
+    "read_files": [
+      "src/lib/auth/jwt.ts",
+      "src/middleware/auth.ts",
+      "src/types/user.ts"
+    ],
+    "code_examples": [
+      {
+        "description": "Example of JWT token generation pattern used in signup",
+        "code": "const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });",
+        "file_reference": "src/features/signup/signup-handler.ts:45-47"
+      }
+    ],
+    "similar_implementations": [
+      "src/features/signup/SignupPage.tsx",
+      "src/features/password-reset/ResetPasswordPage.tsx"
+    ],
+    "domain_knowledge": "docs/authentication-architecture.md"
+  },
+
+  "execution": {
+    "max_retries": 3,
+    "timeout_minutes": 60,
+    "model_tier": "sonnet",
+    "checkpoint_frequency": "per_gate",
+    "parallel_with": ["AUTH-002", "AUTH-003"]
+  },
+
+  "subtasks": [
+    {
+      "id": "ST-01",
+      "title": "Create database query for credential verification",
+      "description": "Write SQL query to lookup user by email and verify hashed password",
+      "estimated_tokens": 3000,
+      "checkpoint_after": false,
+      "status": "pending"
+    },
+    {
+      "id": "ST-02",
+      "title": "Implement JWT token generation",
+      "description": "Create utility function to generate and sign JWT tokens with user payload",
+      "estimated_tokens": 2000,
+      "checkpoint_after": true,
+      "status": "pending"
+    },
+    {
+      "id": "ST-03",
+      "title": "Build login API endpoint",
+      "description": "Create POST /api/auth/login endpoint with validation and error handling",
+      "estimated_tokens": 5000,
+      "checkpoint_after": true,
+      "status": "pending"
+    }
+  ],
+
+  "files": {
+    "create": [
+      "src/features/auth/LoginPage.tsx",
+      "src/features/auth/api/login.ts",
+      "src/features/auth/__tests__/LoginPage.test.tsx",
+      "src/features/auth/__tests__/login-api.test.ts"
+    ],
+    "modify": [
+      "src/routes/index.ts",
+      "src/types/api-responses.ts"
+    ],
+    "forbidden": [
+      "src/features/admin/**/*",
+      ".env.production",
+      "src/lib/auth/secrets.ts"
+    ],
+    "existing": [
+      "src/components/ui/Button.tsx",
+      "src/components/ui/Input.tsx",
+      "src/hooks/useAuth.ts"
+    ]
+  },
+
+  "design_source": {
+    "type": "figma",
+    "path": "mockups/login-page.html",
+    "url": "https://www.figma.com/file/abc123def456",
+    "figma_frame_id": "123:456",
+    "storybook_story_id": "pages-auth-login--default",
+    "components": [
+      {
+        "name": "LoginPage",
+        "type": "page",
+        "props": {},
+        "state": ["email", "password", "isLoading", "error"],
+        "events": ["onSubmit", "onForgotPassword"]
+      },
+      {
+        "name": "LoginForm",
+        "type": "component",
+        "props": {
+          "onSubmit": "function",
+          "isLoading": "boolean",
+          "error": "string | null"
+        },
+        "state": ["email", "password", "rememberMe"],
+        "events": ["onSubmit", "onEmailChange", "onPasswordChange"]
+      }
+    ],
+    "interactions": [
+      {
+        "trigger": "User clicks 'Submit' button",
+        "action": "Validate form fields, show loading spinner, call POST /api/auth/login",
+        "target": "LoginForm"
+      },
+      {
+        "trigger": "User clicks 'Forgot Password?' link",
+        "action": "Navigate to /reset-password route",
+        "target": "LoginPage"
+      }
+    ],
+    "responsive": {
+      "mobile": "mockups/login-mobile.png",
+      "tablet": "mockups/login-tablet.png",
+      "desktop": "mockups/login-desktop.png"
+    },
+    "accessibility": {
+      "wcag_level": "AA",
+      "aria_requirements": [
+        "aria-label='Email address' on email input",
+        "aria-label='Password' on password input",
+        "aria-live='polite' region for error messages",
+        "role='alert' for validation errors"
+      ],
+      "keyboard_navigation": true,
+      "screen_reader_tested": false
+    },
+    "verified": false,
+    "visual_diff_threshold": 5.0
+  },
+
+  "design_specs": {
+    "layout": {
+      "max_width": "400px",
+      "padding": "2rem",
+      "direction": "LTR"
+    },
+    "colors": {
+      "primary": "#3B82F6",
+      "error": "#EF4444",
+      "border": "#E5E7EB"
+    },
+    "typography": {
+      "heading": "text-2xl font-bold mb-6",
+      "label": "text-sm font-medium mb-2",
+      "input": "text-base p-3"
+    }
+  },
+
+  "technical_requirements": {
+    "database_tables": ["users", "sessions"],
+    "database_changes": [
+      "Add last_login_at timestamp column to users table",
+      "Create index on users(email) for fast lookup"
+    ],
+    "api_endpoints": [
+      {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "description": "Authenticate user with email/password and return JWT token"
+      }
+    ],
+    "reuse_components": [
+      "src/components/ui/Button.tsx",
+      "src/components/ui/Input.tsx",
+      "src/components/ui/Label.tsx",
+      "src/components/ui/Alert.tsx"
+    ],
+    "reuse_patterns": {
+      "form_validation": "src/features/signup/validation.ts (Zod schemas)",
+      "api_client": "src/lib/api-client.ts (axios wrapper with interceptors)",
+      "error_handling": "src/lib/errors.ts (ApiError class)"
+    },
+    "reuse_functions": [
+      "src/utils/validateEmail.ts",
+      "src/lib/auth/hashPassword.ts",
+      "src/lib/auth/verifyPassword.ts"
+    ],
+    "hooks": ["useAuth", "useForm", "useToast"],
+    "response_format": {
+      "success": {
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        "user": {
+          "id": "uuid",
+          "email": "user@example.com",
+          "name": "John Doe"
+        }
+      },
+      "error": {
+        "message": "Invalid email or password",
+        "code": "AUTH_INVALID_CREDENTIALS"
+      }
+    },
+    "validation": "src/features/auth/schemas/login.schema.ts",
+    "icons_from_lucide": ["Mail", "Lock", "Eye", "EyeOff", "AlertCircle"],
+    "state_management": "React Query for API calls, useState for form state",
+    "configuration": "Environment variables: API_URL, JWT_SECRET, JWT_EXPIRES_IN"
+  },
+
+  "tdd": {
+    "test_framework": "vitest",
+    "test_files": [
+      "src/features/auth/__tests__/LoginPage.test.tsx",
+      "src/features/auth/__tests__/login-api.test.ts"
+    ],
+    "coverage_target": 80,
+    "test_categories": [
+      {
+        "name": "Unit Tests - UI Components",
+        "count": 8,
+        "examples": [
+          "LoginForm renders with email and password inputs",
+          "Submit button is disabled when form is invalid",
+          "Error message displays when login fails",
+          "Password visibility toggle works correctly"
+        ]
+      },
+      {
+        "name": "Integration Tests - API",
+        "count": 5,
+        "examples": [
+          "POST /api/auth/login with valid credentials returns token",
+          "POST /api/auth/login with invalid credentials returns 401",
+          "POST /api/auth/login with malformed data returns 400"
+        ]
+      },
+      {
+        "name": "E2E Tests",
+        "count": 3,
+        "examples": [
+          "User can successfully log in and reach dashboard",
+          "User sees error message with wrong password"
+        ]
+      }
+    ],
+    "mocking_strategy": {
+      "API calls": "Mock with MSW (Mock Service Worker)",
+      "React Router": "Mock with MemoryRouter",
+      "useAuth hook": "Mock with vi.mock()",
+      "Local Storage": "Mock with vi.spyOn(Storage.prototype)"
+    }
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "More than 3 consecutive test failures",
+      "Build fails after code changes",
+      "Type checking errors introduced",
+      "Security vulnerability detected (e.g., plaintext password in logs)"
+    ],
+    "escalation_triggers": [
+      "Token budget exceeded by 50%",
+      "Unable to resolve test failures after 3 retries",
+      "Database connection issues",
+      "Authentication logic produces incorrect results"
+    ],
+    "rollback_plan": "git reset --hard HEAD~1 to undo changes, restore database from backup if migrations applied, notify team in #engineering Slack channel"
+  },
+
+  "hazard_analysis": {
+    "identified_hazards": [
+      {
+        "id": "HAZ-001",
+        "description": "Plaintext password exposure in application logs",
+        "severity": "critical",
+        "likelihood": "remote",
+        "mitigation": "Sanitize all log output, never log password fields, use structured logging with field redaction"
+      },
+      {
+        "id": "HAZ-002",
+        "description": "Timing attack on password verification",
+        "severity": "major",
+        "likelihood": "occasional",
+        "mitigation": "Use constant-time comparison for password hashes (bcrypt.compare handles this)"
+      },
+      {
+        "id": "HAZ-003",
+        "description": "Brute force login attempts",
+        "severity": "major",
+        "likelihood": "probable",
+        "mitigation": "Implement rate limiting (5 attempts per 15 minutes per IP), account lockout after 10 failed attempts"
+      }
+    ],
+    "risk_level": "medium"
+  },
+
+  "enterprise": {
+    "compliance": ["GDPR", "SOC2"],
+    "sla": {
+      "response_time": "<200ms p95",
+      "availability": "99.9%",
+      "throughput": "500 req/sec"
+    },
+    "approvals_required": [
+      {
+        "role": "Security Lead",
+        "approved": false
+      },
+      {
+        "role": "Product Manager",
+        "approved": false
+      }
+    ],
+    "modification_history": [
+      {
+        "timestamp": "2026-02-07T10:00:00Z",
+        "author": "cto-agent",
+        "change_description": "Initial story creation from PRD requirements"
+      }
+    ]
+  },
+
+  "dependencies": {
+    "required_before": ["DB-SCHEMA-001", "AUTH-JWT-SETUP"],
+    "blocks": ["AUTH-003", "AUTH-LOGOUT", "DASHBOARD-001"]
+  },
+
+  "traceability": {
+    "requirements": ["REQ-AUTH-001", "REQ-AUTH-002", "REQ-SECURITY-005"],
+    "epic": "User Authentication",
+    "related_stories": ["AUTH-002-SIGNUP", "AUTH-004-PASSWORD-RESET", "AUTH-005-MFA"]
+  },
+
+  "output": {
+    "files_created": [
+      "src/features/auth/LoginPage.tsx",
+      "src/features/auth/api/login.ts",
+      "src/features/auth/__tests__/LoginPage.test.tsx",
+      "src/features/auth/__tests__/login-api.test.ts"
+    ],
+    "files_modified": [
+      "src/routes/index.ts",
+      "src/types/api-responses.ts"
+    ],
+    "tests_passing": true,
+    "coverage_achieved": 85.5,
+    "pr_description": "Implements user authentication login flow with email/password credentials, JWT token generation, comprehensive error handling, and 85.5% test coverage. Includes rate limiting and security mitigations for common attack vectors."
+  },
+
+  "validation": {
+    "lint_command": "npm run lint",
+    "test_command": "npm run test -- src/features/auth",
+    "build_command": "npm run build",
+    "type_check_command": "npm run type-check",
+    "visual_diff_command": "npm run visual-diff -- LoginPage"
+  },
+
+  "gates_completed": [],
+
+  "estimated_tests": 16,
+  "estimated_tokens": 50000,
+  "actual_tokens": 0,
+
+  "metadata": {
+    "created_at": "2026-02-07T10:00:00Z",
+    "created_by": "cto-agent",
+    "agent_assignment": "be-dev-1"
+  },
+
+  "gate0_research": "docs/research/auth-login-gate0.md",
+  "notes": "This is a high-priority P1 story. Security is critical - ensure all password handling uses bcrypt, implement rate limiting, and follow OWASP authentication best practices. Review with Security Lead before merging."
+}
