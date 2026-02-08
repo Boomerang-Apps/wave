@@ -45,6 +45,13 @@ from .parallel_dev_graph import (
     create_parallel_dev_graph,
     compile_parallel_dev_graph,
 )
+# P3-002: Domain Boundary Enforcer
+from .boundary_enforcer import (
+    BoundaryEnforcer,
+    AccessResult,
+    DomainRule,
+    AccessViolation,
+)
 
 __all__ = [
     # State
@@ -77,4 +84,9 @@ __all__ = [
     # Phase 8: Parallel Dev Graph
     "create_parallel_dev_graph",
     "compile_parallel_dev_graph",
+    # P3-002: Boundary Enforcer
+    "BoundaryEnforcer",
+    "AccessResult",
+    "DomainRule",
+    "AccessViolation",
 ]
