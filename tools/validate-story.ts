@@ -83,7 +83,9 @@ function loadSchema(version: string): any {
     throw new Error(`Unknown schema version: ${version}. Supported: ${Object.keys(SCHEMA_FILES).join(', ')}`);
   }
 
-  const fullPath = path.join(process.cwd(), schemaPath);
+  // Resolve relative to project root (one level up from tools/)
+  const projectRoot = path.resolve(__dirname, '..');
+  const fullPath = path.join(projectRoot, schemaPath);
 
   if (!fs.existsSync(fullPath)) {
     throw new Error(`Schema file not found: ${fullPath}`);
@@ -150,6 +152,9 @@ function validateStory(filePath: string): ValidationResult {
   const version = detectSchemaVersion(story);
   const schema = loadSchema(version);
 
+  // Remove $schema meta-schema reference — AJV 8 doesn't bundle the 2020-12 meta-schema
+  const { $schema: _metaSchema, ...schemaWithoutMeta } = schema;
+
   const ajv = new Ajv({
     allErrors: true,
     verbose: true,
@@ -159,7 +164,7 @@ function validateStory(filePath: string): ValidationResult {
   // Add format validators (uri, date-time, etc.)
   addFormats(ajv);
 
-  const validate = ajv.compile(schema);
+  const validate = ajv.compile(schemaWithoutMeta);
   const valid = validate(story);
 
   const errors: ValidationError[] = [];

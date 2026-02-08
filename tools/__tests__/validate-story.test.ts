@@ -109,7 +109,7 @@ describe('validate-story', () => {
           i_want: 'directory validation',
           so_that: 'all stories are checked',
         },
-        acceptance_criteria: [{ id: 'AC-01', description: 'Test' }],
+        acceptance_criteria: [{ id: 'AC-01', description: 'Directory validation processes all files' }],
         files: { create: [] },
         safety: { stop_conditions: ['test'] },
       };
@@ -280,7 +280,7 @@ describe('validate-story', () => {
           i_want: 'exit code validation',
           so_that: 'CI/CD can detect failures',
         },
-        acceptance_criteria: [{ id: 'AC-01', description: 'Test' }],
+        acceptance_criteria: [{ id: 'AC-01', description: 'Exit code reflects validation result' }],
         files: { create: [] },
         safety: { stop_conditions: ['test'] },
       };

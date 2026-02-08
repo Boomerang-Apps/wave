@@ -75,10 +75,10 @@ describe('migrate-stories-v42-to-v43', () => {
         status: 'pending',
         objective: {
           as_a: 'Developer',
-          i_want: 'migration',
-          so_that: 'it works',
+          i_want: 'to migrate V4.1 stories forward',
+          so_that: 'backward compatibility is maintained',
         },
-        acceptance_criteria: [{ id: 'AC-01', description: 'Test' }],
+        acceptance_criteria: [{ id: 'AC-01', description: 'V4.1 backward compatibility test case' }],
         files: { create: [] },
         safety: { stop_conditions: ['test'] },
       };
@@ -407,8 +407,8 @@ describe('migrate-stories-v42-to-v43', () => {
         wave_number: 1,
         priority: 'P1',
         status: 'pending',
-        objective: { as_a: 'Dev', i_want: 'batch', so_that: 'multiple stories migrate' },
-        acceptance_criteria: [{ id: 'AC-01', description: 'Test' }],
+        objective: { as_a: 'Dev', i_want: 'batch migration support', so_that: 'multiple stories migrate at once' },
+        acceptance_criteria: [{ id: 'AC-01', description: 'Batch migration processes files correctly' }],
         files: { create: [] },
         safety: { stop_conditions: ['test'] },
       };
@@ -432,8 +432,8 @@ describe('migrate-stories-v42-to-v43', () => {
         wave_number: 1,
         priority: 'P1',
         status: 'pending',
-        objective: { as_a: 'Dev', i_want: 'dry run', so_that: 'no files change' },
-        acceptance_criteria: [{ id: 'AC-01', description: 'Test' }],
+        objective: { as_a: 'Dev', i_want: 'dry run preview mode', so_that: 'no files are modified' },
+        acceptance_criteria: [{ id: 'AC-01', description: 'Dry run produces no file output' }],
         files: { create: [] },
         safety: { stop_conditions: ['test'] },
       };
@@ -465,7 +465,7 @@ describe('migrate-stories-v42-to-v43', () => {
         priority: 'P1',
         status: 'pending',
         objective: { as_a: 'Dev', i_want: 'real migration', so_that: 'files are created' },
-        acceptance_criteria: [{ id: 'AC-01', description: 'Test' }],
+        acceptance_criteria: [{ id: 'AC-01', description: 'Real migration creates output files' }],
         files: { create: [] },
         safety: { stop_conditions: ['test'] },
       };
