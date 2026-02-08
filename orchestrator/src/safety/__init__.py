@@ -30,7 +30,13 @@ from .emergency_stop import (
     require_no_emergency_stop,
     EMERGENCY_STOP_FILE,
     EMERGENCY_STOP_CHANNEL,
+    StopTrigger,
+    StopReason,
+    StopEvent,
 )
+
+from .stop_broadcaster import StopBroadcaster, AgentHandle
+from .state_preserver import StatePreserver
 
 __all__ = [
     # Constitutional
@@ -56,4 +62,11 @@ __all__ = [
     "require_no_emergency_stop",
     "EMERGENCY_STOP_FILE",
     "EMERGENCY_STOP_CHANNEL",
+    # P5-003: Enhanced stop types
+    "StopTrigger",
+    "StopReason",
+    "StopEvent",
+    "StopBroadcaster",
+    "AgentHandle",
+    "StatePreserver",
 ]
