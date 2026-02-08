@@ -58,6 +58,15 @@ from .native_parallel_graph import (
     compile_native_parallel_graph,
 )
 # Phase 10: Cross-Domain Consensus
+# P3-003: Parallel Story Executor
+from .story_executor import (
+    ParallelStoryExecutor,
+    StoryTask,
+    StoryResult,
+    ExecutionPlan,
+    ExecutionStatus,
+)
+# Phase 10: Cross-Domain Consensus
 from .cross_domain_consensus import (
     ConsensusResult,
     cross_domain_consensus,
@@ -106,6 +115,12 @@ __all__ = [
     # Phase 7: Native Parallel Graph
     "create_native_parallel_graph",
     "compile_native_parallel_graph",
+    # P3-003: Story Executor
+    "ParallelStoryExecutor",
+    "StoryTask",
+    "StoryResult",
+    "ExecutionPlan",
+    "ExecutionStatus",
     # Phase 10: Cross-Domain Consensus
     "ConsensusResult",
     "cross_domain_consensus",
