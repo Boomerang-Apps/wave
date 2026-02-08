@@ -11,14 +11,15 @@ Trigger Methods:
 All agents must check for emergency stop before each task.
 """
 
+import enum
 import os
 import sys
 import json
 import time
 import threading
 from pathlib import Path
-from datetime import datetime
-from typing import Optional, Callable, Dict, Any
+from datetime import datetime, timezone
+from typing import List, Optional, Callable, Dict, Any
 from dataclasses import dataclass, field
 
 # Redis client
@@ -77,6 +78,39 @@ class EmergencyStopEvent:
             "triggered_by": self.triggered_by,
             "cleared_at": self.cleared_at,
         }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# P5-003: ENHANCED STOP TYPES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class StopTrigger(enum.Enum):
+    """Method used to trigger the stop (P5-003 AC-02)."""
+    CLI = "cli"
+    API = "api"
+    SLACK = "slack"
+    WEB = "web"
+    FILE = "file"
+
+
+class StopReason(enum.Enum):
+    """Standard stop reasons."""
+    COST_OVERRUN = "cost_overrun"
+    AGENT_FAILURE = "agent_failure"
+    SECURITY = "security"
+    TIMEOUT = "timeout"
+    MANUAL = "manual"
+
+
+@dataclass
+class StopEvent:
+    """Enhanced stop event record (P5-003 AC-06)."""
+    reason: str
+    triggered_by: str
+    trigger_type: StopTrigger
+    timestamp: datetime = field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -386,6 +420,68 @@ class EmergencyStop:
         }
 
     # ═══════════════════════════════════════════════════════════════════════════
+    # P5-003: ENHANCED INSTANCE METHODS
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    @property
+    def is_stopped(self) -> bool:
+        """Check if emergency stop is active (P5-003 AC-01)."""
+        return EmergencyStop._active
+
+    @property
+    def should_continue(self) -> bool:
+        """Check if operations should continue (inverse of is_stopped)."""
+        return not EmergencyStop._active
+
+    @property
+    def last_event(self) -> Optional[StopEvent]:
+        """Get the most recent stop event from instance history."""
+        if not hasattr(self, "_event_history") or not self._event_history:
+            return None
+        return self._event_history[-1]
+
+    @property
+    def event_history(self) -> List[StopEvent]:
+        """Full event history for this instance."""
+        if not hasattr(self, "_event_history"):
+            self._event_history: List[StopEvent] = []
+        return list(self._event_history)
+
+    def trigger_enhanced(
+        self,
+        reason: str,
+        triggered_by: str,
+        trigger_type: StopTrigger,
+    ) -> None:
+        """
+        Enhanced trigger with StopTrigger type and user tracking (P5-003).
+
+        Args:
+            reason: Why the stop was triggered.
+            triggered_by: Who triggered it.
+            trigger_type: How it was triggered.
+        """
+        if not hasattr(self, "_event_history"):
+            self._event_history: List[StopEvent] = []
+
+        event = StopEvent(
+            reason=reason,
+            triggered_by=triggered_by,
+            trigger_type=trigger_type,
+        )
+        self._event_history.append(event)
+        self._activate(reason, trigger_type.value)
+
+    def reset(self) -> None:
+        """
+        Reset stop flag for recovery (P5-003 AC-07).
+        Event history is preserved.
+        """
+        with EmergencyStop._lock:
+            EmergencyStop._active = False
+            EmergencyStop._reason = ""
+
+    # ═══════════════════════════════════════════════════════════════════════════
     # CALLBACK METHODS
     # ═══════════════════════════════════════════════════════════════════════════
 
@@ -473,4 +569,8 @@ __all__ = [
     "check_emergency_stop",
     "require_no_emergency_stop",
     "get_redis_client",
+    # P5-003 additions
+    "StopTrigger",
+    "StopReason",
+    "StopEvent",
 ]
