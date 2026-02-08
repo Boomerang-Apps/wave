@@ -32,6 +32,14 @@ from src.task_queue import (
     get_task_queue
 )
 
+# Signal publisher (P2-003)
+try:
+    from src.pubsub.redis_client import RedisClient
+    from src.agents.signal_publisher import SignalPublisherMixin
+    SIGNAL_PUBLISHER_AVAILABLE = True
+except ImportError:
+    SIGNAL_PUBLISHER_AVAILABLE = False
+
 # LangSmith tracing
 try:
     from langsmith import traceable
@@ -212,6 +220,22 @@ class AgentWorker(ABC):
         # LLM model for this agent (domain-specific)
         self.llm_model = self._get_llm_model()
 
+        # Signal publisher (P2-003) — non-blocking, graceful on failure
+        self.signals = None
+        if SIGNAL_PUBLISHER_AVAILABLE:
+            try:
+                redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+                redis_client = RedisClient(url=redis_url)
+                project = os.getenv("WAVE_PROJECT", "wave")
+                self.signals = SignalPublisherMixin(
+                    redis_client=redis_client,
+                    project=project,
+                    agent_id=self.full_id,
+                    domain=self.domain,
+                )
+            except Exception as e:
+                self.log(f"Signal publisher unavailable: {e}", "warning")
+
     def _setup_logging(self) -> logging.Logger:
         """Configure logging with domain-specific format for Dozzle"""
         logger = logging.getLogger(f"wave.{self.domain}.{self.agent_id}")
@@ -332,9 +356,14 @@ class AgentWorker(ABC):
         self.log(f"Agent ID: {self.agent_id}")
         self.log(f"Queue: {self.get_queue().value}")
         self.log(f"LangSmith: {'enabled' if LANGSMITH_AVAILABLE else 'disabled'}")
+        self.log(f"Signals: {'enabled' if self.signals else 'disabled'}")
         self.log(f"Safety Threshold: {self.safety.block_threshold}")
         self.log(f"{'='*60}")
         self.log("Waiting for tasks...")
+
+        # Publish agent ready signal (P2-003)
+        if self.signals:
+            self.signals.signal_ready()
 
         while self.running:
             try:
@@ -353,6 +382,11 @@ class AgentWorker(ABC):
                 # Mark as in progress
                 self.queue.mark_in_progress(task.task_id, self.full_id)
                 self.notify(f"processing {task.action}")
+
+                # Publish busy + start heartbeat (P2-003)
+                if self.signals:
+                    self.signals.signal_busy(story_id=task.story_id)
+                    self.signals.start_heartbeat(story_id=task.story_id)
 
                 # Process with timing
                 start_time = time.time()
@@ -423,12 +457,25 @@ class AgentWorker(ABC):
                 self.tasks_processed += 1
                 self.current_task = None
 
+                # Stop heartbeat, signal ready again (P2-003)
+                if self.signals:
+                    self.signals.stop_heartbeat()
+                    self.signals.signal_ready()
+
             except KeyboardInterrupt:
                 self.log("Keyboard interrupt received")
                 self.running = False
 
             except Exception as e:
                 self.log(f"Error processing task: {e}", "error")
+
+                # Publish error signal (P2-003)
+                if self.signals:
+                    self.signals.stop_heartbeat()
+                    self.signals.signal_error(
+                        error=str(e),
+                        story_id=self.current_task.story_id if self.current_task else "unknown",
+                    )
 
                 if self.current_task:
                     # Report failure
