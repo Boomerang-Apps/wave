@@ -25,11 +25,11 @@ const logger = createLogger({ prefix: '[SlackNotifier]' });
 class SlackNotifier {
   constructor(config = {}) {
     // Web API (preferred - enables threading)
-    this.botToken = config.botToken || process.env.SLACK_BOT_TOKEN;
+    this.botToken = 'botToken' in config ? config.botToken : process.env.SLACK_BOT_TOKEN;
     this.webClient = this.botToken ? new WebClient(this.botToken) : null;
 
     // Legacy webhook (fallback - no threading support)
-    this.webhookUrl = config.webhookUrl || process.env.SLACK_WEBHOOK_URL;
+    this.webhookUrl = 'webhookUrl' in config ? config.webhookUrl : process.env.SLACK_WEBHOOK_URL;
 
     // Enabled if either Web API or webhook is configured
     this.enabled = config.enabled !== false && (!!this.botToken || !!this.webhookUrl);

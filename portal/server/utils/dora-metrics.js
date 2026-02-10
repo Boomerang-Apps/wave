@@ -92,7 +92,7 @@ class DORAMetricsTracker {
       lead_time_seconds: leadTimeSeconds,
       gates_traversed: data.gatesTraversed || [],
       retries: data.retries || 0,
-      timestamp: new Date().toISOString()
+      timestamp: data.timestamp || deployedAt.toISOString()
     });
   }
 
@@ -100,6 +100,7 @@ class DORAMetricsTracker {
    * Record a failure event
    */
   recordFailure(data) {
+    const timestamp = data.timestamp || new Date().toISOString();
     return this.recordEvent({
       type: 'failure',
       failure_id: `failure-${Date.now()}`,
@@ -109,8 +110,8 @@ class DORAMetricsTracker {
       gate: data.gate,
       error: data.error,
       rollback_required: data.rollbackRequired || false,
-      started_at: data.startedAt || new Date().toISOString(),
-      timestamp: new Date().toISOString()
+      started_at: data.startedAt || timestamp,
+      timestamp: timestamp
     });
   }
 
@@ -131,7 +132,7 @@ class DORAMetricsTracker {
       recovered_at: recoveredAt.toISOString(),
       mttr_seconds: mttrSeconds,
       resolution: data.resolution,
-      timestamp: new Date().toISOString()
+      timestamp: data.timestamp || recoveredAt.toISOString()
     });
   }
 

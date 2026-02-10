@@ -211,6 +211,7 @@ describe('SlackNotifier', () => {
 
     it('should report webhook mode when no bot token', () => {
       const webhookNotifier = new SlackNotifier({
+        botToken: undefined,
         webhookUrl: 'https://hooks.slack.com/test',
         enabled: true
       });
@@ -222,7 +223,11 @@ describe('SlackNotifier', () => {
     });
 
     it('should report disabled mode', () => {
-      const disabled = new SlackNotifier({ enabled: false });
+      const disabled = new SlackNotifier({
+        botToken: undefined,
+        webhookUrl: undefined,
+        enabled: false
+      });
       const status = disabled.getStatus();
 
       expect(status.enabled).toBe(false);
