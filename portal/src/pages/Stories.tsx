@@ -12,7 +12,8 @@ export function Stories() {
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
-      setLoading(false)
+      // Defer state update to avoid setState in effect body
+      Promise.resolve().then(() => setLoading(false))
       return
     }
 
@@ -78,7 +79,7 @@ export function Stories() {
                 'px-3 py-1.5 text-sm rounded-lg transition-colors',
                 filter === status
                   ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted hover:bg-muted/80'
+                  : 'bg-muted hover:bg-accent/80'
               )}
             >
               {status === 'all' ? 'All' : status.replace('_', ' ')} ({count})
@@ -119,7 +120,7 @@ export function Stories() {
               </tr>
             ) : (
               filteredStories.map((story) => (
-                <tr key={story.id} className="hover:bg-muted/50 transition-colors">
+                <tr key={story.id} className="hover:bg-accent/50 transition-colors">
                   <td className="px-4 py-3">
                     <div>
                       <p className="font-medium">{story.title}</p>

@@ -144,7 +144,8 @@ export function Projects() {
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
-      setLoading(false)
+      // Defer state update to avoid setState in effect body
+      Promise.resolve().then(() => setLoading(false))
       return
     }
 

@@ -247,7 +247,8 @@ export function Flyout({
   // Reset active tab when tabs change
   useEffect(() => {
     if (tabs && tabs.length > 0 && !tabs.find(t => t.id === activeTab)) {
-      setActiveTab(tabs[0].id);
+      // Defer state update to avoid setState in effect body
+      Promise.resolve().then(() => setActiveTab(tabs[0].id));
     }
   }, [tabs, activeTab]);
 

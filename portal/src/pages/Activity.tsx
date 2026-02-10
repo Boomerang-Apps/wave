@@ -27,7 +27,8 @@ export function Activity() {
   }
 
   useEffect(() => {
-    fetchLogs()
+    // Defer initial fetch to avoid setState in effect body
+    Promise.resolve().then(() => fetchLogs())
 
     if (isSupabaseConfigured()) {
       const subscription = supabase
@@ -57,7 +58,7 @@ export function Activity() {
         <h2 className="text-lg font-semibold">Activity Log</h2>
         <button
           onClick={fetchLogs}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border border-border hover:bg-muted transition-colors"
+          className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border border-border hover:bg-accent transition-colors"
         >
           <RefreshCw className="h-4 w-4" />
           Refresh

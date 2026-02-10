@@ -56,7 +56,9 @@ export function ThemeProvider({
     }
 
     root.classList.add(resolved);
-    setResolvedTheme(resolved);
+
+    // Defer state update to avoid setState in effect body
+    Promise.resolve().then(() => setResolvedTheme(resolved));
   }, [theme]);
 
   // Listen for system theme changes

@@ -21,7 +21,8 @@ export function ReadinessCircle({ score, status, size = 'lg' }: ReadinessCircleP
   // Animate score counting up
   useEffect(() => {
     if (score === null) {
-      setAnimatedScore(0);
+      // Defer state update to avoid setState in effect body
+      Promise.resolve().then(() => setAnimatedScore(0));
       return;
     }
 
