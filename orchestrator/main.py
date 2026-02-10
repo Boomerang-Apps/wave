@@ -6,20 +6,30 @@ Endpoints:
 - GET /health - Health check
 - POST /runs - Start a new run
 - GET /runs/{run_id} - Get run status
+- POST /sessions/{session_id}/recover - Trigger session recovery
+- GET /sessions/{session_id}/recovery-status - Get recovery status
+- GET /sessions/{session_id}/checkpoints - List session checkpoints
+
+Story: WAVE-P1-003 - Session recovery integration
 """
 
 import uuid
 from typing import Dict, Optional, List, Any
 from datetime import datetime, timezone
+from uuid import UUID
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from config import settings
-from graph import wave_graph
+from graph import wave_graph, create_wave_graph_with_recovery
 from state import create_initial_state, WAVEState
 from notifications import notify_run_start, notify_run_complete
+from src.db import SessionRepository, CheckpointRepository
+from src.recovery import RecoveryManager, RecoveryStrategy
 
 
 # ===========================================
@@ -57,6 +67,61 @@ class HealthResponse(BaseModel):
     timestamp: str
 
 
+class RecoverRequest(BaseModel):
+    """Request to recover a session"""
+    strategy: str = Field(
+        default="resume_from_last",
+        description="Recovery strategy: resume_from_last, resume_from_gate, restart, skip"
+    )
+    target_gate: Optional[str] = Field(
+        None,
+        description="Target gate for resume_from_gate strategy"
+    )
+
+
+class RecoveryStatusResponse(BaseModel):
+    """Recovery status response"""
+    session_id: str
+    session_status: str
+    total_stories: int
+    by_status: Dict[str, int]
+    recoverable_stories: List[Dict[str, Any]]
+    completed_stories: List[str]
+
+
+class CheckpointResponse(BaseModel):
+    """Checkpoint information response"""
+    checkpoint_id: str
+    checkpoint_type: str
+    checkpoint_name: str
+    story_id: Optional[str]
+    gate: Optional[str]
+    created_at: str
+    can_resume: bool
+
+
+# ===========================================
+# Database Setup
+# ===========================================
+
+# Database engine and session maker
+# TODO: Move database URL to settings
+db_engine = create_engine(
+    "postgresql://postgres:postgres@localhost:5432/wave",
+    echo=False
+)
+SessionLocal = sessionmaker(bind=db_engine, autocommit=False, autoflush=False)
+
+
+def get_db():
+    """Get database session."""
+    db = SessionLocal()
+    try:
+        return db
+    finally:
+        pass  # Don't close here, let caller manage
+
+
 # ===========================================
 # In-memory run storage (skeleton)
 # ===========================================
@@ -87,6 +152,67 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ===========================================
+# Startup Event - Auto-Recovery Check
+# ===========================================
+
+@app.on_event("startup")
+async def check_interrupted_sessions():
+    """
+    Check for interrupted sessions on startup and log recovery options.
+
+    Story: WAVE-P1-003 - Session recovery on startup
+    """
+    db = get_db()
+    try:
+        session_repo = SessionRepository(db)
+        recovery_manager = RecoveryManager(db)
+
+        # Find active sessions (in_progress or pending)
+        active_sessions = session_repo.list_active(limit=100)
+
+        if not active_sessions:
+            print("✅ No interrupted sessions found")
+            return
+
+        print(f"\n⚠️  Found {len(active_sessions)} active session(s)")
+        print("=" * 60)
+
+        for session in active_sessions:
+            status = recovery_manager.get_recovery_status(session.id)
+
+            recoverable_count = len(status["recoverable_stories"])
+
+            if recoverable_count > 0:
+                print(f"\n📋 Session: {session.project_name} (Wave {session.wave_number})")
+                print(f"   ID: {session.id}")
+                print(f"   Status: {session.status}")
+                print(f"   Recoverable stories: {recoverable_count}")
+
+                for story_info in status["recoverable_stories"][:3]:  # Show first 3
+                    story_id = story_info["story_id"]
+                    story_status = story_info["current_status"]
+                    last_cp = story_info.get("last_checkpoint")
+
+                    print(f"   - {story_id}: {story_status}", end="")
+                    if last_cp:
+                        print(f" (checkpoint: {last_cp['type']} at {last_cp.get('gate', 'N/A')})")
+                    else:
+                        print()
+
+                if recoverable_count > 3:
+                    print(f"   ... and {recoverable_count - 3} more")
+
+                print(f"\n   🔄 To recover: POST /sessions/{session.id}/recover")
+
+        print("\n" + "=" * 60)
+
+    except Exception as e:
+        print(f"⚠️  Error checking interrupted sessions: {e}")
+    finally:
+        db.close()
 
 
 # ===========================================
@@ -186,6 +312,127 @@ async def get_run(run_id: str):
         actions_count=len(run_info.get("actions", [])),
         created_at=run_info["created_at"]
     )
+
+
+# ===========================================
+# Recovery Endpoints (WAVE-P1-003)
+# ===========================================
+
+@app.post("/sessions/{session_id}/recover")
+async def recover_session(session_id: str, request: RecoverRequest):
+    """
+    Trigger session recovery.
+
+    Args:
+        session_id: UUID of the wave session
+        request: Recovery request with strategy
+
+    Returns:
+        Recovery result with recovered stories
+    """
+    db = get_db()
+    try:
+        session_uuid = UUID(session_id)
+        recovery_manager = RecoveryManager(db)
+
+        # Validate strategy
+        try:
+            strategy = RecoveryStrategy(request.strategy)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid strategy: {request.strategy}"
+            )
+
+        # Perform recovery
+        result = recovery_manager.recover_session(
+            session_uuid,
+            strategy
+        )
+
+        return result
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Recovery failed: {str(e)}")
+    finally:
+        db.close()
+
+
+@app.get("/sessions/{session_id}/recovery-status", response_model=RecoveryStatusResponse)
+async def get_recovery_status(session_id: str):
+    """
+    Get recovery status for a session.
+
+    Args:
+        session_id: UUID of the wave session
+
+    Returns:
+        Recovery status with recoverable stories
+    """
+    db = get_db()
+    try:
+        session_uuid = UUID(session_id)
+        recovery_manager = RecoveryManager(db)
+
+        status = recovery_manager.get_recovery_status(session_uuid)
+
+        return RecoveryStatusResponse(**status)
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get status: {str(e)}")
+    finally:
+        db.close()
+
+
+@app.get("/sessions/{session_id}/checkpoints")
+async def list_checkpoints(session_id: str, limit: int = 50):
+    """
+    List checkpoints for a session.
+
+    Args:
+        session_id: UUID of the wave session
+        limit: Maximum number of checkpoints to return
+
+    Returns:
+        List of checkpoints
+    """
+    db = get_db()
+    try:
+        session_uuid = UUID(session_id)
+        checkpoint_repo = CheckpointRepository(db)
+
+        checkpoints = checkpoint_repo.list_by_session(
+            session_uuid,
+            limit=limit
+        )
+
+        return {
+            "session_id": session_id,
+            "total": len(checkpoints),
+            "checkpoints": [
+                {
+                    "checkpoint_id": str(cp.id),
+                    "checkpoint_type": cp.checkpoint_type,
+                    "checkpoint_name": cp.checkpoint_name,
+                    "story_id": cp.story_id,
+                    "gate": cp.gate,
+                    "created_at": cp.created_at.isoformat(),
+                    "state": cp.state,
+                }
+                for cp in checkpoints
+            ]
+        }
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list checkpoints: {str(e)}")
+    finally:
+        db.close()
 
 
 # ===========================================
