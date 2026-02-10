@@ -1,0 +1,32 @@
+{
+  "signal_type": "story_complete",
+  "story_id": "SCHEMA-004",
+  "wave": 0,
+  "title": "Create Schema Validation Script",
+  "agent": "cto-agent",
+  "status": "complete",
+  "gates_passed": [0, 1, 2, 3, 4, 5, 6, 7],
+  "commit_sha": "bf448e8",
+  "timestamp": "2026-02-10T14:23:00Z",
+  "files_created": [],
+  "files_modified": [
+    "tools/validate-story.ts"
+  ],
+  "acceptance_criteria_met": [
+    "AC-01: Script validates single story file",
+    "AC-02: Script validates directory of stories",
+    "AC-03: Auto-detects schema version from story",
+    "AC-04: Error messages include line numbers",
+    "AC-05: Suggestions provided for common errors",
+    "AC-06: Exit code indicates pass/fail"
+  ],
+  "deliverables": {
+    "script": "tools/validate-story.ts",
+    "tests": "tools/__tests__/validate-story.test.ts",
+    "test_count": 27,
+    "all_tests_passing": true,
+    "esm_compatible": true,
+    "supported_versions": ["4.1", "4.2", "4.3"]
+  },
+  "notes": "Script already existed but had ESM compatibility issues. Fixed require.main check and __dirname for ESM modules. All 27 tests passing. Script now works correctly with npm run validate and provides detailed error messages with line numbers and suggestions."
+}

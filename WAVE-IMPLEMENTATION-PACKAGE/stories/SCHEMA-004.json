@@ -1,0 +1,135 @@
+{
+  "$schema": "../../planning/schemas/story-schema-v4.2.json",
+  "schema_version": "4.2",
+  "story_id": "SCHEMA-004",
+  "title": "Create Schema Validation Script",
+  "type": "tooling",
+  "domain": "shared",
+  "agent": "be-dev",
+  "wave_number": 0,
+  "priority": "P0",
+  "story_points": 3,
+  "status": "complete",
+  "description": "Create a validation script that checks AI Stories against the schema. Supports V4.1, V4.2, and V4.3 schemas. Provides clear error messages with line numbers and suggestions for fixes.",
+
+  "objective": {
+    "as_a": "Story Author",
+    "i_want": "to validate my stories against the schema",
+    "so_that": "I catch errors before they cause agent failures"
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "description": "Script validates single story file",
+      "ears_format": "WHEN story file provided THEN validation result returned",
+      "test_approach": "Run on valid and invalid stories",
+      "status": "complete"
+    },
+    {
+      "id": "AC-02",
+      "description": "Script validates directory of stories",
+      "ears_format": "WHEN directory provided THEN all .json files validated",
+      "test_approach": "Run on directory, verify all files checked",
+      "status": "complete"
+    },
+    {
+      "id": "AC-03",
+      "description": "Auto-detects schema version from story",
+      "ears_format": "WHEN story has schema_version field THEN correct schema used",
+      "test_approach": "Validate V4.1, V4.2, V4.3 stories, verify correct schema used",
+      "status": "complete"
+    },
+    {
+      "id": "AC-04",
+      "description": "Error messages include line numbers",
+      "ears_format": "WHEN validation fails THEN error shows line number of issue",
+      "test_approach": "Create story with error, verify line number in message",
+      "status": "complete"
+    },
+    {
+      "id": "AC-05",
+      "description": "Suggestions provided for common errors",
+      "ears_format": "WHEN common error found THEN suggestion for fix included",
+      "test_approach": "Trigger common errors, verify suggestions",
+      "status": "complete"
+    },
+    {
+      "id": "AC-06",
+      "description": "Exit code indicates pass/fail",
+      "ears_format": "WHEN validation complete THEN exit 0 for pass, 1 for fail",
+      "test_approach": "Check exit codes for valid and invalid stories",
+      "status": "complete"
+    }
+  ],
+
+  "files": {
+    "create": [
+      "tools/validate-story.ts",
+      "tools/__tests__/validate-story.test.ts"
+    ],
+    "modify": [],
+    "forbidden": []
+  },
+
+  "technical_requirements": {
+    "reuse_patterns": {
+      "ajv": "Use AJV for JSON Schema validation",
+      "error_formatting": "Custom error formatter for clarity"
+    }
+  },
+
+  "tdd": {
+    "test_framework": "vitest",
+    "test_files": [
+      "tools/__tests__/validate-story.test.ts"
+    ],
+    "coverage_target": 90,
+    "test_categories": [
+      {
+        "name": "Validation",
+        "count": 6,
+        "examples": [
+          "should pass valid stories",
+          "should fail invalid stories",
+          "should auto-detect schema version",
+          "should show line numbers",
+          "should suggest fixes",
+          "should return correct exit codes"
+        ]
+      }
+    ],
+    "mocking_strategy": {
+      "filesystem": "Real filesystem"
+    }
+  },
+
+  "safety": {
+    "stop_conditions": [],
+    "escalation_triggers": [],
+    "rollback_plan": "N/A - read-only tool"
+  },
+
+  "dependencies": {
+    "required_before": ["SCHEMA-001"],
+    "blocks": []
+  },
+
+  "traceability": {
+    "requirements": ["SCHEMA-V43-004"],
+    "epic": "AI Stories Schema Improvement",
+    "related_stories": ["SCHEMA-001"]
+  },
+
+  "gates_completed": [0, 1, 2, 3, 4, 5, 6, 7],
+  "estimated_tests": 6,
+  "estimated_tokens": 12000,
+
+  "metadata": {
+    "created_at": "2026-02-07T00:00:00Z",
+    "created_by": "cto-analysis",
+    "agent_assignment": "be-dev-1"
+  },
+
+  "notes": "This tool should be used in CI/CD to catch schema errors before merge. Consider pre-commit hook integration."
+}
