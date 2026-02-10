@@ -18,6 +18,11 @@ import addFormats from 'ajv-formats';
 import fs from 'fs';
 import path from 'path';
 import { glob } from 'glob';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Schema version to file path mapping
 const SCHEMA_FILES: Record<string, string> = {
@@ -277,8 +282,10 @@ async function main() {
 // Export for testing
 export { validateStory, detectSchemaVersion, loadSchema, getSuggestion, getLineNumber };
 
-// Run if executed directly
-if (require.main === module) {
+// Run if executed directly (ESM compatible)
+const isMain = process.argv[1] === __filename;
+
+if (isMain) {
   main().catch(err => {
     console.error('Fatal error:', err.message);
     process.exit(1);
