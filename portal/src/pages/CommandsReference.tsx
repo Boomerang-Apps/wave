@@ -1981,10 +1981,19 @@ const categoryLabels: Record<CommandCategory, string> = {
 
 export function CommandsReference() {
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<CommandCategory | 'all'>('all')
+  const [selectedCategory, setSelectedCategory] = useState<CommandCategory | 'all' | 'important'>('all')
   const [expandedCommands, setExpandedCommands] = useState<Set<string>>(new Set())
   const [copiedCommand, setCopiedCommand] = useState<string | null>(null)
   const [copiedExample, setCopiedExample] = useState<string | null>(null)
+
+  // Important commands for essential workflows
+  const importantCommandNames = [
+    '/wave-status', '/status', '/gate-0', '/branch',
+    '/tdd', '/test', '/commit', '/gate-1', '/gate-2', '/gate-3',
+    '/gate-4', '/gate-5', '/gate-6', '/gate-7',
+    '/pr', '/done', '/go', '/end',
+    '/emergency-stop', '/escalate', '/rollback'
+  ]
 
   const filteredCommands = COMMANDS.filter((cmd) => {
     const matchesSearch =
@@ -1992,7 +2001,10 @@ export function CommandsReference() {
       cmd.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       cmd.aliases?.some(alias => alias.toLowerCase().includes(searchQuery.toLowerCase()))
 
-    const matchesCategory = selectedCategory === 'all' || cmd.category === selectedCategory
+    const matchesCategory =
+      selectedCategory === 'all' ||
+      (selectedCategory === 'important' && importantCommandNames.includes(cmd.name)) ||
+      cmd.category === selectedCategory
 
     return matchesSearch && matchesCategory
   })
@@ -2060,6 +2072,18 @@ export function CommandsReference() {
             >
               All Commands ({COMMANDS.length})
             </button>
+            <button
+              onClick={() => setSelectedCategory('important')}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                selectedCategory === 'important'
+                  ? "bg-amber-500 text-white"
+                  : "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:text-amber-300 border border-amber-500/30"
+              )}
+            >
+              <Zap className="h-3.5 w-3.5" />
+              ⭐ Important Commands (21)
+            </button>
             {categories.sort().map((category) => {
               const Icon = categoryIcons[category]
               const count = COMMANDS.filter(cmd => cmd.category === category).length
@@ -2082,6 +2106,78 @@ export function CommandsReference() {
           </div>
         </div>
 
+        {/* Important Commands Workflow Guide */}
+        {selectedCategory === 'important' && (
+          <div className="mb-6 bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-lg p-4">
+            <div className="flex items-start gap-3 mb-3">
+              <Zap className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="text-amber-400 font-semibold mb-1">Essential WAVE Workflow Commands</h3>
+                <p className="text-sm text-[#a3a3a3] mb-3">
+                  CTO-recommended commands organized by workflow stage. Run gates in order (0→1→2→3→4→5→6→7) - never skip!
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              {/* Before Starting */}
+              <div className="bg-[#1e1e1e] border border-amber-500/20 rounded p-3">
+                <h4 className="text-amber-400 font-semibold mb-2 flex items-center gap-1.5">
+                  <span className="inline-block w-5 h-5 rounded-full bg-amber-500/20 text-center leading-5">🚀</span>
+                  Before Starting
+                </h4>
+                <div className="space-y-1 text-[#a3a3a3] font-mono text-[10px]">
+                  <div>/wave-status</div>
+                  <div>/status</div>
+                  <div>/gate-0</div>
+                  <div>/branch create</div>
+                </div>
+              </div>
+
+              {/* During Development */}
+              <div className="bg-[#1e1e1e] border border-amber-500/20 rounded p-3">
+                <h4 className="text-amber-400 font-semibold mb-2 flex items-center gap-1.5">
+                  <span className="inline-block w-5 h-5 rounded-full bg-amber-500/20 text-center leading-5">💻</span>
+                  During Development
+                </h4>
+                <div className="space-y-1 text-[#a3a3a3] font-mono text-[10px]">
+                  <div>/tdd</div>
+                  <div>/test unit</div>
+                  <div>/commit</div>
+                  <div>/gate-1 → /gate-2 → /gate-3</div>
+                </div>
+              </div>
+
+              {/* When Finishing */}
+              <div className="bg-[#1e1e1e] border border-amber-500/20 rounded p-3">
+                <h4 className="text-amber-400 font-semibold mb-2 flex items-center gap-1.5">
+                  <span className="inline-block w-5 h-5 rounded-full bg-amber-500/20 text-center leading-5">✅</span>
+                  When Finishing
+                </h4>
+                <div className="space-y-1 text-[#a3a3a3] font-mono text-[10px]">
+                  <div>/test (full suite)</div>
+                  <div>/gate-4 → /gate-5 → /gate-6</div>
+                  <div>/gate-7 (merge approval)</div>
+                  <div>/pr create & /done</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Emergency Commands Footer */}
+            <div className="mt-3 pt-3 border-t border-amber-500/20 flex items-center justify-between text-[10px]">
+              <div className="text-[#a3a3a3]">
+                <span className="text-red-400 font-semibold">🚨 Emergency:</span>
+                <code className="ml-2 text-red-400">/emergency-stop</code>
+                <code className="ml-2 text-red-400">/escalate</code>
+                <code className="ml-2 text-red-400">/rollback</code>
+              </div>
+              <div className="text-[#666]">
+                <span className="text-amber-400">⚠️</span> Never skip gates - Quality over speed
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Results count */}
         <div className="mb-4 text-sm text-[#666]">
           {filteredCommands.length} {filteredCommands.length === 1 ? 'command' : 'commands'} found
@@ -2101,7 +2197,7 @@ export function CommandsReference() {
                 {/* Command header */}
                 <button
                   onClick={() => toggleCommand(cmd.name)}
-                  className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-[#252525] transition-colors"
+                  className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-[#2e2e2e] transition-colors"
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <Icon className="h-5 w-5 text-[#5e6ad2] flex-shrink-0" />

@@ -68,7 +68,7 @@ export function Architecture() {
         {activeTab === 'overview' && (
           <>
             {/* Hero */}
-            <div className="bg-gradient-to-r from-background to-card rounded-2xl p-8 text-white">
+            <div className="bg-[#1a1a1a] rounded-2xl p-8 text-white">
               <div className="max-w-3xl">
                 <h2 className="text-3xl font-bold mb-4">WAVE Framework</h2>
                 <p className="text-muted-foreground text-lg leading-relaxed mb-6">
@@ -178,7 +178,7 @@ export function Architecture() {
             </div>
 
             {/* Agent Hierarchy */}
-            <div className="bg-gradient-to-b from-background to-card rounded-2xl p-8 text-white mb-6">
+            <div className="bg-[#1a1a1a] rounded-2xl p-8 text-white mb-6">
               <h4 className="text-lg font-semibold mb-6 text-muted-foreground">Agent Hierarchy</h4>
               <div className="flex flex-col items-center gap-4">
                 <div className="px-6 py-3 bg-amber-500/20 border border-amber-500/50 rounded-xl text-amber-300 font-medium">

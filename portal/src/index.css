@@ -3,12 +3,12 @@
 @tailwind utilities;
 
 /*
- * WAVE Portal Theme - Devin-Style Dark Theme
+ * WAVE Portal Theme - Linear-Style Dark Theme
  *
- * Mimics Devin's exact color scheme:
- * - Very dark backgrounds (#0a0a0a)
- * - Subtle gray borders
- * - White text, gray secondary text
+ * Matches the Linear dark palette:
+ * - #1e1e1e backgrounds
+ * - #2e2e2e borders
+ * - #fafafa primary text, #a3a3a3 secondary text
  * - Monochromatic with minimal accents
  */
 
@@ -66,35 +66,35 @@
     --sidebar-active-foreground: 0 0% 9%;
   }
 
-  /* Dark Mode - Exact Devin Style */
+  /* Dark Mode - Linear Style */
   .dark {
-    --background: 0 0% 4%;           /* #0a0a0a */
-    --foreground: 0 0% 95%;          /* #f2f2f2 */
+    --background: 0 0% 12%;          /* #1e1e1e */
+    --foreground: 0 0% 98%;          /* #fafafa */
 
-    --card: 0 0% 6%;                 /* #0f0f0f */
-    --card-foreground: 0 0% 95%;
+    --card: 0 0% 12%;                /* #1e1e1e */
+    --card-foreground: 0 0% 98%;     /* #fafafa */
 
-    --popover: 0 0% 8%;              /* #141414 */
-    --popover-foreground: 0 0% 95%;
+    --popover: 0 0% 15%;             /* #262626 */
+    --popover-foreground: 0 0% 98%;  /* #fafafa */
 
-    --primary: 0 0% 95%;             /* White primary */
-    --primary-foreground: 0 0% 4%;   /* Dark text on white */
+    --primary: 0 0% 98%;             /* White primary */
+    --primary-foreground: 0 0% 12%;  /* #1e1e1e */
 
-    --secondary: 0 0% 10%;           /* #1a1a1a */
-    --secondary-foreground: 0 0% 95%;
+    --secondary: 0 0% 15%;           /* #262626 */
+    --secondary-foreground: 0 0% 98%; /* #fafafa */
 
-    --muted: 0 0% 12%;               /* #1f1f1f */
-    --muted-foreground: 0 0% 55%;    /* #8c8c8c */
+    --muted: 0 0% 15%;               /* #262626 */
+    --muted-foreground: 0 0% 64%;    /* #a3a3a3 */
 
-    --accent: 0 0% 12%;
-    --accent-foreground: 0 0% 95%;
+    --accent: 0 0% 15%;              /* #262626 */
+    --accent-foreground: 0 0% 98%;   /* #fafafa */
 
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 16%;              /* #292929 */
-    --input: 0 0% 10%;               /* #1a1a1a */
-    --ring: 0 0% 95%;
+    --border: 0 0% 18%;              /* #2e2e2e */
+    --input: 0 0% 15%;               /* #262626 */
+    --ring: 0 0% 98%;                /* #fafafa */
 
     /* Status colors for dark mode */
     --success: 142 70% 45%;
@@ -109,12 +109,12 @@
     --chart-4: 0 0% 75%;
     --chart-5: 0 0% 85%;
 
-    /* Sidebar - Devin style */
-    --sidebar: 0 0% 5%;              /* #0d0d0d */
-    --sidebar-foreground: 0 0% 60%;  /* #999999 */
-    --sidebar-border: 0 0% 14%;      /* #242424 */
-    --sidebar-active: 0 0% 14%;
-    --sidebar-active-foreground: 0 0% 95%;
+    /* Sidebar - Linear style */
+    --sidebar: 0 0% 12%;             /* #1e1e1e */
+    --sidebar-foreground: 0 0% 40%;  /* #666666 */
+    --sidebar-border: 0 0% 18%;      /* #2e2e2e */
+    --sidebar-active: 0 0% 18%;      /* #2e2e2e */
+    --sidebar-active-foreground: 0 0% 98%;
   }
 }
 
@@ -129,7 +129,7 @@
   }
 }
 
-/* Custom scrollbar - Devin style (minimal) */
+/* Custom scrollbar - Linear style (minimal) */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -160,7 +160,7 @@
   outline-offset: 2px;
 }
 
-/* Devin-style utility classes */
+/* Linear-style utility classes */
 @layer components {
   /* Sidebar navigation item */
   .sidebar-item {
@@ -216,13 +216,13 @@
     @apply text-sm text-muted-foreground;
   }
 
-  /* Badge styles - Devin uses green for NEW */
+  /* Badge styles - green for NEW */
   .badge-new {
     @apply inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium;
     @apply bg-green-500/20 text-green-400 rounded;
   }
 
-  /* Table styles matching Devin */
+  /* Table styles */
   .devin-table {
     @apply w-full text-sm;
   }
@@ -240,7 +240,7 @@
     @apply border-b-0;
   }
 
-  /* Search input Devin style */
+  /* Search input style */
   .search-input {
     @apply bg-muted border border-border text-foreground placeholder:text-muted-foreground;
     @apply focus:ring-1 focus:ring-ring rounded-md px-3 py-2;
@@ -252,7 +252,7 @@
     @apply px-3 py-2;
   }
 
-  /* Outlined button like Devin's "Add member" */
+  /* Outlined button */
   .btn-outline {
     @apply px-4 py-2 text-sm font-medium rounded-lg;
     @apply border border-border bg-transparent;

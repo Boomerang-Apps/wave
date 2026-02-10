@@ -1,0 +1,122 @@
+{/* Meta tag removed - @storybook/blocks not installed */}
+
+# WAVE Design System
+
+Welcome to the WAVE Portal Design System documentation. This Storybook contains all design tokens, components, and patterns used throughout the application.
+
+## Overview
+
+WAVE uses a **Linear-inspired dark theme** with a focus on:
+- **Monochromatic palette** (grays only for base colors)
+- **High contrast** for accessibility (WCAG AA compliant)
+- **Semantic color system** (success, warning, destructive)
+- **Dark mode first** approach
+
+## Architecture
+
+### Technology Stack
+
+- **UI Library**: Radix UI Primitives (headless components)
+- **Styling**: Tailwind CSS with semantic CSS variables
+- **Component Variants**: class-variance-authority (CVA)
+- **Icons**: Lucide React (500+ icons)
+- **Fonts**: Inter (UI) + JetBrains Mono (code)
+
+### Design Tokens
+
+All design tokens are defined as CSS variables in `src/index.css` and mapped through Tailwind:
+
+```css
+/* Dark Mode Example */
+.dark {
+  --background: 0 0% 12%;    /* #1e1e1e */
+  --foreground: 0 0% 98%;    /* #fafafa */
+  --border: 0 0% 18%;        /* #2e2e2e */
+  --card: 0 0% 12%;          /* #1e1e1e */
+  ...
+}
+```
+
+## Design Principles
+
+### 1. Dark-First Design
+The canonical presentation is dark mode, optimized for extended coding sessions under any lighting condition.
+
+### 2. Semantic Token System
+Colors have meaning:
+- **Success (green)**: Passed gates, completed tasks
+- **Warning (amber)**: Pending states, attention needed
+- **Destructive (red)**: Errors, failures, blocking issues
+
+### 3. Monochromatic Base
+The interface uses only grayscale colors for backgrounds, borders, and surfaces. Chromatic colors (green, amber, red) are reserved exclusively for semantic meaning.
+
+### 4. Accessibility First
+- All text meets WCAG AA contrast requirements (4.5:1 minimum)
+- Focus indicators are clearly visible
+- Color is never the sole indicator of state
+
+## Getting Started
+
+### Exploring Tokens
+
+Browse the token documentation to understand the design system:
+
+- **[Colors](/story/design-system-tokens-colors--all-colors)**: Complete color palette with usage guidelines
+- **[Typography](/story/design-system-tokens-typography--all-typography)**: Font families, sizes, and weights
+- **[Spacing](/story/design-system-tokens-spacing--all-spacing)**: Margin, padding, and gap scale
+- **[Border Radius](/story/design-system-tokens-border-radius--all-radii)**: Rounded corner scale
+
+### Using Components
+
+All components are built on Radix UI primitives and styled with Tailwind:
+
+```tsx
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+
+<Card className="p-6">
+  <Button variant="default">Primary Action</Button>
+  <Button variant="outline">Secondary Action</Button>
+</Card>
+```
+
+### Theme Toggle
+
+Use the **Theme** dropdown in the Storybook toolbar to switch between light and dark modes.
+
+## Color Palette Quick Reference
+
+| Token | Dark Mode | Usage |
+|-------|-----------|-------|
+| `background` | #1e1e1e | Page background |
+| `foreground` | #fafafa | Primary text |
+| `card` | #1e1e1e | Card surfaces |
+| `border` | #2e2e2e | Borders |
+| `muted-foreground` | #a3a3a3 | Secondary text |
+| `success` | hsl(142 70% 45%) | Success states |
+| `warning` | hsl(38 92% 50%) | Warnings |
+| `destructive` | hsl(0 62% 50%) | Errors |
+
+## Recent Updates
+
+### February 2026
+- ✅ Color palette updated to Linear-style dark theme
+- ✅ `--card` changed from #0f0f0f → #1e1e1e
+- ✅ Added active (#1a1a1a) and hover (#2e2e2e) backgrounds
+- ✅ Storybook backgrounds synced with design tokens
+- ✅ Added dark mode toggle in toolbar
+- ✅ Token documentation stories created
+
+## Resources
+
+- **Brand Guidelines**: See `docs/BRAND-GUIDELINES.md`
+- **Tailwind Config**: `tailwind.config.js`
+- **CSS Variables**: `src/index.css`
+- **Component Library**: `src/components/ui/`
+
+---
+
+**Version**: 2.0.0
+**Last Updated**: February 2026
+**Framework**: React 19 + Vite + Tailwind CSS
