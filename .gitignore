@@ -22,3 +22,14 @@ Thumbs.db
 # Logs
 *.log
 .env.mcp
+
+# Test coverage
+coverage/
+*.coverage
+.nyc_output/
+*.gz
+
+# Build artifacts
+dist/
+build/
+storybook-static/
