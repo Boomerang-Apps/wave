@@ -1,0 +1,411 @@
+{
+  "$comment": "AI Story Template V4.3 - Use this template to create new stories",
+  "$comment_usage": "1. Copy this file 2. Replace all UPPERCASE placeholders 3. Remove unused optional fields 4. Validate against story-schema-v4.3.json",
+
+  "$schema": "../../schemas/story-schema-v4.3.json",
+  "schema_version": "4.3",
+
+  "$comment_story_id": "Pattern: DOMAIN-PHASE-NNN or DOMAIN-NNN (e.g., WAVE-P1-001, AUTH-001)",
+  "story_id": "YOUR-STORY-ID",
+
+  "$comment_title": "Clear, concise title (10-100 chars). Start with verb: 'Implement', 'Create', 'Refactor', 'Fix'",
+  "title": "Implement/Create [Feature Name]",
+
+  "$comment_type": "Choose one: feature, bug, refactor, infrastructure, documentation, tooling, security",
+  "type": "feature",
+
+  "$comment_domain": "Technical domain - must match your project's wave-config.json domains list",
+  "$comment_domain_examples": "frontend, backend, auth, shared, infrastructure, etc.",
+  "domain": "YOUR_DOMAIN",
+
+  "$comment_agent": "Assigned agent type - must match your project's wave-config.json agents list",
+  "$comment_agent_examples": "fe-dev, be-dev, qa, cto, pm, dev-fix",
+  "agent": "YOUR_AGENT",
+
+  "$comment_wave_number": "Implementation wave/phase number (0 for foundation, 1+ for incremental)",
+  "wave_number": 1,
+
+  "$comment_priority": "P0=Critical/Blocker, P1=High, P2=Medium, P3=Low/Nice-to-have",
+  "priority": "P1",
+
+  "$comment_story_points": "Fibonacci: 1,2,3,5,8,13,21. Use 1-3 for simple, 5-8 for medium, 13-21 for complex",
+  "story_points": 5,
+
+  "$comment_status": "Start with 'pending'. Updated by system: pending → in_progress → review → complete",
+  "status": "pending",
+
+  "$comment_description": "Detailed story description with context. Min 50 chars. Explain WHAT and WHY.",
+  "description": "Implement [feature] that allows [users] to [action]. This is needed because [business value/problem being solved]. Technical approach: [high-level approach].",
+
+  "$comment_objective": "User story format: As a [role], I want [capability], so that [benefit]",
+  "objective": {
+    "as_a": "USER_ROLE",
+    "i_want": "CAPABILITY_DESCRIPTION",
+    "so_that": "BENEFIT_OR_VALUE"
+  },
+
+  "$comment_acceptance_criteria": "Required. Min 1 AC. Use EARS format for testability.",
+  "$comment_ears_format": "WHEN/WHILE/WHERE/IF ... THEN ... Pattern ensures testable criteria",
+  "acceptance_criteria": [
+    {
+      "$comment": "AC-01, AC-02, etc. Sequential numbering",
+      "id": "AC-01",
+      "description": "System performs [specific behavior] when [condition]",
+      "ears_format": "WHEN [trigger/condition] THEN [expected behavior/outcome]",
+      "$comment_threshold": "Optional: Add measurable thresholds for performance/quality criteria",
+      "threshold": "latency: <100ms, uptime: >99.9%",
+      "test_approach": "Unit test: mock [dependencies], assert [expected outcome]",
+      "status": "pending"
+    },
+    {
+      "id": "AC-02",
+      "description": "Error handling for [edge case]",
+      "ears_format": "WHEN [error condition] THEN [error handling behavior]",
+      "test_approach": "Integration test: trigger [error], verify [handling]",
+      "status": "pending"
+    }
+  ],
+
+  "$comment_context": "Optional but recommended: Reduces agent exploration cost by 50-80%",
+  "context": {
+    "$comment_read_files": "Files agent MUST read before starting. Provides existing patterns/contracts.",
+    "read_files": [
+      "src/path/to/related/component.tsx",
+      "server/routes/api-contract.ts",
+      "docs/architecture/patterns.md"
+    ],
+    "$comment_code_examples": "Show patterns to follow. Copy-paste ready examples.",
+    "code_examples": [
+      {
+        "description": "Example: API error handling pattern",
+        "code": "try {\n  const result = await api.call();\n  return { success: true, data: result };\n} catch (error) {\n  logger.error(error);\n  return { success: false, error: error.message };\n}",
+        "file_reference": "server/utils/api-helpers.ts:45-52"
+      }
+    ],
+    "$comment_similar_implementations": "Paths to similar features for reference",
+    "similar_implementations": [
+      "src/features/auth/LoginForm.tsx",
+      "src/features/profiles/ProfileEditor.tsx"
+    ],
+    "$comment_domain_knowledge": "Path to domain docs (if available)",
+    "domain_knowledge": "docs/domain/authentication.md"
+  },
+
+  "$comment_execution": "Optional: Execution control settings. Defaults are usually fine.",
+  "execution": {
+    "$comment_max_retries": "Max retry attempts before escalation (1-10, default: 3)",
+    "max_retries": 3,
+    "$comment_timeout_minutes": "Max execution time (5-480, default: 60)",
+    "timeout_minutes": 60,
+    "$comment_model_tier": "opus (most capable), sonnet (balanced), haiku (fast/cheap)",
+    "model_tier": "sonnet",
+    "$comment_checkpoint_frequency": "per_subtask, per_gate, per_criterion, on_complete",
+    "checkpoint_frequency": "per_gate",
+    "$comment_parallel_with": "Story IDs that can run in parallel with this story",
+    "parallel_with": []
+  },
+
+  "$comment_subtasks": "Optional: Break down complex stories (13+ points) into subtasks",
+  "subtasks": [
+    {
+      "$comment": "ST-01, ST-02, etc. Sequential numbering",
+      "id": "ST-01",
+      "title": "Setup [component] structure",
+      "description": "Create files and boilerplate for [component]",
+      "estimated_tokens": 5000,
+      "$comment_checkpoint_after": "If true, create checkpoint after this subtask completes",
+      "checkpoint_after": false,
+      "status": "pending"
+    },
+    {
+      "id": "ST-02",
+      "title": "Implement [core logic]",
+      "description": "Add business logic for [feature]",
+      "estimated_tokens": 8000,
+      "checkpoint_after": true,
+      "status": "pending"
+    }
+  ],
+
+  "$comment_files": "Required: Files this story will create/modify. Used for conflict detection.",
+  "files": {
+    "$comment_create": "Files to be created (will fail if file already exists)",
+    "create": [
+      "src/features/new-feature/Component.tsx",
+      "src/features/new-feature/__tests__/Component.test.tsx"
+    ],
+    "$comment_modify": "Files to be modified (must already exist)",
+    "modify": [
+      "src/app/routes.tsx",
+      "server/api/index.ts"
+    ],
+    "$comment_forbidden": "Files that must NOT be touched (safety constraint)",
+    "forbidden": [
+      "src/config/production.ts",
+      "database/migrations/*"
+    ]
+  },
+
+  "$comment_design_source": "Optional but recommended for UI stories. Reduces visual mismatches.",
+  "design_source": {
+    "$comment_type": "html_mockup (local HTML), storybook (component), figma (design), screenshot (PNG), wireframe, none",
+    "type": "storybook",
+    "$comment_path": "Local file path (for html_mockup, screenshot, wireframe)",
+    "path": "mockups/feature-name.html",
+    "$comment_url": "Public URL (for figma, storybook)",
+    "url": "https://storybook.example.com/?path=/story/feature-component",
+    "$comment_figma_frame_id": "Figma frame ID (if type=figma)",
+    "figma_frame_id": "node-id=123:456",
+    "$comment_storybook_story_id": "Storybook story ID (if type=storybook)",
+    "storybook_story_id": "feature-component--default",
+    "$comment_components": "Component breakdown - helps agent understand structure",
+    "components": [
+      {
+        "name": "FeatureContainer",
+        "type": "page",
+        "$comment_props": "Component props with types",
+        "props": {
+          "userId": "string",
+          "onSave": "function"
+        },
+        "$comment_state": "Local state variables",
+        "state": ["isLoading", "error", "formData"],
+        "$comment_events": "Events this component handles",
+        "events": ["onSubmit", "onCancel", "onChange"]
+      },
+      {
+        "name": "FormInput",
+        "type": "atom",
+        "props": {
+          "value": "string",
+          "onChange": "function"
+        },
+        "state": [],
+        "events": ["onChange", "onBlur"]
+      }
+    ],
+    "$comment_interactions": "User interaction specs - helps with event handlers",
+    "interactions": [
+      {
+        "trigger": "Button click: Save",
+        "action": "POST /api/feature",
+        "target": "Show success message OR error toast"
+      },
+      {
+        "trigger": "Input change: email field",
+        "action": "Validate email format",
+        "target": "Show error if invalid"
+      }
+    ],
+    "$comment_responsive": "Responsive behavior specs",
+    "responsive": {
+      "mobile": "Stack vertically, hide sidebar",
+      "tablet": "2-column layout",
+      "desktop": "3-column with sidebar"
+    },
+    "$comment_accessibility": "A11y requirements",
+    "accessibility": {
+      "$comment_wcag_level": "A (minimum), AA (recommended), AAA (highest)",
+      "wcag_level": "AA",
+      "aria_requirements": [
+        "aria-label on icon buttons",
+        "aria-live on status messages"
+      ],
+      "keyboard_navigation": true,
+      "screen_reader_tested": false
+    },
+    "$comment_verified": "Set to true after design verification complete",
+    "verified": false,
+    "verified_at": "2026-02-10T00:00:00Z",
+    "$comment_visual_diff_threshold": "Acceptable pixel difference % (e.g., 0.5 = 0.5%)",
+    "visual_diff_threshold": 0.5
+  },
+
+  "$comment_technical_requirements": "Optional: Technical constraints and reuse patterns",
+  "technical_requirements": {
+    "$comment_database_tables": "Tables to be created/modified",
+    "database_tables": ["users", "sessions"],
+    "$comment_api_endpoints": "API endpoints to implement",
+    "api_endpoints": [
+      "POST /api/feature/create",
+      "GET /api/feature/:id",
+      "PUT /api/feature/:id"
+    ],
+    "$comment_reuse_components": "Existing components to reuse (don't recreate)",
+    "reuse_components": [
+      "src/components/Button.tsx",
+      "src/components/Input.tsx"
+    ],
+    "$comment_reuse_patterns": "Patterns/helpers to follow",
+    "reuse_patterns": {
+      "error_handling": "Use ErrorBoundary pattern from src/utils/errors.ts",
+      "api_calls": "Use apiClient from src/lib/api.ts",
+      "state_management": "Use Zustand store pattern"
+    },
+    "$comment_state_management": "State management approach",
+    "state_management": "Zustand store in src/stores/feature.ts",
+    "$comment_configuration": "Config requirements",
+    "configuration": "Add feature flag: FEATURE_ENABLED in .env"
+  },
+
+  "$comment_tdd": "Test-Driven Development settings",
+  "tdd": {
+    "$comment_test_framework": "vitest, jest, pytest, etc.",
+    "test_framework": "vitest",
+    "$comment_test_files": "Test files to create",
+    "test_files": [
+      "src/features/new-feature/__tests__/Component.test.tsx",
+      "server/api/__tests__/endpoint.test.ts"
+    ],
+    "$comment_coverage_target": "Target code coverage % (0-100, recommend 70-80%)",
+    "coverage_target": 75,
+    "$comment_test_categories": "Types of tests to write",
+    "test_categories": [
+      {
+        "name": "Unit tests",
+        "count": 8,
+        "examples": ["Component renders", "Handler calls API", "Validation works"]
+      },
+      {
+        "name": "Integration tests",
+        "count": 3,
+        "examples": ["Form submission flow", "Error handling end-to-end"]
+      }
+    ],
+    "$comment_mocking_strategy": "What to mock and how",
+    "mocking_strategy": {
+      "api_calls": "Mock with MSW (Mock Service Worker)",
+      "external_services": "Mock with vi.fn()",
+      "database": "Use in-memory SQLite"
+    }
+  },
+
+  "$comment_safety": "Required: Safety constraints and rollback plan",
+  "safety": {
+    "$comment_stop_conditions": "Conditions that immediately stop execution",
+    "stop_conditions": [
+      "Production database connection detected",
+      "Credentials found in code",
+      "Test coverage drops below 60%"
+    ],
+    "$comment_escalation_triggers": "Conditions requiring human intervention",
+    "escalation_triggers": [
+      "Cannot resolve merge conflict",
+      "Breaking change to public API",
+      "Security vulnerability introduced"
+    ],
+    "$comment_rollback_plan": "How to undo changes if something goes wrong",
+    "rollback_plan": "Revert commit, restore from Git. No database migrations to rollback."
+  },
+
+  "$comment_hazard_analysis": "Optional: DO-178C inspired hazard analysis for safety-critical features",
+  "hazard_analysis": {
+    "identified_hazards": [
+      {
+        "id": "HAZ-01",
+        "description": "User data exposure if authentication fails",
+        "severity": "major",
+        "$comment_severity": "critical (catastrophic), major (hazardous), minor (major), negligible (minor)",
+        "likelihood": "occasional",
+        "$comment_likelihood": "frequent, probable, occasional, remote, improbable",
+        "mitigation": "Implement auth middleware, add session validation tests"
+      }
+    ],
+    "$comment_risk_level": "high (severity + likelihood), medium, low",
+    "risk_level": "medium"
+  },
+
+  "$comment_dependencies": "Story dependencies for execution order",
+  "dependencies": {
+    "$comment_required_before": "Stories that MUST complete before this one starts",
+    "required_before": ["PREREQ-STORY-001"],
+    "$comment_blocks": "Stories that are BLOCKED by this one (can't start until this completes)",
+    "blocks": ["DEPENDENT-STORY-001"]
+  },
+
+  "$comment_traceability": "Requirements traceability",
+  "traceability": {
+    "$comment_requirements": "Original requirement IDs from PRD/RFC",
+    "requirements": ["REQ-001", "REQ-002"],
+    "$comment_epic": "Epic or theme this story belongs to",
+    "epic": "User Authentication",
+    "$comment_related_stories": "Related stories (not dependencies, just related)",
+    "related_stories": ["AUTH-002", "AUTH-003"]
+  },
+
+  "$comment_enterprise": "Optional: Enterprise compliance and approval tracking",
+  "enterprise": {
+    "$comment_compliance": "Compliance requirements",
+    "compliance": ["GDPR", "SOC2"],
+    "$comment_sla": "Service Level Agreement targets",
+    "sla": {
+      "response_time": "<200ms p95",
+      "availability": "99.9%",
+      "throughput": ">1000 req/sec"
+    },
+    "$comment_approvals_required": "Approval workflow",
+    "approvals_required": [
+      {
+        "role": "Security Lead",
+        "approved": false,
+        "approved_at": null,
+        "approved_by": null
+      },
+      {
+        "role": "Product Manager",
+        "approved": false,
+        "approved_at": null,
+        "approved_by": null
+      }
+    ],
+    "$comment_modification_history": "Change log (auto-updated)",
+    "modification_history": [
+      {
+        "timestamp": "2026-02-10T00:00:00Z",
+        "author": "cto-agent",
+        "change_description": "Initial story creation"
+      }
+    ]
+  },
+
+  "$comment_output": "Expected output - used for verification",
+  "output": {
+    "files_created": ["src/features/new-feature/Component.tsx"],
+    "files_modified": ["src/app/routes.tsx"],
+    "tests_passing": true,
+    "coverage_achieved": 75.0,
+    "pr_description": "Implements [feature]. Closes #123."
+  },
+
+  "$comment_validation": "Automated validation commands (overrides defaults)",
+  "validation": {
+    "lint_command": "npm run lint",
+    "test_command": "npm test",
+    "build_command": "npm run build",
+    "type_check_command": "tsc --noEmit",
+    "visual_diff_command": "npm run visual-test"
+  },
+
+  "$comment_gates_completed": "Gates passed (updated by system). Do NOT manually set.",
+  "gates_completed": [],
+
+  "$comment_estimated_tests": "Estimated number of tests (for planning)",
+  "estimated_tests": 11,
+
+  "$comment_estimated_tokens": "Estimated token count (for budget planning)",
+  "estimated_tokens": 25000,
+
+  "$comment_actual_tokens": "Actual tokens used (set by system after completion)",
+  "actual_tokens": 0,
+
+  "$comment_metadata": "Story metadata",
+  "metadata": {
+    "created_at": "2026-02-10T00:00:00Z",
+    "created_by": "YOUR_NAME or cto-agent",
+    "updated_at": "2026-02-10T00:00:00Z",
+    "agent_assignment": "be-dev-1"
+  },
+
+  "$comment_notes": "Optional: Additional notes, context, or warnings",
+  "notes": "Any additional context, warnings, or implementation notes go here."
+}
