@@ -5,11 +5,13 @@ Story: WAVE-P1-003
 Manages recovery and resume operations for interrupted workflows.
 """
 
+import logging
 from enum import Enum
 from typing import Optional, Dict, Any, List
 from uuid import UUID
 from datetime import datetime
 from dataclasses import dataclass
+import time
 
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
@@ -22,6 +24,13 @@ from ..db import (
     WaveStoryExecution,
 )
 from ..execution import StoryExecutionEngine, ExecutionContext
+
+# Configure logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 
 class RecoveryStrategy(str, Enum):
@@ -184,29 +193,62 @@ class RecoveryManager:
         Raises:
             ValueError: If story cannot be recovered
         """
-        if not self.can_recover(session_id, story_id):
-            raise ValueError(
-                f"Story {story_id} cannot be recovered (completed or no checkpoints)"
+        # Log recovery start
+        logger.info(
+            f"🔄 Starting recovery | session={session_id} | story={story_id} | strategy={strategy.value}"
+        )
+        start_time = time.time()
+
+        try:
+            if not self.can_recover(session_id, story_id):
+                logger.warning(
+                    f"❌ Recovery failed: story cannot be recovered | "
+                    f"session={session_id} | story={story_id}"
+                )
+                raise ValueError(
+                    f"Story {story_id} cannot be recovered (completed or no checkpoints)"
+                )
+
+            execution = self.execution_repo.get_by_story_id(session_id, story_id)
+
+            # Execute recovery strategy
+            if strategy == RecoveryStrategy.RESUME_FROM_LAST:
+                result = self._resume_from_last(session_id, story_id, execution)
+
+            elif strategy == RecoveryStrategy.RESUME_FROM_GATE:
+                if not target_gate:
+                    raise ValueError("target_gate required for RESUME_FROM_GATE strategy")
+                result = self._resume_from_gate(session_id, story_id, execution, target_gate)
+
+            elif strategy == RecoveryStrategy.RESTART:
+                result = self._restart_story(session_id, story_id, execution)
+
+            elif strategy == RecoveryStrategy.SKIP:
+                result = self._skip_story(session_id, story_id, execution)
+
+            else:
+                raise ValueError(f"Unknown recovery strategy: {strategy}")
+
+            # Log success with timing
+            recovery_time = time.time() - start_time
+            logger.info(
+                f"✅ Recovery complete | session={session_id} | story={story_id} | "
+                f"strategy={strategy.value} | time={recovery_time:.3f}s | status={result['status']}"
             )
 
-        execution = self.execution_repo.get_by_story_id(session_id, story_id)
+            # Add telemetry to result
+            result["recovery_time_seconds"] = recovery_time
+            result["recovery_timestamp"] = datetime.utcnow().isoformat()
 
-        if strategy == RecoveryStrategy.RESUME_FROM_LAST:
-            return self._resume_from_last(session_id, story_id, execution)
+            return result
 
-        elif strategy == RecoveryStrategy.RESUME_FROM_GATE:
-            if not target_gate:
-                raise ValueError("target_gate required for RESUME_FROM_GATE strategy")
-            return self._resume_from_gate(session_id, story_id, execution, target_gate)
-
-        elif strategy == RecoveryStrategy.RESTART:
-            return self._restart_story(session_id, story_id, execution)
-
-        elif strategy == RecoveryStrategy.SKIP:
-            return self._skip_story(session_id, story_id, execution)
-
-        else:
-            raise ValueError(f"Unknown recovery strategy: {strategy}")
+        except Exception as e:
+            recovery_time = time.time() - start_time
+            logger.error(
+                f"❌ Recovery error | session={session_id} | story={story_id} | "
+                f"strategy={strategy.value} | time={recovery_time:.3f}s | error={str(e)}"
+            )
+            raise
 
     def recover_session(
         self,
@@ -223,8 +265,14 @@ class RecoveryManager:
         Returns:
             Recovery summary with per-story results
         """
+        logger.info(
+            f"🔄 Starting session recovery | session={session_id} | strategy={strategy.value}"
+        )
+        start_time = time.time()
+
         session = self.session_repo.get_by_id(session_id)
         if not session:
+            logger.error(f"❌ Session not found | session={session_id}")
             raise ValueError(f"Session {session_id} not found")
 
         # Find all executions in non-terminal states
@@ -233,6 +281,11 @@ class RecoveryManager:
             e for e in executions
             if e.status not in ["complete", "cancelled"]
         ]
+
+        logger.info(
+            f"📊 Session recovery status | session={session_id} | "
+            f"total_executions={len(executions)} | recoverable={len(recoverable)}"
+        )
 
         results = {
             "session_id": str(session_id),
@@ -254,10 +307,25 @@ class RecoveryManager:
                     "result": result,
                 })
             except Exception as e:
+                logger.warning(
+                    f"⚠️  Story recovery failed | session={session_id} | "
+                    f"story={execution.story_id} | error={str(e)}"
+                )
                 results["failed"].append({
                     "story_id": execution.story_id,
                     "error": str(e),
                 })
+
+        # Log session recovery summary
+        recovery_time = time.time() - start_time
+        logger.info(
+            f"✅ Session recovery complete | session={session_id} | "
+            f"recovered={len(results['recovered'])} | failed={len(results['failed'])} | "
+            f"time={recovery_time:.3f}s"
+        )
+
+        results["recovery_time_seconds"] = recovery_time
+        results["recovery_timestamp"] = datetime.utcnow().isoformat()
 
         return results
 

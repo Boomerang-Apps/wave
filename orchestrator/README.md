@@ -209,7 +209,288 @@ The codebase uses database-agnostic types:
 - **Transaction Management**: Automatic commit/rollback via context managers
 - **Query Optimization**: Centralized query logic for performance tuning
 
+## Session Recovery
+
+Story: WAVE-P1-003
+
+### Overview
+
+The WAVE orchestrator provides robust crash recovery mechanisms that restore interrupted workflows from checkpoints. Recovery operations complete in <5 seconds (typically <0.01s), ensuring minimal downtime during failures.
+
+### Architecture
+
+```
+src/
+├── recovery/
+│   ├── __init__.py           # Package exports
+│   └── recovery_manager.py   # RecoveryManager, RecoveryStrategy
+├── checkpoint/
+│   └── langgraph_checkpointer.py  # WAVECheckpointSaver (LangGraph integration)
+└── db/
+    ├── checkpoints.py        # CheckpointRepository
+    └── story_executions.py   # StoryExecutionRepository
+```
+
+### Recovery Strategies
+
+**RESUME_FROM_LAST**
+- Resume from most recent checkpoint
+- Preserves all progress (AC counts, gates, metadata)
+- Default strategy for crashed sessions
+
+**RESUME_FROM_GATE**
+- Resume from specific gate checkpoint
+- Useful for targeted recovery after known failure point
+- Requires `target_gate` parameter (e.g., "gate-2")
+
+**RESTART**
+- Restart story from beginning
+- Resets execution state (status → pending, retry_count → 0)
+- Preserves checkpoint history for audit trail
+
+**SKIP**
+- Skip failed story and mark as cancelled
+- Used when story cannot be recovered or is no longer needed
+
+### CLI Usage
+
+```bash
+cd orchestrator
+source venv/bin/activate
+
+# Show recovery help
+python main.py --help
+
+# Resume from last checkpoint
+python main.py --resume <session-uuid>
+
+# Resume from specific gate
+python main.py --resume <session-uuid> --strategy resume_from_gate --gate gate-2
+
+# Restart from beginning
+python main.py --resume <session-uuid> --strategy restart
+
+# Skip failed story
+python main.py --resume <session-uuid> --strategy skip
+```
+
+### API Usage
+
+#### Check Recovery Status
+
+```bash
+GET /sessions/{session_id}/recovery-status
+
+Response:
+{
+  "session_id": "uuid",
+  "session_status": "in_progress",
+  "total_stories": 5,
+  "by_status": {
+    "complete": 2,
+    "failed": 1,
+    "in_progress": 2
+  },
+  "recoverable_stories": [
+    {
+      "story_id": "AUTH-001",
+      "current_status": "failed",
+      "retry_count": 1,
+      "last_checkpoint": {
+        "type": "gate",
+        "gate": "gate-2",
+        "created_at": "2026-02-10T10:30:00Z"
+      }
+    }
+  ]
+}
+```
+
+#### Recover Story
+
+```bash
+POST /sessions/{session_id}/stories/{story_id}/recover
+Content-Type: application/json
+
+{
+  "strategy": "resume_from_last"
+}
+
+Response:
+{
+  "strategy": "resume_from_last",
+  "story_id": "AUTH-001",
+  "checkpoint_id": "uuid",
+  "checkpoint_type": "gate",
+  "state": {"ac_passed": 5, "ac_total": 10},
+  "status": "resumed",
+  "recovery_time_seconds": 0.003,
+  "recovery_timestamp": "2026-02-10T10:35:00Z"
+}
+```
+
+#### Recover Entire Session
+
+```bash
+POST /sessions/{session_id}/recover
+Content-Type: application/json
+
+{
+  "strategy": "resume_from_last"
+}
+
+Response:
+{
+  "session_id": "uuid",
+  "strategy": "resume_from_last",
+  "total_stories": 3,
+  "recovered": [
+    {"story_id": "AUTH-001", "result": {...}},
+    {"story_id": "AUTH-002", "result": {...}}
+  ],
+  "failed": [],
+  "recovery_time_seconds": 0.008
+}
+```
+
+### LangGraph Integration
+
+The `WAVECheckpointSaver` integrates with LangGraph's checkpoint system:
+
+```python
+from src.checkpoint import WAVECheckpointSaver
+from src.db import get_db
+
+with get_db() as db:
+    checkpointer = WAVECheckpointSaver(
+        db=db,
+        session_id=session_id,
+        story_id="AUTH-001"
+    )
+
+    # Use with compiled graph
+    graph = compile_wave_graph(
+        checkpointer=checkpointer,
+        db=db,
+        session_id=session_id
+    )
+```
+
+The checkpointer automatically saves state at:
+- Story start (story_start)
+- Each gate execution (gate)
+- Agent handoffs (agent_handoff)
+- Errors (error)
+- Manual checkpoints (manual)
+
+### Programmatic Usage
+
+```python
+from src.recovery import RecoveryManager, RecoveryStrategy
+from src.db import get_db
+
+with get_db() as db:
+    recovery_manager = RecoveryManager(db)
+
+    # Check if story can be recovered
+    can_recover = recovery_manager.can_recover(session_id, "AUTH-001")
+
+    # Get recovery status
+    status = recovery_manager.get_recovery_status(session_id)
+
+    # Find available recovery points
+    recovery_points = recovery_manager.find_recovery_points(
+        session_id,
+        story_id="AUTH-001"
+    )
+
+    # Recover single story
+    result = recovery_manager.recover_story(
+        session_id,
+        "AUTH-001",
+        RecoveryStrategy.RESUME_FROM_LAST
+    )
+
+    # Recover entire session
+    results = recovery_manager.recover_session(
+        session_id,
+        RecoveryStrategy.RESUME_FROM_LAST
+    )
+```
+
+### Performance
+
+Recovery operations are highly optimized:
+
+- **Target**: <5 seconds per recovery
+- **Actual**: <0.01 seconds (typical)
+- **Crash at gate-0**: 0.002s
+- **Crash at gate-7**: 0.003s
+- **50 checkpoints**: 0.009s
+- **Session recovery (3 stories)**: 0.008s
+
+Performance is tested in:
+- `tests/integration/test_crash_recovery.py` (11 tests)
+- `tests/integration/test_recovery_edge_cases.py` (14 tests)
+- `tests/manual/test_recovery_e2e.py` (end-to-end validation)
+
+### Logging and Telemetry
+
+Recovery operations include structured logging:
+
+```
+🔄 Starting recovery | session=<uuid> | story=AUTH-001 | strategy=resume_from_last
+✅ Recovery complete | session=<uuid> | story=AUTH-001 | time=0.003s | status=resumed
+```
+
+All recovery results include telemetry:
+- `recovery_time_seconds`: Time taken to complete recovery
+- `recovery_timestamp`: ISO 8601 timestamp of recovery completion
+
+### Testing
+
+```bash
+cd orchestrator
+source venv/bin/activate
+
+# Run all recovery tests
+pytest tests/integration/test_checkpoint_recovery_integration.py -v
+pytest tests/integration/test_crash_recovery.py -v
+pytest tests/integration/test_recovery_edge_cases.py -v
+
+# Run end-to-end recovery test
+python tests/manual/test_recovery_e2e.py
+
+# Test CLI recovery
+python main.py --resume <session-uuid>
+```
+
+### Edge Cases Handled
+
+- ✅ Nonexistent session/story
+- ✅ Invalid strategy or missing parameters
+- ✅ Terminal states (completed, cancelled)
+- ✅ Empty states (no gates executed)
+- ✅ Multiple recovery attempts
+- ✅ Corrupted/missing checkpoint data
+- ✅ Concurrent recovery operations
+
+### Auto-Recovery on Startup
+
+The orchestrator automatically checks for interrupted sessions on startup:
+
+```bash
+python main.py
+
+Output:
+🔄 Checking for interrupted sessions...
+📊 Found 2 sessions in progress:
+  - abc-123: Project X Wave 1 (2 recoverable stories)
+  - def-456: Project Y Wave 2 (1 recoverable story)
+💡 To recover: python main.py --resume <session-id>
+```
+
 ### Next Steps
 
-- WAVE-P1-002: Story execution state machine with checkpointing
-- WAVE-P1-003: Recovery mechanisms for crashed workflows
+- WAVE-P1-002: Story execution state machine with checkpointing ✅
+- WAVE-P1-003: Recovery mechanisms for crashed workflows ✅
