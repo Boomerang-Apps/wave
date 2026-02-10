@@ -1,0 +1,195 @@
+{
+  "$schema": "./planning/schemas/wave-config-schema.json",
+  "project": {
+    "name": "WAVE",
+    "description": "Multi-Agent Development Orchestration Platform",
+    "version": "0.1.0"
+  },
+  "domains": [
+    {
+      "id": "auth",
+      "name": "Authentication",
+      "description": "User authentication, authorization, and session management",
+      "file_patterns": [
+        "src/auth/**/*",
+        "apps/*/auth/**/*",
+        "libs/auth/**/*"
+      ]
+    },
+    {
+      "id": "client",
+      "name": "Client Management",
+      "description": "Client/customer data and relationship management",
+      "file_patterns": [
+        "src/client/**/*",
+        "apps/*/client/**/*",
+        "libs/client/**/*"
+      ]
+    },
+    {
+      "id": "booking",
+      "name": "Booking System",
+      "description": "Reservation and booking management",
+      "file_patterns": [
+        "src/booking/**/*",
+        "apps/*/booking/**/*",
+        "libs/booking/**/*"
+      ]
+    },
+    {
+      "id": "payment",
+      "name": "Payment Processing",
+      "description": "Payment processing and financial transactions",
+      "file_patterns": [
+        "src/payment/**/*",
+        "apps/*/payment/**/*",
+        "libs/payment/**/*"
+      ]
+    },
+    {
+      "id": "pilot",
+      "name": "Pilot/Resource Management",
+      "description": "Resource allocation and scheduling",
+      "file_patterns": [
+        "src/pilot/**/*",
+        "apps/*/pilot/**/*",
+        "libs/pilot/**/*"
+      ]
+    },
+    {
+      "id": "admin",
+      "name": "Administration",
+      "description": "Admin panel and system configuration",
+      "file_patterns": [
+        "src/admin/**/*",
+        "apps/*/admin/**/*",
+        "libs/admin/**/*"
+      ]
+    },
+    {
+      "id": "shared",
+      "name": "Shared",
+      "description": "Shared utilities, types, and components accessible by all agents",
+      "file_patterns": [
+        "src/shared/**/*",
+        "src/common/**/*",
+        "src/utils/**/*",
+        "libs/shared/**/*",
+        "libs/common/**/*"
+      ]
+    },
+    {
+      "id": "infrastructure",
+      "name": "Infrastructure",
+      "description": "DevOps, CI/CD, and infrastructure configuration",
+      "file_patterns": [
+        "infrastructure/**/*",
+        "docker/**/*",
+        ".github/**/*",
+        "scripts/**/*"
+      ]
+    },
+    {
+      "id": "backend",
+      "name": "Backend Core",
+      "description": "Backend services and API layer",
+      "file_patterns": [
+        "orchestrator/**/*",
+        "server/**/*",
+        "api/**/*"
+      ]
+    },
+    {
+      "id": "frontend",
+      "name": "Frontend",
+      "description": "Frontend applications and UI components",
+      "file_patterns": [
+        "portal/**/*",
+        "web/**/*",
+        "apps/web/**/*"
+      ]
+    }
+  ],
+  "agents": [
+    {
+      "id": "cto",
+      "name": "CTO Agent",
+      "description": "Strategic planning and architecture decisions",
+      "model_tier": "opus",
+      "capabilities": ["planning", "architecture", "review"]
+    },
+    {
+      "id": "pm",
+      "name": "PM Agent",
+      "description": "Story creation and prioritization",
+      "model_tier": "sonnet",
+      "capabilities": ["story_generation", "prioritization", "assignment"]
+    },
+    {
+      "id": "fe-dev",
+      "name": "Frontend Developer Agent",
+      "description": "Frontend implementation",
+      "model_tier": "sonnet",
+      "capabilities": ["frontend", "react", "css", "testing"]
+    },
+    {
+      "id": "be-dev",
+      "name": "Backend Developer Agent",
+      "description": "Backend implementation",
+      "model_tier": "sonnet",
+      "capabilities": ["backend", "database", "api", "testing"]
+    },
+    {
+      "id": "qa",
+      "name": "QA Agent",
+      "description": "Testing and quality assurance",
+      "model_tier": "haiku",
+      "capabilities": ["testing", "validation", "bug_detection"]
+    },
+    {
+      "id": "dev-fix",
+      "name": "Dev-Fix Agent",
+      "description": "Bug fixing and issue resolution",
+      "model_tier": "sonnet",
+      "capabilities": ["debugging", "fixing", "refactoring"]
+    }
+  ],
+  "tech_stack": {
+    "frontend": {
+      "framework": "React",
+      "language": "TypeScript",
+      "styling": "Tailwind CSS",
+      "testing": "Vitest + React Testing Library"
+    },
+    "backend": {
+      "runtime": "Node.js",
+      "language": "TypeScript",
+      "database": "PostgreSQL",
+      "orm": "Prisma",
+      "cache": "Redis",
+      "testing": "Vitest"
+    },
+    "infrastructure": {
+      "containerization": "Docker",
+      "orchestration": "Docker Compose",
+      "ci_cd": "GitHub Actions"
+    }
+  },
+  "execution": {
+    "max_parallel_agents": 4,
+    "checkpoint_level": 3,
+    "default_timeout_minutes": 60,
+    "max_retries": 3,
+    "budget_per_story_usd": 5
+  },
+  "safety": {
+    "emergency_stop_enabled": true,
+    "human_checkpoint_level": 3,
+    "forbidden_operations": [
+      "rm -rf /",
+      "DROP DATABASE",
+      "DELETE FROM * WHERE 1=1",
+      "git push --force origin main"
+    ]
+  }
+}

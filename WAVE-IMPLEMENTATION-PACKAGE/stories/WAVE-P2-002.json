@@ -1,0 +1,221 @@
+{
+  "$schema": "../../planning/schemas/story-schema-v4.2.json",
+  "schema_version": "4.2",
+  "story_id": "WAVE-P2-002",
+  "title": "Refactor Orchestrator to Event-Driven Architecture",
+  "type": "refactor",
+  "domain": "backend",
+  "agent": "be-dev",
+  "wave_number": 2,
+  "priority": "P0",
+  "story_points": 13,
+  "status": "pending",
+  "description": "Replace the current polling-based signal detection in the orchestrator with event-driven Redis pub/sub. This is a major refactor that touches the core orchestration logic but provides 100x latency improvement (10s → <100ms).",
+
+  "objective": {
+    "as_a": "WAVE Orchestrator",
+    "i_want": "event-driven signal handling instead of polling",
+    "so_that": "signal latency drops from 10 seconds to under 100 milliseconds"
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "description": "Orchestrator subscribes to Redis channels on startup",
+      "ears_format": "WHEN orchestrator starts THEN it subscribes to wave:signals:{project_id} channel",
+      "test_approach": "Start orchestrator, verify Redis subscription exists",
+      "status": "pending"
+    },
+    {
+      "id": "AC-02",
+      "description": "Agent completion signals received via pub/sub",
+      "ears_format": "WHEN agent publishes completion signal THEN orchestrator receives within 100ms",
+      "threshold": "latency: <100ms",
+      "test_approach": "Publish signal, measure time to orchestrator handler invocation",
+      "status": "pending"
+    },
+    {
+      "id": "AC-03",
+      "description": "All polling loops removed from codebase",
+      "ears_format": "WHEN codebase searched THEN no setTimeout/setInterval polling for signals found",
+      "test_approach": "Grep for polling patterns, verify none exist",
+      "status": "pending"
+    },
+    {
+      "id": "AC-04",
+      "description": "Signal handlers process messages correctly",
+      "ears_format": "WHEN gate_complete signal received THEN orchestrator advances to next gate",
+      "test_approach": "Send gate_complete signal, verify gate transition occurs",
+      "status": "pending"
+    },
+    {
+      "id": "AC-05",
+      "description": "Error signals trigger retry/escalation flow",
+      "ears_format": "WHEN agent_error signal received THEN retry logic or escalation is triggered",
+      "test_approach": "Send agent_error signal, verify retry attempt or escalation",
+      "status": "pending"
+    },
+    {
+      "id": "AC-06",
+      "description": "Backward compatible with existing session format",
+      "ears_format": "WHEN existing session loaded THEN it can continue with new event system",
+      "test_approach": "Create session with old format, verify it works with new orchestrator",
+      "status": "pending"
+    },
+    {
+      "id": "AC-07",
+      "description": "Graceful degradation if Redis unavailable",
+      "ears_format": "WHEN Redis connection lost THEN orchestrator logs warning and continues with cached state",
+      "test_approach": "Kill Redis mid-execution, verify graceful handling",
+      "status": "pending"
+    }
+  ],
+
+  "files": {
+    "create": [
+      "orchestrator/src/events/signal-handler.ts",
+      "orchestrator/src/events/event-dispatcher.ts",
+      "orchestrator/src/events/signal-types.ts",
+      "orchestrator/src/events/__tests__/signal-handler.test.ts",
+      "orchestrator/src/events/__tests__/event-dispatcher.test.ts",
+      "orchestrator/src/events/__tests__/integration.test.ts"
+    ],
+    "modify": [
+      "orchestrator/src/orchestrator.ts",
+      "orchestrator/src/index.ts",
+      "orchestrator/src/agents/base-agent.ts"
+    ],
+    "forbidden": [
+      "core/safety/*",
+      "core/scripts/merge-watcher*.sh",
+      "portal/*"
+    ]
+  },
+
+  "technical_requirements": {
+    "reuse_patterns": {
+      "event_handler": "Command pattern for signal handlers",
+      "subscription_manager": "Centralized subscription lifecycle management",
+      "graceful_degradation": "Circuit breaker for Redis failures"
+    },
+    "reuse_components": [
+      "orchestrator/src/pubsub/subscriber.ts",
+      "orchestrator/src/pubsub/publisher.ts",
+      "orchestrator/src/pubsub/channels.ts"
+    ],
+    "state_management": "Event-sourced state transitions"
+  },
+
+  "tdd": {
+    "test_framework": "vitest",
+    "test_files": [
+      "orchestrator/src/events/__tests__/signal-handler.test.ts",
+      "orchestrator/src/events/__tests__/event-dispatcher.test.ts",
+      "orchestrator/src/events/__tests__/integration.test.ts"
+    ],
+    "coverage_target": 85,
+    "test_categories": [
+      {
+        "name": "Signal Handling",
+        "count": 6,
+        "examples": [
+          "should handle gate_complete signal",
+          "should handle agent_error signal",
+          "should handle agent_blocked signal",
+          "should handle session_pause signal",
+          "should handle emergency_stop signal",
+          "should ignore unknown signal types"
+        ]
+      },
+      {
+        "name": "Event Dispatching",
+        "count": 4,
+        "examples": [
+          "should route signals to correct handlers",
+          "should maintain handler registration",
+          "should support multiple handlers per event",
+          "should handle handler errors gracefully"
+        ]
+      },
+      {
+        "name": "Integration",
+        "count": 5,
+        "examples": [
+          "should complete full gate cycle via events",
+          "should handle agent handoff via events",
+          "should process 10 signals in sequence",
+          "should recover from Redis disconnect",
+          "should maintain <100ms latency under load"
+        ]
+      }
+    ],
+    "mocking_strategy": {
+      "redis": "Real Redis in test container",
+      "agents": "Mock agents that publish signals"
+    }
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Signal processing causes infinite loop",
+      "Memory leak detected in event handlers",
+      "Redis connection permanently lost"
+    ],
+    "escalation_triggers": [
+      "Signal latency exceeds 500ms",
+      "Unhandled signal type encountered",
+      "Event handler throws repeatedly"
+    ],
+    "rollback_plan": "Revert to polling-based orchestrator from git, Redis data unaffected"
+  },
+
+  "hazard_analysis": {
+    "identified_hazards": [
+      {
+        "id": "HAZ-001",
+        "description": "Signal lost during processing",
+        "severity": "critical",
+        "likelihood": "remote",
+        "mitigation": "Use Redis Streams with acknowledgment, not pub/sub"
+      },
+      {
+        "id": "HAZ-002",
+        "description": "Signal ordering issues",
+        "severity": "major",
+        "likelihood": "occasional",
+        "mitigation": "Include sequence numbers, process in order"
+      },
+      {
+        "id": "HAZ-003",
+        "description": "Duplicate signal processing",
+        "severity": "major",
+        "likelihood": "occasional",
+        "mitigation": "Idempotent handlers, deduplication by signal_id"
+      }
+    ],
+    "risk_level": "high"
+  },
+
+  "dependencies": {
+    "required_before": ["WAVE-P2-001"],
+    "blocks": ["WAVE-P2-003", "WAVE-P3-001"]
+  },
+
+  "traceability": {
+    "requirements": ["EVENT-DRIVEN-002", "LATENCY-002"],
+    "epic": "WAVE Event-Driven Communication",
+    "related_stories": ["WAVE-P2-001", "WAVE-P2-003"]
+  },
+
+  "gates_completed": [],
+  "estimated_tests": 15,
+  "estimated_tokens": 50000,
+
+  "metadata": {
+    "created_at": "2026-02-07T00:00:00Z",
+    "created_by": "cto-analysis",
+    "agent_assignment": "be-dev-1"
+  },
+
+  "notes": "This is the largest refactor in the plan. Consider feature flags to enable gradual rollout. Test extensively before removing polling code."
+}

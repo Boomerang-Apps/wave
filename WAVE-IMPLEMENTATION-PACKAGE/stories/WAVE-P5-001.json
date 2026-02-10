@@ -1,0 +1,245 @@
+{
+  "$schema": "../../planning/schemas/story-schema-v4.2.json",
+  "schema_version": "4.2",
+  "story_id": "WAVE-P5-001",
+  "title": "Implement End-to-End Autonomous Pipeline",
+  "type": "feature",
+  "domain": "backend",
+  "agent": "be-dev",
+  "wave_number": 5,
+  "priority": "P1",
+  "story_points": 21,
+  "status": "pending",
+  "description": "Create the full autonomous pipeline that takes a PRD as input and produces working, tested code as output with minimal human intervention. This is the culmination of WAVE - human approves PRD, WAVE handles everything else until code is ready for deployment.",
+
+  "objective": {
+    "as_a": "Product Manager",
+    "i_want": "to submit a PRD and receive working code",
+    "so_that": "I only need to approve requirements, not manage the development process"
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "description": "PRD ingestion and story generation",
+      "ears_format": "WHEN PRD submitted THEN CTO agent analyzes and generates AI Stories automatically",
+      "test_approach": "Submit test PRD, verify stories generated in correct format",
+      "status": "pending"
+    },
+    {
+      "id": "AC-02",
+      "description": "Story prioritization and assignment",
+      "ears_format": "WHEN stories generated THEN PM agent prioritizes and assigns to appropriate dev agents",
+      "test_approach": "Verify story assignments match domain expertise",
+      "status": "pending"
+    },
+    {
+      "id": "AC-03",
+      "description": "Parallel development execution",
+      "ears_format": "WHEN non-conflicting stories assigned THEN dev agents execute in parallel",
+      "test_approach": "Monitor execution, verify parallel activity",
+      "status": "pending"
+    },
+    {
+      "id": "AC-04",
+      "description": "Automatic QA on completed stories",
+      "ears_format": "WHEN dev completes story THEN QA agent automatically tests",
+      "test_approach": "Complete story, verify QA runs without manual trigger",
+      "status": "pending"
+    },
+    {
+      "id": "AC-05",
+      "description": "Dev-Fix loop for QA failures",
+      "ears_format": "WHEN QA fails THEN Dev-Fix agent automatically attempts repair up to 3 times",
+      "threshold": "max retries: 3",
+      "test_approach": "Cause QA failure, verify retry attempts",
+      "status": "pending"
+    },
+    {
+      "id": "AC-06",
+      "description": "Final merge to main branch",
+      "ears_format": "WHEN all stories pass QA THEN changes merged to main automatically",
+      "test_approach": "Complete all stories, verify main branch updated",
+      "status": "pending"
+    },
+    {
+      "id": "AC-07",
+      "description": "Cost tracking throughout pipeline",
+      "ears_format": "WHEN pipeline completes THEN total cost and per-story costs available",
+      "threshold": "cost per story: <$5",
+      "test_approach": "Complete pipeline, verify cost metrics",
+      "status": "pending"
+    },
+    {
+      "id": "AC-08",
+      "description": "Pipeline completes without human intervention",
+      "ears_format": "WHEN no blockers encountered THEN pipeline runs start to finish autonomously",
+      "test_approach": "Run full pipeline, count human interventions (should be 0)",
+      "status": "pending"
+    }
+  ],
+
+  "files": {
+    "create": [
+      "orchestrator/src/pipeline/autonomous-pipeline.ts",
+      "orchestrator/src/pipeline/prd-ingester.ts",
+      "orchestrator/src/pipeline/story-generator.ts",
+      "orchestrator/src/pipeline/assignment-engine.ts",
+      "orchestrator/src/pipeline/qa-trigger.ts",
+      "orchestrator/src/pipeline/dev-fix-loop.ts",
+      "orchestrator/src/pipeline/merge-finalizer.ts",
+      "orchestrator/src/pipeline/cost-tracker.ts",
+      "orchestrator/src/pipeline/types.ts",
+      "orchestrator/src/pipeline/__tests__/autonomous-pipeline.test.ts",
+      "orchestrator/src/pipeline/__tests__/prd-ingester.test.ts",
+      "orchestrator/src/pipeline/__tests__/story-generator.test.ts",
+      "orchestrator/src/pipeline/__tests__/integration.test.ts"
+    ],
+    "modify": [
+      "orchestrator/src/orchestrator.ts",
+      "orchestrator/src/index.ts"
+    ],
+    "forbidden": [
+      "core/safety/*",
+      ".env.production"
+    ]
+  },
+
+  "technical_requirements": {
+    "reuse_patterns": {
+      "pipeline_pattern": "Stage-based pipeline with checkpoints",
+      "retry_with_backoff": "Exponential backoff for failed stages"
+    },
+    "reuse_components": [
+      "orchestrator/src/parallel/executor.ts",
+      "orchestrator/src/rlm/context-manager.ts",
+      "orchestrator/src/checkpoints/manager.ts",
+      "orchestrator/src/events/signal-handler.ts"
+    ],
+    "state_management": "Pipeline state persisted at each stage"
+  },
+
+  "tdd": {
+    "test_framework": "vitest",
+    "test_files": [
+      "orchestrator/src/pipeline/__tests__/autonomous-pipeline.test.ts",
+      "orchestrator/src/pipeline/__tests__/prd-ingester.test.ts",
+      "orchestrator/src/pipeline/__tests__/story-generator.test.ts",
+      "orchestrator/src/pipeline/__tests__/integration.test.ts"
+    ],
+    "coverage_target": 80,
+    "test_categories": [
+      {
+        "name": "PRD Processing",
+        "count": 4,
+        "examples": [
+          "should parse PRD document",
+          "should extract requirements",
+          "should generate stories from PRD",
+          "should validate generated stories"
+        ]
+      },
+      {
+        "name": "Pipeline Execution",
+        "count": 6,
+        "examples": [
+          "should execute stages in order",
+          "should checkpoint between stages",
+          "should handle stage failures",
+          "should retry failed stages",
+          "should track costs",
+          "should complete without intervention"
+        ]
+      },
+      {
+        "name": "QA and Merge",
+        "count": 4,
+        "examples": [
+          "should trigger QA automatically",
+          "should retry with Dev-Fix on failure",
+          "should merge after QA passes",
+          "should handle merge conflicts"
+        ]
+      },
+      {
+        "name": "End-to-End",
+        "count": 3,
+        "examples": [
+          "should complete simple PRD autonomously",
+          "should handle multi-story PRD",
+          "should stay within cost budget"
+        ]
+      }
+    ],
+    "mocking_strategy": {
+      "llm": "Mock for unit tests, real for integration",
+      "git": "Real repository"
+    }
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Cost exceeds budget by 2x",
+      "Pipeline running >24 hours",
+      "Critical failure in 2+ agents",
+      "Security vulnerability detected in generated code"
+    ],
+    "escalation_triggers": [
+      "QA fails 3 times on same story",
+      "Merge conflicts cannot be resolved",
+      "Unknown error type",
+      "Cost approaching budget"
+    ],
+    "rollback_plan": "Revert all branches, restore main to pre-pipeline state, notify human"
+  },
+
+  "hazard_analysis": {
+    "identified_hazards": [
+      {
+        "id": "HAZ-001",
+        "description": "Pipeline produces buggy code autonomously",
+        "severity": "critical",
+        "likelihood": "occasional",
+        "mitigation": "QA gates, multiple test levels, human review before deploy"
+      },
+      {
+        "id": "HAZ-002",
+        "description": "Cost overrun from infinite loops",
+        "severity": "major",
+        "likelihood": "occasional",
+        "mitigation": "Hard budget caps, timeout limits, retry limits"
+      },
+      {
+        "id": "HAZ-003",
+        "description": "Security vulnerabilities in generated code",
+        "severity": "critical",
+        "likelihood": "occasional",
+        "mitigation": "Security scanning in QA, SAST tools integration"
+      }
+    ],
+    "risk_level": "high"
+  },
+
+  "dependencies": {
+    "required_before": ["WAVE-P4-001"],
+    "blocks": ["WAVE-P5-002"]
+  },
+
+  "traceability": {
+    "requirements": ["AUTONOMY-001", "PIPELINE-001"],
+    "epic": "WAVE Full Autonomy",
+    "related_stories": ["WAVE-P5-002", "WAVE-P5-003"]
+  },
+
+  "gates_completed": [],
+  "estimated_tests": 17,
+  "estimated_tokens": 75000,
+
+  "metadata": {
+    "created_at": "2026-02-07T00:00:00Z",
+    "created_by": "cto-analysis",
+    "agent_assignment": "be-dev-1"
+  },
+
+  "notes": "This is the ultimate goal of WAVE. Start with simple PRDs, gradually increase complexity. Always have emergency stop ready. Consider human review checkpoint before merge to production."
+}

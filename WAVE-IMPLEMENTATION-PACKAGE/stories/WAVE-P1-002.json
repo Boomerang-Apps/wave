@@ -1,0 +1,208 @@
+{
+  "$schema": "../../planning/schemas/story-schema-v4.2.json",
+  "schema_version": "4.2",
+  "story_id": "WAVE-P1-002",
+  "title": "Implement Checkpoint Manager for Crash Recovery",
+  "type": "feature",
+  "domain": "backend",
+  "agent": "be-dev",
+  "wave_number": 1,
+  "priority": "P0",
+  "story_points": 8,
+  "status": "pending",
+  "description": "Create a checkpoint manager that saves execution state at key points and enables restoration after crashes. Compatible with LangGraph checkpoint format for future integration. This is CRITICAL for production readiness.",
+
+  "objective": {
+    "as_a": "WAVE Orchestrator",
+    "i_want": "automatic checkpointing during execution",
+    "so_that": "I can resume from the last checkpoint after a crash instead of starting over"
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "description": "Checkpoint created automatically at each gate transition",
+      "ears_format": "WHEN agent completes gate THEN checkpoint is saved with full execution state",
+      "test_approach": "Execute through gates, verify checkpoint exists after each gate",
+      "status": "pending"
+    },
+    {
+      "id": "AC-02",
+      "description": "Checkpoint restoration correctly restores full state",
+      "ears_format": "WHEN restore called with checkpoint ID THEN state matches saved checkpoint exactly",
+      "test_approach": "Save checkpoint, modify state, restore, deep compare",
+      "status": "pending"
+    },
+    {
+      "id": "AC-03",
+      "description": "System recovers correctly after simulated crash",
+      "ears_format": "WHEN process killed mid-execution THEN restart automatically resumes from last checkpoint",
+      "threshold": "resume time: <5s",
+      "test_approach": "Kill -9 during execution, restart, verify continuation from checkpoint",
+      "status": "pending"
+    },
+    {
+      "id": "AC-04",
+      "description": "Checkpoint includes all required state fields",
+      "ears_format": "WHEN checkpoint saved THEN it includes session, stories, agents, gates, tokens",
+      "test_approach": "Create checkpoint, inspect JSON for required fields",
+      "status": "pending"
+    },
+    {
+      "id": "AC-05",
+      "description": "Old checkpoints are cleaned up",
+      "ears_format": "WHEN session completes THEN only last 5 checkpoints retained",
+      "test_approach": "Complete session with 10 checkpoints, verify only 5 remain",
+      "status": "pending"
+    }
+  ],
+
+  "files": {
+    "create": [
+      "orchestrator/src/checkpoints/manager.ts",
+      "orchestrator/src/checkpoints/types.ts",
+      "orchestrator/src/checkpoints/serializer.ts",
+      "orchestrator/src/checkpoints/recovery.ts",
+      "orchestrator/src/checkpoints/__tests__/manager.test.ts",
+      "orchestrator/src/checkpoints/__tests__/recovery.test.ts",
+      "orchestrator/src/checkpoints/__tests__/serializer.test.ts"
+    ],
+    "modify": [
+      "orchestrator/src/orchestrator.ts"
+    ],
+    "forbidden": [
+      "core/safety/*",
+      "portal/*"
+    ]
+  },
+
+  "technical_requirements": {
+    "database_tables": ["wave_checkpoints"],
+    "reuse_patterns": {
+      "serialization": "LangGraph-compatible checkpoint format",
+      "state_machine": "Gate-based state transitions"
+    },
+    "reuse_components": [
+      "orchestrator/src/db/checkpoints.ts"
+    ]
+  },
+
+  "tdd": {
+    "test_framework": "vitest",
+    "test_files": [
+      "orchestrator/src/checkpoints/__tests__/manager.test.ts",
+      "orchestrator/src/checkpoints/__tests__/recovery.test.ts",
+      "orchestrator/src/checkpoints/__tests__/serializer.test.ts"
+    ],
+    "coverage_target": 90,
+    "test_categories": [
+      {
+        "name": "Checkpoint Creation",
+        "count": 4,
+        "examples": [
+          "should create checkpoint with all required fields",
+          "should serialize complex state objects",
+          "should handle large state (>1MB)",
+          "should deduplicate unchanged state"
+        ]
+      },
+      {
+        "name": "Checkpoint Restoration",
+        "count": 5,
+        "examples": [
+          "should restore latest checkpoint by default",
+          "should restore specific checkpoint by name",
+          "should validate checkpoint integrity",
+          "should handle corrupted checkpoint gracefully",
+          "should restore in <5 seconds"
+        ]
+      },
+      {
+        "name": "Crash Recovery",
+        "count": 4,
+        "examples": [
+          "should detect incomplete session on startup",
+          "should find last valid checkpoint",
+          "should resume execution from checkpoint",
+          "should handle no checkpoint scenario"
+        ]
+      },
+      {
+        "name": "Cleanup",
+        "count": 2,
+        "examples": [
+          "should retain only N most recent checkpoints",
+          "should not delete checkpoints for active sessions"
+        ]
+      }
+    ],
+    "mocking_strategy": {
+      "database": "Real database in test container",
+      "time": "Mock Date.now() for consistent timestamps"
+    }
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Checkpoint corruption detected",
+      "State size exceeds 10MB",
+      "Database connection lost during save"
+    ],
+    "escalation_triggers": [
+      "Serialization failures",
+      "Frequent checkpoint failures",
+      "Recovery takes >30s"
+    ],
+    "rollback_plan": "Delete corrupted checkpoints, restart session from beginning with clean state"
+  },
+
+  "hazard_analysis": {
+    "identified_hazards": [
+      {
+        "id": "HAZ-001",
+        "description": "Checkpoint saved with partial state",
+        "severity": "critical",
+        "likelihood": "remote",
+        "mitigation": "Use database transactions, verify completeness before commit"
+      },
+      {
+        "id": "HAZ-002",
+        "description": "Restoration overwrites newer work",
+        "severity": "major",
+        "likelihood": "remote",
+        "mitigation": "Always restore to new session, never overwrite"
+      },
+      {
+        "id": "HAZ-003",
+        "description": "Checkpoint format incompatible after upgrade",
+        "severity": "major",
+        "likelihood": "occasional",
+        "mitigation": "Version checkpoints, migrate on restore"
+      }
+    ],
+    "risk_level": "medium"
+  },
+
+  "dependencies": {
+    "required_before": ["WAVE-P1-001"],
+    "blocks": ["WAVE-P2-001"]
+  },
+
+  "traceability": {
+    "requirements": ["STATE-PERSISTENCE-002", "CRASH-RECOVERY-001"],
+    "epic": "WAVE State Persistence",
+    "related_stories": ["WAVE-P1-001", "WAVE-P1-003"]
+  },
+
+  "gates_completed": [],
+  "estimated_tests": 15,
+  "estimated_tokens": 35000,
+
+  "metadata": {
+    "created_at": "2026-02-06T00:00:00Z",
+    "created_by": "cto-analysis",
+    "agent_assignment": "be-dev-1"
+  },
+
+  "notes": "This is the most critical story for production readiness. Without this, any crash loses all progress. Consider using JSONB for state storage to enable partial queries."
+}

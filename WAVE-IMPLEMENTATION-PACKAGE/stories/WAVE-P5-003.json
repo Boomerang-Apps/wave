@@ -1,0 +1,212 @@
+{
+  "$schema": "../../planning/schemas/story-schema-v4.2.json",
+  "schema_version": "4.2",
+  "story_id": "WAVE-P5-003",
+  "title": "Implement Emergency Stop System",
+  "type": "feature",
+  "domain": "backend",
+  "agent": "be-dev",
+  "wave_number": 5,
+  "priority": "P1",
+  "story_points": 5,
+  "status": "pending",
+  "description": "Create an emergency stop system that can halt all WAVE execution within 5 seconds. Accessible via CLI, web UI, Slack command, and API. Ensures safe shutdown with state preservation for later recovery.",
+
+  "objective": {
+    "as_a": "WAVE Administrator",
+    "i_want": "an emergency stop that halts everything immediately",
+    "so_that": "I can stop runaway execution or errors before damage occurs"
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "description": "Emergency stop halts all execution within 5 seconds",
+      "ears_format": "WHEN emergency stop triggered THEN all agents stop within 5 seconds",
+      "threshold": "stop time: <5s",
+      "test_approach": "Trigger stop during execution, measure stop time",
+      "status": "pending"
+    },
+    {
+      "id": "AC-02",
+      "description": "Multiple trigger methods available",
+      "ears_format": "WHEN stop needed THEN it can be triggered via CLI, web, Slack, or API",
+      "test_approach": "Test each trigger method",
+      "status": "pending"
+    },
+    {
+      "id": "AC-03",
+      "description": "State preserved for recovery",
+      "ears_format": "WHEN stop triggered THEN current state saved to database before halt",
+      "test_approach": "Trigger stop, verify state checkpoint created",
+      "status": "pending"
+    },
+    {
+      "id": "AC-04",
+      "description": "All agents receive stop signal",
+      "ears_format": "WHEN stop triggered THEN every active agent receives stop signal",
+      "test_approach": "Run 4 agents, trigger stop, verify all receive signal",
+      "status": "pending"
+    },
+    {
+      "id": "AC-05",
+      "description": "Git worktrees left in safe state",
+      "ears_format": "WHEN stop triggered THEN worktree changes committed or stashed",
+      "test_approach": "Stop during file edit, verify no uncommitted changes lost",
+      "status": "pending"
+    },
+    {
+      "id": "AC-06",
+      "description": "Stop reason logged",
+      "ears_format": "WHEN stop triggered THEN reason and triggering user recorded",
+      "test_approach": "Trigger stop with reason, query audit log",
+      "status": "pending"
+    },
+    {
+      "id": "AC-07",
+      "description": "Recovery possible after stop",
+      "ears_format": "WHEN stop occurred THEN session can be resumed from last checkpoint",
+      "test_approach": "Trigger stop, attempt recovery, verify success",
+      "status": "pending"
+    },
+    {
+      "id": "AC-08",
+      "description": "Stop overrides all other operations",
+      "ears_format": "WHEN stop triggered during any operation THEN operation immediately aborts",
+      "test_approach": "Trigger stop during various operations, verify immediate abort",
+      "status": "pending"
+    }
+  ],
+
+  "files": {
+    "create": [
+      "orchestrator/src/safety/emergency-stop.ts",
+      "orchestrator/src/safety/stop-broadcaster.ts",
+      "orchestrator/src/safety/state-preserver.ts",
+      "orchestrator/src/safety/cli-stop-command.ts",
+      "orchestrator/src/safety/__tests__/emergency-stop.test.ts",
+      "orchestrator/src/safety/__tests__/stop-broadcaster.test.ts"
+    ],
+    "modify": [
+      "orchestrator/src/orchestrator.ts",
+      "orchestrator/src/agents/base-agent.ts",
+      "orchestrator/src/index.ts"
+    ],
+    "forbidden": []
+  },
+
+  "technical_requirements": {
+    "reuse_patterns": {
+      "broadcast": "Redis pub/sub for immediate broadcast to all agents",
+      "graceful_shutdown": "Signal handlers for clean shutdown"
+    },
+    "reuse_components": [
+      "orchestrator/src/pubsub/publisher.ts",
+      "orchestrator/src/checkpoints/manager.ts"
+    ],
+    "api_endpoints": [
+      "POST /api/emergency-stop",
+      "GET /api/status/running"
+    ]
+  },
+
+  "tdd": {
+    "test_framework": "vitest",
+    "test_files": [
+      "orchestrator/src/safety/__tests__/emergency-stop.test.ts",
+      "orchestrator/src/safety/__tests__/stop-broadcaster.test.ts"
+    ],
+    "coverage_target": 95,
+    "test_categories": [
+      {
+        "name": "Stop Triggering",
+        "count": 4,
+        "examples": [
+          "should stop via CLI command",
+          "should stop via API call",
+          "should stop via Slack command",
+          "should stop via web button"
+        ]
+      },
+      {
+        "name": "Stop Execution",
+        "count": 5,
+        "examples": [
+          "should halt all agents within 5s",
+          "should broadcast to all agents",
+          "should preserve state",
+          "should commit/stash git changes",
+          "should log stop event"
+        ]
+      },
+      {
+        "name": "Recovery",
+        "count": 3,
+        "examples": [
+          "should allow session recovery",
+          "should restore from checkpoint",
+          "should handle partial state"
+        ]
+      }
+    ],
+    "mocking_strategy": {
+      "agents": "Test agents that track stop signals",
+      "git": "Real git operations"
+    }
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Stop system itself fails",
+      "Agents do not respond to stop signal"
+    ],
+    "escalation_triggers": [
+      "Stop takes >10 seconds",
+      "State preservation fails"
+    ],
+    "rollback_plan": "Kill all processes at OS level (kill -9)"
+  },
+
+  "hazard_analysis": {
+    "identified_hazards": [
+      {
+        "id": "HAZ-001",
+        "description": "Stop fails to reach all agents",
+        "severity": "critical",
+        "likelihood": "remote",
+        "mitigation": "Multiple broadcast channels, process kill as backup"
+      },
+      {
+        "id": "HAZ-002",
+        "description": "State lost during emergency stop",
+        "severity": "major",
+        "likelihood": "occasional",
+        "mitigation": "Quick checkpoint save before stop, atomic operations"
+      }
+    ],
+    "risk_level": "medium"
+  },
+
+  "dependencies": {
+    "required_before": ["WAVE-P5-002"],
+    "blocks": []
+  },
+
+  "traceability": {
+    "requirements": ["SAFETY-001", "EMERGENCY-001"],
+    "epic": "WAVE Full Autonomy",
+    "related_stories": ["WAVE-P5-001", "WAVE-P5-002"]
+  },
+
+  "gates_completed": [],
+  "estimated_tests": 12,
+  "estimated_tokens": 25000,
+
+  "metadata": {
+    "created_at": "2026-02-07T00:00:00Z",
+    "created_by": "cto-analysis",
+    "agent_assignment": "be-dev-1"
+  },
+
+  "notes": "Emergency stop is non-negotiable for production. Test extensively. Consider hardware button or dead man's switch for ultimate safety. The stop must work even if WAVE itself is misbehaving."
+}

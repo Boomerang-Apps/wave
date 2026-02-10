@@ -1,0 +1,202 @@
+{
+  "$schema": "../../planning/schemas/story-schema-v4.2.json",
+  "schema_version": "4.2",
+  "story_id": "WAVE-P1-003",
+  "title": "Implement Session Recovery System",
+  "type": "feature",
+  "domain": "backend",
+  "agent": "be-dev",
+  "wave_number": 1,
+  "priority": "P0",
+  "story_points": 5,
+  "status": "pending",
+  "description": "Create automatic session recovery that detects incomplete sessions on startup and resumes from the last valid checkpoint. This ensures that any crash or restart does not lose progress and execution continues seamlessly.",
+
+  "objective": {
+    "as_a": "WAVE Orchestrator",
+    "i_want": "automatic detection and recovery of incomplete sessions",
+    "so_that": "execution resumes seamlessly after any crash without manual intervention"
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "description": "Incomplete sessions detected on startup",
+      "ears_format": "WHEN orchestrator starts THEN it scans for sessions with status='running' and attempts recovery",
+      "test_approach": "Create session with status='running', restart orchestrator, verify recovery attempted",
+      "status": "pending"
+    },
+    {
+      "id": "AC-02",
+      "description": "Latest valid checkpoint identified correctly",
+      "ears_format": "WHEN multiple checkpoints exist THEN the most recent valid one is selected for recovery",
+      "test_approach": "Create 5 checkpoints, corrupt last one, verify second-to-last is selected",
+      "status": "pending"
+    },
+    {
+      "id": "AC-03",
+      "description": "State fully restored from checkpoint",
+      "ears_format": "WHEN checkpoint restored THEN all state fields match original values",
+      "test_approach": "Deep compare restored state vs original checkpoint state",
+      "status": "pending"
+    },
+    {
+      "id": "AC-04",
+      "description": "Execution continues from correct position",
+      "ears_format": "WHEN session recovered THEN execution resumes at the gate after the checkpoint",
+      "test_approach": "Checkpoint at gate-3, recover, verify execution starts at gate-4",
+      "status": "pending"
+    },
+    {
+      "id": "AC-05",
+      "description": "Recovery logged for audit trail",
+      "ears_format": "WHEN recovery occurs THEN event logged with session_id, checkpoint_id, recovery_time",
+      "test_approach": "Trigger recovery, query audit logs for recovery event",
+      "status": "pending"
+    },
+    {
+      "id": "AC-06",
+      "description": "Failed recovery escalates to human",
+      "ears_format": "WHEN recovery fails 3 times THEN alert sent and session marked for manual review",
+      "test_approach": "Create unrecoverable session, verify alert after 3 attempts",
+      "status": "pending"
+    }
+  ],
+
+  "files": {
+    "create": [
+      "orchestrator/src/recovery/session-scanner.ts",
+      "orchestrator/src/recovery/recovery-manager.ts",
+      "orchestrator/src/recovery/state-validator.ts",
+      "orchestrator/src/recovery/types.ts",
+      "orchestrator/src/recovery/__tests__/session-scanner.test.ts",
+      "orchestrator/src/recovery/__tests__/recovery-manager.test.ts",
+      "orchestrator/src/recovery/__tests__/state-validator.test.ts"
+    ],
+    "modify": [
+      "orchestrator/src/orchestrator.ts",
+      "orchestrator/src/index.ts"
+    ],
+    "forbidden": [
+      "core/safety/*",
+      "portal/*",
+      ".env.production"
+    ]
+  },
+
+  "technical_requirements": {
+    "database_tables": ["wave_sessions", "wave_checkpoints"],
+    "reuse_patterns": {
+      "startup_hook": "Register recovery scan in orchestrator startup sequence",
+      "state_validation": "JSON schema validation for checkpoint integrity"
+    },
+    "reuse_components": [
+      "orchestrator/src/checkpoints/manager.ts",
+      "orchestrator/src/db/sessions.ts",
+      "orchestrator/src/db/checkpoints.ts"
+    ]
+  },
+
+  "tdd": {
+    "test_framework": "vitest",
+    "test_files": [
+      "orchestrator/src/recovery/__tests__/session-scanner.test.ts",
+      "orchestrator/src/recovery/__tests__/recovery-manager.test.ts",
+      "orchestrator/src/recovery/__tests__/state-validator.test.ts"
+    ],
+    "coverage_target": 85,
+    "test_categories": [
+      {
+        "name": "Session Scanning",
+        "count": 4,
+        "examples": [
+          "should find all incomplete sessions on startup",
+          "should ignore completed sessions",
+          "should handle empty database",
+          "should order sessions by last_activity"
+        ]
+      },
+      {
+        "name": "Recovery Process",
+        "count": 5,
+        "examples": [
+          "should restore state from valid checkpoint",
+          "should skip corrupted checkpoints",
+          "should resume execution at correct gate",
+          "should retry failed recovery up to 3 times",
+          "should escalate after max retries"
+        ]
+      },
+      {
+        "name": "State Validation",
+        "count": 3,
+        "examples": [
+          "should validate checkpoint structure",
+          "should detect missing required fields",
+          "should verify state version compatibility"
+        ]
+      }
+    ],
+    "mocking_strategy": {
+      "database": "Real database in test container",
+      "orchestrator": "Mock orchestrator for resume testing"
+    }
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Checkpoint validation fails repeatedly",
+      "State version mismatch detected",
+      "Database connection lost during recovery"
+    ],
+    "escalation_triggers": [
+      "Recovery fails 3 consecutive times",
+      "No valid checkpoints found for session",
+      "State contains corrupted data"
+    ],
+    "rollback_plan": "Mark session as 'failed_recovery' and create new session for fresh start"
+  },
+
+  "hazard_analysis": {
+    "identified_hazards": [
+      {
+        "id": "HAZ-001",
+        "description": "Recovery restores outdated state",
+        "severity": "major",
+        "likelihood": "remote",
+        "mitigation": "Always use most recent valid checkpoint, verify timestamp"
+      },
+      {
+        "id": "HAZ-002",
+        "description": "Infinite recovery loop",
+        "severity": "critical",
+        "likelihood": "remote",
+        "mitigation": "Max 3 recovery attempts, then escalate to human"
+      }
+    ],
+    "risk_level": "medium"
+  },
+
+  "dependencies": {
+    "required_before": ["WAVE-P1-002"],
+    "blocks": ["WAVE-P2-001"]
+  },
+
+  "traceability": {
+    "requirements": ["CRASH-RECOVERY-002", "STATE-PERSISTENCE-003"],
+    "epic": "WAVE State Persistence",
+    "related_stories": ["WAVE-P1-001", "WAVE-P1-002"]
+  },
+
+  "gates_completed": [],
+  "estimated_tests": 12,
+  "estimated_tokens": 25000,
+
+  "metadata": {
+    "created_at": "2026-02-07T00:00:00Z",
+    "created_by": "cto-analysis",
+    "agent_assignment": "be-dev-1"
+  },
+
+  "notes": "This completes the Phase 1 crash recovery system. After this story, WAVE can survive any crash and resume automatically."
+}

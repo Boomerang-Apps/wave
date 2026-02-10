@@ -1,0 +1,195 @@
+{
+  "$schema": "../../planning/schemas/story-schema-v4.2.json",
+  "schema_version": "4.2",
+  "story_id": "WAVE-P5-002",
+  "title": "Implement Human Checkpoint System",
+  "type": "feature",
+  "domain": "backend",
+  "agent": "be-dev",
+  "wave_number": 5,
+  "priority": "P1",
+  "story_points": 8,
+  "status": "pending",
+  "description": "Create a human checkpoint system that pauses the pipeline at configurable points for human review and approval. Supports async approval via web UI, Slack, or CLI. Enables graduated autonomy from full human review to PRD-only approval.",
+
+  "objective": {
+    "as_a": "Product Manager",
+    "i_want": "configurable checkpoints for human review",
+    "so_that": "I can control the level of autonomy based on project risk tolerance"
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "description": "Checkpoint levels configurable",
+      "ears_format": "WHEN checkpoint_level set THEN pipeline pauses at appropriate points",
+      "test_approach": "Set different levels, verify pause points match",
+      "status": "pending"
+    },
+    {
+      "id": "AC-02",
+      "description": "Level 1: Pause after every gate",
+      "ears_format": "WHEN level=1 THEN human approval required after each agent gate",
+      "test_approach": "Set level 1, verify pause after each gate",
+      "status": "pending"
+    },
+    {
+      "id": "AC-03",
+      "description": "Level 2: Pause after stories complete",
+      "ears_format": "WHEN level=2 THEN human approval required after story completion",
+      "test_approach": "Set level 2, verify pause after story, not gates",
+      "status": "pending"
+    },
+    {
+      "id": "AC-04",
+      "description": "Level 3: Pause before merge only",
+      "ears_format": "WHEN level=3 THEN human approval required only before final merge",
+      "test_approach": "Set level 3, verify only merge checkpoint",
+      "status": "pending"
+    },
+    {
+      "id": "AC-05",
+      "description": "Level 4: No pauses (full autonomy)",
+      "ears_format": "WHEN level=4 THEN pipeline runs without human checkpoints",
+      "test_approach": "Set level 4, verify no pauses",
+      "status": "pending"
+    },
+    {
+      "id": "AC-06",
+      "description": "Async approval via multiple channels",
+      "ears_format": "WHEN checkpoint reached THEN notification sent to configured channel (Slack, email, web)",
+      "test_approach": "Trigger checkpoint, verify notifications sent",
+      "status": "pending"
+    },
+    {
+      "id": "AC-07",
+      "description": "Approval timeout with escalation",
+      "ears_format": "WHEN approval not received within timeout THEN escalate to backup approver",
+      "threshold": "timeout: 4 hours",
+      "test_approach": "Wait past timeout, verify escalation",
+      "status": "pending"
+    },
+    {
+      "id": "AC-08",
+      "description": "Approval/rejection recorded for audit",
+      "ears_format": "WHEN human approves/rejects THEN decision logged with timestamp and user",
+      "test_approach": "Approve checkpoint, query audit log",
+      "status": "pending"
+    }
+  ],
+
+  "files": {
+    "create": [
+      "orchestrator/src/checkpoints/human-checkpoint.ts",
+      "orchestrator/src/checkpoints/approval-manager.ts",
+      "orchestrator/src/checkpoints/notification-sender.ts",
+      "orchestrator/src/checkpoints/escalation-handler.ts",
+      "orchestrator/src/checkpoints/types.ts",
+      "orchestrator/src/checkpoints/__tests__/human-checkpoint.test.ts",
+      "orchestrator/src/checkpoints/__tests__/approval-manager.test.ts"
+    ],
+    "modify": [
+      "orchestrator/src/pipeline/autonomous-pipeline.ts",
+      "orchestrator/src/orchestrator.ts"
+    ],
+    "forbidden": [
+      "core/safety/*"
+    ]
+  },
+
+  "technical_requirements": {
+    "reuse_patterns": {
+      "approval_workflow": "Async approval with timeout and escalation",
+      "notification": "Multi-channel notification (Slack, email, webhook)"
+    },
+    "reuse_components": [
+      "orchestrator/src/events/signal-handler.ts"
+    ],
+    "api_endpoints": [
+      "POST /api/checkpoints/:id/approve",
+      "POST /api/checkpoints/:id/reject",
+      "GET /api/checkpoints/pending"
+    ]
+  },
+
+  "tdd": {
+    "test_framework": "vitest",
+    "test_files": [
+      "orchestrator/src/checkpoints/__tests__/human-checkpoint.test.ts",
+      "orchestrator/src/checkpoints/__tests__/approval-manager.test.ts"
+    ],
+    "coverage_target": 85,
+    "test_categories": [
+      {
+        "name": "Checkpoint Levels",
+        "count": 4,
+        "examples": [
+          "should pause at every gate for level 1",
+          "should pause at story completion for level 2",
+          "should pause at merge for level 3",
+          "should not pause for level 4"
+        ]
+      },
+      {
+        "name": "Approval Flow",
+        "count": 5,
+        "examples": [
+          "should send notification on checkpoint",
+          "should wait for approval",
+          "should continue after approval",
+          "should handle rejection",
+          "should escalate on timeout"
+        ]
+      },
+      {
+        "name": "Audit",
+        "count": 3,
+        "examples": [
+          "should log approval decisions",
+          "should record approver identity",
+          "should track approval latency"
+        ]
+      }
+    ],
+    "mocking_strategy": {
+      "notifications": "Mock Slack/email APIs",
+      "time": "Mock timeouts for testing"
+    }
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Approval bypassed without authorization",
+      "Escalation chain exhausted"
+    ],
+    "escalation_triggers": [
+      "Approval timeout exceeded",
+      "Rejection without reason",
+      "Repeated rejections on same checkpoint"
+    ],
+    "rollback_plan": "Revert to level 1 (pause after every gate)"
+  },
+
+  "dependencies": {
+    "required_before": ["WAVE-P5-001"],
+    "blocks": ["WAVE-P5-003"]
+  },
+
+  "traceability": {
+    "requirements": ["AUTONOMY-002", "HUMAN-LOOP-001"],
+    "epic": "WAVE Full Autonomy",
+    "related_stories": ["WAVE-P5-001", "WAVE-P5-003"]
+  },
+
+  "gates_completed": [],
+  "estimated_tests": 12,
+  "estimated_tokens": 30000,
+
+  "metadata": {
+    "created_at": "2026-02-07T00:00:00Z",
+    "created_by": "cto-analysis",
+    "agent_assignment": "be-dev-1"
+  },
+
+  "notes": "Human checkpoints are critical for trust and adoption. Start projects at level 1, gradually increase as trust builds. Always maintain level 3 minimum for production deployments."
+}

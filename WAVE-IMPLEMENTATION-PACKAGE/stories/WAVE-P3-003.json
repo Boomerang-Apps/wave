@@ -1,0 +1,226 @@
+{
+  "$schema": "../../planning/schemas/story-schema-v4.2.json",
+  "schema_version": "4.2",
+  "story_id": "WAVE-P3-003",
+  "title": "Implement Parallel Story Executor",
+  "type": "feature",
+  "domain": "backend",
+  "agent": "be-dev",
+  "wave_number": 3,
+  "priority": "P1",
+  "story_points": 8,
+  "status": "pending",
+  "description": "Create a parallel story executor that can run multiple stories simultaneously across different agents. Respects domain boundaries, manages worktrees, coordinates signals, and merges results. This is the core multi-agent orchestration capability.",
+
+  "objective": {
+    "as_a": "WAVE Orchestrator",
+    "i_want": "to execute multiple stories in parallel across agents",
+    "so_that": "development velocity increases 4x with 4 agents working simultaneously"
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "description": "Multiple stories can be started simultaneously",
+      "ears_format": "WHEN 4 non-conflicting stories queued THEN all 4 start within 5 seconds",
+      "threshold": "startup delay: <5s",
+      "test_approach": "Queue 4 stories to different domains, measure startup times",
+      "status": "pending"
+    },
+    {
+      "id": "AC-02",
+      "description": "Each story runs in isolated worktree",
+      "ears_format": "WHEN story starts THEN it executes in dedicated worktree",
+      "test_approach": "Start 4 stories, verify each has unique worktree",
+      "status": "pending"
+    },
+    {
+      "id": "AC-03",
+      "description": "Signals from all agents processed correctly",
+      "ears_format": "WHEN multiple agents publish signals THEN orchestrator handles all without loss",
+      "test_approach": "4 agents send signals simultaneously, verify all received",
+      "status": "pending"
+    },
+    {
+      "id": "AC-04",
+      "description": "Domain conflicts prevented at queue time",
+      "ears_format": "WHEN 2 stories target same domain THEN second story waits for first to complete",
+      "test_approach": "Queue 2 AUTH stories, verify serialized execution",
+      "status": "pending"
+    },
+    {
+      "id": "AC-05",
+      "description": "Completed stories merge to main without conflicts",
+      "ears_format": "WHEN all parallel stories complete THEN changes merge cleanly to main",
+      "test_approach": "Complete 4 stories, verify main branch has all changes",
+      "status": "pending"
+    },
+    {
+      "id": "AC-06",
+      "description": "Single agent failure does not affect others",
+      "ears_format": "WHEN one agent fails THEN other agents continue execution",
+      "test_approach": "Force one agent to fail, verify others complete",
+      "status": "pending"
+    },
+    {
+      "id": "AC-07",
+      "description": "Resource usage tracked per agent",
+      "ears_format": "WHEN parallel execution completes THEN token usage tracked per agent and story",
+      "test_approach": "Complete parallel run, query metrics by agent",
+      "status": "pending"
+    }
+  ],
+
+  "files": {
+    "create": [
+      "orchestrator/src/parallel/executor.ts",
+      "orchestrator/src/parallel/scheduler.ts",
+      "orchestrator/src/parallel/conflict-detector.ts",
+      "orchestrator/src/parallel/merge-coordinator.ts",
+      "orchestrator/src/parallel/types.ts",
+      "orchestrator/src/parallel/__tests__/executor.test.ts",
+      "orchestrator/src/parallel/__tests__/scheduler.test.ts",
+      "orchestrator/src/parallel/__tests__/conflict-detector.test.ts",
+      "orchestrator/src/parallel/__tests__/integration.test.ts"
+    ],
+    "modify": [
+      "orchestrator/src/orchestrator.ts"
+    ],
+    "forbidden": [
+      "core/safety/*"
+    ]
+  },
+
+  "technical_requirements": {
+    "reuse_patterns": {
+      "work_stealing": "Load balance stories across available agents",
+      "barrier_sync": "Wait for all parallel stories before merge phase"
+    },
+    "reuse_components": [
+      "orchestrator/src/git/worktree-manager.ts",
+      "orchestrator/src/domains/boundary-enforcer.ts",
+      "orchestrator/src/events/signal-handler.ts"
+    ]
+  },
+
+  "tdd": {
+    "test_framework": "vitest",
+    "test_files": [
+      "orchestrator/src/parallel/__tests__/executor.test.ts",
+      "orchestrator/src/parallel/__tests__/scheduler.test.ts",
+      "orchestrator/src/parallel/__tests__/conflict-detector.test.ts",
+      "orchestrator/src/parallel/__tests__/integration.test.ts"
+    ],
+    "coverage_target": 85,
+    "test_categories": [
+      {
+        "name": "Parallel Execution",
+        "count": 5,
+        "examples": [
+          "should start 4 stories in parallel",
+          "should isolate each story in worktree",
+          "should handle all agent signals",
+          "should complete all stories successfully",
+          "should track per-agent metrics"
+        ]
+      },
+      {
+        "name": "Conflict Detection",
+        "count": 4,
+        "examples": [
+          "should detect domain conflicts",
+          "should serialize conflicting stories",
+          "should allow non-conflicting parallel execution",
+          "should handle SHARED domain correctly"
+        ]
+      },
+      {
+        "name": "Merge Coordination",
+        "count": 4,
+        "examples": [
+          "should merge all branches after completion",
+          "should handle merge in correct order",
+          "should detect merge conflicts early",
+          "should rollback on merge failure"
+        ]
+      },
+      {
+        "name": "Fault Tolerance",
+        "count": 3,
+        "examples": [
+          "should continue if one agent fails",
+          "should retry failed stories",
+          "should report partial completion"
+        ]
+      }
+    ],
+    "mocking_strategy": {
+      "agents": "Mock agents with configurable behavior",
+      "git": "Real git operations in temp repository"
+    }
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "More than 2 agents fail simultaneously",
+      "Merge conflicts detected",
+      "Resource exhaustion (memory/CPU)"
+    ],
+    "escalation_triggers": [
+      "Parallel execution takes >2x expected time",
+      "Repeated failures on same story",
+      "Deadlock detected"
+    ],
+    "rollback_plan": "Cancel all parallel executions, revert to sequential mode"
+  },
+
+  "hazard_analysis": {
+    "identified_hazards": [
+      {
+        "id": "HAZ-001",
+        "description": "Race condition in signal processing",
+        "severity": "major",
+        "likelihood": "occasional",
+        "mitigation": "Use message ordering, idempotent handlers"
+      },
+      {
+        "id": "HAZ-002",
+        "description": "Deadlock between waiting stories",
+        "severity": "critical",
+        "likelihood": "remote",
+        "mitigation": "Timeout-based deadlock detection"
+      },
+      {
+        "id": "HAZ-003",
+        "description": "Merge conflicts despite domain boundaries",
+        "severity": "major",
+        "likelihood": "remote",
+        "mitigation": "Pre-merge conflict check, human escalation"
+      }
+    ],
+    "risk_level": "high"
+  },
+
+  "dependencies": {
+    "required_before": ["WAVE-P3-002"],
+    "blocks": ["WAVE-P4-001"]
+  },
+
+  "traceability": {
+    "requirements": ["MULTI-AGENT-003", "PARALLEL-EXEC-001"],
+    "epic": "WAVE Multi-Agent Parallel Execution",
+    "related_stories": ["WAVE-P3-001", "WAVE-P3-002"]
+  },
+
+  "gates_completed": [],
+  "estimated_tests": 16,
+  "estimated_tokens": 45000,
+
+  "metadata": {
+    "created_at": "2026-02-07T00:00:00Z",
+    "created_by": "cto-analysis",
+    "agent_assignment": "be-dev-1"
+  },
+
+  "notes": "This is the culmination of Phase 3 - true multi-agent parallel execution. Start with 2 agents, then scale to 4. Monitor resource usage carefully."
+}
