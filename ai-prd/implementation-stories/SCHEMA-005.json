@@ -1,0 +1,109 @@
+{
+  "$schema": "../../planning/schemas/story-schema-v4.2.json",
+  "schema_version": "4.2",
+  "story_id": "SCHEMA-005",
+  "title": "Update Schema Documentation",
+  "type": "documentation",
+  "domain": "shared",
+  "agent": "be-dev",
+  "wave_number": 0,
+  "priority": "P1",
+  "story_points": 2,
+  "status": "pending",
+  "description": "Update all schema documentation to reflect V4.3 changes. Include migration guide, field reference, and examples for each new field.",
+  "objective": {
+    "as_a": "WAVE User",
+    "i_want": "comprehensive V4.3 schema documentation",
+    "so_that": "I understand how to use all new fields effectively"
+  },
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "description": "V4.3 schema reference document created",
+      "ears_format": "WHEN docs reviewed THEN all V4.3 fields are documented",
+      "test_approach": "Review docs, check field coverage",
+      "status": "pending"
+    },
+    {
+      "id": "AC-02",
+      "description": "Migration guide from V4.2 to V4.3",
+      "ears_format": "WHEN migration needed THEN guide explains all steps",
+      "test_approach": "Follow guide, verify migration succeeds",
+      "status": "pending"
+    },
+    {
+      "id": "AC-03",
+      "description": "Examples for new fields",
+      "ears_format": "WHEN new field documented THEN at least one example provided",
+      "test_approach": "Check examples for context, execution, design_source",
+      "status": "pending"
+    },
+    {
+      "id": "AC-04",
+      "description": "Best practices section",
+      "ears_format": "WHEN docs read THEN best practices for cost reduction included",
+      "test_approach": "Review best practices section",
+      "status": "pending"
+    }
+  ],
+  "files": {
+    "create": [
+      "docs/schemas/v4.3-reference.md",
+      "docs/schemas/migration-v42-v43.md",
+      "docs/schemas/best-practices.md"
+    ],
+    "modify": [
+      "docs/schemas/README.md"
+    ],
+    "forbidden": []
+  },
+  "technical_requirements": {
+    "reuse_patterns": {
+      "markdown": "Standard Markdown with code examples"
+    }
+  },
+  "tdd": {
+    "test_framework": "vitest",
+    "test_files": [],
+    "coverage_target": 0,
+    "test_categories": [],
+    "mocking_strategy": {}
+  },
+  "safety": {
+    "stop_conditions": [],
+    "escalation_triggers": [],
+    "rollback_plan": "Revert documentation changes"
+  },
+  "dependencies": {
+    "required_before": [
+      "SCHEMA-001",
+      "SCHEMA-002",
+      "SCHEMA-003",
+      "SCHEMA-004"
+    ],
+    "blocks": []
+  },
+  "traceability": {
+    "requirements": [
+      "SCHEMA-V43-005"
+    ],
+    "epic": "AI Stories Schema Improvement",
+    "related_stories": [
+      "SCHEMA-001",
+      "SCHEMA-002",
+      "SCHEMA-003",
+      "SCHEMA-004"
+    ]
+  },
+  "gates_completed": [],
+  "estimated_tests": 0,
+  "estimated_tokens": 8000,
+  "metadata": {
+    "created_at": "2026-02-07T00:00:00Z",
+    "created_by": "cto-analysis",
+    "agent_assignment": "be-dev-1",
+    "progress_note": "0% complete"
+  },
+  "notes": "Documentation is critical for adoption. Include real-world examples from WAVE implementation stories.",
+  "implementation_notes": "\u274c NOT STARTED: NOT STARTED. V4.3 documentation not created. Developers must read JSON schema directly."
+}

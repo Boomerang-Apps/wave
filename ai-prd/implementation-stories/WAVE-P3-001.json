@@ -1,0 +1,217 @@
+{
+  "$schema": "../../planning/schemas/story-schema-v4.2.json",
+  "schema_version": "4.2",
+  "story_id": "WAVE-P3-001",
+  "title": "Implement Git Worktree Manager",
+  "type": "feature",
+  "domain": "backend",
+  "agent": "be-dev",
+  "wave_number": 3,
+  "priority": "P0",
+  "story_points": 8,
+  "status": "in_progress",
+  "description": "Create a Git worktree manager that allocates isolated worktrees for each agent. This enables parallel development without merge conflicts - each agent works in its own worktree with its own branch, then changes are merged cleanly.",
+  "objective": {
+    "as_a": "WAVE Orchestrator",
+    "i_want": "isolated Git worktrees for each agent",
+    "so_that": "multiple agents can work in parallel without stepping on each other's changes"
+  },
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "description": "Worktree created for each active agent",
+      "ears_format": "WHEN agent assigned to story THEN dedicated worktree created at .wave/worktrees/{agent_id}",
+      "test_approach": "Assign agent, verify worktree directory exists",
+      "status": "complete"
+    },
+    {
+      "id": "AC-02",
+      "description": "Each worktree has isolated branch",
+      "ears_format": "WHEN worktree created THEN it has branch wave/{agent_id}/{story_id}",
+      "test_approach": "Create worktree, verify branch name matches pattern",
+      "status": "complete"
+    },
+    {
+      "id": "AC-03",
+      "description": "Agent commands execute in correct worktree",
+      "ears_format": "WHEN agent runs command THEN working directory is the agent's worktree",
+      "test_approach": "Run pwd in agent context, verify path is worktree",
+      "status": "complete"
+    },
+    {
+      "id": "AC-04",
+      "description": "Worktree synced from main before work starts",
+      "ears_format": "WHEN worktree created THEN it starts from latest main branch commit",
+      "test_approach": "Create worktree, compare HEAD to origin/main",
+      "status": "complete"
+    },
+    {
+      "id": "AC-05",
+      "description": "Worktree cleaned up after story complete",
+      "ears_format": "WHEN story marked complete THEN worktree removed and branch merged or deleted",
+      "test_approach": "Complete story, verify worktree directory removed",
+      "status": "complete"
+    },
+    {
+      "id": "AC-06",
+      "description": "Concurrent worktrees do not conflict",
+      "ears_format": "WHEN 4 worktrees active THEN all can commit independently without lock conflicts",
+      "test_approach": "Create 4 worktrees, commit from each simultaneously",
+      "status": "in_progress"
+    },
+    {
+      "id": "AC-07",
+      "description": "Worktree state persists across crashes",
+      "ears_format": "WHEN orchestrator crashes THEN worktrees remain and can be reattached on recovery",
+      "test_approach": "Create worktree, kill orchestrator, restart, verify worktree accessible",
+      "status": "in_progress"
+    }
+  ],
+  "files": {
+    "create": [
+      "orchestrator/src/git/worktree-manager.ts",
+      "orchestrator/src/git/branch-manager.ts",
+      "orchestrator/src/git/types.ts",
+      "orchestrator/src/git/commands.ts",
+      "orchestrator/src/git/__tests__/worktree-manager.test.ts",
+      "orchestrator/src/git/__tests__/branch-manager.test.ts",
+      "orchestrator/src/git/__tests__/integration.test.ts"
+    ],
+    "modify": [
+      "orchestrator/src/agents/base-agent.ts",
+      "orchestrator/src/orchestrator.ts"
+    ],
+    "forbidden": [
+      "core/safety/*",
+      ".git/config",
+      ".git/hooks/*"
+    ]
+  },
+  "technical_requirements": {
+    "reuse_patterns": {
+      "git_worktree": "git worktree add/remove commands",
+      "branch_naming": "wave/{agent_id}/{story_id} convention",
+      "cleanup": "Automatic cleanup on story completion"
+    },
+    "state_management": "Track worktree allocations in PostgreSQL"
+  },
+  "tdd": {
+    "test_framework": "vitest",
+    "test_files": [
+      "orchestrator/src/git/__tests__/worktree-manager.test.ts",
+      "orchestrator/src/git/__tests__/branch-manager.test.ts",
+      "orchestrator/src/git/__tests__/integration.test.ts"
+    ],
+    "coverage_target": 85,
+    "test_categories": [
+      {
+        "name": "Worktree Lifecycle",
+        "count": 5,
+        "examples": [
+          "should create worktree for agent",
+          "should create unique branch",
+          "should sync from main",
+          "should cleanup on completion",
+          "should handle existing worktree"
+        ]
+      },
+      {
+        "name": "Concurrent Operations",
+        "count": 4,
+        "examples": [
+          "should support 4 concurrent worktrees",
+          "should not have lock conflicts",
+          "should isolate file changes",
+          "should merge without conflicts (different files)"
+        ]
+      },
+      {
+        "name": "Error Handling",
+        "count": 3,
+        "examples": [
+          "should handle git command failures",
+          "should recover orphaned worktrees",
+          "should handle disk space issues"
+        ]
+      }
+    ],
+    "mocking_strategy": {
+      "git": "Real git repository in temp directory",
+      "filesystem": "Real filesystem operations"
+    }
+  },
+  "safety": {
+    "stop_conditions": [
+      "Git repository corruption detected",
+      "Disk space below 1GB",
+      "Worktree creation fails 3 times"
+    ],
+    "escalation_triggers": [
+      "Merge conflicts detected",
+      "Branch naming conflict",
+      "Worktree count exceeds 10"
+    ],
+    "rollback_plan": "Remove all worktrees with git worktree prune, delete wave/* branches"
+  },
+  "hazard_analysis": {
+    "identified_hazards": [
+      {
+        "id": "HAZ-001",
+        "description": "Worktree left in inconsistent state",
+        "severity": "major",
+        "likelihood": "occasional",
+        "mitigation": "Track worktree state in DB, cleanup on startup"
+      },
+      {
+        "id": "HAZ-002",
+        "description": "Disk space exhaustion from many worktrees",
+        "severity": "major",
+        "likelihood": "occasional",
+        "mitigation": "Limit concurrent worktrees, monitor disk space"
+      },
+      {
+        "id": "HAZ-003",
+        "description": "Merge conflicts when combining agent work",
+        "severity": "critical",
+        "likelihood": "occasional",
+        "mitigation": "Domain boundaries prevent overlapping file edits"
+      }
+    ],
+    "risk_level": "medium"
+  },
+  "dependencies": {
+    "required_before": [
+      "WAVE-P2-002"
+    ],
+    "blocks": [
+      "WAVE-P3-002",
+      "WAVE-P3-003"
+    ]
+  },
+  "traceability": {
+    "requirements": [
+      "MULTI-AGENT-001",
+      "GIT-ISOLATION-001"
+    ],
+    "epic": "WAVE Multi-Agent Parallel Execution",
+    "related_stories": [
+      "WAVE-P3-002",
+      "WAVE-P3-003"
+    ]
+  },
+  "gates_completed": [
+    "gate-1",
+    "gate-2",
+    "gate-3"
+  ],
+  "estimated_tests": 12,
+  "estimated_tokens": 35000,
+  "metadata": {
+    "created_at": "2026-02-07T00:00:00Z",
+    "created_by": "cto-analysis",
+    "agent_assignment": "be-dev-1",
+    "progress_note": "80% complete"
+  },
+  "notes": "Git worktrees are a core Git feature - no external tools needed. Key command: git worktree add <path> -b <branch>. Maximum recommended concurrent worktrees is 8.",
+  "implementation_notes": "\u26a0\ufe0f IN PROGRESS (80%): Git worktree code complete (worktree_context.py, domain_worktrees.py - 576 lines total). Tests exist. Needs: integration with parallel executor, end-to-end testing. Files: orchestrator/src/git/worktree_context.py, orchestrator/src/git/domain_worktrees.py"
+}

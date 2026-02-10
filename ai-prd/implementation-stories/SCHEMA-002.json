@@ -1,0 +1,110 @@
+{
+  "$schema": "../../planning/schemas/story-schema-v4.2.json",
+  "schema_version": "4.2",
+  "story_id": "SCHEMA-002",
+  "title": "Create V4.3 Story Template",
+  "type": "infrastructure",
+  "domain": "shared",
+  "agent": "be-dev",
+  "wave_number": 0,
+  "priority": "P0",
+  "story_points": 3,
+  "status": "complete",
+  "description": "Create a comprehensive story template for V4.3 that includes all new fields with helpful comments and examples. This template will be used by CTO agent and humans when creating new stories.",
+  "objective": {
+    "as_a": "Story Author",
+    "i_want": "a V4.3 story template with all fields documented",
+    "so_that": "I can create properly formatted stories without missing fields"
+  },
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "description": "Template includes all V4.3 required fields",
+      "ears_format": "WHEN template used THEN all required fields are present",
+      "test_approach": "Create story from template, validate against schema",
+      "status": "complete"
+    },
+    {
+      "id": "AC-02",
+      "description": "Template includes all V4.3 optional fields",
+      "ears_format": "WHEN template reviewed THEN all optional fields are shown (commented or with defaults)",
+      "test_approach": "Review template for completeness",
+      "status": "complete"
+    },
+    {
+      "id": "AC-03",
+      "description": "Each field has helpful description comment",
+      "ears_format": "WHEN field examined THEN description explains purpose and format",
+      "test_approach": "Review all field comments",
+      "status": "complete"
+    },
+    {
+      "id": "AC-04",
+      "description": "Example values provided for complex fields",
+      "ears_format": "WHEN complex field found THEN example value demonstrates correct format",
+      "test_approach": "Check context, execution, design_source examples",
+      "status": "complete"
+    },
+    {
+      "id": "AC-05",
+      "description": "Template validates against V4.3 schema",
+      "ears_format": "WHEN template validated THEN no schema errors",
+      "test_approach": "Run schema validation on template",
+      "status": "complete"
+    }
+  ],
+  "files": {
+    "create": [
+      "planning/schemas/story-template-v4.3.json"
+    ],
+    "modify": [],
+    "forbidden": []
+  },
+  "technical_requirements": {
+    "reuse_patterns": {
+      "template_pattern": "JSON with $comment fields for documentation"
+    }
+  },
+  "tdd": {
+    "test_framework": "vitest",
+    "test_files": [],
+    "coverage_target": 0,
+    "test_categories": [],
+    "mocking_strategy": {}
+  },
+  "safety": {
+    "stop_conditions": [],
+    "escalation_triggers": [],
+    "rollback_plan": "Use V4.2 template"
+  },
+  "dependencies": {
+    "required_before": [
+      "SCHEMA-001"
+    ],
+    "blocks": []
+  },
+  "traceability": {
+    "requirements": [
+      "SCHEMA-V43-002"
+    ],
+    "epic": "AI Stories Schema Improvement",
+    "related_stories": [
+      "SCHEMA-001"
+    ]
+  },
+  "gates_completed": [
+    "gate-1",
+    "gate-2"
+  ],
+  "estimated_tests": 5,
+  "estimated_tokens": 10000,
+  "metadata": {
+    "created_at": "2026-02-07T00:00:00Z",
+    "created_by": "cto-analysis",
+    "agent_assignment": "be-dev-1",
+    "completed_at": "2026-02-07T12:00:00Z",
+    "completed_by": "be-dev-1"
+  },
+  "notes": "Template should be immediately usable. Include realistic example data.",
+  "implementation_notes": "\u2705 COMPLETE: Template file created with all V4.3 fields, helpful comments, and example values. Files: planning/schemas/story-template-v4.3.json (13,388 bytes)"
+}

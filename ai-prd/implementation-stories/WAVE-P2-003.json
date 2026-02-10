@@ -1,0 +1,171 @@
+{
+  "$schema": "../../planning/schemas/story-schema-v4.2.json",
+  "schema_version": "4.2",
+  "story_id": "WAVE-P2-003",
+  "title": "Implement Agent Signal Publisher",
+  "type": "feature",
+  "domain": "backend",
+  "agent": "be-dev",
+  "wave_number": 2,
+  "priority": "P1",
+  "story_points": 5,
+  "status": "in_progress",
+  "description": "Update all WAVE agents (CTO, PM, FE-Dev, BE-Dev, QA, Dev-Fix) to publish signals via Redis instead of writing to files or polling. Each agent publishes standardized signals for gate completion, errors, and status updates.",
+  "objective": {
+    "as_a": "WAVE Agent",
+    "i_want": "to publish completion and status signals via Redis",
+    "so_that": "the orchestrator receives my updates in real-time (<100ms)"
+  },
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "description": "All agents have signal publisher injected",
+      "ears_format": "WHEN agent initialized THEN it has access to SignalPublisher instance",
+      "test_approach": "Initialize each agent type, verify publisher exists",
+      "status": "complete"
+    },
+    {
+      "id": "AC-02",
+      "description": "Gate completion publishes signal",
+      "ears_format": "WHEN agent completes gate THEN gate_complete signal published with gate_id and result",
+      "test_approach": "Complete gate in test agent, verify signal in Redis stream",
+      "status": "complete"
+    },
+    {
+      "id": "AC-03",
+      "description": "Error conditions publish signal",
+      "ears_format": "WHEN agent encounters error THEN agent_error signal published with error details",
+      "test_approach": "Trigger error in agent, verify error signal published",
+      "status": "pending"
+    },
+    {
+      "id": "AC-04",
+      "description": "Progress updates published periodically",
+      "ears_format": "WHEN agent working on long task THEN progress signal published every 30 seconds",
+      "threshold": "interval: 30s \u00b1 5s",
+      "test_approach": "Run 2-minute task, count progress signals",
+      "status": "pending"
+    },
+    {
+      "id": "AC-05",
+      "description": "Signals include required metadata",
+      "ears_format": "WHEN signal published THEN it includes agent_id, session_id, timestamp, story_id",
+      "test_approach": "Capture signal, validate all required fields present",
+      "status": "pending"
+    },
+    {
+      "id": "AC-06",
+      "description": "Publisher handles Redis failures gracefully",
+      "ears_format": "WHEN Redis unavailable THEN agent logs warning and continues execution",
+      "test_approach": "Disconnect Redis, verify agent continues without crash",
+      "status": "pending"
+    }
+  ],
+  "files": {
+    "create": [
+      "orchestrator/src/agents/signal-publisher-mixin.ts",
+      "orchestrator/src/agents/__tests__/signal-publisher-mixin.test.ts"
+    ],
+    "modify": [
+      "orchestrator/src/agents/base-agent.ts",
+      "orchestrator/src/agents/cto-agent.ts",
+      "orchestrator/src/agents/pm-agent.ts",
+      "orchestrator/src/agents/fe-dev-agent.ts",
+      "orchestrator/src/agents/be-dev-agent.ts",
+      "orchestrator/src/agents/qa-agent.ts",
+      "orchestrator/src/agents/dev-fix-agent.ts"
+    ],
+    "forbidden": [
+      "core/safety/*",
+      "portal/*"
+    ]
+  },
+  "technical_requirements": {
+    "reuse_patterns": {
+      "mixin_pattern": "SignalPublisher as mixin for all agents",
+      "heartbeat": "Periodic progress signals as heartbeat"
+    },
+    "reuse_components": [
+      "orchestrator/src/pubsub/publisher.ts",
+      "orchestrator/src/pubsub/channels.ts",
+      "orchestrator/src/events/signal-types.ts"
+    ]
+  },
+  "tdd": {
+    "test_framework": "vitest",
+    "test_files": [
+      "orchestrator/src/agents/__tests__/signal-publisher-mixin.test.ts"
+    ],
+    "coverage_target": 80,
+    "test_categories": [
+      {
+        "name": "Signal Publishing",
+        "count": 5,
+        "examples": [
+          "should publish gate_complete signal",
+          "should publish agent_error signal",
+          "should publish progress signal",
+          "should include all required metadata",
+          "should handle publish failures"
+        ]
+      },
+      {
+        "name": "Agent Integration",
+        "count": 7,
+        "examples": [
+          "CTO agent should publish signals",
+          "PM agent should publish signals",
+          "FE-Dev agent should publish signals",
+          "BE-Dev agent should publish signals",
+          "QA agent should publish signals",
+          "Dev-Fix agent should publish signals",
+          "All agents should use same signal format"
+        ]
+      }
+    ],
+    "mocking_strategy": {
+      "redis": "Mock publisher for unit tests, real Redis for integration"
+    }
+  },
+  "safety": {
+    "stop_conditions": [
+      "Signal publishing blocks agent execution",
+      "Memory leak from signal queue",
+      "Agent crash due to publisher error"
+    ],
+    "escalation_triggers": [
+      "Publisher errors exceed 10 per minute",
+      "Signals not reaching orchestrator"
+    ],
+    "rollback_plan": "Disable publisher mixin, agents continue without signals"
+  },
+  "dependencies": {
+    "required_before": [
+      "WAVE-P2-002"
+    ],
+    "blocks": [
+      "WAVE-P3-001"
+    ]
+  },
+  "traceability": {
+    "requirements": [
+      "EVENT-DRIVEN-003"
+    ],
+    "epic": "WAVE Event-Driven Communication",
+    "related_stories": [
+      "WAVE-P2-001",
+      "WAVE-P2-002"
+    ]
+  },
+  "gates_completed": [],
+  "estimated_tests": 12,
+  "estimated_tokens": 20000,
+  "metadata": {
+    "created_at": "2026-02-07T00:00:00Z",
+    "created_by": "cto-analysis",
+    "agent_assignment": "be-dev-1",
+    "progress_note": "40% complete"
+  },
+  "notes": "Use mixin pattern to add signal publishing to all agents without duplicating code. Ensure publishing is non-blocking.",
+  "implementation_notes": "\ud83d\udfe1 IN PROGRESS (40%): Publisher exists in orchestrator/src/pubsub/publisher.py. Needs: agent-to-orchestrator signal publishing, verify agents can publish to Redis, integration testing. Files: orchestrator/src/pubsub/publisher.py"
+}

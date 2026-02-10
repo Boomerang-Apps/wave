@@ -1,0 +1,132 @@
+{
+  "$schema": "../../planning/schemas/story-schema-v4.2.json",
+  "schema_version": "4.2",
+  "story_id": "WAVE-P0-001",
+  "title": "Setup WAVE Development Environment",
+  "type": "infrastructure",
+  "domain": "infrastructure",
+  "agent": "be-dev",
+  "wave_number": 0,
+  "priority": "P0",
+  "story_points": 3,
+  "status": "complete",
+  "description": "Initialize the WAVE development environment with all required services (PostgreSQL, Redis, Docker). Verify connectivity and create initial database schemas. This is the foundation for all subsequent implementation work.",
+  "objective": {
+    "as_a": "WAVE Developer",
+    "i_want": "a fully configured development environment",
+    "so_that": "I can begin implementing WAVE features without environment issues"
+  },
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "description": "Docker Compose starts all services successfully",
+      "ears_format": "WHEN docker-compose up is executed THEN all services reach healthy state within 60 seconds",
+      "threshold": "startup time: <60s",
+      "test_approach": "Run docker-compose up and verify health checks pass",
+      "status": "complete"
+    },
+    {
+      "id": "AC-02",
+      "description": "PostgreSQL connection verified and responding",
+      "ears_format": "WHEN connection test runs THEN database responds with version information",
+      "test_approach": "Execute SELECT version() query via psql",
+      "status": "complete"
+    },
+    {
+      "id": "AC-03",
+      "description": "Redis connection verified and responding",
+      "ears_format": "WHEN PING command sent THEN PONG response received",
+      "test_approach": "Execute redis-cli PING command",
+      "status": "complete"
+    },
+    {
+      "id": "AC-04",
+      "description": "Initial database schema created with wave_state table",
+      "ears_format": "WHEN migration runs THEN wave_sessions, wave_checkpoints tables exist",
+      "test_approach": "Verify table existence with \\dt command in psql",
+      "status": "complete"
+    },
+    {
+      "id": "AC-05",
+      "description": "Environment verification script passes",
+      "ears_format": "WHEN verify-env.sh runs THEN exit code is 0",
+      "test_approach": "Run ./scripts/verify-env.sh and check exit code",
+      "status": "complete"
+    }
+  ],
+  "files": {
+    "create": [
+      "docker-compose.wave.yml",
+      "orchestrator/migrations/001_initial_schema.sql",
+      "orchestrator/scripts/verify-env.sh",
+      "orchestrator/.env.example"
+    ],
+    "modify": [],
+    "forbidden": [
+      "core/safety/*",
+      ".env.production",
+      ".env.local"
+    ]
+  },
+  "technical_requirements": {
+    "database_tables": [
+      "wave_sessions",
+      "wave_checkpoints",
+      "wave_story_executions"
+    ],
+    "api_endpoints": [],
+    "reuse_components": [],
+    "reuse_patterns": {
+      "docker_compose": "Standard multi-service compose pattern"
+    }
+  },
+  "tdd": {
+    "test_framework": "vitest",
+    "test_files": [],
+    "coverage_target": 0,
+    "test_categories": [],
+    "mocking_strategy": {}
+  },
+  "safety": {
+    "stop_conditions": [
+      "Any modification to production environment",
+      "Exposure of credentials in logs or commits",
+      "Docker daemon unresponsive"
+    ],
+    "escalation_triggers": [
+      "Port conflicts with existing services",
+      "Docker daemon issues",
+      "Insufficient disk space"
+    ],
+    "rollback_plan": "docker-compose down -v to remove all containers and volumes"
+  },
+  "dependencies": {
+    "required_before": [],
+    "blocks": [
+      "WAVE-P1-001",
+      "WAVE-P1-002"
+    ]
+  },
+  "traceability": {
+    "requirements": [
+      "WAVE-ARCH-001"
+    ],
+    "epic": "WAVE Foundation",
+    "related_stories": []
+  },
+  "gates_completed": [
+    "gate-1",
+    "gate-2"
+  ],
+  "estimated_tests": 5,
+  "estimated_tokens": 15000,
+  "metadata": {
+    "created_at": "2026-02-06T00:00:00Z",
+    "created_by": "cto-analysis",
+    "agent_assignment": "be-dev-1",
+    "completed_at": "2026-02-07T12:00:00Z",
+    "completed_by": "be-dev-1"
+  },
+  "notes": "This is the first story to execute. All subsequent stories depend on this environment being properly configured.",
+  "implementation_notes": "\u2705 COMPLETE: Docker Compose configured with PostgreSQL, Redis, pgAdmin, Redis Commander. Health checks configured. Migration schema created. Files: docker-compose.wave.yml, orchestrator/migrations/001_initial_schema.sql"
+}

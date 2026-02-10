@@ -1,0 +1,143 @@
+{
+  "$schema": "../../planning/schemas/story-schema-v4.2.json",
+  "schema_version": "4.2",
+  "story_id": "SCHEMA-001",
+  "title": "Create AI Stories Schema V4.3",
+  "type": "infrastructure",
+  "domain": "shared",
+  "agent": "be-dev",
+  "wave_number": 0,
+  "priority": "P0",
+  "story_points": 5,
+  "status": "complete",
+  "description": "Create the V4.3 AI Stories JSON Schema with all improvements identified in the schema analysis: configurable domains, context loading, execution control, enhanced design source, subtasks, and enterprise compliance fields.",
+
+  "objective": {
+    "as_a": "WAVE Developer",
+    "i_want": "an improved AI Stories schema (V4.3)",
+    "so_that": "stories are project-agnostic, cost-efficient, and enterprise-ready"
+  },
+
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "description": "Schema validates against JSON Schema Draft 2020-12",
+      "ears_format": "WHEN schema loaded THEN it passes JSON Schema meta-validation",
+      "test_approach": "Validate schema against JSON Schema meta-schema",
+      "status": "complete"
+    },
+    {
+      "id": "AC-02",
+      "description": "Domain field is configurable (not enum)",
+      "ears_format": "WHEN story created THEN domain can be any string from project config",
+      "test_approach": "Create story with custom domain, verify validation passes",
+      "status": "complete"
+    },
+    {
+      "id": "AC-03",
+      "description": "Context section present with read_files and code_examples",
+      "ears_format": "WHEN story has context.read_files THEN array of file paths accepted",
+      "test_approach": "Create story with context section, validate",
+      "status": "complete"
+    },
+    {
+      "id": "AC-04",
+      "description": "Execution section present with retries, timeout, model_tier",
+      "ears_format": "WHEN story has execution.max_retries THEN integer value accepted",
+      "test_approach": "Create story with execution section, validate",
+      "status": "complete"
+    },
+    {
+      "id": "AC-05",
+      "description": "Subtasks array supported",
+      "ears_format": "WHEN story has subtasks THEN array of subtask objects accepted",
+      "test_approach": "Create story with subtasks, validate",
+      "status": "complete"
+    },
+    {
+      "id": "AC-06",
+      "description": "Enhanced design_source with components and interactions",
+      "ears_format": "WHEN UI story created THEN design_source can include components array",
+      "test_approach": "Create UI story with enhanced design_source, validate",
+      "status": "complete"
+    },
+    {
+      "id": "AC-07",
+      "description": "Enterprise section with compliance and approvals",
+      "ears_format": "WHEN enterprise story created THEN compliance array and approvals accepted",
+      "test_approach": "Create story with enterprise section, validate",
+      "status": "complete"
+    },
+    {
+      "id": "AC-08",
+      "description": "Backward compatible with V4.2 stories",
+      "ears_format": "WHEN V4.2 story validated against V4.3 THEN validation passes",
+      "test_approach": "Validate existing V4.2 stories against V4.3 schema",
+      "status": "complete"
+    }
+  ],
+
+  "files": {
+    "create": [
+      "planning/schemas/story-schema-v4.3.json"
+    ],
+    "modify": [],
+    "forbidden": [
+      "planning/schemas/story-schema-v4.2.json",
+      "planning/schemas/story-schema-v4.1.json"
+    ]
+  },
+
+  "technical_requirements": {
+    "reuse_patterns": {
+      "json_schema": "JSON Schema Draft 2020-12",
+      "definitions": "Use $defs for reusable types"
+    }
+  },
+
+  "tdd": {
+    "test_framework": "vitest",
+    "test_files": [],
+    "coverage_target": 0,
+    "test_categories": [],
+    "mocking_strategy": {}
+  },
+
+  "safety": {
+    "stop_conditions": [
+      "Schema breaks existing story validation"
+    ],
+    "escalation_triggers": [
+      "Breaking changes to required fields"
+    ],
+    "rollback_plan": "Revert to V4.2 schema"
+  },
+
+  "dependencies": {
+    "required_before": [],
+    "blocks": ["SCHEMA-002", "SCHEMA-003", "SCHEMA-004"]
+  },
+
+  "traceability": {
+    "requirements": ["SCHEMA-V43-001"],
+    "epic": "AI Stories Schema Improvement",
+    "related_stories": ["SCHEMA-002", "SCHEMA-003", "SCHEMA-004", "SCHEMA-005"]
+  },
+
+  "gates_completed": ["gate-1", "gate-2"],
+  "estimated_tests": 8,
+  "estimated_tokens": 20000,
+  "actual_tokens": 25000,
+
+  "metadata": {
+    "created_at": "2026-02-07T00:00:00Z",
+    "created_by": "cto-analysis",
+    "agent_assignment": "be-dev-1",
+    "completed_at": "2026-02-07T12:00:00Z",
+    "completed_by": "be-dev-1"
+  },
+
+  "implementation_notes": "Schema file created at planning/schemas/story-schema-v4.3.json (25,414 bytes). All V4.3 enhancements implemented including configurable domains, context loading, execution control, subtasks, enhanced design_source, and enterprise compliance fields.",
+
+  "notes": "This is the foundation for all V4.3 improvements. Ensure backward compatibility with V4.2 stories."
+}

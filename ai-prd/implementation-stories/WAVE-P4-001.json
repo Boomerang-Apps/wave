@@ -1,0 +1,223 @@
+{
+  "$schema": "../../planning/schemas/story-schema-v4.2.json",
+  "schema_version": "4.2",
+  "story_id": "WAVE-P4-001",
+  "title": "Implement RLM Context Manager",
+  "type": "feature",
+  "domain": "backend",
+  "agent": "be-dev",
+  "wave_number": 4,
+  "priority": "P1",
+  "story_points": 13,
+  "status": "in_progress",
+  "description": "Implement Recursive Language Model (RLM) context management as documented in the WAVE architecture. This enables efficient context usage by externalizing state, loading only relevant files, and preventing context rot. Target: agents load <10% of codebase, reducing costs by >50%.",
+  "objective": {
+    "as_a": "WAVE Agent",
+    "i_want": "intelligent context management using RLM principles",
+    "so_that": "I only load relevant code (<10% of codebase), reducing token costs by >50%"
+  },
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "description": "Context manager initialized with domain scope",
+      "ears_format": "WHEN agent starts THEN context manager loads only files from assigned domain",
+      "test_approach": "Start AUTH agent, verify only auth/* files in context",
+      "status": "complete"
+    },
+    {
+      "id": "AC-02",
+      "description": "Story-specific context loaded from AI Story",
+      "ears_format": "WHEN story has context.read_files THEN those files loaded automatically",
+      "test_approach": "Create story with read_files, verify files in agent context",
+      "status": "complete"
+    },
+    {
+      "id": "AC-03",
+      "description": "Context size tracked and limited",
+      "ears_format": "WHEN context exceeds 100K tokens THEN old context evicted using LRU",
+      "threshold": "max context: 100K tokens",
+      "test_approach": "Load >100K tokens, verify eviction occurs",
+      "status": "complete"
+    },
+    {
+      "id": "AC-04",
+      "description": "State externalized to database",
+      "ears_format": "WHEN conversation reaches checkpoint THEN state saved to DB, context cleared",
+      "test_approach": "Trigger checkpoint, verify state in DB, context reduced",
+      "status": "complete"
+    },
+    {
+      "id": "AC-05",
+      "description": "Context retrieval on demand",
+      "ears_format": "WHEN agent needs file not in context THEN file retrieved and added dynamically",
+      "test_approach": "Agent requests file, verify retrieval and context update",
+      "status": "pending"
+    },
+    {
+      "id": "AC-06",
+      "description": "Token usage reduced by >50% compared to baseline",
+      "ears_format": "WHEN story completed THEN token usage is <50% of full-context baseline",
+      "threshold": "token reduction: >50%",
+      "test_approach": "Run same story with/without RLM, compare token usage",
+      "status": "pending"
+    },
+    {
+      "id": "AC-07",
+      "description": "No context rot after 100K tokens processed",
+      "ears_format": "WHEN agent processes 100K tokens THEN accuracy remains >95% of initial",
+      "threshold": "accuracy retention: >95%",
+      "test_approach": "Long-running task, measure accuracy at start vs 100K tokens",
+      "status": "pending"
+    }
+  ],
+  "files": {
+    "create": [
+      "orchestrator/src/rlm/context-manager.ts",
+      "orchestrator/src/rlm/domain-scoper.ts",
+      "orchestrator/src/rlm/state-externalizer.ts",
+      "orchestrator/src/rlm/token-tracker.ts",
+      "orchestrator/src/rlm/lru-cache.ts",
+      "orchestrator/src/rlm/types.ts",
+      "orchestrator/src/rlm/__tests__/context-manager.test.ts",
+      "orchestrator/src/rlm/__tests__/domain-scoper.test.ts",
+      "orchestrator/src/rlm/__tests__/state-externalizer.test.ts",
+      "orchestrator/src/rlm/__tests__/token-tracker.test.ts"
+    ],
+    "modify": [
+      "orchestrator/src/agents/base-agent.ts",
+      "orchestrator/src/orchestrator.ts"
+    ],
+    "forbidden": [
+      "core/safety/*"
+    ]
+  },
+  "technical_requirements": {
+    "reuse_patterns": {
+      "lru_eviction": "Least Recently Used cache for context",
+      "lazy_loading": "Load files only when needed",
+      "state_snapshot": "Serialize state at checkpoints"
+    },
+    "reuse_components": [
+      "orchestrator/src/checkpoints/manager.ts",
+      "orchestrator/src/domains/domain-rules.ts"
+    ],
+    "state_management": "PostgreSQL for externalized state"
+  },
+  "tdd": {
+    "test_framework": "vitest",
+    "test_files": [
+      "orchestrator/src/rlm/__tests__/context-manager.test.ts",
+      "orchestrator/src/rlm/__tests__/domain-scoper.test.ts",
+      "orchestrator/src/rlm/__tests__/state-externalizer.test.ts",
+      "orchestrator/src/rlm/__tests__/token-tracker.test.ts"
+    ],
+    "coverage_target": 85,
+    "test_categories": [
+      {
+        "name": "Context Management",
+        "count": 6,
+        "examples": [
+          "should load domain-specific context",
+          "should load story-specified files",
+          "should enforce token limits",
+          "should evict old context with LRU",
+          "should track context size accurately",
+          "should handle context retrieval on demand"
+        ]
+      },
+      {
+        "name": "State Externalization",
+        "count": 4,
+        "examples": [
+          "should save state to database",
+          "should restore state from database",
+          "should clear context after save",
+          "should handle large state objects"
+        ]
+      },
+      {
+        "name": "Cost Reduction",
+        "count": 3,
+        "examples": [
+          "should reduce tokens by >50%",
+          "should maintain accuracy over long tasks",
+          "should track savings per story"
+        ]
+      }
+    ],
+    "mocking_strategy": {
+      "llm": "Mock LLM for token counting",
+      "database": "Real database for state"
+    }
+  },
+  "safety": {
+    "stop_conditions": [
+      "Context manager causes agent failures",
+      "State externalization loses data",
+      "Token tracking significantly inaccurate"
+    ],
+    "escalation_triggers": [
+      "Context eviction causes errors",
+      "State restore fails",
+      "Token reduction <30%"
+    ],
+    "rollback_plan": "Disable RLM, fall back to full context loading"
+  },
+  "hazard_analysis": {
+    "identified_hazards": [
+      {
+        "id": "HAZ-001",
+        "description": "Important context evicted prematurely",
+        "severity": "major",
+        "likelihood": "occasional",
+        "mitigation": "Pin critical files, smart eviction heuristics"
+      },
+      {
+        "id": "HAZ-002",
+        "description": "State externalization loses information",
+        "severity": "critical",
+        "likelihood": "remote",
+        "mitigation": "Verify state integrity before clearing context"
+      },
+      {
+        "id": "HAZ-003",
+        "description": "Agent makes errors due to missing context",
+        "severity": "major",
+        "likelihood": "occasional",
+        "mitigation": "Track context hits/misses, auto-retrieve on miss"
+      }
+    ],
+    "risk_level": "high"
+  },
+  "dependencies": {
+    "required_before": [
+      "WAVE-P3-002"
+    ],
+    "blocks": [
+      "WAVE-P4-002",
+      "WAVE-P5-001"
+    ]
+  },
+  "traceability": {
+    "requirements": [
+      "RLM-001",
+      "COST-REDUCTION-001"
+    ],
+    "epic": "WAVE RLM Integration",
+    "related_stories": [
+      "WAVE-P4-002",
+      "WAVE-P4-003"
+    ]
+  },
+  "gates_completed": [],
+  "estimated_tests": 13,
+  "estimated_tokens": 50000,
+  "metadata": {
+    "created_at": "2026-02-07T00:00:00Z",
+    "created_by": "cto-analysis",
+    "agent_assignment": "be-dev-1",
+    "progress_note": "60% complete"
+  },
+  "notes": "RLM is based on Anthropic's Recursive Language Models research. Key insight: externalize state to database, load context on-demand, evict stale context. This is critical for cost reduction.",
+  "implementation_notes": "\ud83d\udfe1 IN PROGRESS (60%): RLM foundation exists (state_externalizer.py + 3 more files, 1,258 lines). Tests exist. Needs: integration with orchestrator, context loading efficiency measurement, verify <10% codebase loaded. Files: orchestrator/src/rlm/ (4 files, 1,258 lines)"
+}
