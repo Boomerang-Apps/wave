@@ -1,0 +1,14 @@
+# WAVE Portal - Robots Configuration
+# Allow all bots to crawl
+
+User-agent: *
+Allow: /
+
+# Sitemap location (when available)
+# Sitemap: https://wave.example.com/sitemap.xml
+
+# Disallow admin and internal API endpoints
+Disallow: /api/
+Disallow: /admin/
+Disallow: /_next/
+Disallow: /private/
