@@ -32,6 +32,14 @@ class Settings(BaseSettings):
     )
 
     # ===========================================
+    # Database Configuration
+    # ===========================================
+    database_url: str = Field(
+        default="sqlite:///wave.db",
+        description="Database connection URL (PostgreSQL or SQLite)"
+    )
+
+    # ===========================================
     # Redis Configuration
     # ===========================================
     redis_url: str = Field(
