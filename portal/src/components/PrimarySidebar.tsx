@@ -1,7 +1,7 @@
 /**
  * PrimarySidebar Component
  *
- * Narrow icon-only sidebar (50px) - Devin-style navigation
+ * Narrow icon-only sidebar (50px) - Linear-style navigation
  */
 
 import { Link, useLocation } from 'react-router-dom';
@@ -12,7 +12,8 @@ import {
   ScrollText,
   Settings,
   Activity,
-  Network
+  Network,
+  Terminal
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -29,6 +30,7 @@ const navItems: NavItem[] = [
   { icon: ScrollText, path: '/stories', label: 'Stories' },
   { icon: Activity, path: '/activity', label: 'Activity' },
   { icon: Network, path: '/architecture', label: 'Architecture' },
+  { icon: Terminal, path: '/commands', label: 'Commands' },
 ];
 
 export function PrimarySidebar() {

@@ -11,6 +11,7 @@ import { Settings } from './pages/Settings'
 import { Architecture } from './pages/Architecture'
 import { FoundationChecklist } from './pages/FoundationChecklist'
 import NewStory from './pages/NewStory'
+import { CommandsReference } from './pages/CommandsReference'
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
         <Route path="/activity" element={<Layout><Activity /></Layout>} />
         <Route path="/settings" element={<Layout><Settings /></Layout>} />
         <Route path="/architecture" element={<Layout><Architecture /></Layout>} />
+        <Route path="/commands" element={<Layout><CommandsReference /></Layout>} />
       </Routes>
     </BrowserRouter>
   )

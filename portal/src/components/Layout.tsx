@@ -8,6 +8,7 @@ import {
   Settings,
   Activity,
   Network,
+  Terminal,
   Building2,
   Folder,
   ChevronDown,
@@ -61,6 +62,7 @@ const navItems = [
   { icon: ScrollText, path: '/stories', label: 'Stories' },
   { icon: Activity, path: '/activity', label: 'Activity' },
   { icon: Network, path: '/architecture', label: 'Architecture' },
+  { icon: Terminal, path: '/commands', label: 'Commands' },
 ]
 
 // Workspace dropdown component
