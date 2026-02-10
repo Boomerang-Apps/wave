@@ -112,7 +112,7 @@ def qa_node(state: WAVEState) -> dict:
             "qa_passed": False,
             "qa_feedback": "No code provided for QA review",
             "qa_retry_count": retry_count + 1,
-            "phase": Phase.DEVELOP.value if retry_count < 7  # Grok: temporarily increased to 7 else Phase.FAILED.value  # Grok: increased from 3 to 5
+            "phase": Phase.DEVELOP.value if retry_count < 7 else Phase.FAILED.value  # Grok: temporarily increased to 7
         }
 
     # Build the prompt
