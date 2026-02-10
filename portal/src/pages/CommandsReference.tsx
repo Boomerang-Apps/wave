@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, Terminal, Code, Zap, Shield, Settings, GitBranch, TestTube, Package, FileText, Clock, Layers, ChevronDown, Copy, Check, Calendar, AlertCircle, Users, Play, CheckCircle, TrendingUp, Eye, Database, Lock, Workflow, Bug, AlertTriangle, BarChart3, Palette, Box } from 'lucide-react'
+import { Search, Terminal, Code, Zap, Shield, GitBranch, TestTube, FileText, Clock, Layers, ChevronDown, Copy, Check, Calendar, AlertCircle, Users, CheckCircle, TrendingUp, Eye, Lock, Workflow, BarChart3, Palette, Box } from 'lucide-react'
 import { cn } from '../lib/utils'
 
 type CommandCategory =
