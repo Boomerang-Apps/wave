@@ -327,3 +327,44 @@ class CheckpointRepository:
         )
         self.db.flush()
         return count
+
+    def cleanup_old_checkpoints(self, session_id: UUID, keep: int = 5) -> int:
+        """
+        Delete old checkpoints, retaining only the most recent N.
+
+        Args:
+            session_id: UUID of the wave session
+            keep: Number of most recent checkpoints to retain (default: 5)
+
+        Returns:
+            Number of checkpoints deleted
+
+        Note:
+            Checkpoints are ordered by created_at descending. The most recent
+            'keep' checkpoints are retained, and all older ones are deleted.
+            This helps manage disk space for long-running sessions.
+        """
+        # Get all checkpoints for session ordered by created_at descending
+        all_checkpoints = (
+            self.db.query(WaveCheckpoint)
+            .filter(WaveCheckpoint.session_id == session_id)
+            .order_by(desc(WaveCheckpoint.created_at))
+            .all()
+        )
+
+        # If we have fewer checkpoints than keep limit, nothing to delete
+        if len(all_checkpoints) <= keep:
+            return 0
+
+        # Get IDs of checkpoints to delete (all except the most recent 'keep')
+        checkpoints_to_delete = all_checkpoints[keep:]
+        delete_ids = [cp.id for cp in checkpoints_to_delete]
+
+        # Delete old checkpoints
+        count = (
+            self.db.query(WaveCheckpoint)
+            .filter(WaveCheckpoint.id.in_(delete_ids))
+            .delete(synchronize_session=False)
+        )
+        self.db.flush()
+        return count

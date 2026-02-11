@@ -369,6 +369,93 @@ class TestCheckpointRepositoryDelete:
         assert len(repo.list_by_session(wave_session.id)) == 0
 
 
+class TestCheckpointRepositoryCleanup:
+    """Test checkpoint cleanup operations (AC-05)."""
+
+    def test_cleanup_retains_recent_checkpoints(self, repo, wave_session, db_session):
+        """AC-05: Cleanup retains only the most recent N checkpoints."""
+        # Create 10 checkpoints with delays to ensure different timestamps
+        # SQLite has 1-second timestamp precision, so we need >1s delays
+        for i in range(10):
+            repo.create(
+                session_id=wave_session.id,
+                checkpoint_type="gate",
+                checkpoint_name=f"CP-{i+1}",
+                state={"order": i+1},
+            )
+            db_session.flush()
+            if i < 9:  # No need to sleep after last one
+                time.sleep(1.01)  # >1s delay for SQLite timestamp precision
+
+        db_session.commit()
+
+        # Cleanup, keeping only 5 most recent
+        deleted_count = repo.cleanup_old_checkpoints(wave_session.id, keep=5)
+        db_session.commit()
+
+        assert deleted_count == 5
+
+        # Verify only 5 checkpoints remain
+        remaining = repo.list_by_session(wave_session.id)
+        assert len(remaining) == 5
+
+        # Verify the 5 most recent are kept (CP-6 through CP-10)
+        remaining_orders = sorted([cp.state["order"] for cp in remaining])
+        assert remaining_orders == [6, 7, 8, 9, 10]
+
+    def test_cleanup_with_fewer_than_keep(self, repo, wave_session, db_session):
+        """AC-05: Cleanup does nothing when fewer checkpoints than keep limit."""
+        # Create only 3 checkpoints
+        for i in range(3):
+            repo.create(
+                session_id=wave_session.id,
+                checkpoint_type="gate",
+                checkpoint_name=f"CP-{i+1}",
+                state={},
+            )
+        db_session.commit()
+
+        # Try to cleanup keeping 5
+        deleted_count = repo.cleanup_old_checkpoints(wave_session.id, keep=5)
+        db_session.commit()
+
+        assert deleted_count == 0
+        assert len(repo.list_by_session(wave_session.id)) == 3
+
+    def test_cleanup_custom_keep_count(self, repo, wave_session, db_session):
+        """AC-05: Cleanup supports custom retention count."""
+        # Create 8 checkpoints with delays to ensure different timestamps
+        for i in range(8):
+            repo.create(
+                session_id=wave_session.id,
+                checkpoint_type="gate",
+                checkpoint_name=f"CP-{i+1}",
+                state={"order": i+1},
+            )
+            db_session.flush()
+            if i < 7:
+                time.sleep(1.01)  # >1s delay for SQLite timestamp precision
+
+        db_session.commit()
+
+        # Keep only 3 most recent
+        deleted_count = repo.cleanup_old_checkpoints(wave_session.id, keep=3)
+        db_session.commit()
+
+        assert deleted_count == 5
+
+        remaining = repo.list_by_session(wave_session.id)
+        assert len(remaining) == 3
+
+        remaining_orders = sorted([cp.state["order"] for cp in remaining])
+        assert remaining_orders == [6, 7, 8]
+
+    def test_cleanup_empty_session(self, repo, wave_session, db_session):
+        """AC-05: Cleanup handles session with no checkpoints."""
+        deleted_count = repo.cleanup_old_checkpoints(wave_session.id, keep=5)
+        assert deleted_count == 0
+
+
 class TestCheckpointRepositoryConstraints:
     """Test database constraints and validation."""
 

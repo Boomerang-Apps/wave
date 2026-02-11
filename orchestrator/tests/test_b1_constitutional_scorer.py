@@ -153,17 +153,19 @@ class TestThresholds:
     """Test B.1.6: Verify threshold functions"""
 
     def test_should_block_high_score(self):
-        """High scores should not be blocked"""
+        """High scores (>=0.85) should not be blocked"""
         from tools.constitutional_scorer import should_block
         assert should_block(1.0) is False
-        assert should_block(0.9) is False
-        assert should_block(0.8) is False
+        assert should_block(0.95) is False
+        assert should_block(0.85) is False  # At threshold - should not block
 
     def test_should_block_low_score(self):
-        """Low scores should be blocked"""
+        """Low scores (<0.85) should be blocked"""
         from tools.constitutional_scorer import should_block
         assert should_block(0.3) is True
         assert should_block(0.5) is True
+        assert should_block(0.8) is True  # Below threshold (0.85) - should block
+        assert should_block(0.84) is True  # Just below threshold
 
     def test_should_escalate_high_score(self):
         """High scores should not need escalation"""
