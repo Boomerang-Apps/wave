@@ -1,0 +1,75 @@
+{
+  "test_name": "context_rot_100k",
+  "timestamp": "2026-02-11T07:49:21.215035",
+  "domain": "orchestrator",
+  "total_tokens_processed": 116360,
+  "max_cache_tokens": 100000,
+  "checkpoints": [
+    {
+      "checkpoint": "0K",
+      "total_tokens_processed": 0,
+      "current_cache_size": 521586,
+      "files_loaded": 287,
+      "pinned_files": 287,
+      "cache_hit_rate": 0.0,
+      "file_retrieval_success": 0.0,
+      "context_completeness": 0.0,
+      "eviction_count": 0,
+      "critical_files_evicted": 0
+    },
+    {
+      "checkpoint": "25K",
+      "total_tokens_processed": 46799,
+      "current_cache_size": 521586,
+      "files_loaded": 287,
+      "pinned_files": 287,
+      "cache_hit_rate": 100.0,
+      "file_retrieval_success": 100.0,
+      "context_completeness": 100.0,
+      "eviction_count": 0,
+      "critical_files_evicted": 0
+    },
+    {
+      "checkpoint": "50K",
+      "total_tokens_processed": 62714,
+      "current_cache_size": 521586,
+      "files_loaded": 287,
+      "pinned_files": 287,
+      "cache_hit_rate": 100.0,
+      "file_retrieval_success": 100.0,
+      "context_completeness": 100.0,
+      "eviction_count": 0,
+      "critical_files_evicted": 0
+    },
+    {
+      "checkpoint": "75K",
+      "total_tokens_processed": 89597,
+      "current_cache_size": 521586,
+      "files_loaded": 287,
+      "pinned_files": 287,
+      "cache_hit_rate": 100.0,
+      "file_retrieval_success": 100.0,
+      "context_completeness": 100.0,
+      "eviction_count": 0,
+      "critical_files_evicted": 0
+    },
+    {
+      "checkpoint": "100K",
+      "total_tokens_processed": 116360,
+      "current_cache_size": 521586,
+      "files_loaded": 287,
+      "pinned_files": 287,
+      "cache_hit_rate": 100.0,
+      "file_retrieval_success": 100.0,
+      "context_completeness": 100.0,
+      "eviction_count": 0,
+      "critical_files_evicted": 0
+    }
+  ],
+  "result": {
+    "accuracy_retention": 100.0,
+    "threshold": 95.0,
+    "passed": true,
+    "status": "\u2713 PASS"
+  }
+}
