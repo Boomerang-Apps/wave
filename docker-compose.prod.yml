@@ -1,0 +1,320 @@
+version: '3.8'
+
+# WAVE V2.1 - Production Deployment Configuration
+# Includes Redis for event bus, PostgreSQL for state persistence, monitoring, and agents
+
+services:
+  #############################################################################
+  # INFRASTRUCTURE SERVICES
+  #############################################################################
+
+  redis:
+    image: redis:7-alpine
+    container_name: wave-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1000
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+      - ./config/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - wave-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: wave-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-wave}
+      POSTGRES_USER: ${POSTGRES_USER:-wave}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./orchestrator/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wave}"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    networks:
+      - wave-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  #############################################################################
+  # MONITORING & LOGGING
+  #############################################################################
+
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: wave-dozzle
+    restart: unless-stopped
+    ports:
+      - "9080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      DOZZLE_LEVEL: info
+      DOZZLE_TAILSIZE: 300
+      DOZZLE_FILTER: "name=wave-*"
+    networks:
+      - wave-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: wave-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    networks:
+      - wave-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: wave-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?GRAFANA_PASSWORD is required}
+      GF_INSTALL_PLUGINS: redis-datasource
+    depends_on:
+      - prometheus
+    networks:
+      - wave-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  #############################################################################
+  # WAVE ORCHESTRATION
+  #############################################################################
+
+  orchestrator:
+    build:
+      context: ./orchestrator
+      dockerfile: Dockerfile
+    container_name: wave-orchestrator
+    restart: unless-stopped
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-wave}
+      POSTGRES_USER: ${POSTGRES_USER:-wave}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY is required}
+      CHECKPOINT_LEVEL: ${CHECKPOINT_LEVEL:-1}
+      MAX_PARALLEL_AGENTS: ${MAX_PARALLEL_AGENTS:-4}
+      BUDGET_LIMIT: ${BUDGET_LIMIT:-100.0}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ${PROJECT_PATH:?PROJECT_PATH is required}:/workspace:rw
+      - ./orchestrator/config:/app/config:ro
+      - orchestrator-state:/app/state
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - wave-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  merge-watcher:
+    image: alpine:3.18
+    container_name: wave-merge-watcher
+    restart: unless-stopped
+    entrypoint: /scripts/merge-watcher-v12.sh
+    environment:
+      PROJECT_PATH: /workspace
+      WAVE_NUMBER: ${WAVE_NUMBER:-1}
+      INTERVAL: ${WATCHER_INTERVAL:-30}
+    volumes:
+      - ${PROJECT_PATH:?PROJECT_PATH is required}:/workspace:rw
+      - ./core/scripts:/scripts:ro
+    depends_on:
+      - redis
+      - orchestrator
+    networks:
+      - wave-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  #############################################################################
+  # WAVE AGENTS
+  #############################################################################
+
+  fe-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: wave-fe-dev
+    restart: "no"  # Managed by orchestrator
+    profiles:
+      - agents
+    environment:
+      AGENT_ROLE: FE-DEV
+      AGENT_ID: fe-dev-1
+      WAVE_NUMBER: ${WAVE_NUMBER:-1}
+      PROJECT_PATH: /workspace
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - ${PROJECT_PATH}:/workspace:rw
+      - ./config/agents:/config:ro
+    depends_on:
+      - redis
+      - orchestrator
+    networks:
+      - wave-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  be-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: wave-be-dev
+    restart: "no"
+    profiles:
+      - agents
+    environment:
+      AGENT_ROLE: BE-DEV
+      AGENT_ID: be-dev-1
+      WAVE_NUMBER: ${WAVE_NUMBER:-1}
+      PROJECT_PATH: /workspace
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - ${PROJECT_PATH}:/workspace:rw
+      - ./config/agents:/config:ro
+    depends_on:
+      - redis
+      - orchestrator
+    networks:
+      - wave-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  qa:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: wave-qa
+    restart: "no"
+    profiles:
+      - agents
+    environment:
+      AGENT_ROLE: QA
+      AGENT_ID: qa-1
+      WAVE_NUMBER: ${WAVE_NUMBER:-1}
+      PROJECT_PATH: /workspace
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - ${PROJECT_PATH}:/workspace:rw
+      - ./config/agents:/config:ro
+    depends_on:
+      - redis
+      - orchestrator
+    networks:
+      - wave-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+#############################################################################
+# NETWORKS
+#############################################################################
+
+networks:
+  wave-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+#############################################################################
+# VOLUMES
+#############################################################################
+
+volumes:
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  orchestrator-state:
+    driver: local
