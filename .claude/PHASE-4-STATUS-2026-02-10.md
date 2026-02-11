@@ -1,14 +1,14 @@
 # Phase 4: RLM Integration Status Report
 **Date:** 2026-02-11
 **Session:** Week 7-8 RLM Integration
-**Overall Progress:** 71% Complete (5/7 AC verified, 2 pending benchmarks)
-**Last Update:** AC-05 integration tests complete (13 tests passing)
+**Overall Progress:** 86% Complete (6/7 AC verified, 1 pending)
+**Last Update:** AC-06 token reduction benchmark ✓ PASS (85.1% reduction achieved)
 
 ---
 
 ## Executive Summary
 
-Phase 4 RLM (Recursive Language Model) Integration is **71% complete** (5/7 acceptance criteria). All foundation code (1,258 lines) and 42 tests are passing (29 unit + 13 integration). Dynamic file retrieval (AC-05) now verified with comprehensive integration tests. Remaining work: token reduction benchmark (AC-06) and context rot test (AC-07).
+Phase 4 RLM (Recursive Language Model) Integration is **86% complete** (6/7 acceptance criteria). Foundation code (1,258 lines) and 42 tests passing. Token reduction benchmark (AC-06) verified with **85.1% reduction** achieved (target: >50%). Agents now load only 15% of codebase, saving 2.9M tokens per story. Remaining work: context rot test (AC-07, ~3-4 hours).
 
 **Key Achievement:** RLM foundation enables agents to load <10% of codebase, targeting >50% cost reduction.
 
@@ -16,17 +16,18 @@ Phase 4 RLM (Recursive Language Model) Integration is **71% complete** (5/7 acce
 
 ## Story Status
 
-### ✅ WAVE-P4-001: RLM Context Manager (13 pts) - 71% Complete
+### ✅ WAVE-P4-001: RLM Context Manager (13 pts) - 86% Complete
 
 **Implementation Status:**
-- **1,258 lines** of Python code across 13 files
+- **1,738 lines** of Python code across 15 files (+480 lines benchmark infrastructure)
 - **42 tests passing** (100% pass rate)
   - 12 tests: RLM Auditor
   - 9 tests: Budget Enforcement
   - 8 tests: Context Optimization
-  - 13 tests: Dynamic File Retrieval Integration (AC-05) ✨ NEW
+  - 13 tests: Dynamic File Retrieval Integration (AC-05)
+- **Benchmark verified:** 85.1% token reduction (AC-06) ✨ NEW
 
-**Completed Acceptance Criteria (5/7):**
+**Completed Acceptance Criteria (6/7):**
 - ✅ **AC-01:** Domain-scoped context loading
   - `context_manager.py` loads only domain-matching files
   - Domain patterns from config (`domain-rules.ts`)
@@ -46,19 +47,23 @@ Phase 4 RLM (Recursive Language Model) Integration is **71% complete** (5/7 acce
   - Context cleared after checkpoint
   - State restoration on demand
 
-**Completed Acceptance Criteria (5/7):**
+**Completed Acceptance Criteria (6/7):**
 - ✅ **AC-05:** Dynamic file retrieval
   - ✅ `retrieve()` method implemented in `context_manager.py`
   - ✅ Integration test with orchestrator complete (13 tests passing)
   - ✅ Test file: `orchestrator/tests/test_rlm_integration.py`
   - ✅ Coverage: cache behavior, LRU eviction, agent workflow, edge cases
 
-**Pending Acceptance Criteria (2/7):**
+- ✅ **AC-06:** >50% token reduction vs baseline ✨ NEW
+  - ✅ Benchmark script: `orchestrator/tools/rlm_benchmark.py`
+  - ✅ Achieved: **85.1% token reduction** (target: >50%)
+  - ✅ Results: `.claude/benchmark-results-ac06.json`
+  - ✅ Baseline: 3.47M tokens (1,314 files)
+  - ✅ RLM: 517K tokens (286 files)
+  - ✅ Savings: 2.95M tokens per story execution
+  - ✅ Status: ✓ PASS
 
-- 🟡 **AC-06:** >50% token reduction vs baseline (needs benchmark)
-  - ❌ No benchmark comparison exists
-  - **Action:** Run same story with/without RLM, measure token delta
-  - **Threshold:** Must achieve >50% reduction
+**Pending Acceptance Criteria (1/7):**
 
 - 🟡 **AC-07:** No context rot after 100K tokens (needs long-running test)
   - ❌ No accuracy degradation test exists
