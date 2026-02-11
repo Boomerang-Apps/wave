@@ -1,0 +1,30 @@
+{
+  "domains": [
+    {
+      "id": "orchestrator",
+      "name": "WAVE Orchestrator",
+      "file_patterns": [
+        "orchestrator/src/**/*.py",
+        "orchestrator/tests/**/*.py",
+        "orchestrator/*.py"
+      ]
+    },
+    {
+      "id": "portal",
+      "name": "WAVE Portal",
+      "file_patterns": [
+        "portal/src/**/*.ts",
+        "portal/src/**/*.tsx",
+        "portal/server/**/*.js"
+      ]
+    },
+    {
+      "id": "auth",
+      "name": "Authentication",
+      "file_patterns": [
+        "portal/src/features/auth/**/*.ts",
+        "portal/src/features/auth/**/*.tsx"
+      ]
+    }
+  ]
+}

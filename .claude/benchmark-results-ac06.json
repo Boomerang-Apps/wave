@@ -1,0 +1,25 @@
+{
+  "benchmark_run": "2026-02-11T07:37:30.162261",
+  "domain": "orchestrator",
+  "story_id": "WAVE-P4-001",
+  "repository": "/Volumes/SSD-01/Projects/WAVE",
+  "baseline": {
+    "total_tokens": 3466350,
+    "total_files": 1314
+  },
+  "rlm": {
+    "total_tokens": 517205,
+    "total_files": 286
+  },
+  "reduction": {
+    "tokens_saved": 2949145,
+    "token_reduction_percent": 85.08,
+    "files_reduced": 1028,
+    "file_reduction_percent": 78.23
+  },
+  "target": {
+    "required_reduction_percent": 50.0,
+    "achieved": true,
+    "status": "\u2713 PASS"
+  }
+}

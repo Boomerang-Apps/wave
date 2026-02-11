@@ -72,7 +72,17 @@ class RLMContextManager:
             logger.warning("No patterns for domain %s", self.domain)
             return
 
-        for root, _, files in os.walk(self.repo_path):
+        # Directories to exclude from walk (performance optimization)
+        excluded_dirs = {
+            'node_modules', '.git', '__pycache__', '.pytest_cache',
+            'venv', '.venv', 'build', 'dist', '.next', 'coverage',
+            '.storybook-static', 'storybook-static', '.vercel', '.turbo'
+        }
+
+        for root, dirs, files in os.walk(self.repo_path):
+            # Filter out excluded directories in-place
+            dirs[:] = [d for d in dirs if d not in excluded_dirs]
+
             for fname in files:
                 full_path = os.path.join(root, fname)
                 rel_path = os.path.relpath(full_path, self.repo_path)
