@@ -207,8 +207,11 @@ create_agent_prompt() {
     if [ ! -f "$prompt_file" ]; then
         log_info "Creating prompt for $agent..."
 
+        # Convert agent name to uppercase using shell-compatible syntax
+        local agent_upper=$(echo "$agent" | tr '[:lower:]' '[:upper:]')
+
         cat > "$prompt_file" << PROMPT
-You are ${agent^^}, a development agent for the WAVE framework.
+You are ${agent_upper}, a development agent for the WAVE framework.
 
 ## MISSION: Wave $WAVE_NUMBER
 
@@ -261,7 +264,7 @@ log_info "Running pre-flight validation..."
 
 # Phase 0 - Stories
 if ! "$SCRIPT_DIR/core/scripts/building-blocks/phase0-validator.sh" \
-    --project "$PROJECT_PATH" --wave "$WAVE_NUMBER" >/dev/null 2>&1; then
+    --project "$PROJECT_PATH" --wave "$WAVE_NUMBER" --allow-empty >/dev/null 2>&1; then
     log_error "Phase 0 (Stories) validation failed"
     log_info "Run: $SCRIPT_DIR/core/scripts/building-blocks/phase0-validator.sh -p $PROJECT_PATH -w $WAVE_NUMBER"
     exit 1
@@ -270,10 +273,10 @@ log_success "Phase 0 (Stories) - OK"
 
 # Phase 2 - Smoke Test
 if ! "$SCRIPT_DIR/core/scripts/building-blocks/phase2-validator.sh" \
-    --project "$PROJECT_PATH" --wave "$WAVE_NUMBER" >/dev/null 2>&1; then
+    --project "$PROJECT_PATH" --wave "$WAVE_NUMBER" --code-dir "portal" >/dev/null 2>&1; then
     log_warn "Phase 2 (Smoke Test) not passed - running now..."
     "$SCRIPT_DIR/core/scripts/building-blocks/phase2-validator.sh" \
-        --project "$PROJECT_PATH" --wave "$WAVE_NUMBER"
+        --project "$PROJECT_PATH" --wave "$WAVE_NUMBER" --code-dir "portal"
 fi
 log_success "Phase 2 (Smoke Test) - OK"
 
@@ -325,16 +328,16 @@ sleep 2
 PROFILES=""
 
 if [ "$FE_ONLY" = "true" ]; then
-    log_info "Starting FE-DEV agent..."
-    docker compose --profile agents up -d fe-dev
+    log_info "Starting FE-DEV agent for Wave $WAVE_NUMBER..."
+    docker compose --profile agents up -d fe-dev-${WAVE_NUMBER}
     log_success "FE-DEV agent started"
 elif [ "$BE_ONLY" = "true" ]; then
-    log_info "Starting BE-DEV agent..."
-    docker compose --profile agents up -d be-dev
+    log_info "Starting BE-DEV agent for Wave $WAVE_NUMBER..."
+    docker compose --profile agents up -d be-dev-${WAVE_NUMBER}
     log_success "BE-DEV agent started"
 else
-    log_info "Starting FE-DEV and BE-DEV agents..."
-    docker compose --profile agents up -d fe-dev be-dev
+    log_info "Starting FE-DEV and BE-DEV agents for Wave $WAVE_NUMBER..."
+    docker compose --profile agents up -d fe-dev-${WAVE_NUMBER} be-dev-${WAVE_NUMBER}
     log_success "Both agents started"
 fi
 

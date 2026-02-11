@@ -225,6 +225,80 @@ services:
       - "wave.model=sonnet"
       - "wave.domain=frontend"
 
+  # FE-Dev-3 Agent - Frontend Development Wave 3
+  fe-dev-3:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: wave-fe-dev-3
+    hostname: fe-dev-3
+    environment:
+      - WAVE_ROLE=fe-dev-3
+      - WAVE_NUMBER=${WAVE_NUMBER:-3}
+      - PROJECT_PATH=/project
+      - WORKTREE_PATH=/project/worktrees/fe-dev-3
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_MODEL=claude-sonnet-4-20250514
+      - AGENT_GATES=2,3
+    volumes:
+      - ${PROJECT_PATH:-.}:/project
+      - ./:/wave-framework:ro
+      - ./core/scripts:/scripts:ro
+      - ./.claudecode/agents:/agents:ro
+      - wave-claude-config:/home/wave/.claude
+    working_dir: /project/worktrees/fe-dev-3
+    command: ["fe-dev-3"]
+    networks:
+      - wave-network
+    depends_on:
+      - merge-watcher
+    profiles:
+      - agents
+      - frontend
+      - all
+    labels:
+      - "wave.role=agent"
+      - "wave.agent=fe-dev-3"
+      - "wave.model=sonnet"
+      - "wave.domain=frontend"
+
+  # FE-Dev-4 Agent - Frontend Development Wave 4
+  fe-dev-4:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: wave-fe-dev-4
+    hostname: fe-dev-4
+    environment:
+      - WAVE_ROLE=fe-dev-4
+      - WAVE_NUMBER=${WAVE_NUMBER:-4}
+      - PROJECT_PATH=/project
+      - WORKTREE_PATH=/project/worktrees/fe-dev-4
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_MODEL=claude-sonnet-4-20250514
+      - AGENT_GATES=2,3
+    volumes:
+      - ${PROJECT_PATH:-.}:/project
+      - ./:/wave-framework:ro
+      - ./core/scripts:/scripts:ro
+      - ./.claudecode/agents:/agents:ro
+      - wave-claude-config:/home/wave/.claude
+    working_dir: /project/worktrees/fe-dev-4
+    command: ["fe-dev-4"]
+    networks:
+      - wave-network
+    depends_on:
+      - merge-watcher
+    profiles:
+      - agents
+      - frontend
+      - all
+    labels:
+      - "wave.role=agent"
+      - "wave.agent=fe-dev-4"
+      - "wave.model=sonnet"
+      - "wave.domain=frontend"
+
   # BE-Dev-1 Agent - Backend Development Wave 1
   be-dev-1:
     build:
@@ -296,6 +370,80 @@ services:
     labels:
       - "wave.role=agent"
       - "wave.agent=be-dev-2"
+      - "wave.model=sonnet"
+      - "wave.domain=backend"
+
+  # BE-Dev-3 Agent - Backend Development Wave 3
+  be-dev-3:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: wave-be-dev-3
+    hostname: be-dev-3
+    environment:
+      - WAVE_ROLE=be-dev-3
+      - WAVE_NUMBER=${WAVE_NUMBER:-3}
+      - PROJECT_PATH=/project
+      - WORKTREE_PATH=/project/worktrees/be-dev-3
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_MODEL=claude-sonnet-4-20250514
+      - AGENT_GATES=2,3
+    volumes:
+      - ${PROJECT_PATH:-.}:/project
+      - ./:/wave-framework:ro
+      - ./core/scripts:/scripts:ro
+      - ./.claudecode/agents:/agents:ro
+      - wave-claude-config:/home/wave/.claude
+    working_dir: /project/worktrees/be-dev-3
+    command: ["be-dev-3"]
+    networks:
+      - wave-network
+    depends_on:
+      - merge-watcher
+    profiles:
+      - agents
+      - backend
+      - all
+    labels:
+      - "wave.role=agent"
+      - "wave.agent=be-dev-3"
+      - "wave.model=sonnet"
+      - "wave.domain=backend"
+
+  # BE-Dev-4 Agent - Backend Development Wave 4
+  be-dev-4:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: wave-be-dev-4
+    hostname: be-dev-4
+    environment:
+      - WAVE_ROLE=be-dev-4
+      - WAVE_NUMBER=${WAVE_NUMBER:-4}
+      - PROJECT_PATH=/project
+      - WORKTREE_PATH=/project/worktrees/be-dev-4
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_MODEL=claude-sonnet-4-20250514
+      - AGENT_GATES=2,3
+    volumes:
+      - ${PROJECT_PATH:-.}:/project
+      - ./:/wave-framework:ro
+      - ./core/scripts:/scripts:ro
+      - ./.claudecode/agents:/agents:ro
+      - wave-claude-config:/home/wave/.claude
+    working_dir: /project/worktrees/be-dev-4
+    command: ["be-dev-4"]
+    networks:
+      - wave-network
+    depends_on:
+      - merge-watcher
+    profiles:
+      - agents
+      - backend
+      - all
+    labels:
+      - "wave.role=agent"
+      - "wave.agent=be-dev-4"
       - "wave.model=sonnet"
       - "wave.domain=backend"
 
