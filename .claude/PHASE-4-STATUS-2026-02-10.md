@@ -1,13 +1,14 @@
 # Phase 4: RLM Integration Status Report
-**Date:** 2026-02-10
+**Date:** 2026-02-11
 **Session:** Week 7-8 RLM Integration
-**Overall Progress:** 60% Complete (Implementation exists, verification pending)
+**Overall Progress:** 71% Complete (5/7 AC verified, 2 pending benchmarks)
+**Last Update:** AC-05 integration tests complete (13 tests passing)
 
 ---
 
 ## Executive Summary
 
-Phase 4 RLM (Recursive Language Model) Integration is **60% complete** with substantial implementation already in place. All foundation code (1,258 lines) and 29 tests are passing. The remaining work focuses on **verification and benchmarking** rather than net-new implementation.
+Phase 4 RLM (Recursive Language Model) Integration is **71% complete** (5/7 acceptance criteria). All foundation code (1,258 lines) and 42 tests are passing (29 unit + 13 integration). Dynamic file retrieval (AC-05) now verified with comprehensive integration tests. Remaining work: token reduction benchmark (AC-06) and context rot test (AC-07).
 
 **Key Achievement:** RLM foundation enables agents to load <10% of codebase, targeting >50% cost reduction.
 
@@ -15,16 +16,17 @@ Phase 4 RLM (Recursive Language Model) Integration is **60% complete** with subs
 
 ## Story Status
 
-### ✅ WAVE-P4-001: RLM Context Manager (13 pts) - 60% Complete
+### ✅ WAVE-P4-001: RLM Context Manager (13 pts) - 71% Complete
 
 **Implementation Status:**
 - **1,258 lines** of Python code across 13 files
-- **29 tests passing** (100% pass rate)
+- **42 tests passing** (100% pass rate)
   - 12 tests: RLM Auditor
   - 9 tests: Budget Enforcement
   - 8 tests: Context Optimization
+  - 13 tests: Dynamic File Retrieval Integration (AC-05) ✨ NEW
 
-**Completed Acceptance Criteria (4/7):**
+**Completed Acceptance Criteria (5/7):**
 - ✅ **AC-01:** Domain-scoped context loading
   - `context_manager.py` loads only domain-matching files
   - Domain patterns from config (`domain-rules.ts`)
@@ -44,11 +46,14 @@ Phase 4 RLM (Recursive Language Model) Integration is **60% complete** with subs
   - Context cleared after checkpoint
   - State restoration on demand
 
-**Pending Acceptance Criteria (3/7):**
-- 🟡 **AC-05:** Dynamic file retrieval (code exists, needs integration test)
+**Completed Acceptance Criteria (5/7):**
+- ✅ **AC-05:** Dynamic file retrieval
   - ✅ `retrieve()` method implemented in `context_manager.py`
-  - ❌ Integration test with orchestrator pending
-  - **Action:** Create end-to-end test: agent requests file → retrieval → context update
+  - ✅ Integration test with orchestrator complete (13 tests passing)
+  - ✅ Test file: `orchestrator/tests/test_rlm_integration.py`
+  - ✅ Coverage: cache behavior, LRU eviction, agent workflow, edge cases
+
+**Pending Acceptance Criteria (2/7):**
 
 - 🟡 **AC-06:** >50% token reduction vs baseline (needs benchmark)
   - ❌ No benchmark comparison exists
