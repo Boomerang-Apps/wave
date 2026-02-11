@@ -79,6 +79,45 @@ ls stories/wave*/  2>/dev/null | head -10
 - **INFO:** Count available stories
 - **WARNING:** No stories found
 
+### 1.8 LangSmith Tracing (Optional but Recommended)
+```bash
+# Check LangSmith environment variables
+env | grep -E "LANGCHAIN_|LANGSMITH_" || echo "No LangSmith config"
+
+# Verify API connection if configured
+if [ -n "$LANGSMITH_API_KEY" ]; then
+  curl -s -H "x-api-key: $LANGSMITH_API_KEY" \
+    https://api.smith.langchain.com/info | \
+    python3 -c "import sys,json; data=json.load(sys.stdin); print(f\"✓ Connected to LangSmith v{data['version']}\")" \
+    2>/dev/null || echo "⚠ LangSmith API unreachable"
+fi
+```
+- **PASS:** LangSmith configured and API accessible
+- **OPTIONAL:** Not configured (tracing will be disabled)
+- **WARNING:** Configured but API unreachable
+
+**Verification Points:**
+- `LANGCHAIN_TRACING_V2=true` - Enable tracing
+- `LANGCHAIN_API_KEY` or `LANGSMITH_API_KEY` - Valid API key
+- `LANGCHAIN_PROJECT` - Project name (e.g., wave-local-development)
+- `LANGSMITH_WORKSPACE_ID` - Workspace identifier
+
+**What LangSmith Provides:**
+- 🔍 Full agent execution traces
+- 💰 Token usage and cost tracking per story
+- 🐛 Debugging with prompt/response history
+- 📊 Performance metrics and optimization insights
+
+**To Enable:**
+```bash
+# Get API key from: https://smith.langchain.com/settings
+export LANGCHAIN_TRACING_V2=true
+export LANGCHAIN_API_KEY=lsv2_...
+export LANGCHAIN_PROJECT=wave-local-development
+```
+
+**Documentation:** `orchestrator/src/tracing/config.py`
+
 ---
 
 ## PHASE 2: Execution Mode Selection
