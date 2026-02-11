@@ -7,6 +7,44 @@ List and describe all available Wave V2 commands.
 
 ---
 
+## ⭐ IMPORTANT COMMANDS (Quick Workflow Reference)
+
+**Essential commands organized by workflow stage - Read this first!**
+
+```bash
+# View the complete workflow guide
+cat .claude/commands/IMPORTANT-COMMANDS.md
+
+# Or view the 30-second quick start
+cat .claude/commands/QUICK-START.md
+```
+
+### The 3 Essential Workflows
+
+**🚀 BEFORE Starting:**
+```bash
+/wave-status → /status → /gate-0 → /branch create
+```
+
+**💻 DURING Development:**
+```bash
+/tdd → /test unit → /commit → /gates 1-3
+```
+
+**✅ AFTER Finishing:**
+```bash
+/test → /gates 4-7 → /pr create → /done
+```
+
+**🚨 EMERGENCY:**
+```bash
+/emergency-stop | /escalate | /rollback
+```
+
+📖 **Full Guide:** See [IMPORTANT-COMMANDS.md](./IMPORTANT-COMMANDS.md) for detailed workflows, CTO recommendations, and golden rules.
+
+---
+
 ## TIER 1: CORE COMMANDS (Memorize These)
 
 ```

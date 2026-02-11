@@ -15,6 +15,51 @@
 
 ---
 
+## ⭐ IMPORTANT COMMANDS
+
+**Essential workflow commands - organized by stage**
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│ WAVE WORKFLOW COMMAND CARD                                     │
+├────────────────────────────────────────────────────────────────┤
+│ BEFORE:  /wave-status → /status → /gate-0 → /branch create    │
+│ DURING:  /tdd → /test unit → /commit → /gates 1-3             │
+│ AFTER:   /test → /gates 4-7 → /pr create → /done              │
+│                                                                │
+│ EMERGENCY: /emergency-stop | /escalate | /rollback            │
+│ HELP:      /commands | /cto | View guides below               │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### 📚 Workflow Guides
+
+| Guide | Purpose | Location |
+|-------|---------|----------|
+| **Quick Start** | 30-second essential commands | [QUICK-START.md](./QUICK-START.md) |
+| **Important Commands** | Complete workflow guide + CTO tips | [IMPORTANT-COMMANDS.md](./IMPORTANT-COMMANDS.md) |
+
+**The 3 Essential Workflows:**
+
+```bash
+# 🚀 BEFORE (Pre-Flight)
+/wave-status && /status && /gate-0 story {ID} && /branch create {ID}
+
+# 💻 DURING (Development)
+/tdd && /test unit && /commit && /gate-1 && /gate-2 && /gate-3
+
+# ✅ AFTER (Completion)
+/test && /gate-4 && /gate-5 && /gate-6 && /gate-7 && /pr create {ID} && /done
+```
+
+**📖 Read the full guides for:**
+- CTO's recommended workflows (Minimal, Standard, Comprehensive)
+- Golden rules and pro tips
+- Emergency procedures
+- Quality gates explained
+
+---
+
 ## TIER 1: CORE COMMANDS
 
 | Command | Purpose | Aliases |

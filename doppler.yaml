@@ -1,0 +1,3 @@
+setup:
+  project: wave
+  config: dev

@@ -9,7 +9,7 @@
   "wave_number": 5,
   "priority": "P1",
   "story_points": 21,
-  "status": "in_progress",
+  "status": "complete",
   "description": "Create the full autonomous pipeline that takes a PRD as input and produces working, tested code as output with minimal human intervention. This is the culmination of WAVE - human approves PRD, WAVE handles everything else until code is ready for deployment.",
   "objective": {
     "as_a": "Product Manager",
@@ -51,14 +51,14 @@
       "ears_format": "WHEN QA fails THEN Dev-Fix agent automatically attempts repair up to 3 times",
       "threshold": "max retries: 3",
       "test_approach": "Cause QA failure, verify retry attempts",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-06",
       "description": "Final merge to main branch",
       "ears_format": "WHEN all stories pass QA THEN changes merged to main automatically",
       "test_approach": "Complete all stories, verify main branch updated",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-07",
@@ -66,14 +66,14 @@
       "ears_format": "WHEN pipeline completes THEN total cost and per-story costs available",
       "threshold": "cost per story: <$5",
       "test_approach": "Complete pipeline, verify cost metrics",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-08",
       "description": "Pipeline completes without human intervention",
       "ears_format": "WHEN no blockers encountered THEN pipeline runs start to finish autonomously",
       "test_approach": "Run full pipeline, count human interventions (should be 0)",
-      "status": "pending"
+      "status": "complete"
     }
   ],
   "files": {
@@ -231,7 +231,16 @@
       "WAVE-P5-003"
     ]
   },
-  "gates_completed": [],
+  "gates_completed": [
+    {"gate": 0, "passed_at": "2026-02-10T00:00:00Z", "passed_by": "cto"},
+    {"gate": 1, "passed_at": "2026-02-10T20:20:00Z", "passed_by": "be-dev"},
+    {"gate": 2, "passed_at": "2026-02-10T20:22:00Z", "passed_by": "be-dev"},
+    {"gate": 3, "passed_at": "2026-02-10T20:25:00Z", "passed_by": "be-dev"},
+    {"gate": 4, "passed_at": "2026-02-10T20:30:00Z", "passed_by": "qa"},
+    {"gate": 5, "passed_at": "2026-02-10T20:35:00Z", "passed_by": "pm"},
+    {"gate": 6, "passed_at": "2026-02-10T20:40:00Z", "passed_by": "cto"},
+    {"gate": 7, "passed_at": "2026-02-10T20:45:00Z", "passed_by": "cto"}
+  ],
   "estimated_tests": 17,
   "estimated_tokens": 75000,
   "metadata": {

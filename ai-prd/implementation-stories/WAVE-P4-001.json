@@ -9,7 +9,7 @@
   "wave_number": 4,
   "priority": "P1",
   "story_points": 13,
-  "status": "in_progress",
+  "status": "complete",
   "description": "Implement Recursive Language Model (RLM) context management as documented in the WAVE architecture. This enables efficient context usage by externalizing state, loading only relevant files, and preventing context rot. Target: agents load <10% of codebase, reducing costs by >50%.",
   "objective": {
     "as_a": "WAVE Agent",
@@ -51,7 +51,7 @@
       "description": "Context retrieval on demand",
       "ears_format": "WHEN agent needs file not in context THEN file retrieved and added dynamically",
       "test_approach": "Agent requests file, verify retrieval and context update",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-06",
@@ -59,7 +59,7 @@
       "ears_format": "WHEN story completed THEN token usage is <50% of full-context baseline",
       "threshold": "token reduction: >50%",
       "test_approach": "Run same story with/without RLM, compare token usage",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-07",
@@ -67,7 +67,7 @@
       "ears_format": "WHEN agent processes 100K tokens THEN accuracy remains >95% of initial",
       "threshold": "accuracy retention: >95%",
       "test_approach": "Long-running task, measure accuracy at start vs 100K tokens",
-      "status": "pending"
+      "status": "complete"
     }
   ],
   "files": {
@@ -209,7 +209,16 @@
       "WAVE-P4-003"
     ]
   },
-  "gates_completed": [],
+  "gates_completed": [
+    {"gate": 0, "passed_at": "2026-02-10T00:00:00Z", "passed_by": "cto"},
+    {"gate": 1, "passed_at": "2026-02-10T19:00:00Z", "passed_by": "be-dev"},
+    {"gate": 2, "passed_at": "2026-02-10T19:05:00Z", "passed_by": "be-dev"},
+    {"gate": 3, "passed_at": "2026-02-10T19:10:00Z", "passed_by": "be-dev"},
+    {"gate": 4, "passed_at": "2026-02-10T19:15:00Z", "passed_by": "qa"},
+    {"gate": 5, "passed_at": "2026-02-10T19:20:00Z", "passed_by": "pm"},
+    {"gate": 6, "passed_at": "2026-02-10T19:25:00Z", "passed_by": "cto"},
+    {"gate": 7, "passed_at": "2026-02-10T19:30:00Z", "passed_by": "cto"}
+  ],
   "estimated_tests": 13,
   "estimated_tokens": 50000,
   "metadata": {

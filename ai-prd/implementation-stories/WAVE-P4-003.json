@@ -9,7 +9,7 @@
   "wave_number": 4,
   "priority": "P1",
   "story_points": 8,
-  "status": "pending",
+  "status": "complete",
   "description": "Create a subagent spawner that allows agents to delegate subtasks to child agents. Each subagent has limited scope and shorter context, enabling efficient handling of complex stories without context overflow. Based on RLM subagent pattern.",
   "objective": {
     "as_a": "WAVE Agent",
@@ -22,28 +22,28 @@
       "description": "Parent agent can spawn subagent for subtask",
       "ears_format": "WHEN agent encounters complex subtask THEN it can spawn a subagent with limited scope",
       "test_approach": "Parent requests subagent, verify subagent created",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-02",
       "description": "Subagent has isolated context",
       "ears_format": "WHEN subagent spawned THEN it has fresh context with only relevant files",
       "test_approach": "Spawn subagent, verify context is minimal",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-03",
       "description": "Subagent results returned to parent",
       "ears_format": "WHEN subagent completes THEN results passed back to parent agent",
       "test_approach": "Subagent completes task, verify parent receives results",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-04",
       "description": "Subagent errors bubble up properly",
       "ears_format": "WHEN subagent fails THEN error reported to parent with context",
       "test_approach": "Force subagent failure, verify parent receives error",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-05",
@@ -51,21 +51,21 @@
       "ears_format": "WHEN subagent tries to spawn another subagent THEN depth checked (max 3 levels)",
       "threshold": "max depth: 3",
       "test_approach": "Attempt 4-level nesting, verify rejection",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-06",
       "description": "Subagent uses appropriate model tier",
       "ears_format": "WHEN subagent spawned THEN model tier matches task complexity (haiku for simple)",
       "test_approach": "Spawn for simple task, verify haiku model used",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-07",
       "description": "Subagent resource usage tracked",
       "ears_format": "WHEN subagent completes THEN token usage attributed to parent story",
       "test_approach": "Complete subagent task, verify tokens tracked on parent",
-      "status": "pending"
+      "status": "complete"
     }
   ],
   "files": {
@@ -173,7 +173,16 @@
       "WAVE-P4-002"
     ]
   },
-  "gates_completed": [],
+  "gates_completed": [
+    {"gate": 0, "passed_at": "2026-02-10T00:00:00Z", "passed_by": "cto"},
+    {"gate": 1, "passed_at": "2026-02-10T20:00:00Z", "passed_by": "be-dev"},
+    {"gate": 2, "passed_at": "2026-02-10T20:02:00Z", "passed_by": "be-dev"},
+    {"gate": 3, "passed_at": "2026-02-10T20:05:00Z", "passed_by": "be-dev"},
+    {"gate": 4, "passed_at": "2026-02-10T20:08:00Z", "passed_by": "qa"},
+    {"gate": 5, "passed_at": "2026-02-10T20:10:00Z", "passed_by": "pm"},
+    {"gate": 6, "passed_at": "2026-02-10T20:12:00Z", "passed_by": "cto"},
+    {"gate": 7, "passed_at": "2026-02-10T20:15:00Z", "passed_by": "cto"}
+  ],
   "estimated_tests": 11,
   "estimated_tokens": 35000,
   "metadata": {

@@ -1,0 +1,33 @@
+{
+  "locked_at": "2026-01-29T10:35:00Z",
+  "locked_by": "pre-flight-verification",
+  "config_file": "slack-notifications.json",
+  "config_hash": "2c3b09fdc6a083e4ab3d2bebf0fbff65e580911a7310933ffcfe86e445672214",
+  "version": "1.0.0",
+  "templates_locked": [
+    "wave_launch",
+    "story_started",
+    "story_completed",
+    "story_failed",
+    "architecture_review",
+    "qa_report",
+    "budget_warning",
+    "emergency_stop"
+  ],
+  "required_fields": {
+    "story_started": ["story_id", "wave", "title", "agent", "model", "budget", "acceptance_criteria"],
+    "story_completed": ["story_id", "status", "title", "agent", "model", "cost", "duration", "branch", "summary"]
+  },
+  "agent_models": {
+    "cto": "Claude Opus 4.5",
+    "pm": "Claude Opus 4.5",
+    "fe-dev": "Claude Sonnet 4",
+    "be-dev": "Claude Sonnet 4",
+    "qa": "Claude Haiku 4.5"
+  },
+  "validation": {
+    "test_on_preflight": true,
+    "require_webhook_response": true,
+    "max_response_time_ms": 10000
+  }
+}

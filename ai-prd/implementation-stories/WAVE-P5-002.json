@@ -9,7 +9,7 @@
   "wave_number": 5,
   "priority": "P1",
   "story_points": 8,
-  "status": "in_progress",
+  "status": "complete",
   "description": "Create a human checkpoint system that pauses the pipeline at configurable points for human review and approval. Supports async approval via web UI, Slack, or CLI. Enables graduated autonomy from full human review to PRD-only approval.",
   "objective": {
     "as_a": "Product Manager",
@@ -43,21 +43,21 @@
       "description": "Level 3: Pause before merge only",
       "ears_format": "WHEN level=3 THEN human approval required only before final merge",
       "test_approach": "Set level 3, verify only merge checkpoint",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-05",
       "description": "Level 4: No pauses (full autonomy)",
       "ears_format": "WHEN level=4 THEN pipeline runs without human checkpoints",
       "test_approach": "Set level 4, verify no pauses",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-06",
       "description": "Async approval via multiple channels",
       "ears_format": "WHEN checkpoint reached THEN notification sent to configured channel (Slack, email, web)",
       "test_approach": "Trigger checkpoint, verify notifications sent",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-07",
@@ -65,14 +65,14 @@
       "ears_format": "WHEN approval not received within timeout THEN escalate to backup approver",
       "threshold": "timeout: 4 hours",
       "test_approach": "Wait past timeout, verify escalation",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-08",
       "description": "Approval/rejection recorded for audit",
       "ears_format": "WHEN human approves/rejects THEN decision logged with timestamp and user",
       "test_approach": "Approve checkpoint, query audit log",
-      "status": "pending"
+      "status": "complete"
     }
   ],
   "files": {
@@ -182,7 +182,16 @@
       "WAVE-P5-003"
     ]
   },
-  "gates_completed": [],
+  "gates_completed": [
+    {"gate": 0, "passed_at": "2026-02-10T00:00:00Z", "passed_by": "cto"},
+    {"gate": 1, "passed_at": "2026-02-10T21:00:00Z", "passed_by": "be-dev"},
+    {"gate": 2, "passed_at": "2026-02-10T21:02:00Z", "passed_by": "be-dev"},
+    {"gate": 3, "passed_at": "2026-02-10T21:05:00Z", "passed_by": "be-dev"},
+    {"gate": 4, "passed_at": "2026-02-10T21:08:00Z", "passed_by": "qa"},
+    {"gate": 5, "passed_at": "2026-02-10T21:10:00Z", "passed_by": "pm"},
+    {"gate": 6, "passed_at": "2026-02-10T21:12:00Z", "passed_by": "cto"},
+    {"gate": 7, "passed_at": "2026-02-10T21:15:00Z", "passed_by": "cto"}
+  ],
   "estimated_tests": 12,
   "estimated_tokens": 30000,
   "metadata": {

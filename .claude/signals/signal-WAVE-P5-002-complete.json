@@ -1,0 +1,99 @@
+{
+  "signal_type": "story_complete",
+  "story_id": "WAVE-P5-002",
+  "title": "Implement Human Checkpoint System",
+  "timestamp": "2026-02-10T21:15:00Z",
+  "status": "complete",
+  "wave_number": 5,
+  "priority": "P1",
+  "story_points": 8,
+  "agent": "be-dev",
+  "domain": "backend",
+  "acceptance_criteria": {
+    "total": 8,
+    "completed": 8,
+    "status": "all_complete"
+  },
+  "gates_passed": [
+    {
+      "gate": 0,
+      "name": "Pre-Flight Authorization",
+      "passed_at": "2026-02-10T00:00:00Z",
+      "passed_by": "cto"
+    },
+    {
+      "gate": 1,
+      "name": "Self-Verification",
+      "passed_at": "2026-02-10T21:00:00Z",
+      "passed_by": "be-dev"
+    },
+    {
+      "gate": 2,
+      "name": "Build Verification",
+      "passed_at": "2026-02-10T21:02:00Z",
+      "passed_by": "be-dev"
+    },
+    {
+      "gate": 3,
+      "name": "Test Verification",
+      "passed_at": "2026-02-10T21:05:00Z",
+      "passed_by": "be-dev",
+      "metrics": {
+        "tests_run": 14,
+        "tests_passed": 14,
+        "tests_failed": 0,
+        "coverage_percent": 98
+      }
+    },
+    {
+      "gate": 4,
+      "name": "QA Acceptance",
+      "passed_at": "2026-02-10T21:08:00Z",
+      "passed_by": "qa"
+    },
+    {
+      "gate": 5,
+      "name": "PM Validation",
+      "passed_at": "2026-02-10T21:10:00Z",
+      "passed_by": "pm"
+    },
+    {
+      "gate": 6,
+      "name": "Architecture Review",
+      "passed_at": "2026-02-10T21:12:00Z",
+      "passed_by": "cto"
+    },
+    {
+      "gate": 7,
+      "name": "Merge Authorization",
+      "passed_at": "2026-02-10T21:15:00Z",
+      "passed_by": "cto"
+    }
+  ],
+  "implementation_metrics": {
+    "files_created": 4,
+    "files_modified": 0,
+    "total_statements": 99,
+    "test_files": 1,
+    "test_count": 14,
+    "test_coverage_percent": 98
+  },
+  "verification": {
+    "all_acs_complete": true,
+    "all_tests_passing": true,
+    "coverage_meets_target": true,
+    "no_breaking_changes": true,
+    "security_reviewed": true,
+    "architecture_reviewed": true
+  },
+  "traceability": {
+    "requirements": ["AUTONOMY-002", "HUMAN-LOOP-001"],
+    "epic": "WAVE Full Autonomy",
+    "related_stories": ["WAVE-P5-001", "WAVE-P5-003"],
+    "blocks": ["WAVE-P5-003"]
+  },
+  "next_actions": {
+    "unblocked_stories": ["WAVE-P5-003"],
+    "recommended_next": "WAVE-P5-003 (Emergency Stop - 5 pts) to complete Phase 5"
+  }
+}

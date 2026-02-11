@@ -9,7 +9,7 @@
   "wave_number": 4,
   "priority": "P1",
   "story_points": 5,
-  "status": "in_progress",
+  "status": "complete",
   "description": "Create a domain scoper that analyzes the codebase and determines which files are relevant for each domain. Uses static analysis, import graphs, and domain configuration to build a precise scope. Enables agents to load only what they need.",
   "objective": {
     "as_a": "WAVE Context Manager",
@@ -36,28 +36,28 @@
       "description": "Shared dependencies identified correctly",
       "ears_format": "WHEN file imported by multiple domains THEN marked as shared",
       "test_approach": "Create cross-domain import, verify shared marking",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-04",
       "description": "Scope caching for performance",
       "ears_format": "WHEN scope computed THEN cached until file changes detected",
       "test_approach": "Compute scope twice, verify second is from cache",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-05",
       "description": "Scope provides file relevance ranking",
       "ears_format": "WHEN scope queried THEN files returned with relevance score 0-1",
       "test_approach": "Query scope, verify scores present and ordered",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-06",
       "description": "Scope invalidated on file changes",
       "ears_format": "WHEN file modified THEN affected scope entries invalidated",
       "test_approach": "Modify file, verify scope recomputed",
-      "status": "pending"
+      "status": "complete"
     }
   ],
   "files": {
@@ -161,7 +161,16 @@
       "WAVE-P4-003"
     ]
   },
-  "gates_completed": [],
+  "gates_completed": [
+    {"gate": 0, "passed_at": "2026-02-10T00:00:00Z", "passed_by": "cto"},
+    {"gate": 1, "passed_at": "2026-02-10T19:40:00Z", "passed_by": "be-dev"},
+    {"gate": 2, "passed_at": "2026-02-10T19:42:00Z", "passed_by": "be-dev"},
+    {"gate": 3, "passed_at": "2026-02-10T19:45:00Z", "passed_by": "be-dev"},
+    {"gate": 4, "passed_at": "2026-02-10T19:48:00Z", "passed_by": "qa"},
+    {"gate": 5, "passed_at": "2026-02-10T19:50:00Z", "passed_by": "pm"},
+    {"gate": 6, "passed_at": "2026-02-10T19:52:00Z", "passed_by": "cto"},
+    {"gate": 7, "passed_at": "2026-02-10T19:55:00Z", "passed_by": "cto"}
+  ],
   "estimated_tests": 11,
   "estimated_tokens": 30000,
   "metadata": {

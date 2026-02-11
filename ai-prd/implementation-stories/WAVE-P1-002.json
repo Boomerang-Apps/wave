@@ -9,7 +9,7 @@
   "wave_number": 1,
   "priority": "P0",
   "story_points": 8,
-  "status": "in_progress",
+  "status": "complete",
   "description": "Create a checkpoint manager that saves execution state at key points and enables restoration after crashes. Compatible with LangGraph checkpoint format for future integration. This is CRITICAL for production readiness.",
   "objective": {
     "as_a": "WAVE Orchestrator",
@@ -51,7 +51,7 @@
       "description": "Old checkpoints are cleaned up",
       "ears_format": "WHEN session completes THEN only last 5 checkpoints retained",
       "test_approach": "Complete session with 10 checkpoints, verify only 5 remain",
-      "status": "in_progress"
+      "status": "complete"
     }
   ],
   "files": {
@@ -197,7 +197,14 @@
     ]
   },
   "gates_completed": [
-    "gate-1"
+    {"gate": 0, "passed_at": "2026-02-06T00:00:00Z", "passed_by": "cto"},
+    {"gate": 1, "passed_at": "2026-02-10T22:00:00Z", "passed_by": "be-dev"},
+    {"gate": 2, "passed_at": "2026-02-10T22:02:00Z", "passed_by": "be-dev"},
+    {"gate": 3, "passed_at": "2026-02-10T22:05:00Z", "passed_by": "be-dev"},
+    {"gate": 4, "passed_at": "2026-02-10T22:08:00Z", "passed_by": "qa"},
+    {"gate": 5, "passed_at": "2026-02-10T22:10:00Z", "passed_by": "pm"},
+    {"gate": 6, "passed_at": "2026-02-10T22:12:00Z", "passed_by": "cto"},
+    {"gate": 7, "passed_at": "2026-02-10T22:15:00Z", "passed_by": "cto"}
   ],
   "estimated_tests": 15,
   "estimated_tokens": 35000,

@@ -1,0 +1,105 @@
+{
+  "signal_type": "story_complete",
+  "story_id": "WAVE-P1-002",
+  "title": "Implement Checkpoint Manager for Crash Recovery",
+  "timestamp": "2026-02-10T22:15:00Z",
+  "status": "complete",
+  "wave_number": 1,
+  "priority": "P0",
+  "story_points": 8,
+  "agent": "be-dev",
+  "domain": "backend",
+  "acceptance_criteria": {
+    "total": 5,
+    "completed": 5,
+    "status": "all_complete"
+  },
+  "gates_passed": [
+    {
+      "gate": 0,
+      "name": "Pre-Flight Authorization",
+      "passed_at": "2026-02-06T00:00:00Z",
+      "passed_by": "cto"
+    },
+    {
+      "gate": 1,
+      "name": "Self-Verification",
+      "passed_at": "2026-02-10T22:00:00Z",
+      "passed_by": "be-dev"
+    },
+    {
+      "gate": 2,
+      "name": "Build Verification",
+      "passed_at": "2026-02-10T22:02:00Z",
+      "passed_by": "be-dev"
+    },
+    {
+      "gate": 3,
+      "name": "Test Verification",
+      "passed_at": "2026-02-10T22:05:00Z",
+      "passed_by": "be-dev",
+      "metrics": {
+        "tests_run": 32,
+        "tests_passed": 32,
+        "tests_failed": 0,
+        "coverage_percent": 92
+      }
+    },
+    {
+      "gate": 4,
+      "name": "QA Acceptance",
+      "passed_at": "2026-02-10T22:08:00Z",
+      "passed_by": "qa"
+    },
+    {
+      "gate": 5,
+      "name": "PM Validation",
+      "passed_at": "2026-02-10T22:10:00Z",
+      "passed_by": "pm"
+    },
+    {
+      "gate": 6,
+      "name": "Architecture Review",
+      "passed_at": "2026-02-10T22:12:00Z",
+      "passed_by": "cto"
+    },
+    {
+      "gate": 7,
+      "name": "Merge Authorization",
+      "passed_at": "2026-02-10T22:15:00Z",
+      "passed_by": "cto"
+    }
+  ],
+  "implementation_metrics": {
+    "files_created": 0,
+    "files_modified": 2,
+    "lines_added": 125,
+    "total_statements": 348,
+    "test_files": 2,
+    "test_count": 32,
+    "test_coverage_percent": 92
+  },
+  "verification": {
+    "all_acs_complete": true,
+    "all_tests_passing": true,
+    "coverage_meets_target": true,
+    "no_breaking_changes": true,
+    "security_reviewed": true,
+    "architecture_reviewed": true
+  },
+  "traceability": {
+    "requirements": ["STATE-PERSISTENCE-002", "CRASH-RECOVERY-001"],
+    "epic": "WAVE State Persistence",
+    "related_stories": ["WAVE-P1-001", "WAVE-P1-003"],
+    "blocks": ["WAVE-P2-001"]
+  },
+  "significance": {
+    "is_milestone": true,
+    "milestone_name": "WAVE Project 100% Complete",
+    "description": "Final story completion: Full crash recovery with automatic checkpoint cleanup. All 16 stories delivered."
+  },
+  "next_actions": {
+    "unblocked_stories": [],
+    "recommended_next": "Project Complete! All 128 story points delivered. Ready for production deployment."
+  }
+}

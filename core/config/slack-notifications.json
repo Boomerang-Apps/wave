@@ -1,0 +1,111 @@
+{
+  "version": "1.0.0",
+  "locked_at": "2026-01-29T10:30:00Z",
+  "schema_version": 1,
+
+  "models": {
+    "cto": {"name": "Claude Opus 4.5", "emoji": ":brain:"},
+    "pm": {"name": "Claude Opus 4.5", "emoji": ":brain:"},
+    "fe-dev": {"name": "Claude Sonnet 4", "emoji": ":brain:"},
+    "be-dev": {"name": "Claude Sonnet 4", "emoji": ":brain:"},
+    "qa": {"name": "Claude Haiku 4.5", "emoji": ":brain:"}
+  },
+
+  "agent_display": {
+    "cto": {"name": "CTO", "emoji": ":tophat:"},
+    "pm": {"name": "PM", "emoji": ":clipboard:"},
+    "fe-dev": {"name": "FE-Dev", "emoji": ":art:"},
+    "be-dev": {"name": "BE-Dev", "emoji": ":gear:"},
+    "qa": {"name": "QA", "emoji": ":mag:"}
+  },
+
+  "templates": {
+    "wave_launch": {
+      "header": "Wave {wave} Launching",
+      "required_fields": ["project", "budget", "controller", "status"],
+      "context_suffix": "Human approved"
+    },
+
+    "story_started": {
+      "header": "Story Started",
+      "required_fields": ["story_id", "wave", "title", "agent", "model", "budget", "acceptance_criteria"],
+      "context_suffix": "Story dispatched"
+    },
+
+    "story_completed": {
+      "header": "Story Completed",
+      "required_fields": ["story_id", "status", "title", "agent", "model", "cost", "duration", "branch", "summary"],
+      "optional_fields": ["tokens"],
+      "context_suffix": "Ready for QA review"
+    },
+
+    "story_failed": {
+      "header": "Story Failed",
+      "required_fields": ["story_id", "status", "title", "agent", "model", "error", "attempts"],
+      "context_suffix": "Requires attention"
+    },
+
+    "architecture_review": {
+      "header": "Architecture Review",
+      "required_fields": ["story_id", "status", "title", "agent", "model", "review_type", "complexity", "review_notes"],
+      "context_suffix": "CTO reviewing"
+    },
+
+    "qa_report": {
+      "header": "QA Report",
+      "required_fields": ["story_id", "status", "title", "agent", "model", "tests_passed", "tests_failed", "coverage"],
+      "context_suffix": "QA complete"
+    },
+
+    "budget_warning": {
+      "header": "Budget Warning",
+      "required_fields": ["wave", "current_spend", "budget_limit", "percentage"],
+      "context_suffix": "Budget threshold reached"
+    },
+
+    "emergency_stop": {
+      "header": "EMERGENCY STOP",
+      "required_fields": ["triggered_by", "reason", "affected_agents"],
+      "context_suffix": "All agents halted"
+    }
+  },
+
+  "status_icons": {
+    "success": ":white_check_mark:",
+    "failed": ":x:",
+    "in_progress": ":hourglass_flowing_sand:",
+    "in_review": ":mag:",
+    "warning": ":warning:",
+    "emergency": ":rotating_light:"
+  },
+
+  "test_payload": {
+    "type": "test",
+    "blocks": [
+      {
+        "type": "header",
+        "text": {"type": "plain_text", "text": "WAVE Notification Test", "emoji": true}
+      },
+      {
+        "type": "section",
+        "fields": [
+          {"type": "mrkdwn", "text": "*Status:*\n:white_check_mark: Connection OK"},
+          {"type": "mrkdwn", "text": "*Project:*\n{project}"}
+        ]
+      },
+      {
+        "type": "section",
+        "fields": [
+          {"type": "mrkdwn", "text": "*Controller:*\nWAVE v2"},
+          {"type": "mrkdwn", "text": "*Wave:*\n{wave}"}
+        ]
+      },
+      {
+        "type": "context",
+        "elements": [
+          {"type": "mrkdwn", "text": ":test_tube: Pre-flight notification test | {timestamp}"}
+        ]
+      }
+    ]
+  }
+}

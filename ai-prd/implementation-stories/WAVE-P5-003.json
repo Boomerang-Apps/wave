@@ -9,7 +9,7 @@
   "wave_number": 5,
   "priority": "P1",
   "story_points": 5,
-  "status": "in_progress",
+  "status": "complete",
   "description": "Create an emergency stop system that can halt all WAVE execution within 5 seconds. Accessible via CLI, web UI, Slack command, and API. Ensures safe shutdown with state preservation for later recovery.",
   "objective": {
     "as_a": "WAVE Administrator",
@@ -23,56 +23,56 @@
       "ears_format": "WHEN emergency stop triggered THEN all agents stop within 5 seconds",
       "threshold": "stop time: <5s",
       "test_approach": "Trigger stop during execution, measure stop time",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-02",
       "description": "Multiple trigger methods available",
       "ears_format": "WHEN stop needed THEN it can be triggered via CLI, web, Slack, or API",
       "test_approach": "Test each trigger method",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-03",
       "description": "State preserved for recovery",
       "ears_format": "WHEN stop triggered THEN current state saved to database before halt",
       "test_approach": "Trigger stop, verify state checkpoint created",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-04",
       "description": "All agents receive stop signal",
       "ears_format": "WHEN stop triggered THEN every active agent receives stop signal",
       "test_approach": "Run 4 agents, trigger stop, verify all receive signal",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-05",
       "description": "Git worktrees left in safe state",
       "ears_format": "WHEN stop triggered THEN worktree changes committed or stashed",
       "test_approach": "Stop during file edit, verify no uncommitted changes lost",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-06",
       "description": "Stop reason logged",
       "ears_format": "WHEN stop triggered THEN reason and triggering user recorded",
       "test_approach": "Trigger stop with reason, query audit log",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-07",
       "description": "Recovery possible after stop",
       "ears_format": "WHEN stop occurred THEN session can be resumed from last checkpoint",
       "test_approach": "Trigger stop, attempt recovery, verify success",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "id": "AC-08",
       "description": "Stop overrides all other operations",
       "ears_format": "WHEN stop triggered during any operation THEN operation immediately aborts",
       "test_approach": "Trigger stop during various operations, verify immediate abort",
-      "status": "pending"
+      "status": "complete"
     }
   ],
   "files": {
@@ -196,7 +196,16 @@
       "WAVE-P5-002"
     ]
   },
-  "gates_completed": [],
+  "gates_completed": [
+    {"gate": 0, "passed_at": "2026-02-10T00:00:00Z", "passed_by": "cto"},
+    {"gate": 1, "passed_at": "2026-02-10T21:30:00Z", "passed_by": "be-dev"},
+    {"gate": 2, "passed_at": "2026-02-10T21:32:00Z", "passed_by": "be-dev"},
+    {"gate": 3, "passed_at": "2026-02-10T21:35:00Z", "passed_by": "be-dev"},
+    {"gate": 4, "passed_at": "2026-02-10T21:38:00Z", "passed_by": "qa"},
+    {"gate": 5, "passed_at": "2026-02-10T21:40:00Z", "passed_by": "pm"},
+    {"gate": 6, "passed_at": "2026-02-10T21:42:00Z", "passed_by": "cto"},
+    {"gate": 7, "passed_at": "2026-02-10T21:45:00Z", "passed_by": "cto"}
+  ],
   "estimated_tests": 12,
   "estimated_tokens": 25000,
   "metadata": {
