@@ -1,0 +1,169 @@
+{
+  "gate": "Gate 3 - Test Verification",
+  "story_id": "WAVE-P4-001",
+  "story_name": "RLM Context Manager",
+  "timestamp": "2026-02-11T06:25:00Z",
+  "status": "PASS",
+  "agent": "be-dev",
+  "checks": {
+    "TV-A": {
+      "name": "Unit Tests",
+      "status": "PASS",
+      "details": {
+        "command": "./venv/bin/pytest tests/test_rlm_*.py tests/rlm/ -v",
+        "total_tests": 102,
+        "passed": 102,
+        "failed": 0,
+        "skipped": 0,
+        "duration": "0.72s",
+        "pass_rate": "100%",
+        "test_categories": {
+          "rlm_auditor": 12,
+          "budget_enforcement": 9,
+          "context_optimization": 8,
+          "integration": 13,
+          "context_manager": 27,
+          "domain_scoper": 18,
+          "subagent_spawner": 15
+        }
+      }
+    },
+    "TV-B": {
+      "name": "Coverage",
+      "status": "PASS",
+      "details": {
+        "command": "./venv/bin/pytest --cov=src/rlm",
+        "line_coverage": 92,
+        "threshold": 70,
+        "exceeded_by": 22,
+        "total_statements": 544,
+        "covered_statements": 502,
+        "missed_statements": 42,
+        "file_coverage": {
+          "context_manager.py": 91,
+          "lru_cache.py": 95,
+          "state_externalizer.py": 94,
+          "domain_scoper.py": 93,
+          "subagent.py": 100,
+          "result_collector.py": 100,
+          "spawner.py": 98
+        }
+      }
+    },
+    "TV-C": {
+      "name": "Integration Tests",
+      "status": "PASS",
+      "details": {
+        "test_file": "tests/test_rlm_integration.py",
+        "total_tests": 13,
+        "passed": 13,
+        "failed": 0,
+        "categories": [
+          "Dynamic file retrieval (AC-05): 9 tests",
+          "Edge cases: 4 tests"
+        ],
+        "note": "Integration tests verify dynamic file retrieval end-to-end"
+      }
+    },
+    "TV-D": {
+      "name": "Flakiness",
+      "status": "PASS",
+      "details": {
+        "runs_performed": 2,
+        "consistent_results": true,
+        "pass_rate_run_1": "100%",
+        "pass_rate_run_2": "100%",
+        "note": "All tests deterministic, no flaky tests detected"
+      }
+    },
+    "TV-E": {
+      "name": "Traceability",
+      "status": "PASS",
+      "details": {
+        "AC-01": {
+          "description": "Domain-scoped context loading",
+          "tests": [
+            "tests/rlm/test_context_manager.py::TestDomainScopedContext (4 tests)",
+            "tests/rlm/test_domain_scoper.py (multiple)"
+          ],
+          "verified": true
+        },
+        "AC-02": {
+          "description": "Story-specific context loading",
+          "tests": [
+            "tests/rlm/test_context_manager.py::TestStorySpecificContext (3 tests)"
+          ],
+          "verified": true
+        },
+        "AC-03": {
+          "description": "Context size tracking and LRU eviction",
+          "tests": [
+            "tests/rlm/test_context_manager.py::TestTokenTrackingAndLRU (5 tests)",
+            "tests/test_rlm_context_optimization.py (8 tests)"
+          ],
+          "verified": true
+        },
+        "AC-04": {
+          "description": "State externalization to database",
+          "tests": [
+            "tests/rlm/test_context_manager.py::TestStateExternalization (4 tests)"
+          ],
+          "verified": true
+        },
+        "AC-05": {
+          "description": "Dynamic file retrieval on demand",
+          "tests": [
+            "tests/rlm/test_context_manager.py::TestOnDemandRetrieval (3 tests)",
+            "tests/test_rlm_integration.py::TestDynamicFileRetrieval (9 tests)",
+            "tests/test_rlm_integration.py::TestDynamicRetrievalEdgeCases (4 tests)"
+          ],
+          "verified": true
+        },
+        "AC-06": {
+          "description": ">50% token reduction vs baseline",
+          "tests": [
+            "tests/rlm/test_context_manager.py::TestCostReduction (3 tests)"
+          ],
+          "verification_tool": "orchestrator/tools/rlm_benchmark.py",
+          "verified": true
+        },
+        "AC-07": {
+          "description": "No context rot after 100K tokens",
+          "tests": [
+            "tests/rlm/test_context_manager.py::TestContextAccuracyRetention (3 tests)"
+          ],
+          "verification_tool": "orchestrator/tools/rlm_context_rot_test.py",
+          "verified": true
+        },
+        "all_acs_covered": true,
+        "total_ac_tests": 44,
+        "additional_tests": 58
+      }
+    }
+  },
+  "summary": {
+    "checks_passed": 5,
+    "checks_failed": 0,
+    "checks_na": 0,
+    "pass_rate": "100%",
+    "result": "PASS",
+    "highlights": [
+      "102 tests passing with 0 failures",
+      "92% coverage (exceeded 70% threshold by 22%)",
+      "All 7 acceptance criteria have test coverage",
+      "13 integration tests verify end-to-end functionality",
+      "No flaky tests detected"
+    ]
+  },
+  "test_metrics": {
+    "total_tests": 102,
+    "unit_tests": 89,
+    "integration_tests": 13,
+    "test_duration": "0.72s",
+    "coverage_percentage": 92,
+    "ac_test_mapping": "100% (7/7 ACs covered)"
+  },
+  "next_gate": "Gate 4 - QA Acceptance",
+  "approved_by": "be-dev (test verification)",
+  "approved_at": "2026-02-11T06:25:00Z"
+}
