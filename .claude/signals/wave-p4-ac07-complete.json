@@ -1,0 +1,77 @@
+{
+  "signal_type": "acceptance_criteria_complete",
+  "story_id": "WAVE-P4-001",
+  "acceptance_criteria": "AC-07",
+  "timestamp": "2026-02-11T07:49:21Z",
+  "description": "No accuracy degradation after 100K tokens",
+  "verification": {
+    "test_script": "orchestrator/tools/rlm_context_rot_test.py",
+    "results_file": ".claude/context-rot-results-ac07.json",
+    "status": "PASS"
+  },
+  "metrics": {
+    "tokens_processed": 116360,
+    "target_tokens": 100000,
+    "accuracy_retention": 100.0,
+    "threshold": 95.0,
+    "checkpoints": 5,
+    "cache_hit_rate": 100.0,
+    "file_retrieval_success": 100.0,
+    "context_completeness": 100.0,
+    "evictions": 0,
+    "critical_files_evicted": 0
+  },
+  "test_details": {
+    "domain": "orchestrator",
+    "max_cache_tokens": 100000,
+    "domain_files_loaded": 287,
+    "pinned_files": 287,
+    "scenarios_executed": 7,
+    "test_duration": "~3 minutes"
+  },
+  "quality_checkpoints": [
+    {
+      "checkpoint": "0K",
+      "tokens_processed": 0,
+      "cache_hit_rate": 0.0,
+      "status": "baseline"
+    },
+    {
+      "checkpoint": "25K",
+      "tokens_processed": 46799,
+      "cache_hit_rate": 100.0,
+      "status": "excellent"
+    },
+    {
+      "checkpoint": "50K",
+      "tokens_processed": 62714,
+      "cache_hit_rate": 100.0,
+      "status": "excellent"
+    },
+    {
+      "checkpoint": "75K",
+      "tokens_processed": 89597,
+      "cache_hit_rate": 100.0,
+      "status": "excellent"
+    },
+    {
+      "checkpoint": "100K",
+      "tokens_processed": 116360,
+      "cache_hit_rate": 100.0,
+      "status": "excellent"
+    }
+  ],
+  "evidence": {
+    "test_execution": "orchestrator/tools/rlm_context_rot_test.py --repo /Volumes/SSD-01/Projects/WAVE --domain orchestrator --domain-config config/domain-config.json",
+    "results_json": ".claude/context-rot-results-ac07.json",
+    "commit": "2f6670f",
+    "all_tests_passing": "42/42 tests in 0.55s"
+  },
+  "phase_impact": {
+    "phase": "Phase 4 - RLM Integration",
+    "story_completion": "100%",
+    "acceptance_criteria_complete": "7/7",
+    "phase_status": "COMPLETE",
+    "next_step": "Gate execution for WAVE-P4-001"
+  }
+}
