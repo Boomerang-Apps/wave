@@ -1,0 +1,192 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Brand/Typography" />
+
+# Typography
+
+WAVE uses two typefaces: **Inter** for all UI text and **JetBrains Mono** for code, terminal output, and metrics. Both are loaded via Google Fonts and defined in the Tailwind config.
+
+---
+
+## Sans Serif -- Inter
+
+The primary typeface for headings, body text, labels, and navigation. Inter is optimized for screen readability at small sizes, making it ideal for data-dense dashboards.
+
+**Tailwind class:** `font-sans`
+**Stack:** `'Inter', 'system-ui', 'sans-serif'`
+
+### Weight 400 -- Regular
+
+<div style={{ fontFamily: 'Inter, system-ui, sans-serif', fontWeight: 400, fontSize: '1rem', lineHeight: 1.6, marginBottom: '1.5rem', padding: '1rem', borderRadius: '0.5rem', border: '1px solid #e5e5e5' }}>
+  <div>The quick brown fox jumps over the lazy dog. WAVE orchestrates autonomous agents through verified execution pipelines with quality gates at every step.</div>
+  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem' }}>Inter 400 -- Body text, descriptions, table cells</div>
+</div>
+
+### Weight 500 -- Medium
+
+<div style={{ fontFamily: 'Inter, system-ui, sans-serif', fontWeight: 500, fontSize: '1rem', lineHeight: 1.6, marginBottom: '1.5rem', padding: '1rem', borderRadius: '0.5rem', border: '1px solid #e5e5e5' }}>
+  <div>The quick brown fox jumps over the lazy dog. WAVE orchestrates autonomous agents through verified execution pipelines with quality gates at every step.</div>
+  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem', fontWeight: 400 }}>Inter 500 -- Labels, sidebar items, badge text</div>
+</div>
+
+### Weight 600 -- SemiBold
+
+<div style={{ fontFamily: 'Inter, system-ui, sans-serif', fontWeight: 600, fontSize: '1rem', lineHeight: 1.6, marginBottom: '1.5rem', padding: '1rem', borderRadius: '0.5rem', border: '1px solid #e5e5e5' }}>
+  <div>The quick brown fox jumps over the lazy dog. WAVE orchestrates autonomous agents through verified execution pipelines with quality gates at every step.</div>
+  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem', fontWeight: 400 }}>Inter 600 -- Subheadings, card titles, button text</div>
+</div>
+
+### Weight 700 -- Bold
+
+<div style={{ fontFamily: 'Inter, system-ui, sans-serif', fontWeight: 700, fontSize: '1rem', lineHeight: 1.6, marginBottom: '1.5rem', padding: '1rem', borderRadius: '0.5rem', border: '1px solid #e5e5e5' }}>
+  <div>The quick brown fox jumps over the lazy dog. WAVE orchestrates autonomous agents through verified execution pipelines with quality gates at every step.</div>
+  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem', fontWeight: 400 }}>Inter 700 -- Page titles, emphasis, stat values</div>
+</div>
+
+---
+
+## Monospace -- JetBrains Mono
+
+Used for code snippets, terminal output, file paths, commit hashes, metrics, and any machine-readable content. JetBrains Mono features programming ligatures and clear character distinction.
+
+**Tailwind class:** `font-mono`
+**Stack:** `'JetBrains Mono', 'monospace'`
+
+### Weight 400 -- Regular
+
+<div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 400, fontSize: '0.875rem', lineHeight: 1.7, marginBottom: '1.5rem', padding: '1rem', borderRadius: '0.5rem', background: '#0a0a0a', color: '#f2f2f2' }}>
+  <div>$ wave-start.sh --project ./footprint --wave 1</div>
+  <div style={{ color: '#22c35e' }}>Gate 0: PASSED -- Pre-wave approval verified</div>
+  <div style={{ color: '#22c35e' }}>Gate 1: PASSED -- Self-review complete</div>
+  <div style={{ color: '#f59e0b' }}>Gate 2: RUNNING -- Build in progress...</div>
+  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.75rem' }}>JetBrains Mono 400 -- Terminal output, code blocks, log streams</div>
+</div>
+
+### Weight 500 -- Medium
+
+<div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, fontSize: '0.875rem', lineHeight: 1.7, marginBottom: '1.5rem', padding: '1rem', borderRadius: '0.5rem', background: '#0a0a0a', color: '#f2f2f2' }}>
+  <div>const gateStatus = await checkGate(7);</div>
+  <div>if (gateStatus === 'PASSED') {'{'}</div>
+  <div>&nbsp;&nbsp;await mergeToBranch('main');</div>
+  <div>{'}'}</div>
+  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.75rem' }}>JetBrains Mono 500 -- Inline code, file paths, metric values</div>
+</div>
+
+---
+
+## Heading Hierarchy
+
+<div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2rem' }}>
+  <div style={{ padding: '1rem', borderRadius: '0.5rem', border: '1px solid #e5e5e5' }}>
+    <div style={{ fontFamily: 'Inter, system-ui, sans-serif', fontWeight: 700, fontSize: '2.25rem', lineHeight: 1.2 }}>Page Title (text-4xl)</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>36px / font-bold -- Top-level page headings. One per page.</div>
+  </div>
+  <div style={{ padding: '1rem', borderRadius: '0.5rem', border: '1px solid #e5e5e5' }}>
+    <div style={{ fontFamily: 'Inter, system-ui, sans-serif', fontWeight: 700, fontSize: '1.875rem', lineHeight: 1.2 }}>Section Title (text-3xl)</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>30px / font-bold -- Major section divisions.</div>
+  </div>
+  <div style={{ padding: '1rem', borderRadius: '0.5rem', border: '1px solid #e5e5e5' }}>
+    <div style={{ fontFamily: 'Inter, system-ui, sans-serif', fontWeight: 600, fontSize: '1.5rem', lineHeight: 1.3 }}>Card Heading (text-2xl)</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>24px / font-semibold -- Card titles, modal titles.</div>
+  </div>
+  <div style={{ padding: '1rem', borderRadius: '0.5rem', border: '1px solid #e5e5e5' }}>
+    <div style={{ fontFamily: 'Inter, system-ui, sans-serif', fontWeight: 600, fontSize: '1.25rem', lineHeight: 1.4 }}>Subsection (text-xl)</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>20px / font-semibold -- Subsection titles, tab labels.</div>
+  </div>
+  <div style={{ padding: '1rem', borderRadius: '0.5rem', border: '1px solid #e5e5e5' }}>
+    <div style={{ fontFamily: 'Inter, system-ui, sans-serif', fontWeight: 600, fontSize: '1.125rem', lineHeight: 1.4 }}>Group Label (text-lg)</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>18px / font-semibold -- Sidebar group headers, section-header class.</div>
+  </div>
+  <div style={{ padding: '1rem', borderRadius: '0.5rem', border: '1px solid #e5e5e5' }}>
+    <div style={{ fontFamily: 'Inter, system-ui, sans-serif', fontWeight: 500, fontSize: '1rem', lineHeight: 1.5 }}>Body / Base (text-base)</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>16px / font-medium -- Default body text size.</div>
+  </div>
+  <div style={{ padding: '1rem', borderRadius: '0.5rem', border: '1px solid #e5e5e5' }}>
+    <div style={{ fontFamily: 'Inter, system-ui, sans-serif', fontWeight: 400, fontSize: '0.875rem', lineHeight: 1.5 }}>Small Text (text-sm)</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>14px / font-normal -- Table cells, sidebar items, metadata.</div>
+  </div>
+  <div style={{ padding: '1rem', borderRadius: '0.5rem', border: '1px solid #e5e5e5' }}>
+    <div style={{ fontFamily: 'Inter, system-ui, sans-serif', fontWeight: 400, fontSize: '0.75rem', lineHeight: 1.5 }}>Caption (text-xs)</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>12px / font-normal -- Timestamps, help text, badge labels.</div>
+  </div>
+</div>
+
+---
+
+## Body Text
+
+<div style={{ maxWidth: '40rem', marginBottom: '2rem' }}>
+  <div style={{ padding: '1.5rem', borderRadius: '0.5rem', border: '1px solid #e5e5e5' }}>
+    <div style={{ fontFamily: 'Inter, system-ui, sans-serif', fontWeight: 400, fontSize: '0.875rem', lineHeight: 1.7, marginBottom: '1rem' }}>
+      WAVE automates multi-agent development workflows through a gate-based quality pipeline. Each wave of work is broken into stories assigned to domain-specific agents operating in isolated Docker containers with dedicated Git worktrees.
+    </div>
+    <div style={{ fontFamily: 'Inter, system-ui, sans-serif', fontWeight: 400, fontSize: '0.875rem', lineHeight: 1.7, marginBottom: '0' }}>
+      The portal provides real-time visibility into agent execution, gate statuses, and merge readiness. Engineers can monitor progress, trigger quality reviews, and manage the overall orchestration lifecycle from a single dashboard.
+    </div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '1rem' }}>text-sm (14px) with relaxed line-height -- the default for dashboard prose</div>
+  </div>
+</div>
+
+---
+
+## Monospace Usage Patterns
+
+<div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+  <div style={{ padding: '1rem', borderRadius: '0.5rem', border: '1px solid #e5e5e5' }}>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.5rem', fontFamily: 'Inter, system-ui, sans-serif' }}>Inline code within body text</div>
+    <div style={{ fontFamily: 'Inter, system-ui, sans-serif', fontSize: '0.875rem' }}>
+      The agent writes to <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.8125rem', background: '#f5f5f5', padding: '0.125rem 0.375rem', borderRadius: '0.25rem' }}>signal-w1-g3-passed.json</span> when the build gate succeeds.
+    </div>
+  </div>
+  <div style={{ padding: '1rem', borderRadius: '0.5rem', border: '1px solid #e5e5e5' }}>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.5rem', fontFamily: 'Inter, system-ui, sans-serif' }}>Metric values in stat cards</div>
+    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '1.5rem', fontWeight: 500 }}>94.7%</div>
+    <div style={{ fontFamily: 'Inter, system-ui, sans-serif', fontSize: '0.75rem', color: '#6b7280' }}>Test Coverage</div>
+  </div>
+  <div style={{ padding: '1rem', borderRadius: '0.5rem', border: '1px solid #e5e5e5' }}>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.5rem', fontFamily: 'Inter, system-ui, sans-serif' }}>File paths and commit references</div>
+    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.8125rem' }}>
+      <div>portal/src/components/LiveExecutionView.tsx</div>
+      <div style={{ color: '#6b7280' }}>1c107ed docs: add session handoff</div>
+    </div>
+  </div>
+</div>
+
+---
+
+## Guidelines
+
+<table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+  <thead>
+    <tr style={{ borderBottom: '2px solid #e5e5e5', textAlign: 'left' }}>
+      <th style={{ padding: '0.5rem 1rem' }}>Rule</th>
+      <th style={{ padding: '0.5rem 1rem' }}>Details</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}>Minimum readable size</td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>text-xs</code> (12px) for captions; never go smaller</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}>Max line length</td>
+      <td style={{ padding: '0.5rem 1rem' }}>65-75 characters for body text (<code>max-w-prose</code>)</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}>Code font usage</td>
+      <td style={{ padding: '0.5rem 1rem' }}>Always use <code>font-mono</code> for file paths, commands, hashes, and numeric metrics</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}>Weight pairing</td>
+      <td style={{ padding: '0.5rem 1rem' }}>Headings use 600-700; body uses 400-500</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}>Line height</td>
+      <td style={{ padding: '0.5rem 1rem' }}>Headings: tight (1.2-1.3); Body: relaxed (1.5-1.7)</td>
+    </tr>
+    <tr>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}>Letter spacing</td>
+      <td style={{ padding: '0.5rem 1rem' }}>Default for both typefaces; no custom tracking</td>
+    </tr>
+  </tbody>
+</table>

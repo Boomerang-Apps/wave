@@ -1,0 +1,72 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Brand/Introduction" />
+
+# WAVE Brand Guidelines
+
+**Tagline:** Autonomous Execution, Verified Results
+
+## Mission
+
+WAVE (Workflow Automation for Verified Execution) is a project-agnostic multi-agent orchestration framework. It coordinates AI development agents through Docker containers, Git worktree isolation, and signal-based quality gates to deliver verified, production-ready code.
+
+## Design Principles
+
+- **Dark-First** — A "Devin-style" monochromatic dark theme is the default, with a light mode option. The interface is designed for long coding sessions.
+- **Data-Dense** — Dashboard layouts maximize information density. Every pixel earns its place with metrics, status indicators, and actionable controls.
+- **Monochromatic with Semantic Accents** — A grayscale foundation with green (success), amber (warning), and red (destructive) for status communication.
+- **Developer-Native** — Monospace code, keyboard shortcuts, and terminal-like patterns feel natural to engineering teams.
+
+## Target Audience
+
+Engineering teams and technical leaders who manage multi-agent AI development workflows. Comfortable with CLIs, dashboards, and developer tooling.
+
+## Language
+
+- **Language:** English only
+- **Direction:** LTR (left-to-right)
+
+## Tech Stack
+
+<table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+  <thead>
+    <tr style={{ borderBottom: '2px solid #e5e5e5', textAlign: 'left' }}>
+      <th style={{ padding: '0.5rem 1rem' }}>Layer</th>
+      <th style={{ padding: '0.5rem 1rem' }}>Technology</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem' }}>Framework</td>
+      <td style={{ padding: '0.5rem 1rem' }}>React 19 + Vite 7</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem' }}>Styling</td>
+      <td style={{ padding: '0.5rem 1rem' }}>Tailwind CSS 3.4 + HSL custom properties</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem' }}>Components</td>
+      <td style={{ padding: '0.5rem 1rem' }}>Radix UI primitives</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem' }}>Fonts</td>
+      <td style={{ padding: '0.5rem 1rem' }}>Inter (sans), JetBrains Mono (mono)</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem' }}>Theming</td>
+      <td style={{ padding: '0.5rem 1rem' }}>Class-based dark mode (<code>.dark</code>)</td>
+    </tr>
+    <tr>
+      <td style={{ padding: '0.5rem 1rem' }}>Animation</td>
+      <td style={{ padding: '0.5rem 1rem' }}>tailwindcss-animate plugin</td>
+    </tr>
+  </tbody>
+</table>
+
+## Theme Architecture
+
+WAVE uses HSL-based CSS custom properties defined in `:root` (light) and `.dark` (dark) selectors. Tailwind maps each token with `hsl(var(--name))` so every color updates automatically when the theme class toggles. The `ThemeProvider` component manages this class on `<html>`.
+
+## Quality Gate Workflow
+
+The UI reflects WAVE's 8-gate quality pipeline (Gate 0 through Gate 7). Status colors -- green for passed, amber for in-progress, red for failed -- carry consistent semantic meaning across every surface: badges, banners, progress indicators, and sidebar items.

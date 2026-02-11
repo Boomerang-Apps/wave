@@ -1,0 +1,402 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Brand/Components" />
+
+# Component Inventory
+
+WAVE's component library is organized into seven categories. **Primitives** are built on Radix UI and live in `src/components/ui/`. **Feature components** live in `src/components/` and compose primitives with domain-specific logic.
+
+All components consume the HSL-based theme tokens, respond to `.dark` class toggling, and use `tailwindcss-animate` for motion.
+
+---
+
+## Primitives
+
+Low-level building blocks from `src/components/ui/`. These wrap Radix UI primitives with WAVE's theme tokens, radius scale, and animation conventions.
+
+<table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+  <thead>
+    <tr style={{ borderBottom: '2px solid #e5e5e5', textAlign: 'left' }}>
+      <th style={{ padding: '0.5rem 1rem' }}>Component</th>
+      <th style={{ padding: '0.5rem 1rem' }}>File</th>
+      <th style={{ padding: '0.5rem 1rem' }}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>Button</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>ui/button.tsx</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Primary, secondary, destructive, outline, ghost, and link variants. Uses <code>rounded-md</code> and focus <code>ring-ring</code>.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>Input</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>ui/input.tsx</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Text input with <code>bg-input</code> background, <code>border-border</code>, and focus ring. Pairs with <code>search-input</code> custom class.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>Label</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>ui/label.tsx</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Form labels with <code>text-sm font-medium</code>. Accessible pairing with inputs via <code>htmlFor</code>.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>Badge</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>ui/badge.tsx</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Inline status indicators. Default, secondary, destructive, and outline variants. See also <code>status-badge</code> and <code>badge-new</code> custom classes.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>Alert</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>ui/alert.tsx</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Callout banners for info, warning, and error states. Includes <code>AlertTitle</code> and <code>AlertDescription</code> sub-components.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>Card</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>ui/card.tsx</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Surface container with <code>bg-card</code> background, <code>border-border</code>, and <code>rounded-lg</code> radius. Includes <code>CardHeader</code>, <code>CardTitle</code>, <code>CardDescription</code>, <code>CardContent</code>, and <code>CardFooter</code>.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>Tabs</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>ui/tabs.tsx</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Tab navigation with <code>TabsList</code>, <code>TabsTrigger</code>, and <code>TabsContent</code>. Radix-based with keyboard navigation.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>Progress</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>ui/progress.tsx</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Horizontal progress bar. <code>bg-primary</code> fill on <code>bg-muted</code> track. Used in gate status and analysis flows.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>Separator</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>ui/separator.tsx</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Horizontal or vertical divider using <code>bg-border</code>.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>Tooltip</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>ui/tooltip.tsx</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Hover/focus tooltip using <code>bg-popover text-popover-foreground</code>. Radix-based with configurable delay.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>Dropdown Menu</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>ui/dropdown-menu.tsx</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Context menu with items, sub-menus, checkboxes, and radio groups. Uses <code>bg-popover</code> with <code>rounded-md</code>.</td>
+    </tr>
+    <tr>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>Checkbox</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>Checkbox.tsx</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Toggle control for checklists and multi-select patterns. Used in ChecklistResultsPage and form flows.</td>
+    </tr>
+  </tbody>
+</table>
+
+---
+
+## Layout
+
+Structural components that define the application shell, navigation hierarchy, and content regions.
+
+<table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+  <thead>
+    <tr style={{ borderBottom: '2px solid #e5e5e5', textAlign: 'left' }}>
+      <th style={{ padding: '0.5rem 1rem' }}>Component</th>
+      <th style={{ padding: '0.5rem 1rem' }}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>Layout</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Root shell component. Manages the three-column layout: primary sidebar, main content area, and optional secondary sidebar/flyout.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>TopNavigation</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Fixed top bar (<code>h-14</code>). Contains breadcrumbs, project selector, and theme toggle. Spans the full viewport width above sidebars.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>PrimarySidebar</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Left navigation rail (<code>w-64</code>). Renders the main navigation tree with <code>sidebar-item</code> styling. Background uses <code>bg-sidebar</code>.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>SecondarySidebar</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Optional right-side panel (<code>w-72</code>). Context-sensitive detail view that appears alongside content pages.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>HierarchicalSidebar</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Tree-structured sidebar for nested navigation (e.g., stories grouped by wave and domain). Supports expand/collapse with <code>slideIn</code> animation.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>TabLayout</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Horizontal tab bar for switching between sub-views within a page. Wraps Radix <code>Tabs</code> with page-level routing integration.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>Flyout</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Slide-in panel from the right edge. Uses <code>slideInFromRight</code> animation. Generic container for detail views and forms.</td>
+    </tr>
+    <tr>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>BlueprintFlyout</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Specialized flyout for blueprint/story detail views. Extends <code>Flyout</code> with story-specific header, metadata, and action buttons.</td>
+    </tr>
+  </tbody>
+</table>
+
+---
+
+## Data Display
+
+Components for presenting structured data, metrics, and analysis results.
+
+<table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+  <thead>
+    <tr style={{ borderBottom: '2px solid #e5e5e5', textAlign: 'left' }}>
+      <th style={{ padding: '0.5rem 1rem' }}>Component</th>
+      <th style={{ padding: '0.5rem 1rem' }}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>GridPage</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Full-page data grid with filtering, sorting, and pagination. Renders rows using <code>devin-table</code> custom class styling.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>GridTable</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Standalone table component for embedding data grids within cards or sections. Column-configurable with sort controls.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>ContentPage</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Markdown-rendered content view for documentation, reports, and analysis output.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>FileListView</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>File tree or flat file list display. Shows file paths in <code>font-mono</code>, sizes, and status indicators.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>InlineAnalysis</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Compact analysis result display embedded within other components. Shows pass/fail metrics with <code>status-badge</code> styling.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>ReadinessCircle</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Circular progress/readiness indicator. Renders a percentage with color-coded ring (success/warning/destructive).</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>IconBadge</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Icon paired with a small status badge overlay. Used for navigation items and entity indicators in sidebars.</td>
+    </tr>
+    <tr>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>BlueprintSummaryBar</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Horizontal summary strip showing story count, point total, and completion percentage for a wave or blueprint.</td>
+    </tr>
+  </tbody>
+</table>
+
+---
+
+## Workflow
+
+Components that drive WAVE's gate-based quality pipeline and story management workflows.
+
+<table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+  <thead>
+    <tr style={{ borderBottom: '2px solid #e5e5e5', textAlign: 'left' }}>
+      <th style={{ padding: '0.5rem 1rem' }}>Component</th>
+      <th style={{ padding: '0.5rem 1rem' }}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>Gate0Wizard</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Multi-step wizard for Gate 0 (pre-wave) approval. Guides the CTO through design foundation, architecture review, and story validation before agents begin work.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>GateDecisionDropdown</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Dropdown control for approving, rejecting, or requesting changes on a specific gate. Renders status-colored options with confirmation.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>GatedTab</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Tab that is locked/unlocked based on gate progression. Shows a lock icon and disabled state until prerequisite gates pass.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>ExecutionPlanTab</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Tab view displaying the execution plan for a wave -- story ordering, agent assignments, dependency graph, and estimated durations.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>PRDStoriesTab</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Tab view for viewing and managing PRD-generated stories. Shows story cards with acceptance criteria, point estimates, and domain assignments.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>MockupDesignTab</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Tab view for design mockups and wireframes associated with stories. Supports image preview and annotation.</td>
+    </tr>
+    <tr>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>ChecklistResultsPage</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Full-page checklist view for gate review. Renders pass/fail items with expandable detail sections and overall score.</td>
+    </tr>
+  </tbody>
+</table>
+
+---
+
+## Execution
+
+Components for monitoring live agent execution, analysis progress, and system connectivity.
+
+<table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+  <thead>
+    <tr style={{ borderBottom: '2px solid #e5e5e5', textAlign: 'left' }}>
+      <th style={{ padding: '0.5rem 1rem' }}>Component</th>
+      <th style={{ padding: '0.5rem 1rem' }}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>LiveExecutionView</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Real-time agent execution monitor. Shows streaming logs, current gate status, and per-agent progress bars. Updates via WebSocket or polling.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>FoundationAnalysisProgress</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Step-by-step progress display for the foundation analysis pipeline (codebase scan, dependency audit, architecture mapping).</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>FoundationAnalysisWizard</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Multi-step wizard wrapping the foundation analysis flow. Guides users through project configuration, scan initiation, and results review.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>LaunchSequenceProgress</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Pre-launch checklist and countdown display. Shows system readiness checks (Docker, Git, API keys) before wave execution begins.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>OrchestratorStatus</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Connection and health status for the Python LangGraph orchestrator. Shows heartbeat, active agents, and queue depth.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>ConnectionManager</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Configuration panel for managing external service connections (Supabase, LangSmith, Docker registry, Slack).</td>
+    </tr>
+    <tr>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>ConnectionCards</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Grid of connection status cards. Each card shows service name, connection state (connected/disconnected/error), and a test button.</td>
+    </tr>
+  </tbody>
+</table>
+
+---
+
+## Feedback
+
+Components for surfacing guidance, review requests, analysis reports, and best-practice recommendations.
+
+<table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+  <thead>
+    <tr style={{ borderBottom: '2px solid #e5e5e5', textAlign: 'left' }}>
+      <th style={{ padding: '0.5rem 1rem' }}>Component</th>
+      <th style={{ padding: '0.5rem 1rem' }}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>GuidedBanner</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Dismissible guidance banner. Appears at the top of pages to provide contextual tips, onboarding instructions, or workflow prompts. Uses <code>bg-muted</code> with <code>rounded-lg</code>.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>HumanReviewBanner</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Alert banner requesting human review for a specific gate. Shows the gate number, blocking agent, and a direct link to the review interface. Uses <code>bg-warning</code> tint.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>MarkdownPreviewModal</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Full-screen modal for previewing Markdown-formatted content (PRDs, analysis reports, story descriptions). Includes copy-to-clipboard and download actions.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>AlignmentReport</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Structured report comparing agent output against story acceptance criteria. Shows alignment score, matched criteria, gaps, and recommendations.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>BestPracticesSection</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Collapsible section listing best-practice recommendations from code analysis. Each item has severity (info/warning/error) and an actionable suggestion.</td>
+    </tr>
+    <tr>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>CorePillars</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Visual display of WAVE's core quality pillars (e.g., test coverage, type safety, accessibility, performance). Each pillar renders as a scored metric with a progress bar.</td>
+    </tr>
+  </tbody>
+</table>
+
+---
+
+## Controls
+
+Theme management, navigation actions, and mode-switching components.
+
+<table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+  <thead>
+    <tr style={{ borderBottom: '2px solid #e5e5e5', textAlign: 'left' }}>
+      <th style={{ padding: '0.5rem 1rem' }}>Component</th>
+      <th style={{ padding: '0.5rem 1rem' }}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>ThemeProvider</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Context provider that manages the <code>.dark</code> class on <code>&lt;html&gt;</code>. Reads system preference and persists user choice to localStorage. All components must be wrapped in this provider.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>ThemeToggle</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Button that cycles between light, dark, and system theme modes. Renders a sun/moon icon with tooltip.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>ModeSwitch</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Toggle between operational modes (e.g., monitoring vs. configuration). Binary switch with label.</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>ModeToggle</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Dropdown variant of mode selection. Used when more than two modes are available.</td>
+    </tr>
+    <tr>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><strong>NextStepButton</strong></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Primary call-to-action button that advances the current workflow step. Label and action update dynamically based on the active gate/wizard state. Uses <code>bg-primary text-primary-foreground</code>.</td>
+    </tr>
+  </tbody>
+</table>
+
+---
+
+## Custom CSS Classes
+
+In addition to component-level styling, WAVE defines reusable utility classes in `index.css`:
+
+<table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+  <thead>
+    <tr style={{ borderBottom: '2px solid #e5e5e5', textAlign: 'left' }}>
+      <th style={{ padding: '0.5rem 1rem' }}>Class</th>
+      <th style={{ padding: '0.5rem 1rem' }}>Purpose</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><code>.sidebar-item</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Sidebar navigation item with hover/active states, padding, and radius</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><code>.status-badge</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Status indicator with variants: <code>success</code>, <code>warning</code>, <code>error</code>, <code>info</code>, <code>muted</code></td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><code>.stat-card</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Metric display card with label, value, and optional trend indicator</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><code>.badge-new</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>"New" indicator badge for recently added items</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><code>.devin-table</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Data table styling with header/row/hover patterns matching the dark-first theme</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><code>.search-input</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Extended input styling for search fields with icon slot</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><code>.section-header</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Section heading with consistent sizing, weight, and bottom spacing</td>
+    </tr>
+    <tr>
+      <td style={{ padding: '0.5rem 1rem', fontWeight: 500 }}><code>.btn-outline</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Outline-style button variant with border and transparent background</td>
+    </tr>
+  </tbody>
+</table>

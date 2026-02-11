@@ -1,0 +1,322 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Brand/Colors" />
+
+# Color System
+
+WAVE uses HSL-based CSS custom properties with a class-based dark mode toggle (`.dark`). All Tailwind color utilities reference these tokens via `hsl(var(--name))`, ensuring automatic theme switching.
+
+The palette is inspired by **Linear's dark mode** -- cool-tinted near-black backgrounds with subtle blue undertones, an **indigo brand accent** (`#5e6ad2`), and semantic status colors (green, yellow, red, blue).
+
+---
+
+## Core Colors
+
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
+  <div>
+    <div style={{ background: 'hsl(0, 0%, 100%)', border: '1px solid #e5e5e5', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>background</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Light: 0 0% 100%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#ffffff</div>
+  </div>
+  <div>
+    <div style={{ background: '#08090a', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>background</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Dark: 210 11% 4%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#08090a</div>
+  </div>
+  <div>
+    <div style={{ background: 'hsl(0, 0%, 9%)', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>foreground</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Light: 0 0% 9%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#171717</div>
+  </div>
+  <div>
+    <div style={{ background: '#f7f8f8', border: '1px solid #e5e5e5', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>foreground</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Dark: 180 8% 97%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#f7f8f8</div>
+  </div>
+</div>
+
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
+  <div>
+    <div style={{ background: 'hsl(0, 0%, 100%)', border: '1px solid #e5e5e5', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>card</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Light: 0 0% 100%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#ffffff</div>
+  </div>
+  <div>
+    <div style={{ background: '#0f1011', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>card</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Dark: 210 6% 6%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#0f1011</div>
+  </div>
+  <div>
+    <div style={{ background: 'hsl(0, 0%, 100%)', border: '1px solid #e5e5e5', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>popover</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Light: 0 0% 100%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#ffffff</div>
+  </div>
+  <div>
+    <div style={{ background: '#232326', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>popover</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Dark: 240 4% 14%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#232326</div>
+  </div>
+</div>
+
+---
+
+## Brand & Interactive Colors
+
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
+  <div>
+    <div style={{ background: '#5e6ad2', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>primary (brand)</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Dark: 234 55% 60%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#5e6ad2 (Linear indigo)</div>
+  </div>
+  <div>
+    <div style={{ background: '#191a1b', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>secondary</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Dark: 210 4% 10%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#191a1b</div>
+  </div>
+  <div>
+    <div style={{ background: '#1c1c1f', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>muted</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Dark: 240 5% 12%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#1c1c1f</div>
+  </div>
+  <div>
+    <div style={{ background: '#232326', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>accent</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Dark: 240 5% 14%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#232326</div>
+  </div>
+</div>
+
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
+  <div>
+    <div style={{ background: '#d0d6e0', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>secondary-foreground</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Dark: 218 22% 85%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#d0d6e0</div>
+  </div>
+  <div>
+    <div style={{ background: '#8a8f98', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>muted-foreground</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Dark: 219 7% 57%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#8a8f98</div>
+  </div>
+  <div>
+    <div style={{ background: '#62666d', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>text-quaternary</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Reference only</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#62666d (disabled/placeholder)</div>
+  </div>
+  <div>
+    <div style={{ background: '#f7f8f8', border: '1px solid #e5e5e5', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>foreground</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Dark: 180 8% 97%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#f7f8f8 (primary text)</div>
+  </div>
+</div>
+
+---
+
+## Status Colors
+
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
+  <div>
+    <div style={{ background: '#4cb782', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>success</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Dark: 150 41% 51%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#4cb782</div>
+  </div>
+  <div>
+    <div style={{ background: '#f2c94c', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>warning</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Dark: 45 87% 62%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#f2c94c</div>
+  </div>
+  <div>
+    <div style={{ background: '#eb5757', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>destructive</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Dark: 0 79% 63%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#eb5757</div>
+  </div>
+  <div>
+    <div style={{ background: '#4ea7fc', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>info</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Dark: 209 97% 65%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#4ea7fc</div>
+  </div>
+</div>
+
+> Status colors are semantic accents used in `status-badge` variants (`success`, `warning`, `error`, `info`, `muted`), gate indicators, and alert components. The brand indigo is used for primary actions, focus rings, and selection highlighting.
+
+---
+
+## Chrome Colors
+
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
+  <div>
+    <div style={{ background: '#23252a', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>border</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Dark: 223 9% 15%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#23252a</div>
+  </div>
+  <div>
+    <div style={{ background: '#1c1c1f', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>input</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Dark: 240 5% 12%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#1c1c1f</div>
+  </div>
+  <div>
+    <div style={{ background: '#5e6ad2', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>ring (focus)</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Dark: 234 55% 60%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#5e6ad2</div>
+  </div>
+</div>
+
+---
+
+## Chart Colors
+
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
+  <div>
+    <div style={{ background: '#5e6ad2', borderRadius: '0.5rem', height: '3rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.75rem' }}>chart-1</strong>
+    <div style={{ fontSize: '0.6875rem', color: '#6b7280' }}>Brand indigo</div>
+  </div>
+  <div>
+    <div style={{ background: '#7170ff', borderRadius: '0.5rem', height: '3rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.75rem' }}>chart-2</strong>
+    <div style={{ fontSize: '0.6875rem', color: '#6b7280' }}>Accent violet</div>
+  </div>
+  <div>
+    <div style={{ background: '#4cb782', borderRadius: '0.5rem', height: '3rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.75rem' }}>chart-3</strong>
+    <div style={{ fontSize: '0.6875rem', color: '#6b7280' }}>Success green</div>
+  </div>
+  <div>
+    <div style={{ background: '#4ea7fc', borderRadius: '0.5rem', height: '3rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.75rem' }}>chart-4</strong>
+    <div style={{ fontSize: '0.6875rem', color: '#6b7280' }}>Info blue</div>
+  </div>
+  <div>
+    <div style={{ background: '#8a8f98', borderRadius: '0.5rem', height: '3rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.75rem' }}>chart-5</strong>
+    <div style={{ fontSize: '0.6875rem', color: '#6b7280' }}>Muted gray</div>
+  </div>
+</div>
+
+---
+
+## Sidebar Colors
+
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
+  <div>
+    <div style={{ background: '#08090a', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>sidebar</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Dark: 210 11% 4%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#08090a</div>
+  </div>
+  <div>
+    <div style={{ background: '#8a8f98', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>sidebar-foreground</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Dark: 219 7% 57%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#8a8f98</div>
+  </div>
+  <div>
+    <div style={{ background: '#23252a', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>sidebar-border</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Dark: 223 9% 15%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#23252a</div>
+  </div>
+  <div>
+    <div style={{ background: '#1c1c1f', borderRadius: '0.5rem', height: '4rem', marginBottom: '0.5rem' }} />
+    <strong style={{ fontSize: '0.8125rem' }}>sidebar-active</strong>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Dark: 240 5% 12%</div>
+    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>#1c1c1f</div>
+  </div>
+</div>
+
+---
+
+## Usage Guidelines
+
+<table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+  <thead>
+    <tr style={{ borderBottom: '2px solid #e5e5e5', textAlign: 'left' }}>
+      <th style={{ padding: '0.5rem 1rem' }}>Context</th>
+      <th style={{ padding: '0.5rem 1rem' }}>Token</th>
+      <th style={{ padding: '0.5rem 1rem' }}>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem' }}>Page background</td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>bg-background</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Main content area</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem' }}>Card surfaces</td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>bg-card</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Dashboard panels, stat cards</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem' }}>Popover/dropdown</td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>bg-popover</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Dropdown menus, tooltips</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem' }}>Primary action</td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>bg-primary text-primary-foreground</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Submit buttons (indigo)</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem' }}>Secondary action</td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>bg-secondary text-secondary-foreground</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Cancel buttons</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem' }}>Muted text</td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>text-muted-foreground</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Timestamps, help text</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem' }}>Borders</td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>border-border</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Card edges, dividers</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem' }}>Focus ring</td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>ring-ring</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Keyboard focus (indigo)</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem' }}>Gate passed</td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>text-success</code> / <code>bg-success</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Status badges</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem' }}>Gate failed</td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>text-destructive</code> / <code>bg-destructive</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Error states</td>
+    </tr>
+    <tr style={{ borderBottom: '1px solid #e5e5e5' }}>
+      <td style={{ padding: '0.5rem 1rem' }}>In progress</td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>text-warning</code> / <code>bg-warning</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Pending states</td>
+    </tr>
+    <tr>
+      <td style={{ padding: '0.5rem 1rem' }}>Informational</td>
+      <td style={{ padding: '0.5rem 1rem' }}><code>text-info</code> / <code>bg-info</code></td>
+      <td style={{ padding: '0.5rem 1rem' }}>Info badges, links</td>
+    </tr>
+  </tbody>
+</table>
