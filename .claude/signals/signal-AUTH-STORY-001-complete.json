@@ -1,0 +1,30 @@
+{
+  "storyId": "AUTH-STORY-001",
+  "title": "User Email/Password Authentication",
+  "status": "complete",
+  "gates": {
+    "gate1": "2026-02-14T09:13:00Z",
+    "gate2": "2026-02-14T09:16:00Z",
+    "gate3": "2026-02-14T10:04:00Z",
+    "gate4": "2026-02-14T10:10:00Z",
+    "gate5": "2026-02-14T10:15:00Z",
+    "gate6": "2026-02-14T10:20:00Z",
+    "gate7": "2026-02-14T10:25:00Z"
+  },
+  "mergedTo": "main",
+  "mergedAt": "2026-02-14T09:47:29Z",
+  "mergedBy": "cto-master-agent",
+  "commitHash": "1424292",
+  "acceptanceCriteria": {
+    "AC-01": "Registration via Supabase GoTrue signUp",
+    "AC-02": "Login via signInWithPassword with navigation",
+    "AC-03": "Error sanitization (GENERIC_AUTH_ERROR, no field revelation)",
+    "AC-04": "Session management via onAuthStateChange + ProtectedRoute"
+  },
+  "testSummary": {
+    "totalTests": 45,
+    "testFiles": 5,
+    "coverage": "97%+",
+    "fullSuiteRegression": "3814/3814 passed"
+  }
+}
