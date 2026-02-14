@@ -2,6 +2,8 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { Loading } from './components/Loading'
+import { AuthProvider } from './features/auth/context/AuthContext'
+import { ProtectedRoute } from './features/auth/components/ProtectedRoute'
 
 // Lazy load all page components for code splitting
 const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })))
@@ -16,26 +18,32 @@ const Architecture = lazy(() => import('./pages/Architecture').then(m => ({ defa
 const FoundationChecklist = lazy(() => import('./pages/FoundationChecklist').then(m => ({ default: m.FoundationChecklist })))
 const NewStory = lazy(() => import('./pages/NewStory'))
 const CommandsReference = lazy(() => import('./pages/CommandsReference').then(m => ({ default: m.CommandsReference })))
+const LoginPage = lazy(() => import('./features/auth/pages/LoginPage').then(m => ({ default: m.LoginPage })))
+const RegisterPage = lazy(() => import('./features/auth/pages/RegisterPage').then(m => ({ default: m.RegisterPage })))
 
 function App() {
   return (
     <BrowserRouter>
-      <Suspense fallback={<Loading />}>
-        <Routes>
-          <Route path="/" element={<Layout><Dashboard /></Layout>} />
-          <Route path="/projects" element={<Layout><Projects /></Layout>} />
-          <Route path="/projects/new" element={<Layout><NewProject /></Layout>} />
-          <Route path="/projects/:projectId" element={<ProjectChecklist />} />
-          <Route path="/projects/:projectId/foundation" element={<FoundationChecklist />} />
-          <Route path="/waves" element={<Layout><Waves /></Layout>} />
-          <Route path="/stories" element={<Layout><Stories /></Layout>} />
-          <Route path="/stories/new" element={<Layout><NewStory /></Layout>} />
-          <Route path="/activity" element={<Layout><Activity /></Layout>} />
-          <Route path="/settings" element={<Layout><Settings /></Layout>} />
-          <Route path="/architecture" element={<Layout><Architecture /></Layout>} />
-          <Route path="/commands" element={<Layout><CommandsReference /></Layout>} />
-        </Routes>
-      </Suspense>
+      <AuthProvider>
+        <Suspense fallback={<Loading />}>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
+            <Route path="/projects" element={<ProtectedRoute><Layout><Projects /></Layout></ProtectedRoute>} />
+            <Route path="/projects/new" element={<ProtectedRoute><Layout><NewProject /></Layout></ProtectedRoute>} />
+            <Route path="/projects/:projectId" element={<ProtectedRoute><ProjectChecklist /></ProtectedRoute>} />
+            <Route path="/projects/:projectId/foundation" element={<ProtectedRoute><FoundationChecklist /></ProtectedRoute>} />
+            <Route path="/waves" element={<ProtectedRoute><Layout><Waves /></Layout></ProtectedRoute>} />
+            <Route path="/stories" element={<ProtectedRoute><Layout><Stories /></Layout></ProtectedRoute>} />
+            <Route path="/stories/new" element={<ProtectedRoute><Layout><NewStory /></Layout></ProtectedRoute>} />
+            <Route path="/activity" element={<ProtectedRoute><Layout><Activity /></Layout></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
+            <Route path="/architecture" element={<ProtectedRoute><Layout><Architecture /></Layout></ProtectedRoute>} />
+            <Route path="/commands" element={<ProtectedRoute><Layout><CommandsReference /></Layout></ProtectedRoute>} />
+          </Routes>
+        </Suspense>
+      </AuthProvider>
     </BrowserRouter>
   )
 }
