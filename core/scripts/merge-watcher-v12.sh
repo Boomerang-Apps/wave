@@ -502,7 +502,7 @@ echo -e "${CYAN}─────────────────────�
 # Send startup notification
 if type slack_wave_start &>/dev/null; then
     STORY_COUNT=$(find "stories/wave${WAVE}" -name "*.json" 2>/dev/null | wc -l | tr -d ' ')
-    slack_wave_start "$WAVE" "$STORY_COUNT" "${WAVE_BUDGET:-2.00}" "$(basename "$PROJECT_ROOT")"
+    slack_wave_start "$WAVE" "$STORY_COUNT" "${WAVE_BUDGET:-2.00}" "$(basename "$PROJECT_ROOT")" || true
 fi
 
 log_info "Watching for Wave $WAVE signals (Type: $WAVE_TYPE)..."
@@ -707,7 +707,7 @@ sync_worktrees() {
 
     # Send Slack notification
     if type slack_worktree_sync &>/dev/null; then
-        slack_worktree_sync "$WAVE" "SUCCESS" "FE+BE merged to main, QA updated"
+        slack_worktree_sync "$WAVE" "SUCCESS" "FE+BE merged to main, QA updated" || true
     fi
 
     # RLM: Update P variable after sync (codebase has changed)
@@ -763,7 +763,7 @@ handle_gate3_complete() {
 
     # Send notification
     if type slack_gate_transition &>/dev/null; then
-        slack_gate_transition "$WAVE" "3" "3.5" "COMPLETE"
+        slack_gate_transition "$WAVE" "3" "3.5" "COMPLETE" || true
     fi
 
     # BUILDING BLOCKS: Validate Phase 3 before sync
@@ -816,12 +816,12 @@ handle_qa_approved() {
 
     # Send notification
     if type slack_qa_approved &>/dev/null; then
-        slack_qa_approved "$WAVE" "All" "SUCCESS"
+        slack_qa_approved "$WAVE" "All" "SUCCESS" || true
     fi
 
     # Send gate transition
     if type slack_gate_transition &>/dev/null; then
-        slack_gate_transition "$WAVE" "4" "5" "APPROVED"
+        slack_gate_transition "$WAVE" "4" "5" "APPROVED" || true
     fi
 
     # Push to remote (pull first to handle remote changes)
@@ -844,7 +844,7 @@ handle_qa_approved() {
     # Wave complete notification
     if type slack_wave_complete &>/dev/null; then
         STORY_COUNT=$(find "stories/wave${WAVE}" -name "*.json" 2>/dev/null | wc -l | tr -d ' ')
-        slack_wave_complete "$WAVE" "$STORY_COUNT" "N/A" "N/A" "N/A"
+        slack_wave_complete "$WAVE" "$STORY_COUNT" "N/A" "N/A" "N/A" || true
     fi
 
     # RLM: Snapshot P variable at wave completion (for recovery/history)
@@ -879,14 +879,14 @@ handle_qa_rejected() {
 
     # Send notification
     if type slack_qa_rejected &>/dev/null; then
-        slack_qa_rejected "$WAVE" "$RETRY_COUNT" "$MAX_RETRIES" "$issues"
+        slack_qa_rejected "$WAVE" "$RETRY_COUNT" "$MAX_RETRIES" "$issues" || true
     fi
 
     if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
         log_error "Max retries exceeded - escalating to human"
 
         if type slack_escalation &>/dev/null; then
-            slack_escalation "$WAVE" "Max retries exceeded after $MAX_RETRIES attempts" "N/A"
+            slack_escalation "$WAVE" "Max retries exceeded after $MAX_RETRIES attempts" "N/A" || true
         fi
 
         exit 1
@@ -928,7 +928,7 @@ while true; do
     if check_emergency_stop; then
         log_error "EMERGENCY STOP detected!"
         if type slack_error &>/dev/null; then
-            slack_error "Merge Watcher" "Emergency stop triggered" "$WAVE"
+            slack_error "Merge Watcher" "Emergency stop triggered" "$WAVE" || true
         fi
         exit 1
     fi
@@ -939,7 +939,7 @@ while true; do
             FE_COMPLETE=true
             log_success "FE-Dev Gate 3 complete"
             if type slack_gate_transition &>/dev/null; then
-                slack_gate_transition "$WAVE" "3-FE" "3" "COMPLETE"
+                slack_gate_transition "$WAVE" "3-FE" "3" "COMPLETE" || true
             fi
         fi
     else
@@ -953,7 +953,7 @@ while true; do
             BE_COMPLETE=true
             log_success "BE-Dev Gate 3 complete"
             if type slack_gate_transition &>/dev/null; then
-                slack_gate_transition "$WAVE" "3-BE" "3" "COMPLETE"
+                slack_gate_transition "$WAVE" "3-BE" "3" "COMPLETE" || true
             fi
         fi
     else
