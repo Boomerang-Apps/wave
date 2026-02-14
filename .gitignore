@@ -1,7 +1,7 @@
 # Environment files with secrets
 .env
-.env.local
-.env.*.local
+.env.*
+doppler.env
 
 # Keep example
 !.env.example
