@@ -1,26 +1,37 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { authSignIn } from '../lib/supabase-auth';
+import { authUpdatePassword } from '../lib/supabase-auth';
 
-export function LoginForm(): React.JSX.Element {
+export function ResetPasswordForm(): React.JSX.Element {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: FormEvent): Promise<void> => {
     e.preventDefault();
     setError('');
+
+    if (password.length < 10) {
+      setError('Password must be at least 10 characters');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
     setLoading(true);
 
-    const result = await authSignIn({ email, password });
+    const result = await authUpdatePassword({ password });
 
     if (result.error) {
       setError(result.error.message);
@@ -28,14 +39,14 @@ export function LoginForm(): React.JSX.Element {
       return;
     }
 
-    navigate('/');
+    navigate('/login', { state: { passwordReset: true } });
   };
 
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle>Sign in</CardTitle>
-        <CardDescription>Enter your credentials to access your account</CardDescription>
+        <CardTitle>Set new password</CardTitle>
+        <CardDescription>Enter your new password below</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
@@ -45,22 +56,9 @@ export function LoginForm(): React.JSX.Element {
             </Alert>
           )}
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="newPassword">New password</Label>
             <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setError('');
-              }}
-              placeholder="you@example.com"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
+              id="newPassword"
               type="password"
               value={password}
               onChange={(e) => {
@@ -69,20 +67,23 @@ export function LoginForm(): React.JSX.Element {
               }}
             />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">Confirm password</Label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                setError('');
+              }}
+            />
+          </div>
         </CardContent>
-        <CardFooter className="flex flex-col space-y-4">
+        <CardFooter>
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Signing in...' : 'Sign in'}
+            {loading ? 'Resetting...' : 'Reset password'}
           </Button>
-          <Link to="/forgot-password" className="text-sm text-primary underline">
-            Forgot password?
-          </Link>
-          <p className="text-sm text-muted-foreground">
-            Don&apos;t have an account?{' '}
-            <Link to="/register" className="text-primary underline">
-              Create account
-            </Link>
-          </p>
         </CardFooter>
       </form>
     </Card>

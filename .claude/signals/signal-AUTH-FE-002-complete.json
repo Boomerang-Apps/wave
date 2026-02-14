@@ -1,0 +1,27 @@
+{
+  "storyId": "AUTH-FE-002",
+  "title": "Password Reset Flow via Email",
+  "status": "complete",
+  "gates": {
+    "gate1": "2026-02-14T10:50:00Z",
+    "gate2": "2026-02-14T10:50:00Z",
+    "gate3": "2026-02-14T10:51:00Z",
+    "gate4": "2026-02-14T10:52:00Z",
+    "gate5": "2026-02-14T10:52:00Z",
+    "gate6": "2026-02-14T10:53:00Z",
+    "gate7": "2026-02-14T10:54:00Z"
+  },
+  "acceptanceCriteria": {
+    "AC-01": "Forgot password form triggers resetPasswordForEmail",
+    "AC-02": "Same success message regardless of email (no enumeration)",
+    "AC-03": "Reset password with NIST 10-char validation + confirmation",
+    "AC-04": "Navigate to /login with success state after reset",
+    "AC-05": "Error messages sanitized via GENERIC_AUTH_ERROR"
+  },
+  "testSummary": {
+    "newTests": 24,
+    "totalAuthTests": 69,
+    "testFiles": 8,
+    "fullSuiteRegression": "3837/3838 (1 pre-existing flaky timing test)"
+  }
+}

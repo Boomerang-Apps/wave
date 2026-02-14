@@ -28,3 +28,11 @@ export interface ISignInCredentials {
   email: string;
   password: string;
 }
+
+export interface IForgotPasswordCredentials {
+  email: string;
+}
+
+export interface IResetPasswordCredentials {
+  password: string;
+}

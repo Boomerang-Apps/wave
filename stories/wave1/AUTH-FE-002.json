@@ -1,0 +1,371 @@
+{
+  "$schema": "https://wave.dev/schemas/story-schema-v4.3.json",
+  "schema_version": "4.3",
+  "story_id": "AUTH-FE-002",
+  "title": "Password Reset Flow via Email",
+  "type": "feature",
+  "domain": "auth",
+  "agent": "fe-dev",
+  "wave_number": 1,
+  "priority": "P1",
+  "story_points": 5,
+  "status": "draft",
+  "description": "Implement forgot password and password reset flow using Supabase GoTrue resetPasswordForEmail and updateUser. Users can request a reset link from the login page, receive an email with a tokenized link, and set a new password. Follows the existing auth wrapper pattern (supabase-auth.ts) with sanitized error messages.",
+  "objective": {
+    "as_a": "registered user",
+    "i_want": "to reset my password via an email link when I forget it",
+    "so_that": "I can regain access to my account without contacting support"
+  },
+  "acceptance_criteria": [
+    {
+      "id": "AC-01",
+      "description": "Forgot password form accepts email and triggers Supabase resetPasswordForEmail",
+      "ears_format": "WHEN user submits email on forgot password form THEN a password reset email is sent via Supabase GoTrue",
+      "test_approach": "Unit test: mock supabase.auth.resetPasswordForEmail, verify called with email, verify success message shown",
+      "status": "pending"
+    },
+    {
+      "id": "AC-02",
+      "description": "Success confirmation shown after reset request regardless of whether email exists (no user enumeration)",
+      "ears_format": "WHEN user submits any email on forgot password form THEN a generic success message is always displayed",
+      "test_approach": "Unit test: submit form with valid/invalid email, verify same success message in both cases, verify no error reveals email existence",
+      "status": "pending"
+    },
+    {
+      "id": "AC-03",
+      "description": "Reset password page allows setting new password with confirmation and validation",
+      "ears_format": "WHEN user lands on reset password page with valid token THEN they can enter and confirm a new password meeting NIST SP800-63B requirements",
+      "threshold": "Password minimum 10 characters (NIST SP800-63B)",
+      "test_approach": "Unit test: render ResetPasswordForm, test validation (min length, mismatch), test successful submission calls supabase.auth.updateUser",
+      "status": "pending"
+    },
+    {
+      "id": "AC-04",
+      "description": "After successful password reset, user is redirected to login page with success message",
+      "ears_format": "WHEN user successfully resets password THEN they are navigated to /login with a success notification",
+      "test_approach": "Unit test: mock updateUser success, verify useNavigate called with /login, verify success state passed",
+      "status": "pending"
+    },
+    {
+      "id": "AC-05",
+      "description": "Error messages during password reset are sanitized (no field revelation)",
+      "ears_format": "WHEN password reset fails THEN a generic error message is shown without revealing specific failure reason",
+      "test_approach": "Unit test: verify error sanitization in wrapper, verify displayed error uses GENERIC_AUTH_ERROR pattern",
+      "status": "pending"
+    }
+  ],
+  "context": {
+    "read_files": [
+      "portal/src/features/auth/lib/supabase-auth.ts",
+      "portal/src/features/auth/types/auth.ts",
+      "portal/src/features/auth/components/LoginForm.tsx",
+      "portal/src/features/auth/components/RegisterForm.tsx",
+      "portal/src/features/auth/context/AuthContext.tsx",
+      "portal/src/features/auth/hooks/useAuth.ts",
+      "portal/src/features/auth/pages/LoginPage.tsx",
+      "portal/src/App.tsx",
+      "portal/src/lib/supabase.ts"
+    ],
+    "similar_implementations": [
+      "portal/src/features/auth/components/RegisterForm.tsx",
+      "portal/src/features/auth/components/LoginForm.tsx",
+      "portal/src/features/auth/lib/supabase-auth.ts"
+    ],
+    "code_examples": [
+      {
+        "description": "Existing error sanitization pattern in supabase-auth.ts",
+        "file_reference": "portal/src/features/auth/lib/supabase-auth.ts",
+        "code": "export const GENERIC_AUTH_ERROR = 'Authentication failed. Please check your credentials and try again.';\nfunction sanitizeError(): IAuthError { return { message: GENERIC_AUTH_ERROR }; }"
+      },
+      {
+        "description": "Supabase GoTrue password reset API",
+        "code": "await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/reset-password' })"
+      },
+      {
+        "description": "Supabase GoTrue update password API",
+        "code": "await supabase.auth.updateUser({ password: newPassword })"
+      }
+    ]
+  },
+  "execution": {
+    "max_retries": 3,
+    "timeout_minutes": 60,
+    "model_tier": "sonnet",
+    "checkpoint_frequency": "per_gate"
+  },
+  "subtasks": [
+    {
+      "id": "ST-01",
+      "title": "Add password reset types",
+      "description": "Add IResetPasswordCredentials and IForgotPasswordCredentials interfaces to auth types",
+      "status": "pending"
+    },
+    {
+      "id": "ST-02",
+      "title": "TDD: Password reset wrapper functions",
+      "description": "RED-GREEN-REFACTOR for authResetPassword and authUpdatePassword in supabase-auth.ts. Must sanitize all errors.",
+      "checkpoint_after": true,
+      "status": "pending"
+    },
+    {
+      "id": "ST-03",
+      "title": "TDD: ForgotPasswordForm component",
+      "description": "RED-GREEN-REFACTOR for email submission form with success confirmation. Must show same message regardless of email validity.",
+      "checkpoint_after": true,
+      "status": "pending"
+    },
+    {
+      "id": "ST-04",
+      "title": "TDD: ResetPasswordForm component",
+      "description": "RED-GREEN-REFACTOR for new password + confirmation form. Must enforce NIST SP800-63B minimum 10 chars. Navigate to /login on success.",
+      "checkpoint_after": true,
+      "status": "pending"
+    },
+    {
+      "id": "ST-05",
+      "title": "Page wrappers and App.tsx integration",
+      "description": "Create ForgotPasswordPage and ResetPasswordPage. Add /forgot-password and /reset-password routes to App.tsx. Add 'Forgot password?' link to LoginForm.",
+      "status": "pending"
+    },
+    {
+      "id": "ST-06",
+      "title": "Final verification",
+      "description": "Run all auth tests, full suite regression, tsc --noEmit, lint. Verify all ACs met.",
+      "status": "pending"
+    }
+  ],
+  "files": {
+    "create": [
+      "portal/src/features/auth/components/ForgotPasswordForm.tsx",
+      "portal/src/features/auth/components/ResetPasswordForm.tsx",
+      "portal/src/features/auth/pages/ForgotPasswordPage.tsx",
+      "portal/src/features/auth/pages/ResetPasswordPage.tsx",
+      "portal/src/features/auth/__tests__/ForgotPasswordForm.test.tsx",
+      "portal/src/features/auth/__tests__/ResetPasswordForm.test.tsx",
+      "portal/src/features/auth/__tests__/password-reset.test.ts"
+    ],
+    "modify": [
+      "portal/src/features/auth/lib/supabase-auth.ts",
+      "portal/src/features/auth/types/auth.ts",
+      "portal/src/features/auth/components/LoginForm.tsx",
+      "portal/src/App.tsx"
+    ],
+    "forbidden": [
+      "portal/src/features/auth/context/AuthContext.tsx",
+      "portal/src/features/auth/hooks/useAuth.ts",
+      "portal/src/features/auth/components/ProtectedRoute.tsx",
+      "portal/src/lib/supabase.ts"
+    ],
+    "existing": [
+      "portal/src/features/auth/lib/supabase-auth.ts",
+      "portal/src/features/auth/types/auth.ts",
+      "portal/src/features/auth/components/LoginForm.tsx",
+      "portal/src/App.tsx",
+      "portal/src/components/ui/button.tsx",
+      "portal/src/components/ui/input.tsx",
+      "portal/src/components/ui/label.tsx",
+      "portal/src/components/ui/card.tsx",
+      "portal/src/components/ui/alert.tsx"
+    ]
+  },
+  "design_source": {
+    "type": "none",
+    "components": [
+      {
+        "name": "ForgotPasswordForm",
+        "type": "component",
+        "props": {},
+        "state": ["email", "loading", "submitted"],
+        "events": ["onSubmit"]
+      },
+      {
+        "name": "ResetPasswordForm",
+        "type": "component",
+        "props": {},
+        "state": ["password", "confirmPassword", "loading", "error", "success"],
+        "events": ["onSubmit"]
+      },
+      {
+        "name": "ForgotPasswordPage",
+        "type": "page",
+        "props": {},
+        "state": [],
+        "events": []
+      },
+      {
+        "name": "ResetPasswordPage",
+        "type": "page",
+        "props": {},
+        "state": [],
+        "events": []
+      }
+    ],
+    "interactions": [
+      {
+        "trigger": "click 'Forgot password?' on LoginForm",
+        "action": "Navigate to /forgot-password",
+        "target": "LoginForm"
+      },
+      {
+        "trigger": "submit email on ForgotPasswordForm",
+        "action": "Call authResetPassword, show success message",
+        "target": "ForgotPasswordForm"
+      },
+      {
+        "trigger": "submit new password on ResetPasswordForm",
+        "action": "Call authUpdatePassword, navigate to /login on success",
+        "target": "ResetPasswordForm"
+      },
+      {
+        "trigger": "click 'Back to login' link",
+        "action": "Navigate to /login",
+        "target": "ForgotPasswordForm"
+      }
+    ],
+    "accessibility": {
+      "wcag_level": "AA",
+      "keyboard_navigation": true,
+      "screen_reader_tested": false
+    }
+  },
+  "technical_requirements": {
+    "reuse_components": [
+      "portal/src/components/ui/button.tsx",
+      "portal/src/components/ui/input.tsx",
+      "portal/src/components/ui/label.tsx",
+      "portal/src/components/ui/card.tsx",
+      "portal/src/components/ui/alert.tsx"
+    ],
+    "reuse_patterns": {
+      "error_sanitization": "portal/src/features/auth/lib/supabase-auth.ts - sanitizeError() + GENERIC_AUTH_ERROR",
+      "form_component": "portal/src/features/auth/components/RegisterForm.tsx - form layout, validation, loading state",
+      "page_wrapper": "portal/src/features/auth/pages/LoginPage.tsx - centered layout pattern",
+      "lazy_loading": "portal/src/App.tsx - lazy(() => import(...).then(m => ({ default: m.Component })))"
+    },
+    "reuse_functions": [
+      "sanitizeError (portal/src/features/auth/lib/supabase-auth.ts)",
+      "GENERIC_AUTH_ERROR (portal/src/features/auth/lib/supabase-auth.ts)"
+    ],
+    "state_management": "React useState for local form state, no global state needed"
+  },
+  "tdd": {
+    "test_framework": "vitest",
+    "test_files": [
+      "portal/src/features/auth/__tests__/password-reset.test.ts",
+      "portal/src/features/auth/__tests__/ForgotPasswordForm.test.tsx",
+      "portal/src/features/auth/__tests__/ResetPasswordForm.test.tsx"
+    ],
+    "coverage_target": 95,
+    "test_categories": [
+      {
+        "name": "Wrapper functions (password-reset.test.ts)",
+        "count": 8,
+        "examples": [
+          "authResetPassword calls supabase.auth.resetPasswordForEmail",
+          "authResetPassword returns success regardless of email existence",
+          "authResetPassword sanitizes errors",
+          "authUpdatePassword calls supabase.auth.updateUser",
+          "authUpdatePassword returns success on valid password",
+          "authUpdatePassword sanitizes errors",
+          "Error messages never contain 'email', 'password', 'not found'",
+          "authResetPassword passes redirectTo URL"
+        ]
+      },
+      {
+        "name": "ForgotPasswordForm (ForgotPasswordForm.test.tsx)",
+        "count": 7,
+        "examples": [
+          "Renders email input and submit button",
+          "Renders 'Back to login' link",
+          "Calls authResetPassword on valid submission",
+          "Shows success message after submission",
+          "Shows same success message for any email (no enumeration)",
+          "Shows loading state during submission",
+          "Validates empty email"
+        ]
+      },
+      {
+        "name": "ResetPasswordForm (ResetPasswordForm.test.tsx)",
+        "count": 8,
+        "examples": [
+          "Renders password and confirm password inputs",
+          "Validates password minimum 10 characters",
+          "Validates password confirmation matches",
+          "Calls authUpdatePassword on valid submission",
+          "Navigates to /login on success",
+          "Shows generic error on failure",
+          "Shows loading state during submission",
+          "Clears error on new input"
+        ]
+      }
+    ],
+    "mocking_strategy": {
+      "password-reset.test.ts": "vi.mock('@/lib/supabase') at module level",
+      "ForgotPasswordForm.test.tsx": "vi.mock('../lib/supabase-auth') to mock authResetPassword",
+      "ResetPasswordForm.test.tsx": "vi.mock('../lib/supabase-auth') + vi.mock('react-router-dom') for useNavigate"
+    }
+  },
+  "safety": {
+    "stop_conditions": [
+      "Any test touching real Supabase endpoints (all must be mocked)",
+      "Error messages revealing email existence or specific field failures",
+      "Modifications to existing AuthContext or ProtectedRoute",
+      "Any changes to portal/src/lib/supabase.ts"
+    ],
+    "escalation_triggers": [
+      "Supabase GoTrue API behavior differs from documentation",
+      "Token-based password reset requires server-side route handling",
+      "Existing auth tests start failing after modifications"
+    ],
+    "rollback_plan": "Revert changes to supabase-auth.ts, types/auth.ts, LoginForm.tsx, and App.tsx. Delete new files. Run full test suite to verify no regressions."
+  },
+  "hazard_analysis": {
+    "identified_hazards": [
+      {
+        "id": "HAZ-001",
+        "description": "User enumeration via forgot password response timing or message differences",
+        "severity": "critical",
+        "likelihood": "probable",
+        "mitigation": "Always show identical success message regardless of email validity. Use constant-time response pattern."
+      },
+      {
+        "id": "HAZ-002",
+        "description": "Password reset token replay or expiry bypass",
+        "severity": "critical",
+        "likelihood": "remote",
+        "mitigation": "Rely on Supabase GoTrue built-in token management. Tokens are single-use and time-limited."
+      },
+      {
+        "id": "HAZ-003",
+        "description": "New password set without meeting NIST minimum requirements",
+        "severity": "major",
+        "likelihood": "occasional",
+        "mitigation": "Client-side validation enforcing minimum 10 characters. Supabase also enforces server-side minimum."
+      }
+    ],
+    "risk_level": "medium"
+  },
+  "dependencies": {
+    "required_before": ["AUTH-STORY-001"],
+    "blocks": []
+  },
+  "traceability": {
+    "requirements": ["REQ-AUTH-003", "REQ-AUTH-004"],
+    "epic": "AUTH",
+    "related_stories": ["AUTH-STORY-001"]
+  },
+  "validation": {
+    "lint_command": "cd portal && npm run lint",
+    "test_command": "cd portal && npx vitest run src/features/auth/",
+    "build_command": "cd portal && npm run build",
+    "type_check_command": "cd portal && npx tsc --noEmit"
+  },
+  "estimated_tests": 23,
+  "estimated_tokens": 50000,
+  "metadata": {
+    "created_at": "2026-02-14T10:30:00Z",
+    "updated_at": "2026-02-14T10:30:00Z",
+    "created_by": "cto-master-agent"
+  },
+  "notes": "Builds on AUTH-STORY-001 infrastructure. Supabase GoTrue handles token generation, email delivery, and token validation. The frontend only needs to: (1) call resetPasswordForEmail with a redirectTo URL, (2) handle the /reset-password callback where Supabase auto-sets the session, (3) call updateUser to set the new password. The RECOVERY event in onAuthStateChange can optionally be used to detect when a user arrives via reset link."
+}
