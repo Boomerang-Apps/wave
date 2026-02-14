@@ -4,7 +4,7 @@
  * Shows project folder structure with compliance status
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, CheckCircle2, XCircle, Folder, FolderPlus } from 'lucide-react';
 import { ContentPage } from '../ContentPage';
 import type { TableColumn, TableRow, ActionButton } from '../ContentPage';
@@ -13,20 +13,20 @@ interface FileOrganizationPageProps {
   projectPath: string;
 }
 
+// Define expected WAVE folder structure (constant, outside component)
+const expectedFolders = [
+  { name: 'docs', description: 'Project documentation (PRD, specs, etc.)', required: true },
+  { name: 'design_mockups', description: 'UI/UX design files and HTML prototypes', required: true },
+  { name: 'src', description: 'Source code directory', required: false },
+  { name: 'tests', description: 'Test files and fixtures', required: false },
+  { name: '.wave', description: 'WAVE configuration and state', required: true },
+];
+
 export function FileOrganizationPage({ projectPath }: FileOrganizationPageProps) {
   const [loading, setLoading] = useState(false);
   const [folders, setFolders] = useState<TableRow[]>([]);
 
-  // Define expected WAVE folder structure
-  const expectedFolders = [
-    { name: 'docs', description: 'Project documentation (PRD, specs, etc.)', required: true },
-    { name: 'design_mockups', description: 'UI/UX design files and HTML prototypes', required: true },
-    { name: 'src', description: 'Source code directory', required: false },
-    { name: 'tests', description: 'Test files and fixtures', required: false },
-    { name: '.wave', description: 'WAVE configuration and state', required: true },
-  ];
-
-  const scanFolders = async () => {
+  const scanFolders = useCallback(async () => {
     setLoading(true);
     try {
       // In a real implementation, this would call an API
@@ -81,11 +81,11 @@ export function FileOrganizationPage({ projectPath }: FileOrganizationPageProps)
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     scanFolders();
-  }, [projectPath]);
+  }, [projectPath, scanFolders]);
 
   const columns: TableColumn[] = [
     { id: 'name', label: 'Name', width: '50%' },

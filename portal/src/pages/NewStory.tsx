@@ -140,7 +140,7 @@ export default function NewStory() {
   const [safetyPassed, setSafetyPassed] = useState(false);
 
   // Gate 8: Dispatch
-  const [workflowResult, setWorkflowResult] = useState<any>(null);
+  const [workflowResult, setWorkflowResult] = useState<{ success: boolean; thread_id?: string } | null>(null);
 
   // Gate Locking State
   const [gateStatus, setGateStatus] = useState<GateStatus | null>(null);
@@ -193,7 +193,7 @@ export default function NewStory() {
   }, []);
 
   // Advance gate with validation
-  const advanceGate = async (gateData: Record<string, any> = {}) => {
+  const advanceGate = async (gateData: Record<string, unknown> = {}) => {
     if (!storyId) return false;
 
     try {
@@ -849,7 +849,7 @@ ${projectContext?.tech_stack?.map(t => `- ${t}`).join('\n') || '- Not analyzed y
               <div className="flex gap-2 mt-1">
                 {['fe', 'be', 'fullstack'].map(d => (
                   <Button key={d} size="sm" variant={formData.domain === d ? 'default' : 'outline'}
-                    onClick={() => setFormData({ ...formData, domain: d as any })}>{d.toUpperCase()}</Button>
+                    onClick={() => setFormData({ ...formData, domain: d as StoryFormData['domain'] })}>{d.toUpperCase()}</Button>
                 ))}
               </div>
             </div>

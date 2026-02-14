@@ -209,7 +209,11 @@ export function useTracingHealth(): {
   error: Error | null;
   refetch: () => void;
 } {
-  const [health, setHealth] = useState<any>(null);
+  const [health, setHealth] = useState<{
+    status: string;
+    tracing_enabled: boolean;
+    stored_runs: number;
+  } | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 

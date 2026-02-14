@@ -3,7 +3,7 @@
  * List view with search, sort, and file metadata display
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { FileListView } from '../components/FileListView';
 

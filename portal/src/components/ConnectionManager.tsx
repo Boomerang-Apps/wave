@@ -53,6 +53,38 @@ interface Connections {
   };
 }
 
+interface GitHubDetailedStatus {
+  currentBranch?: string;
+  lastCommit?: {
+    hash?: string;
+    message?: string;
+  } | null;
+}
+
+interface SupabaseDetailedStatus {
+  connectionTest?: {
+    success: boolean;
+    message?: string;
+  };
+}
+
+interface VercelDeployment {
+  id: string;
+  url: string;
+  state: string;
+  target?: string;
+}
+
+interface VercelDetailedStatus {
+  deployments?: VercelDeployment[] | null;
+}
+
+interface DetailedStatus {
+  github?: GitHubDetailedStatus;
+  supabase?: SupabaseDetailedStatus;
+  vercel?: VercelDetailedStatus;
+}
+
 interface ConnectionManagerProps {
   projectPath: string;
   onConnectionsChange?: (connections: Connections) => void;
@@ -76,11 +108,7 @@ export function ConnectionManager({ projectPath, onConnectionsChange, compact = 
   const [connections, setConnections] = useState<Connections | null>(null);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [detailedStatus, setDetailedStatus] = useState<{
-    github?: any;
-    supabase?: any;
-    vercel?: any;
-  }>({});
+  const [detailedStatus, setDetailedStatus] = useState<DetailedStatus>({});
 
   const detectConnections = useCallback(async () => {
     if (!projectPath) return;
@@ -381,7 +409,7 @@ export function ConnectionManager({ projectPath, onConnectionsChange, compact = 
                   <div>
                     <strong>Recent Deployments:</strong>
                     <ul className="mt-1 space-y-1">
-                      {detailedStatus.vercel.deployments.slice(0, 3).map((d: any) => (
+                      {detailedStatus.vercel.deployments.slice(0, 3).map((d: VercelDeployment) => (
                         <li key={d.id} className="flex items-center gap-2">
                           <span className={`w-2 h-2 rounded-full ${
                             d.state === 'READY' ? 'bg-green-500' :

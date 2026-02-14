@@ -1276,7 +1276,7 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
                     }
                   }
                 }
-              } catch (e) {
+              } catch (_e) {
                 // Ignore parse errors
               }
             }
@@ -2066,7 +2066,7 @@ ${warningChecks.length > 0 ? `**Note:** You have ${warningChecks.length} warning
         .single()
 
       if (savedReport?.report_data) {
-        const reportData = savedReport.report_data as any
+        const reportData = savedReport.report_data as Record<string, unknown>
         setAnalysisReport({
           timestamp: reportData.timestamp || savedReport.created_at,
           summary: reportData.summary || { total_issues: 0, total_gaps: savedReport.total_gaps || 0, readiness_score: savedReport.readiness_score || 0 },
@@ -3056,7 +3056,7 @@ ${rlmValidationResult.gate0_certified ? `1. Run \`docker compose up\` to start a
       const response = await fetch(`http://localhost:3000/api/agents/${agentType}/output?projectPath=${encodeURIComponent(project.root_path)}`)
       const data = await response.json()
       setAgentOutput(data.output || 'No output available')
-    } catch (error) {
+    } catch (_error) {
       setAgentOutput('Failed to fetch agent output')
     }
   }

@@ -95,7 +95,7 @@ function containsNullByte(inputPath) {
  * @returns {boolean} True if control characters detected
  */
 function containsControlChars(inputPath) {
-  // eslint-disable-next-line no-control-regex
+   
   return /[\x00-\x1f\x7f]/.test(inputPath);
 }
 

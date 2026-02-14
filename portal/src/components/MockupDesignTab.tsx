@@ -33,6 +33,9 @@ interface MockupFile {
   filename: string;
   path: string;
   order?: number;
+  modifiedAt?: string;
+  version?: string;
+  size?: number;
 }
 
 interface DocumentFile {
@@ -40,6 +43,9 @@ interface DocumentFile {
   filename: string;
   path: string;
   type: string;
+  modifiedAt?: string;
+  version?: string;
+  size?: number;
 }
 
 interface ProjectData {
@@ -103,6 +109,15 @@ export interface MockupDesignTabProps {
 // Sub-components
 // ============================================
 
+const STEP_LABELS: Record<number, string> = {
+  1: 'Scanning project structure',
+  2: 'Validating documentation',
+  3: 'Analyzing design mockups',
+  4: 'Checking folder compliance',
+  5: 'Validating tech stack',
+  6: 'Generating readiness score',
+};
+
 // Foundation Analysis Progress Modal - Full wizard experience
 function FoundationAnalysisProgressModal({
   projectPath,
@@ -129,15 +144,6 @@ function FoundationAnalysisProgressModal({
   }>>([]);
   const [analysisReport, setAnalysisReport] = useState<FoundationReport | null>(existingReport);
   const [enableAiReview, setEnableAiReview] = useState(false);
-
-  const STEP_LABELS: Record<number, string> = {
-    1: 'Scanning project structure',
-    2: 'Validating documentation',
-    3: 'Analyzing design mockups',
-    4: 'Checking folder compliance',
-    5: 'Validating tech stack',
-    6: 'Generating readiness score',
-  };
 
   // Start analysis
   const startAnalysis = useCallback(async () => {
@@ -769,9 +775,9 @@ function ConnectedState({
               filename: doc.filename,
               path: doc.path,
               type: doc.type,
-              modifiedAt: (doc as any).modifiedAt,
-              version: (doc as any).version,
-              size: (doc as any).size,
+              modifiedAt: doc.modifiedAt,
+              version: doc.version,
+              size: doc.size,
             }))}
             onOpen={(file) => handleOpenDoc(file as DocumentFile)}
             fileType="document"
@@ -802,9 +808,9 @@ function ConnectedState({
               filename: mockup.filename,
               path: mockup.path,
               order: mockup.order,
-              modifiedAt: (mockup as any).modifiedAt,
-              version: (mockup as any).version,
-              size: (mockup as any).size,
+              modifiedAt: mockup.modifiedAt,
+              version: mockup.version,
+              size: mockup.size,
             }))}
             onOpen={(file) => setPreviewMockup(file as MockupFile)}
             fileType="mockup"
@@ -939,7 +945,7 @@ export function MockupDesignTab({
     if (currentPath) {
       discoverProject(currentPath);
     }
-  }, []);
+  }, [currentPath, discoverProject]);
 
   // Handle folder selection
   const handleSelectFolder = async (path: string) => {

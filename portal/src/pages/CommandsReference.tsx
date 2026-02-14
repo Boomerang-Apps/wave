@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Search, Terminal, Code, Zap, Shield, GitBranch, TestTube, FileText, Clock, Layers, ChevronDown, Copy, Check, Calendar, AlertCircle, Users, CheckCircle, TrendingUp, Eye, Lock, Workflow, BarChart3, Palette, Box } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { cn } from '../lib/utils'
 
 type CommandCategory =
@@ -1938,7 +1939,7 @@ const COMMANDS: Command[] = [
 ]
 
 // Category icon mapping
-const categoryIcons: Record<CommandCategory, any> = {
+const categoryIcons: Record<CommandCategory, LucideIcon> = {
   core: Zap,
   workflow: Workflow,
   story: FileText,

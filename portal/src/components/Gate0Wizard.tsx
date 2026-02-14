@@ -477,6 +477,14 @@ function Step3Connections({ data, updateData, onNext, onBack }: StepProps) {
   );
 }
 
+const ANALYSIS_STEPS = [
+  { id: 'structure', label: 'Scanning Structure', icon: FolderTree, color: 'text-[#3b82f6]', bg: 'bg-[#3b82f6]/20' },
+  { id: 'docs', label: 'Analyzing Documentation', icon: Code2, color: 'text-[#22c55e]', bg: 'bg-[#22c55e]/20' },
+  { id: 'mockups', label: 'Detecting Mockups', icon: Layers, color: 'text-[#a855f7]', bg: 'bg-[#a855f7]/20' },
+  { id: 'tech', label: 'Identifying Tech Stack', icon: Zap, color: 'text-[#f59e0b]', bg: 'bg-[#f59e0b]/20' },
+  { id: 'compliance', label: 'Checking Compliance', icon: Shield, color: 'text-[#ef4444]', bg: 'bg-[#ef4444]/20' }
+] as const;
+
 /**
  * Step 4: Analysis
  */
@@ -484,14 +492,6 @@ function Step4Analysis({ data, updateData, onNext, onBack }: StepProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
-
-  const analysisSteps = [
-    { id: 'structure', label: 'Scanning Structure', icon: FolderTree, color: 'text-[#3b82f6]', bg: 'bg-[#3b82f6]/20' },
-    { id: 'docs', label: 'Analyzing Documentation', icon: Code2, color: 'text-[#22c55e]', bg: 'bg-[#22c55e]/20' },
-    { id: 'mockups', label: 'Detecting Mockups', icon: Layers, color: 'text-[#a855f7]', bg: 'bg-[#a855f7]/20' },
-    { id: 'tech', label: 'Identifying Tech Stack', icon: Zap, color: 'text-[#f59e0b]', bg: 'bg-[#f59e0b]/20' },
-    { id: 'compliance', label: 'Checking Compliance', icon: Shield, color: 'text-[#ef4444]', bg: 'bg-[#ef4444]/20' }
-  ];
 
   const startAnalysis = useCallback(async () => {
     setIsAnalyzing(true);
@@ -534,7 +534,7 @@ function Step4Analysis({ data, updateData, onNext, onBack }: StepProps) {
             const event = JSON.parse(jsonStr);
 
             if (event.step) {
-              const stepIndex = analysisSteps.findIndex(s => s.id === event.step);
+              const stepIndex = ANALYSIS_STEPS.findIndex(s => s.id === event.step);
               if (stepIndex >= 0) {
                 setCurrentStep(stepIndex);
               }
@@ -560,7 +560,7 @@ function Step4Analysis({ data, updateData, onNext, onBack }: StepProps) {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [data.projectPath, data.projectType, updateData, analysisSteps]);
+  }, [data.projectPath, data.projectType, updateData]);
 
   return (
     <div className="space-y-8">
@@ -573,7 +573,7 @@ function Step4Analysis({ data, updateData, onNext, onBack }: StepProps) {
 
       {/* Analysis Steps */}
       <div className="space-y-3">
-        {analysisSteps.map((step, index) => {
+        {ANALYSIS_STEPS.map((step, index) => {
           const Icon = step.icon;
           const isComplete = data.analysisComplete || index < currentStep;
           const isCurrent = isAnalyzing && index === currentStep;

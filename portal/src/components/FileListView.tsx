@@ -46,6 +46,28 @@ type SortField = 'name' | 'modified' | 'version';
 type SortDirection = 'asc' | 'desc';
 
 /**
+ * Sort indicator arrow for column headers
+ */
+function SortIndicator({
+  field,
+  sortField,
+  sortDirection,
+}: {
+  field: SortField;
+  sortField: SortField;
+  sortDirection: SortDirection;
+}) {
+  if (sortField !== field) {
+    return <span className="w-4" />;
+  }
+  return sortDirection === 'asc' ? (
+    <ChevronUp className="h-4 w-4" />
+  ) : (
+    <ChevronDown className="h-4 w-4" />
+  );
+}
+
+/**
  * Format date for display
  */
 function formatDate(isoString: string | undefined): string {
@@ -123,16 +145,18 @@ export function FileListView({
         case 'name':
           comparison = getDisplayName(a).localeCompare(getDisplayName(b));
           break;
-        case 'modified':
+        case 'modified': {
           const dateA = a.modifiedAt ? new Date(a.modifiedAt).getTime() : 0;
           const dateB = b.modifiedAt ? new Date(b.modifiedAt).getTime() : 0;
           comparison = dateA - dateB;
           break;
-        case 'version':
+        }
+        case 'version': {
           const versionA = a.version || 'v0';
           const versionB = b.version || 'v0';
           comparison = versionA.localeCompare(versionB, undefined, { numeric: true });
           break;
+        }
       }
 
       return sortDirection === 'asc' ? comparison : -comparison;
@@ -149,18 +173,6 @@ export function FileListView({
       setSortField(field);
       setSortDirection('asc');
     }
-  };
-
-  // Render sort indicator
-  const SortIndicator = ({ field }: { field: SortField }) => {
-    if (sortField !== field) {
-      return <span className="w-4" />;
-    }
-    return sortDirection === 'asc' ? (
-      <ChevronUp className="h-4 w-4" />
-    ) : (
-      <ChevronDown className="h-4 w-4" />
-    );
   };
 
   // Clear search
@@ -247,7 +259,7 @@ export function FileListView({
                     className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                   >
                     Name
-                    <SortIndicator field="name" />
+                    <SortIndicator field="name" sortField={sortField} sortDirection={sortDirection} />
                   </button>
                 </th>
                 <th className="text-left p-3 hidden sm:table-cell">
@@ -257,7 +269,7 @@ export function FileListView({
                     className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                   >
                     Modified
-                    <SortIndicator field="modified" />
+                    <SortIndicator field="modified" sortField={sortField} sortDirection={sortDirection} />
                   </button>
                 </th>
                 <th className="text-left p-3 hidden md:table-cell">
@@ -267,7 +279,7 @@ export function FileListView({
                     className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                   >
                     Version
-                    <SortIndicator field="version" />
+                    <SortIndicator field="version" sortField={sortField} sortDirection={sortDirection} />
                   </button>
                 </th>
                 <th className="text-right p-3 w-24">

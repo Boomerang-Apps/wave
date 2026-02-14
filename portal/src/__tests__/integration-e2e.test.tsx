@@ -3,7 +3,7 @@
  * Verifies UI components work with types and mock data
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 // UI Components

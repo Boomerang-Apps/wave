@@ -104,6 +104,7 @@ export function useOrchestratorEvents(
   // Refs for cleanup
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const connectRef = useRef<() => void>(() => {});
 
   /**
    * Process incoming domain event
@@ -160,22 +161,23 @@ export function useOrchestratorEvents(
   }, [maxEvents]);
 
   /**
-   * Connect to SSE endpoint
+   * Create and configure an EventSource connection
    */
-  const connect = useCallback(() => {
-    if (!runId) return;
-
+  const createConnection = useCallback((
+    targetRunId: string,
+    targetDomains: string[],
+    shouldAutoReconnect: boolean,
+    targetReconnectDelay: number,
+    onDomainEvent: (event: DomainEvent) => void,
+  ) => {
     // Close existing connection
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
     }
 
-    setConnectionStatus('connecting');
-    setError(null);
-
     // Build URL with domains filter
-    const params = domains.length > 0 ? `?domains=${domains.join(',')}` : '';
-    const url = `/api/orchestrator/events/${runId}${params}`;
+    const params = targetDomains.length > 0 ? `?domains=${targetDomains.join(',')}` : '';
+    const url = `/api/orchestrator/events/${targetRunId}${params}`;
 
     const eventSource = new EventSource(url);
     eventSourceRef.current = eventSource;
@@ -193,10 +195,10 @@ export function useOrchestratorEvents(
       eventSource.close();
 
       // Auto-reconnect
-      if (autoReconnect) {
+      if (shouldAutoReconnect) {
         reconnectTimeoutRef.current = setTimeout(() => {
-          connect();
-        }, reconnectDelay);
+          connectRef.current();
+        }, targetReconnectDelay);
       }
     };
 
@@ -217,15 +219,15 @@ export function useOrchestratorEvents(
 
     // Handle domain events
     eventSource.addEventListener('domain.started', (e) => {
-      handleDomainEvent(JSON.parse(e.data));
+      onDomainEvent(JSON.parse(e.data));
     });
 
     eventSource.addEventListener('domain.progress', (e) => {
-      handleDomainEvent(JSON.parse(e.data));
+      onDomainEvent(JSON.parse(e.data));
     });
 
     eventSource.addEventListener('domain.complete', (e) => {
-      handleDomainEvent(JSON.parse(e.data));
+      onDomainEvent(JSON.parse(e.data));
     });
 
     // Handle run status updates
@@ -247,7 +249,9 @@ export function useOrchestratorEvents(
         setError(errorData.error || 'Unknown error');
       }
     });
-  }, [runId, domains, autoReconnect, reconnectDelay, handleDomainEvent]);
+
+    return eventSource;
+  }, []);
 
   /**
    * Manual reconnect
@@ -256,8 +260,8 @@ export function useOrchestratorEvents(
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
     }
-    connect();
-  }, [connect]);
+    connectRef.current();
+  }, []);
 
   /**
    * Clear all events
@@ -266,11 +270,20 @@ export function useOrchestratorEvents(
     setEvents([]);
   }, []);
 
-  // Connect when runId changes
+  // Connect when runId changes, subscribe to SSE events
   useEffect(() => {
-    if (runId) {
-      connect();
-    }
+    if (!runId) return;
+
+    const connect = () => {
+      setConnectionStatus('connecting');
+      setError(null);
+      createConnection(runId, domains, autoReconnect, reconnectDelay, handleDomainEvent);
+    };
+
+    // Store connect in ref for reconnection and manual reconnect
+    connectRef.current = connect;
+
+    connect();
 
     return () => {
       // Cleanup on unmount or runId change
@@ -283,7 +296,7 @@ export function useOrchestratorEvents(
         reconnectTimeoutRef.current = null;
       }
     };
-  }, [runId, connect]);
+  }, [runId, domains, autoReconnect, reconnectDelay, handleDomainEvent, createConnection]);
 
   return {
     events,
