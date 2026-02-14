@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { IAuthError, IAuthUser, IAuthSession, ISignUpCredentials, ISignInCredentials } from '../types/auth';
+import type { IAuthError, IAuthUser, IAuthSession, ISignUpCredentials, ISignInCredentials, IForgotPasswordCredentials, IResetPasswordCredentials } from '../types/auth';
 
 export const GENERIC_AUTH_ERROR = 'Authentication failed. Please check your credentials and try again.';
 
@@ -83,6 +83,40 @@ export async function authSignOut(): Promise<IAuthResult<null>> {
     }
 
     return { data: null, error: null };
+  } catch {
+    return { data: null, error: sanitizeError() };
+  }
+}
+
+export async function authResetPassword(
+  credentials: IForgotPasswordCredentials
+): Promise<IAuthResult<{ sent: boolean }>> {
+  try {
+    await supabase.auth.resetPasswordForEmail(credentials.email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+    // Always return success to prevent user enumeration (AC-02)
+    return { data: { sent: true }, error: null };
+  } catch {
+    // Even on error, return success to prevent user enumeration
+    return { data: { sent: true }, error: null };
+  }
+}
+
+export async function authUpdatePassword(
+  credentials: IResetPasswordCredentials
+): Promise<IAuthResult<{ updated: boolean }>> {
+  try {
+    const { error } = await supabase.auth.updateUser({
+      password: credentials.password,
+    });
+
+    if (error) {
+      return { data: null, error: sanitizeError() };
+    }
+
+    return { data: { updated: true }, error: null };
   } catch {
     return { data: null, error: sanitizeError() };
   }

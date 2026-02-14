@@ -1,0 +1,11 @@
+{
+  "storyId": "AUTH-FE-002",
+  "title": "Password Reset Flow via Email",
+  "status": "in_progress",
+  "startedAt": "2026-02-14T10:43:00Z",
+  "mode": "single-thread",
+  "agent": "fe-dev",
+  "dependencies": {
+    "AUTH-STORY-001": "complete"
+  }
+}
